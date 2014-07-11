@@ -15,7 +15,6 @@
 
 from cosmo_tester.framework.ec2_testenv import TestCase, bootstrap, teardown
 from fabric.api import env, reboot
-import unittest
 
 
 class RebootManagerTest(TestCase):

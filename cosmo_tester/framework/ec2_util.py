@@ -16,7 +16,8 @@ class EC2CloudifyConfigReader(object):
 
     @property
     def agent_key_path(self):
-        return self.config['compute']['agent_servers']['agents_keypair']['private_key_path']
+        return self.config['compute']['agent_servers']['agents_keypair'][
+            'private_key_path']
 
     @property
     def managment_user_name(self):
