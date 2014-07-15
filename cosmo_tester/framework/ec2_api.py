@@ -38,7 +38,10 @@ def _get_provider(provider_name):
             return Provider.EC2_US_WEST_OREGON
 
 
-def _get_driver(provider_name, access_id, secret_key):
+def _get_driver(config):
+    provider_name = config['connection']['cloud_provider_name']
+    access_id = config['connection']['access_id']
+    secret_key = config['connection']['secret_key']
     provider = _get_provider(provider_name)
     global driver
     if not driver:
@@ -51,9 +54,7 @@ def ec2_infra_state(cloudify_config):
     @retry decorator is used because this error sometimes occur:
     ConnectionFailed: Connection to neutron failed: Maximum attempts reached
     """
-    driver = _get_driver(cloudify_config['connection']['cloud_provider_name'],
-                         cloudify_config['connection']['access_id'],
-                         cloudify_config['connection']['secret_key'])
+    driver = _get_driver(cloudify_config)
     return {
         'security_groups': dict(_security_groups(driver)),
         'key_pairs': dict(_key_pairs(driver)),
@@ -71,9 +72,7 @@ def ec2_infra_state_delta(before, after):
 
 
 def remove_ec2_resources(cloudify_config, resources_to_remove):
-    driver = _get_driver(cloudify_config['connection']['cloud_provider_name'],
-                         cloudify_config['connection']['access_id'],
-                         cloudify_config['connection']['secret_key'])
+    driver = _get_driver(cloudify_config)
 
     nodes = driver.list_nodes()
     public_ips = driver.ex_describe_all_addresses()
@@ -160,42 +159,38 @@ def _remove_sg_rules(sg, driver):
             cidr_ips=rule['cidr_ips'])
 
 
-# def get_sg_list_names(driver):
-#     created = []
-#     groups = self.driver.sg_controller.list()
-#     prfx = self.name_prefix
-#     for group in groups:
-#         if group.startswith(prfx):
-#             created.append(group)
-#     return created
-#
-#
-# def get_key_pair_list_w_names(driver):
-#     created = []
-#     created_names = []
-#     keys = self.driver.keypair_controller.list()
-#     prfx = self.name_prefix
-#     for key in keys:
-#         name = key.name
-#         if name.startswith(prfx):
-#             created.append(key)
-#             created_names.append(name)
-#     return created, created_names
-#
-#
-# def get_node_list_w_names(driver, not_in_state=None):
-#     created = []
-#     created_names = []
-#     nodes = self.driver.server_controller.list()
-#     prfx = self.name_prefix
-#     for node in nodes:
-#         name = node.name
-#         if name.startswith(prfx):
-#             if not_in_state:
-#                 if not_in_state != node.state:
-#                     created.append(node)
-#                     created_names.append(name)
-#             else:
-#                 created.append(node)
-#                 created_names.append(name)
-#     return created, created_names
+def get_sg_list_names(cloudify_config):
+    name_prefix = cloudify_config['cloudify']['resources_prefix']
+    driver = _get_driver(cloudify_config)
+    created = []
+    groups = driver.ex_list_security_groups()
+    for group in groups:
+        if group.startswith(name_prefix):
+            created.append(group)
+    return created
+
+
+def get_key_pair_name_list(cloudify_config):
+    name_prefix = cloudify_config['cloudify']['resources_prefix']
+    driver = _get_driver(cloudify_config)
+    created_names = []
+    keys = driver.list_key_pairs()
+    for key in keys:
+        name = key.name
+        if name.startswith(name_prefix):
+            created_names.append(name)
+    return created_names
+
+
+def get_not_terminated_node_name_list(cloudify_config):
+    name_prefix = cloudify_config['cloudify']['resources_prefix']
+    driver = _get_driver(cloudify_config)
+    created = []
+    created_names = []
+    nodes = driver.list_nodes()
+    for node in nodes:
+        name = node.name
+        if name.startswith(name_prefix) and not node.state == NodeState.TERMINATED:
+            created.append(node)
+            created_names.append(name)
+    return created, created_names
