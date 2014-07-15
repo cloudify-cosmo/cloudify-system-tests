@@ -190,7 +190,8 @@ def get_not_terminated_node_name_list(cloudify_config):
     nodes = driver.list_nodes()
     for node in nodes:
         name = node.name
-        if name.startswith(name_prefix) and not node.state == NodeState.TERMINATED:
+        if name.startswith(name_prefix)\
+                and not node.state == NodeState.TERMINATED:
             created.append(node)
             created_names.append(name)
     return created, created_names

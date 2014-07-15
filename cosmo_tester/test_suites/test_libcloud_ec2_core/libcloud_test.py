@@ -28,7 +28,9 @@ class LibcloudTest(TestCase):
         super(LibcloudTest, self).setUp(*args, **kwargs)
 
     def test_libcloud(self):
-        name_prefix = self.env.cloudify_config['cloudify']['resources_prefix'] if 'resources_prefix' in self.env.cloudify_config['cloudify'] else ''
+        name_prefix = self.env.cloudify_config['cloudify']['resources_prefix']\
+            if 'resources_prefix' in self.env.cloudify_config['cloudify']\
+            else ''
         self._validate_provisioned(name_prefix)
         self._validate_cloudify_manager()
         teardown()
@@ -47,13 +49,13 @@ class LibcloudTest(TestCase):
 
     def _validate_networking(self, networking_config, name_prefix):
         created = get_sg_list_names(self.env.cloudify_config)
-        asg_name = name_prefix + networking_config['agents_security_group']['name']
         self.assertIn(
-            asg_name,
+            name_prefix + networking_config['agents_security_group']['name'],
             created,
             'ERROR: Agents security group wasn\'t created')
         self.assertIn(
-            name_prefix + networking_config['management_security_group']['name'],
+            name_prefix + networking_config['management_security_group'][
+                'name'],
             created,
             'ERROR: Management security group wasn\'t created')
         created_len = len(created)
@@ -66,11 +68,13 @@ class LibcloudTest(TestCase):
     def _validate_key_pairs(self, compute_config, name_prefix):
         created_names = get_key_pair_name_list(self.env.cloudify_config)
         self.assertIn(
-            name_prefix + compute_config['management_server']['management_keypair']['name'],
+            name_prefix + compute_config['management_server'][
+                'management_keypair']['name'],
             created_names,
             'ERROR: Management key pair wasn\'t created')
         self.assertIn(
-            name_prefix + compute_config['agent_servers']['agents_keypair']['name'],
+            name_prefix + compute_config['agent_servers']['agents_keypair'][
+                'name'],
             created_names,
             'ERROR: Agents key pair wasn\'t created')
         created_len = len(created_names)
@@ -82,7 +86,8 @@ class LibcloudTest(TestCase):
             .format(created_len, ', '.join(created_names)))
 
     def _validate_management_server(self, management_config, name_prefix):
-        created, created_names = get_not_terminated_node_name_list(self.env.cloudify_config)
+        created, created_names =\
+            get_not_terminated_node_name_list(self.env.cloudify_config)
         self.assertIn(
             name_prefix + management_config['instance']['name'],
             created_names,
