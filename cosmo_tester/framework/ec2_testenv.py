@@ -25,7 +25,8 @@ import os
 from path import path
 import yaml
 from cosmo_tester.framework.ec2_cfy_helper import EC2CfyHelper
-from cosmo_tester.framework.ec2_util import EC2CloudifyConfigReader
+from cosmo_tester.framework.ec2_util import (EC2CloudifyConfigReader,
+                                             get_blueprint_path)
 from cloudify_rest_client import CloudifyClient
 from cosmo_tester.framework.ec2_api import (ec2_infra_state,
                                             ec2_infra_state_delta,
@@ -68,6 +69,24 @@ class TestCase(unittest.TestCase):
         # unlike tearDown which is not called when setUp fails (which might
         # happen when tests override setUp)
         pass
+
+    def copy_blueprint(self, blueprint_dir_name):
+        blueprint_path = path(self.workdir) / blueprint_dir_name
+        shutil.copytree(get_blueprint_path(blueprint_dir_name),
+                        str(blueprint_path))
+        return blueprint_path
+
+    def wait_for_execution(self, execution, timeout):
+        end = time.time() + timeout
+        while time.time() < end:
+            status = self.client.executions.get(execution.id).status
+            if status == 'failed':
+                raise AssertionError('Execution "{}" failed'.format(
+                    execution.id))
+            if status == 'terminated':
+                return
+            time.sleep(1)
+        raise AssertionError('Execution "{}" timed out'.format(execution.id))
 
 
 class CleanupContext(object):
@@ -172,42 +191,6 @@ class TestEnvironment(object):
                                .format(self.management_ip))
         self._management_running = True
 
-    # @property
-    # def management_network_name(self):
-    #     return self._config_reader.management_network_name
-    #
-    # @property
-    # def agent_key_path(self):
-    #     return self._config_reader.agent_key_path
-    #
-    # @property
-    # def agent_keypair_name(self):
-    #     return self._config_reader.agent_keypair_name
-    #
-    # @property
-    # def external_network_name(self):
-    #     return self._config_reader.external_network_name
-    #
-    # @property
-    # def agents_security_group(self):
-    #     return self._config_reader.agents_security_group
-    #
-    # @property
-    # def management_server_name(self):
-    #     return self._config_reader.management_server_name
-    #
-    # @property
-    # def management_server_floating_ip(self):
-    #     return self._config_reader.management_server_floating_ip
-    #
-    # @property
-    # def management_sub_network_name(self):
-    #     return self._config_reader.management_sub_network_name
-    #
-    # @property
-    # def management_router_name(self):
-    #     return self._config_reader.management_router_name
-    #
     @property
     def managment_user_name(self):
         return self._config_reader.managment_user_name
@@ -215,22 +198,6 @@ class TestEnvironment(object):
     @property
     def management_key_path(self):
         return self._config_reader.management_key_path
-
-    # @property
-    # def management_keypair_name(self):
-    #     return self._config_reader.management_keypair_name
-    #
-    # @property
-    # def management_security_group(self):
-    #     return self._config_reader.management_security_group
-    #
-    # @property
-    # def ubuntu_image_name(self):
-    #     return EC2_IMAGE_NAME
-    #
-    # @property
-    # def flavor_name(self):
-    #     return EC2_IMAGE_SIZE
 
 
 def clear_environment():

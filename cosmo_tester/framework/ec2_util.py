@@ -1,6 +1,15 @@
 __author__ = 'Oleksandr_Raskosov'
 
 
+import os
+from cosmo_tester import resources
+
+
+def get_blueprint_path(blueprint_name):
+    resources_dir = os.path.dirname(resources.__file__)
+    return os.path.join(resources_dir, 'blueprints', blueprint_name)
+
+
 class EC2CloudifyConfigReader(object):
 
     def __init__(self, cloudify_config):

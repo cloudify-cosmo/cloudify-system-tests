@@ -33,8 +33,31 @@ class LibcloudTest(TestCase):
             else ''
         self._validate_provisioned(name_prefix)
         self._validate_cloudify_manager()
+        self._test_blueprint()
         teardown()
         self._validate_teardowned()
+
+    def _test_blueprint(self):
+        blueprint_path = self.copy_blueprint('libcloud')
+        self.blueprint_yaml = blueprint_path / 'blueprint.yaml'
+
+        self.cfy.upload_blueprint(
+            blueprint_id=self.test_id,
+            blueprint_path=self.blueprint_yaml)
+
+        self.cfy.create_deployment(
+            blueprint_id=self.test_id,
+            deployment_id=self.test_id)
+        install_workers = self.client.deployments.list_executions(
+            deployment_id=self.test_id)[0]
+        self.logger.info('Waiting for install workers workflow to terminate')
+        self.wait_for_execution(install_workers, timeout=120)
+
+        execution = self.client.deployments.execute(deployment_id=self.test_id,
+                                                    workflow_id='install')
+        self.logger.info('Waiting for install workflow to terminate')
+        self.wait_for_execution(execution, timeout=600)
+        self.logger.info('All done!')
 
     def _validate_provisioned(self, name_prefix):
         networking_config = self.env.cloudify_config['networking']
@@ -142,7 +165,3 @@ class LibcloudTest(TestCase):
             0,
             'ERROR: Not all created nodes were deleted'
             ' during teardown process: ' + ', '.join(created_names))
-
-
-if __name__ == '__main__':
-    unittest.main()
