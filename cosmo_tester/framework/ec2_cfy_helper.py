@@ -79,3 +79,25 @@ class EC2CfyHelper(object):
     def close(self):
         if self.tmpdir:
             shutil.rmtree(self._cfy_workdir)
+
+    def upload_blueprint(self,
+                         blueprint_id,
+                         blueprint_path,
+                         verbose=False):
+        with self.workdir:
+            cfy.blueprints.upload(
+                blueprint_path,
+                blueprint_id=blueprint_id,
+                verbosity=verbose).wait()
+
+    def create_deployment(self,
+                          blueprint_id,
+                          deployment_id,
+                          verbose=False):
+        with self.workdir:
+            cfy.deployments.create(
+                blueprint_id=blueprint_id,
+                deployment_id=deployment_id,
+                verbosity=verbose).wait()
+
+
