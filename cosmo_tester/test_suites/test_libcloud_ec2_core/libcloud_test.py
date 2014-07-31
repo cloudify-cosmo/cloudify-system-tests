@@ -55,11 +55,11 @@ class LibcloudTest(TestCase):
 
         execution = self.client.deployments.execute(deployment_id=self.test_id,
                                                     workflow_id='install')
-        self.logger.info('Waiting for install workflow to terminate')
+        self.logger.info('Waiting for install workflow')
         self.wait_for_execution(execution, timeout=600)
         execution = self.client.deployments.execute(deployment_id=self.test_id,
                                                     workflow_id='uninstall')
-        self.logger.info('Waiting for uninstall workflow to terminate')
+        self.logger.info('Waiting for uninstall workflow')
         self.wait_for_execution(execution, timeout=600)
         self.logger.info('All done!')
 
