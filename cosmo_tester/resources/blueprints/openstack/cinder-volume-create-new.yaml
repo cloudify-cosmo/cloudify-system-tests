@@ -1,0 +1,25 @@
+imports:
+    - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+    - https://raw.githubusercontent.com/achirko/cloudify-openstack-plugin/dev/plugin.yaml
+
+node_templates:
+    test_vm:
+        type: cloudify.openstack.server
+        properties:
+            cloudify_agent:
+                user: ubuntu
+            server:
+                name: test-vm
+                image: 75d47d10-fef8-473b-9dd1-fe2f7649cb41
+                flavor: 101
+                security_groups: ['cloudify-sg-agents']
+    test_volume:
+        type: cloudify.openstack.volume
+        properties:
+            volume:
+                size: 1
+            resource_id: test-volume
+            device_name: /dev/vdx
+        relationships:
+            - target: test_vm
+              type: cloudify.openstack.volume_attached_to_server
