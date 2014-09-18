@@ -65,7 +65,11 @@ class CinderVolumeTest(TestCase):
 
         for key, value in nodes_state.items():
             if 'volume' in key:
-                self.assertTrue('volume_id' in value['runtime_properties'])
+                self.assertTrue('external_id' in value['runtime_properties'])
+                self.assertTrue('external_type'
+                                in value['runtime_properties'])
+                self.assertEqual('volume',
+                                 value['runtime_properties']['external_type'])
                 self.assertTrue('volume_device_name'
                                 in value['runtime_properties'])
                 self.assertEqual(value['state'], 'started')
@@ -96,7 +100,7 @@ class CinderVolumeTest(TestCase):
         self._check_executions(deployment)
 
     def _check_executions(self, deployment):
-        executions = self.client.deployments.list_executions(deployment.id)
+        executions = self.client.executions.list(deployment_id=deployment.id)
 
         self.assertEqual(len(executions), 2)
 
