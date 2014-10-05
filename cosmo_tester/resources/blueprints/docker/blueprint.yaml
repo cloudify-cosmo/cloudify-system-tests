@@ -1,0 +1,34 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+    - http://www.getcloudify.org/spec/cloudify/3.1/types.yaml
+    - http://www.getcloudify.org/spec/openstack-plugin/1.1/plugin.yaml
+
+plugins:
+    docker:
+        executor: host_agent
+        source: https://github.com/cloudify-cosmo/cloudify-docker-plugin/archive/CFY-1377-upgrade-3.1.zip
+
+inputs:
+    image_name: {}
+    flavor_name: {}
+
+node_templates:
+    vm:
+        type: cloudify.openstack.server
+        properties:
+            server:
+                image_name: { get_input: image_name }
+                flavor_name: { get_input: flavor_name }
+    unit_tests:
+        type: cloudify.types.base
+        interfaces:
+            stub:
+                # so plugin installer installs this plugin
+                # which in turn will install docker on this machine
+                - op: docker.docker_plugin.tasks.create
+            cloudify.interfaces.lifecycle:
+                - start: scripts/run_docker_unit_tests.sh
+        relationships:
+            -   type: cloudify.relationships.contained_in
+                target: vm
