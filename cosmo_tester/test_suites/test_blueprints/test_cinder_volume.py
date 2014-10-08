@@ -70,8 +70,6 @@ class CinderVolumeTest(TestCase):
                                 in value['runtime_properties'])
                 self.assertEqual('volume',
                                  value['runtime_properties']['external_type'])
-                self.assertTrue('volume_device_name'
-                                in value['runtime_properties'])
                 self.assertEqual(value['state'], 'started')
 
     def _post_uninstall_assertions(self):
@@ -84,9 +82,13 @@ class CinderVolumeTest(TestCase):
         deployment = delta['deployments'].values()[0]
         nodes = self.client.nodes.list(deployment.id)
         self.assertEqual(len(nodes), 2)
+        volume_node_verified = False
         for node in nodes:
             if node.id == 'test_volume':
                 self.assertEqual(len(node.relationships), 1)
+                self.assertTrue('device_name' in node.properties)
+                volume_node_verified = True
+        self.assertTrue(volume_node_verified)
 
     def _check_blueprint(self, delta):
         self.assertEqual(len(delta['blueprints']), 1)
