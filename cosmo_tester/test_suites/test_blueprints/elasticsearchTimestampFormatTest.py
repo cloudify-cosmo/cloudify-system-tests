@@ -83,20 +83,20 @@ class ElasticsearchTimestampFormatTest(TestCase):
         except Exception:
             self.fail('failed to create deployment')
         time.sleep(5)
-        #connect to Elastic search
+        #  connect to Elastic search
         try:
             es = Elasticsearch(self.env.management_ip + ':9200')
         except Exception:
             self.fail('failed to connect Elasticsearch')
-        #get events from events index
+        #  get events from events index
         res = es.search(index="cloudify_events",
                         body={"query": {"match_all": {}}})
         print("res Got %d Hits:" % res['hits']['total'])
-        #check if events were created
+        #  check if events were created
         if(0 == (res['hits']['total'])):
             self.fail('there are no events with '
                       'timestamp in index cloudify_events')
-        # loop over all the events and compare timestamp to regular expression
+        #  loop over all the events and compare timestamp to regular expression
         for hit in res['hits']['hits']:
             if not (re.match('\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3}',
                              (str("%(timestamp)s" % hit["_source"])))):
