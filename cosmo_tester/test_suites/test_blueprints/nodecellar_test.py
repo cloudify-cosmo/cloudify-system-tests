@@ -14,8 +14,10 @@
 #    * limitations under the License.
 
 
+import os
 import requests
 import json
+
 from requests.exceptions import ConnectionError
 
 from cosmo_tester.framework.testenv import TestCase
@@ -174,3 +176,23 @@ class OpenStackNodeCellarTest(NodecellarAppTest):
                 'image_name': image_name,
                 'flavor_name': flavor_name
             })
+
+
+class OpenStackNodeCellarLargeBlueprintTest(OpenStackNodeCellarTest):
+    '''
+    This test checks the lifecycle of a blueprint that is bigger then 50 MB
+    '''
+
+    def test_openstack_nodecellar_large_blueprint(self):
+        self._test_nodecellar_impl('openstack-blueprint.yaml',
+                                   self.env.ubuntu_image_name,
+                                   self.env.flavor_name)
+
+    def modify_blueprint(self, image_name, flavor_name):
+        super(OpenStackNodeCellarLargeBlueprintTest, self).\
+            modify_blueprint(image_name, flavor_name)
+        self.create_file("50M", "just_a_large_file.img")
+
+    def create_file(self, fileSize, fileName):
+        os.system("fallocate -l " + fileSize +
+                  " " + self.repo_dir + "/" + fileName)
