@@ -13,33 +13,71 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import cosmo_tester.framework.util as util
+import cosmo_tester.framework.util as framework_util
 import os
+from cinderclient import exceptions as cinder_exc
 
-from cosmo_tester.framework.handlers import openstack as openstack_handler
+from cosmo_tester.framework.handlers.openstack import openstack_clients
 from cosmo_tester.framework.testenv import TestCase
 
 
 class CinderVolumeTest(TestCase):
 
+    VOLUME_SIZE = 1
+    DEVICE_NAME = '/dev/vdx'
+
+    def setUp(self):
+        super(CinderVolumeTest, self).setUp()
+        self.cinderclient = openstack_clients(self.env).cinder
+        self.blueprint_yaml = os.path.join(
+            framework_util.get_blueprint_path('openstack-cinder'),
+            'blueprint.yaml')
+        self._modify_blueprint_add_volume_size()
+        self._modify_blueprint_add_device_name()
+
+    def _modify_blueprint_add_volume_size(self):
+        with framework_util.YamlPatcher(self.blueprint_yaml) as patch:
+            patch.merge_obj(
+                'node_templates.test_volume.properties.volume',
+                {
+                    'size': self.VOLUME_SIZE
+                })
+
+    def _modify_blueprint_add_device_name(self):
+        with framework_util.YamlPatcher(self.blueprint_yaml) as patch:
+            patch.merge_obj(
+                'node_templates.test_volume.properties',
+                {
+                    'device_name': self.DEVICE_NAME
+                })
+
+    def _modify_blueprint_use_existing_volume(self, volume_id):
+        with framework_util.YamlPatcher(self.blueprint_yaml) as patch:
+            patch.merge_obj(
+                'node_templates.test_volume.properties',
+                {
+                    'use_external_resource': True,
+                    'resource_id': volume_id
+                })
+
     def test_volume_create_new(self):
-        self._test_volume('cinder-volume-create-new.yaml')
+        before, after = self.upload_deploy_and_execute_install()
+
+        self._post_install_assertions(before, after)
+
+        self.execute_uninstall()
+
+        self._post_uninstall_assertions()
 
     def test_volume_use_existing(self):
-        volume_name = 'test-volume'
-        cinderclient = openstack_handler.cinder_client(
-            self.env.cloudify_config)
+        volume_name = 'volume-system-test'
+        cinderclient = openstack_clients(self.env).cinder
 
-        volume = cinderclient.volumes.create(size=1,
+        volume = cinderclient.volumes.create(size=self.VOLUME_SIZE,
                                              display_name=volume_name)
+        self.addCleanup(cinderclient.volumes.delete, volume.id)
 
-        self._test_volume('cinder-volume-use-existing.yaml')
-
-        cinderclient.volumes.delete(volume.id)
-
-    def _test_volume(self, blueprint):
-        self.blueprint_yaml = os.path.join(
-            util.get_blueprint_path('openstack'), blueprint)
+        self._modify_blueprint_use_existing_volume(volume.id)
 
         before, after = self.upload_deploy_and_execute_install()
 
@@ -65,12 +103,25 @@ class CinderVolumeTest(TestCase):
 
         for key, value in nodes_state.items():
             if 'volume' in key:
+                self.assertTrue('external_name' in value['runtime_properties'])
                 self.assertTrue('external_id' in value['runtime_properties'])
                 self.assertTrue('external_type'
                                 in value['runtime_properties'])
                 self.assertEqual('volume',
                                  value['runtime_properties']['external_type'])
                 self.assertEqual(value['state'], 'started')
+
+                volume_id = value['runtime_properties']['external_id']
+                volume_created = True
+                try:
+                    volume = self.cinderclient.volumes.get(volume_id)
+                except cinder_exc.NotFound:
+                    volume_created = False
+                self.assertTrue(volume_created)
+                self.assertEqual(self.VOLUME_SIZE, volume.size)
+                self.assertEqual(1, len(volume.attachments))
+                self.assertEqual(self.DEVICE_NAME,
+                                 volume.attachments[0]['device'])
 
     def _post_uninstall_assertions(self):
         nodes_instances = self.client.node_instances.list(self.deployment_id)
@@ -115,6 +166,6 @@ class CinderVolumeTest(TestCase):
         self.assertEqual(execution_from_list['blueprint_id'],
                          execution_by_id['blueprint_id'])
 
-        events, total_events = self.client.events.get(execution_by_id.id)
+        events, _ = self.client.events.get(execution_by_id.id)
 
         self.assertGreater(len(events), 0)
