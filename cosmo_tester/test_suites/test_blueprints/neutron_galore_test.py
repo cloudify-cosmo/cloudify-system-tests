@@ -280,7 +280,9 @@ class NeutronGaloreTest(TestCase):
         return node_states
 
     def get_openstack_components(self, states):
-        nova, neutron = self.env.handler.openstack_clients()
+        clients = self.env.handler.openstack_clients()
+        nova = clients.nova
+        neutron = clients.neutron
         eid = 'external_id'
         sg = 'security_group'
         i = 'floatingip'

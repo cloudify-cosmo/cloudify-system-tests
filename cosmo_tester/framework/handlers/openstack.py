@@ -22,6 +22,7 @@ import os
 import time
 import copy
 from contextlib import contextmanager
+from collections import namedtuple
 
 import novaclient.v1_1.client as nvclient
 import neutronclient.v2_0.client as neclient
@@ -39,22 +40,20 @@ logging.getLogger('neutronclient.client').setLevel(logging.INFO)
 logging.getLogger('novaclient.client').setLevel(logging.INFO)
 
 CLOUDIFY_TEST_NO_CLEANUP = 'CLOUDIFY_TEST_NO_CLEANUP'
+OpenstackClients = namedtuple('OpenstackClients', 'nova neutron cinder')
 
 
 def openstack_clients(env):
 
     creds = _client_creds(env)
-    return (nvclient.Client(**creds),
-            neclient.Client(username=creds['username'],
-                            password=creds['api_key'],
-                            tenant_name=creds['project_id'],
-                            region_name=creds['region_name'],
-                            auth_url=creds['auth_url']))
-
-
-def cinder_client(cloudify_config):
-    creds = _client_creds(cloudify_config)
-    return cinderclient.Client(**creds)
+    return OpenstackClients(
+        nova=nvclient.Client(**creds),
+        neutron=neclient.Client(username=creds['username'],
+                                password=creds['api_key'],
+                                tenant_name=creds['project_id'],
+                                region_name=creds['region_name'],
+                                auth_url=creds['auth_url']),
+        cinder=cinderclient.Client(**creds))
 
 
 @retry(stop_max_attempt_number=5, wait_fixed=20000)
@@ -63,17 +62,18 @@ def openstack_infra_state(env):
     @retry decorator is used because this error sometimes occur:
     ConnectionFailed: Connection to neutron failed: Maximum attempts reached
     """
-    nova, neutron = openstack_clients(env)
+    clients = openstack_clients(env)
     prefix = env.resources_prefix
     return {
-        'networks': dict(_networks(neutron, prefix)),
-        'subnets': dict(_subnets(neutron, prefix)),
-        'routers': dict(_routers(neutron, prefix)),
-        'security_groups': dict(_security_groups(neutron, prefix)),
-        'servers': dict(_servers(nova, prefix)),
-        'key_pairs': dict(_key_pairs(nova, prefix)),
-        'floatingips': dict(_floatingips(neutron, prefix)),
-        'ports': dict(_ports(neutron, prefix))
+        'networks': dict(_networks(clients.neutron, prefix)),
+        'subnets': dict(_subnets(clients.neutron, prefix)),
+        'routers': dict(_routers(clients.neutron, prefix)),
+        'security_groups': dict(_security_groups(clients.neutron, prefix)),
+        'servers': dict(_servers(clients.nova, prefix)),
+        'key_pairs': dict(_key_pairs(clients.nova, prefix)),
+        'floatingips': dict(_floatingips(clients.neutron, prefix)),
+        'ports': dict(_ports(clients.neutron, prefix)),
+        'volumes': dict(_volumes(clients.cinder, prefix))
     }
 
 
@@ -94,16 +94,17 @@ def remove_openstack_resources(env, resources_to_remove):
 
 def _remove_openstack_resources_impl(env,
                                      resources_to_remove):
-    nova, neutron = openstack_clients(env)
+    clients = openstack_clients(env)
 
-    servers = nova.servers.list()
-    ports = neutron.list_ports()['ports']
-    routers = neutron.list_routers()['routers']
-    subnets = neutron.list_subnets()['subnets']
-    networks = neutron.list_networks()['networks']
-    keypairs = nova.keypairs.list()
-    floatingips = neutron.list_floatingips()['floatingips']
-    security_groups = neutron.list_security_groups()['security_groups']
+    servers = clients.nova.servers.list()
+    ports = clients.neutron.list_ports()['ports']
+    routers = clients.neutron.list_routers()['routers']
+    subnets = clients.neutron.list_subnets()['subnets']
+    networks = clients.neutron.list_networks()['networks']
+    keypairs = clients.nova.keypairs.list()
+    floatingips = clients.neutron.list_floatingips()['floatingips']
+    security_groups = clients.neutron.list_security_groups()['security_groups']
+    volumes = clients.cinder.volumes.list()
 
     failed = {
         'servers': {},
@@ -113,50 +114,56 @@ def _remove_openstack_resources_impl(env,
         'networks': {},
         'key_pairs': {},
         'floatingips': {},
-        'security_groups': {}
+        'security_groups': {},
+        'volumes': {}
     }
 
     for server in servers:
         if server.id in resources_to_remove['servers']:
             with _handled_exception(server.id, failed, 'servers'):
-                nova.servers.delete(server)
+                clients.nova.servers.delete(server)
     for router in routers:
         if router['id'] in resources_to_remove['routers']:
             with _handled_exception(router['id'], failed, 'routers'):
-                for p in neutron.list_ports(device_id=router['id'])['ports']:
-                    neutron.remove_interface_router(router['id'], {
+                for p in clients.neutron.list_ports(
+                        device_id=router['id'])['ports']:
+                    clients.neutron.remove_interface_router(router['id'], {
                         'port_id': p['id']
                     })
-                neutron.delete_router(router['id'])
+                clients.neutron.delete_router(router['id'])
     for port in ports:
         if port['id'] in resources_to_remove['ports']:
             with _handled_exception(port['id'], failed, 'ports'):
-                neutron.delete_port(port['id'])
+                clients.neutron.delete_port(port['id'])
     for subnet in subnets:
         if subnet['id'] in resources_to_remove['subnets']:
             with _handled_exception(subnet['id'], failed, 'subnets'):
-                neutron.delete_subnet(subnet['id'])
+                clients.neutron.delete_subnet(subnet['id'])
     for network in networks:
         if network['name'] == env.external_network_name:
             continue
         if network['id'] in resources_to_remove['networks']:
             with _handled_exception(network['id'], failed, 'networks'):
-                neutron.delete_network(network['id'])
+                clients.neutron.delete_network(network['id'])
     for key_pair in keypairs:
         if key_pair.id in resources_to_remove['key_pairs']:
             with _handled_exception(key_pair.id, failed, 'key_pairs'):
-                nova.keypairs.delete(key_pair)
+                clients.nova.keypairs.delete(key_pair)
     for floatingip in floatingips:
         if floatingip['id'] in resources_to_remove['floatingips']:
             with _handled_exception(floatingip['id'], failed, 'floatingips'):
-                neutron.delete_floatingip(floatingip['id'])
+                clients.neutron.delete_floatingip(floatingip['id'])
     for security_group in security_groups:
         if security_group['name'] == 'default':
             continue
         if security_group['id'] in resources_to_remove['security_groups']:
             with _handled_exception(security_group['id'],
                                     failed, 'security_groups'):
-                neutron.delete_security_group(security_group['id'])
+                clients.neutron.delete_security_group(security_group['id'])
+    for volume in volumes:
+        if volume.id in resources_to_remove['volumes']:
+            with _handled_exception(volume.id, failed, 'volumes'):
+                clients.cinder.volumes.delete(volume)
 
     return failed
 
@@ -225,6 +232,11 @@ def _ports(neutron, prefix):
     return [(p['id'], p['name'])
             for p in neutron.list_ports()['ports']
             if _check_prefix(p['name'], prefix)]
+
+
+def _volumes(cinder, prefix):
+    return [(v.id, v.display_name) for v in cinder.volumes.list()
+            if _check_prefix(v.display_name, prefix)]
 
 
 def _check_prefix(name, prefix):
