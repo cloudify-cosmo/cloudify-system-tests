@@ -22,9 +22,11 @@ import os
 import time
 import copy
 from contextlib import contextmanager
+from collections import namedtuple
 
 import novaclient.v1_1.client as nvclient
 import neutronclient.v2_0.client as neclient
+from cinderclient.v1 import client as cinderclient
 from retrying import retry
 
 from cosmo_tester.framework.handlers import (
@@ -38,6 +40,222 @@ logging.getLogger('neutronclient.client').setLevel(logging.INFO)
 logging.getLogger('novaclient.client').setLevel(logging.INFO)
 
 CLOUDIFY_TEST_NO_CLEANUP = 'CLOUDIFY_TEST_NO_CLEANUP'
+OpenstackClients = namedtuple('OpenstackClients', 'nova neutron cinder')
+
+
+def openstack_clients(env):
+
+    creds = _client_creds(env)
+    return OpenstackClients(
+        nova=nvclient.Client(**creds),
+        neutron=neclient.Client(username=creds['username'],
+                                password=creds['api_key'],
+                                tenant_name=creds['project_id'],
+                                region_name=creds['region_name'],
+                                auth_url=creds['auth_url']),
+        cinder=cinderclient.Client(**creds))
+
+
+@retry(stop_max_attempt_number=5, wait_fixed=20000)
+def openstack_infra_state(env):
+    """
+    @retry decorator is used because this error sometimes occur:
+    ConnectionFailed: Connection to neutron failed: Maximum attempts reached
+    """
+    clients = openstack_clients(env)
+    prefix = env.resources_prefix
+    return {
+        'networks': dict(_networks(clients.neutron, prefix)),
+        'subnets': dict(_subnets(clients.neutron, prefix)),
+        'routers': dict(_routers(clients.neutron, prefix)),
+        'security_groups': dict(_security_groups(clients.neutron, prefix)),
+        'servers': dict(_servers(clients.nova, prefix)),
+        'key_pairs': dict(_key_pairs(clients.nova, prefix)),
+        'floatingips': dict(_floatingips(clients.neutron, prefix)),
+        'ports': dict(_ports(clients.neutron, prefix)),
+        'volumes': dict(_volumes(clients.cinder, prefix))
+    }
+
+
+def remove_openstack_resources(env, resources_to_remove):
+    # basically sort of a workaround, but if we get the order wrong
+    # the first time, there is a chance things would better next time
+    # 3'rd time can't really hurt, can it?
+    # 3 is a charm
+    for _ in range(3):
+        resources_to_remove = _remove_openstack_resources_impl(
+            env, resources_to_remove)
+        if all([len(g) == 0 for g in resources_to_remove.values()]):
+            break
+        # give openstack some time to update its data structures
+        time.sleep(3)
+    return resources_to_remove
+
+
+def _remove_openstack_resources_impl(env,
+                                     resources_to_remove):
+    clients = openstack_clients(env)
+
+    servers = clients.nova.servers.list()
+    ports = clients.neutron.list_ports()['ports']
+    routers = clients.neutron.list_routers()['routers']
+    subnets = clients.neutron.list_subnets()['subnets']
+    networks = clients.neutron.list_networks()['networks']
+    keypairs = clients.nova.keypairs.list()
+    floatingips = clients.neutron.list_floatingips()['floatingips']
+    security_groups = clients.neutron.list_security_groups()['security_groups']
+    volumes = clients.cinder.volumes.list()
+
+    failed = {
+        'servers': {},
+        'routers': {},
+        'ports': {},
+        'subnets': {},
+        'networks': {},
+        'key_pairs': {},
+        'floatingips': {},
+        'security_groups': {},
+        'volumes': {}
+    }
+
+    for server in servers:
+        if server.id in resources_to_remove['servers']:
+            with _handled_exception(server.id, failed, 'servers'):
+                clients.nova.servers.delete(server)
+    for router in routers:
+        if router['id'] in resources_to_remove['routers']:
+            with _handled_exception(router['id'], failed, 'routers'):
+                for p in clients.neutron.list_ports(
+                        device_id=router['id'])['ports']:
+                    clients.neutron.remove_interface_router(router['id'], {
+                        'port_id': p['id']
+                    })
+                clients.neutron.delete_router(router['id'])
+    for port in ports:
+        if port['id'] in resources_to_remove['ports']:
+            with _handled_exception(port['id'], failed, 'ports'):
+                clients.neutron.delete_port(port['id'])
+    for subnet in subnets:
+        if subnet['id'] in resources_to_remove['subnets']:
+            with _handled_exception(subnet['id'], failed, 'subnets'):
+                clients.neutron.delete_subnet(subnet['id'])
+    for network in networks:
+        if network['name'] == env.external_network_name:
+            continue
+        if network['id'] in resources_to_remove['networks']:
+            with _handled_exception(network['id'], failed, 'networks'):
+                clients.neutron.delete_network(network['id'])
+    for key_pair in keypairs:
+        if key_pair.id in resources_to_remove['key_pairs']:
+            with _handled_exception(key_pair.id, failed, 'key_pairs'):
+                clients.nova.keypairs.delete(key_pair)
+    for floatingip in floatingips:
+        if floatingip['id'] in resources_to_remove['floatingips']:
+            with _handled_exception(floatingip['id'], failed, 'floatingips'):
+                clients.neutron.delete_floatingip(floatingip['id'])
+    for security_group in security_groups:
+        if security_group['name'] == 'default':
+            continue
+        if security_group['id'] in resources_to_remove['security_groups']:
+            with _handled_exception(security_group['id'],
+                                    failed, 'security_groups'):
+                clients.neutron.delete_security_group(security_group['id'])
+    for volume in volumes:
+        if volume.id in resources_to_remove['volumes']:
+            with _handled_exception(volume.id, failed, 'volumes'):
+                clients.cinder.volumes.delete(volume)
+
+    return failed
+
+
+def openstack_infra_state_delta(before, after):
+    after = copy.deepcopy(after)
+    return {
+        prop: _remove_keys(after[prop], before[prop].keys())
+        for prop in before.keys()
+    }
+
+
+def _client_creds(env):
+    return {
+        'username': env.keystone_username,
+        'api_key': env.keystone_password,
+        'auth_url': env.keystone_url,
+        'project_id': env.keystone_tenant_name,
+        'region_name': env.region
+    }
+
+
+def _networks(neutron, prefix):
+    return [(n['id'], n['name'])
+            for n in neutron.list_networks()['networks']
+            if _check_prefix(n['name'], prefix)]
+
+
+def _subnets(neutron, prefix):
+    return [(n['id'], n['name'])
+            for n in neutron.list_subnets()['subnets']
+            if _check_prefix(n['name'], prefix)]
+
+
+def _routers(neutron, prefix):
+    return [(n['id'], n['name'])
+            for n in neutron.list_routers()['routers']
+            if _check_prefix(n['name'], prefix)]
+
+
+def _security_groups(neutron, prefix):
+    return [(n['id'], n['name'])
+            for n in neutron.list_security_groups()['security_groups']
+            if _check_prefix(n['name'], prefix)]
+
+
+def _servers(nova, prefix):
+    return [(s.id, s.human_id)
+            for s in nova.servers.list()
+            if _check_prefix(s.human_id, prefix)]
+
+
+def _key_pairs(nova, prefix):
+    return [(kp.id, kp.name)
+            for kp in nova.keypairs.list()
+            if _check_prefix(kp.name, prefix)]
+
+
+def _floatingips(neutron, prefix):
+    return [(ip['id'], ip['floating_ip_address'])
+            for ip in neutron.list_floatingips()['floatingips']]
+    # return []
+
+
+def _ports(neutron, prefix):
+    return [(p['id'], p['name'])
+            for p in neutron.list_ports()['ports']
+            if _check_prefix(p['name'], prefix)]
+
+
+def _volumes(cinder, prefix):
+    return [(v.id, v.display_name) for v in cinder.volumes.list()
+            if _check_prefix(v.display_name, prefix)]
+
+
+def _check_prefix(name, prefix):
+    return name.startswith(prefix)
+
+
+def _remove_keys(dct, keys):
+    for key in keys:
+        if key in dct:
+            del dct[key]
+    return dct
+
+
+@contextmanager
+def _handled_exception(resource_id, failed, resource_group):
+    try:
+        yield
+    except BaseException, ex:
+        failed[resource_group][resource_id] = ex
 
 
 class OpenstackCleanupContext(BaseHandler.CleanupContext):

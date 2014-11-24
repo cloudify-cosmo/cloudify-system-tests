@@ -100,7 +100,7 @@ class HelloWorldBashTest(TestCase):
     def _verify_deployment_installed(self, with_server=True):
         (floatingip_node, security_group_node, server_node) = self._instances()
 
-        nova, neutron = self.env.handler.openstack_clients()
+        clients = self.env.handler.openstack_clients()
 
         server_id = None
         if with_server:
@@ -110,18 +110,18 @@ class HelloWorldBashTest(TestCase):
                 floatingip_node_instance=floatingip_node)
 
             server_id = server_node.runtime_properties['external_id']
-            nova_server = nova.servers.get(server_id)
+            nova_server = clients.nova.servers.get(server_id)
             self.logger.info("Agent server : {0}".format(nova_server))
         else:
             self.assertNotIn('external_id', server_node.runtime_properties)
 
         floating_ip_id = floatingip_node.runtime_properties['external_id']
-        neutron_floating_ip = neutron.show_floatingip(floating_ip_id)
+        neutron_floating_ip = clients.neutron.show_floatingip(floating_ip_id)
         self.logger.info("Floating ip : {0}".format(neutron_floating_ip))
         sg_id = security_group_node.runtime_properties['external_id']
-        neutron_sg = neutron.show_security_group(sg_id)
+        neutron_sg = clients.neutron.show_security_group(sg_id)
         self.logger.info("Agent security group : {0}".format(neutron_sg))
-        return floating_ip_id, neutron, nova, sg_id, server_id
+        return floating_ip_id, clients.neutron, clients.nova, sg_id, server_id
 
     def _uninstall_and_make_assertions(self, floating_ip_id, neutron, nova,
                                        sg_id, server_id=None):

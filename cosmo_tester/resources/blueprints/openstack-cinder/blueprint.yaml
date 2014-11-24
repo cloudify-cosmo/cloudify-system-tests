@@ -1,0 +1,32 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+    - http://www.getcloudify.org/spec/cloudify/3.1rc2/types.yaml
+    - http://www.getcloudify.org/spec/openstack-plugin/1.1rc2/plugin.yaml
+
+inputs:
+    image_name:
+        type: string
+        default: ''
+    flavor_name:
+        type: string
+        default: ''
+
+node_templates:
+    test_vm:
+        type: cloudify.openstack.nodes.Server
+        properties:
+            cloudify_agent:
+                user: ubuntu
+            server:
+                image: { get_input: image_name}
+                flavor: { get_input: flavor_name}
+    test_volume:
+        type: cloudify.openstack.nodes.Volume
+        properties:
+            volume:
+                size: 1
+            device_name: /dev/vdx
+        relationships:
+            - target: test_vm
+              type: cloudify.openstack.volume_attached_to_server
