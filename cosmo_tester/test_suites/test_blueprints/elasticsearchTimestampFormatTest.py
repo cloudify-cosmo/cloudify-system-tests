@@ -19,7 +19,7 @@ from neutronclient.common.exceptions import NeutronClientException
 from cosmo_tester.framework.testenv import TestCase
 from cosmo_tester.framework.git_helper import clone
 from cosmo_tester.framework.util import YamlPatcher
-from cosmo_tester.framework.handlers.openstack import openstack_clients
+from cosmo_tester.framework.handlers.openstack import OpenstackHandler
 
 DEFAULT_EXECUTE_TIMEOUT = 1800
 
@@ -30,7 +30,8 @@ NODECELLAR_URL = "https://github.com/cloudify-cosmo/" \
 class ElasticsearchTimestampFormatTest(TestCase):
 
     def create_elasticsearch_rule(self):
-        neutron_client = openstack_clients(self.env)[1]
+        os_handler = OpenstackHandler(self.env)
+        neutron_client =  os_handler.openstack_clients()[1]
         sgr = {
             'direction': 'ingress',
             'ethertype': 'IPv4',
@@ -41,8 +42,7 @@ class ElasticsearchTimestampFormatTest(TestCase):
             'remote_ip_prefix': '0.0.0.0/0',
             }
 
-        mng_sec_grp_name = self.env.resources_prefix +\
-            self.env.management_security_group
+        mng_sec_grp_name = self.env.management_security_group
 
         mng_sec_grp = neutron_client.\
             list_security_groups(name=mng_sec_grp_name)['security_groups'][0]
@@ -54,7 +54,8 @@ class ElasticsearchTimestampFormatTest(TestCase):
         return rule_id
 
     def delete_elasticsearch_rule(self, rule):
-        neutron_client = openstack_clients(self.env)[1]
+        os_handler = OpenstackHandler(self.env)
+        neutron_client =  os_handler.openstack_clients()[1]
         neutron_client.delete_security_group_rule(rule)
 
     def test_events_timestamp_format(self):
@@ -74,14 +75,6 @@ class ElasticsearchTimestampFormatTest(TestCase):
             self.cfy.upload_blueprint(self.test_id, self.blueprint_yaml, False)
         except Exception:
             self.fail('failed to upload the blueprint')
-        self.assertTrue(True)
-        try:
-            self.cfy.create_deployment(self.test_id,
-                                       self.test_id,
-                                       verbose=False,
-                                       inputs=None)
-        except Exception:
-            self.fail('failed to create deployment')
         time.sleep(5)
         #  connect to Elastic search
         try:
@@ -104,7 +97,7 @@ class ElasticsearchTimestampFormatTest(TestCase):
                           'YYYY-MM-DD HH:MM:SS.***'
                           .format((str("%(timestamp)s" % hit["_source"]))))
 
-        if rule is None:
+        if rule is not None:
             print "Deleting elastic-search rule"
             self.delete_elasticsearch_rule(rule)
 
