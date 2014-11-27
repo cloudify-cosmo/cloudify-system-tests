@@ -31,7 +31,7 @@ class ElasticsearchTimestampFormatTest(TestCase):
 
     def create_elasticsearch_rule(self):
         os_handler = OpenstackHandler(self.env)
-        neutron_client =  os_handler.openstack_clients()[1]
+        neutron_client = os_handler.openstack_clients()[1]
         sgr = {
             'direction': 'ingress',
             'ethertype': 'IPv4',
@@ -55,7 +55,7 @@ class ElasticsearchTimestampFormatTest(TestCase):
 
     def delete_elasticsearch_rule(self, rule):
         os_handler = OpenstackHandler(self.env)
-        neutron_client =  os_handler.openstack_clients()[1]
+        neutron_client = os_handler.openstack_clients()[1]
         neutron_client.delete_security_group_rule(rule)
 
     def test_events_timestamp_format(self):
