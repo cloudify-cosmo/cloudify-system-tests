@@ -47,6 +47,7 @@ class DownloadBlueprintTest(TestCase):
     def download_blueprint_test(self):
         blueprint_path = self.copy_blueprint('mocks')
         blueprint_yaml = blueprint_path / 'single-node.yaml'
+        self._create_file("50M", "just_a_large_file.img", blueprint_path)
         self.cfy.upload_blueprint(self.blueprint_id, blueprint_yaml)
         self.cfy.download_blueprint(self.blueprint_id)
         self.assertTrue(os.path.exists(self.downloaded_archive_path))
@@ -60,3 +61,7 @@ class DownloadBlueprintTest(TestCase):
         with tarfile.open(self.downloaded_archive_path) as tar:
             for item in tar:
                 tar.extract(item, self.download_path)
+
+    def _create_file(self, fileSize, fileName, path):
+        os.system("fallocate -l " + fileSize +
+                  " " + path + "/" + fileName)
