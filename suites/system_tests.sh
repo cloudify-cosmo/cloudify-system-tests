@@ -81,7 +81,7 @@ clone_and_install_system_tests()
 	clone_and_checkout cloudify-openstack-provider ${BRANCH_NAME_OPENSTACK_PROVIDER}
 	clone_and_checkout cloudify-libcloud-provider ${BRANCH_NAME_LIBCLOUD_PROVIDER}
 	clone_and_checkout cloudify-manager-blueprints ${BRANCH_NAME_MANAGER_BLUEPRINTS}
-	clone_and_checkout cloudify-vsphere-plugin ${BRANCH_NAME_VSPHERE_PLUGIN} Gigaspaces private
+	clone_and_checkout cloudify-vsphere-plugin ${BRANCH_NAME_VSPHERE_PLUGIN}
 
 	echo "### Installing system tests dependencies"
 	pip install ./cloudify-cli -r cloudify-cli/dev-requirements.txt
