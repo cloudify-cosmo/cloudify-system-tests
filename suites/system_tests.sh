@@ -14,7 +14,7 @@ setenv()
 	export BRANCH_NAME_PLUGINS=${BRANCH_NAME_PLUGINS='1.2m1'}
 	BRANCH_NAME_OPENSTACK_PROVIDER=${BRANCH_NAME_OPENSTACK_PROVIDER=${BRANCH_NAME_PLUGINS}}
 	BRANCH_NAME_LIBCLOUD_PROVIDER=${BRANCH_NAME_LIBCLOUD_PROVIDER=${BRANCH_NAME_PLUGINS}}
-	BRANCH_NAME_VSPHERE_PLUGIN=${BRANCH_NAME_VSPHERE_PLUGIN=${BRANCH_NAME_PLUGINS}}
+#	BRANCH_NAME_VSPHERE_PLUGIN=${BRANCH_NAME_VSPHERE_PLUGIN=${BRANCH_NAME_PLUGINS}}
 	BRANCH_NAME_CLI=${BRANCH_NAME_CLI=${BRANCH_NAME_CORE}}
 	BRANCH_NAME_MANAGER_BLUEPRINTS=${BRANCH_NAME_MANAGER_BLUEPRINTS=${BRANCH_NAME_CORE}}
 
@@ -81,13 +81,13 @@ clone_and_install_system_tests()
 	clone_and_checkout cloudify-openstack-provider ${BRANCH_NAME_OPENSTACK_PROVIDER}
 	clone_and_checkout cloudify-libcloud-provider ${BRANCH_NAME_LIBCLOUD_PROVIDER}
 	clone_and_checkout cloudify-manager-blueprints ${BRANCH_NAME_MANAGER_BLUEPRINTS}
-	clone_and_checkout cloudify-vsphere-plugin ${BRANCH_NAME_VSPHERE_PLUGIN}
+#	clone_and_checkout cloudify-vsphere-plugin ${BRANCH_NAME_VSPHERE_PLUGIN}
 
 	echo "### Installing system tests dependencies"
 	pip install ./cloudify-cli -r cloudify-cli/dev-requirements.txt
 	pip install ./cloudify-openstack-provider
 	pip install ./cloudify-libcloud-provider
-	pip install ./cloudify-vsphere-plugin
+#	pip install ./cloudify-vsphere-plugin
 	pip install -e ./cloudify-system-tests
 }
 
@@ -122,9 +122,9 @@ generate_config()
 	cp ${ORIGINAL_CLOUDIFY_TEST_CONFIG_PATH} ${GENERATED_CLOUDIFY_TEST_CONFIG_PATH}
 	"${BASE_HOST_DIR}/helpers/update_config.py" ${GENERATED_CLOUDIFY_TEST_CONFIG_PATH}
 	# replace place holders in vsphere repo in order to access private resources
-	if [[ "${CLOUDIFY_TEST_HANDLER_MODULE}" = "cosmo_tester.framework.handlers.vsphere" ]]; then
-		"${BASE_HOST_DIR}/helpers/update_vsphere_config.py" ${MANAGER_BLUEPRINTS_DIR}
-	fi
+#	if [[ "${CLOUDIFY_TEST_HANDLER_MODULE}" = "cosmo_tester.framework.handlers.vsphere" ]]; then
+#		"${BASE_HOST_DIR}/helpers/update_vsphere_config.py" ${MANAGER_BLUEPRINTS_DIR}
+#	fi
 }
 
 run_nose()
