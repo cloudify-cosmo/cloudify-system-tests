@@ -59,7 +59,7 @@ class RebootManagerTest(TestCase):
                              .format(','.join(undefined)))
         stopped = self._get_stopped_services()
         self.assertEqual(stopped, [], 'stopped services: {0}'
-            .format(','.join(stopped)))
+                                      .format(','.join(stopped)))
 
     def test_01_during_reboot(self):
         is_docker_manager = self.is_docker_manager()
@@ -95,4 +95,4 @@ class RebootManagerTest(TestCase):
                              .format(','.join(undefined)))
         stopped = self._get_stopped_services()
         self.assertEqual(stopped, [], 'stopped services: {0}'
-            .format(','.join(stopped)))
+                                      .format(','.join(stopped)))
