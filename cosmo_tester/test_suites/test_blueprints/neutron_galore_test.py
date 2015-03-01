@@ -47,7 +47,7 @@ class NeutronGaloreTest(TestCase):
         node_states = self.get_delta_node_states(before, after)
 
         self.repetitive(self.post_install_assertions,
-                        timeout=120,
+                        timeout=120000,
                         args=[node_states])
 
         self._test_use_external_resource(inputs=inputs)
