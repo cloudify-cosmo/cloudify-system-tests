@@ -12,6 +12,8 @@
 #    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
+import urllib
+from time import sleep, time
 
 from fabric.api import env, reboot
 
@@ -26,7 +28,7 @@ class RebootManagerTest(TestCase):
             'key_filename': get_actual_keypath(self.env,
                                                self.env.management_key_path),
             'host_string': self.env.management_ip,
-        })
+            })
         reboot()
 
     def _get_undefined_services(self):
@@ -63,29 +65,51 @@ class RebootManagerTest(TestCase):
                          .format(','.join(stopped)))
 
     def test_01_during_reboot(self):
-            is_docker_manager = self.is_docker_manager()
-            pre_reboot_status = self.status
-            self._reboot_server()
-            post_reboot_status = self.client.manager.get_status()['services']
+        is_docker_manager = self.is_docker_manager()
+        pre_reboot_status = self.status
+        self._reboot_server()
+        self._wait_for_management(self.env.management_ip, timeout=180)
+        post_reboot_status = self.client.manager.get_status()['services']
 
-            self.assertEqual(len(pre_reboot_status), len(post_reboot_status),
-                             "number of jobs before reboot isn\'t equal to \
-                              number of jobs after reboot")
+        self.assertEqual(len(pre_reboot_status), len(post_reboot_status),
+                         "number of jobs before reboot isn\'t equal to \
+                          number of jobs after reboot")
 
-            zipped = zip(pre_reboot_status, post_reboot_status)
-            for pre, post in zipped:
-                if is_docker_manager:
-                    self.assertEqual(pre.get('instances')[0].get('state'),
-                                     post.get('instances')[0].get('state'),
-                                     'pre and post reboot status is not equal:'
-                                     '{0}\n{1}'
-                                     .format(pre.get('display_name'),
-                                             post.get('display_name')))
-                else:
-                    self.assertEqual(pre.get('name'), post.get('name'),
-                                     'pre and post reboot status is not equal:'
-                                     '{0}\n {1}'.format(pre.get('name'),
-                                                        post.get('name')))
+        zipped = zip(pre_reboot_status, post_reboot_status)
+        for pre, post in zipped:
+            if is_docker_manager:
+                self.assertEqual(pre.get('instances')[0].get('state'),
+                                 post.get('instances')[0].get('state'),
+                                 'pre and post reboot status is not equal:'
+                                 '{0}\n{1}'
+                                 .format(pre.get('display_name'),
+                                         post.get('display_name')))
+            else:
+                self.assertEqual(pre.get('name'), post.get('name'),
+                                 'pre and post reboot status is not equal:'
+                                 '{0}\n {1}'.format(pre.get('name'),
+                                                    post.get('name')))
+
+    def _wait_for_management(self, ip, timeout, port=80):
+        """ Wait for url to become available
+            :param ip: the manager IP
+            :param timeout: in seconds
+            :param port: port used by the rest service.
+            :return: True of False
+        """
+        validation_url = 'http://{0}:{1}/blueprints'.format(ip, port)
+
+        end = time() + timeout
+
+        while end - time() >= 0:
+            try:
+                status = urllib.urlopen(validation_url).getcode()
+                if status == 200:
+                    return True
+            except IOError:
+                sleep(5)
+
+        return False
 
     def test_02_post_reboot(self):
         is_docker_manager = self.is_docker_manager()
