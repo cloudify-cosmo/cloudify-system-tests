@@ -73,7 +73,8 @@ templates:
       yum install -y docker wget && \
       service docker stop && \
       wget https://get.docker.com/builds/Linux/x86_64/docker-latest -O /usr/bin/docker && \
-      service docker start
+      service docker start && \
+      service docker restart
 
   - &manager_blueprint_override
     node_templates.manager.properties.cloudify_packages.agents.ubuntu_agent_url: '{{ubuntu_package_agent_url}}'
