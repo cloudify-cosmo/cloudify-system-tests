@@ -66,24 +66,12 @@ variables:
 # That can later be used by YAML aliases (*) and merges (<<)
 templates:
 
-  - &hp_openstack_centos7_0_overrides
-    node_templates.manager.interfaces.cloudify\.interfaces\.lifecycle.start.inputs.task_properties.privileged: true
-    node_templates.manager_server.properties.server.userdata: |
-      #!/bin/bash
-      yum install -y docker wget && \
-      service docker stop && \
-      wget https://get.docker.com/builds/Linux/x86_64/docker-latest -O /usr/bin/docker && \
-      service docker start && \
-      service docker restart
-
   - &centos_install_docker_create_overrides
     node_templates.manager.interfaces.cloudify\.interfaces\.lifecycle.start.inputs.task_properties.privileged: true
     node_templates.manager.interfaces.cloudify\.interfaces\.lifecycle.create:
       implementation: fabric.fabric_plugin.tasks.run_module_task
       inputs:
         task_mapping: cosmo_tester.resources.scripts.install_docker_centos.create
-        task_properties:
-          use_sudo: true
         fabric_env:
           user: { get_input: manager_server_user }
           key_filename: { get_property: [management_keypair, private_key_path] }
