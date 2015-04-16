@@ -20,6 +20,5 @@ def create(use_sudo=False):
     sudo = 'sudo' if use_sudo else ''
     install_docker_cmd = '{0} yum install -y docker && ' \
                          '{0} yum update -y device-mapper-libs && ' \
-                         '{0} rm /etc/docker/key.json && ' \
                          '{0} service docker restart'.format(sudo)
     fabric.api.run(install_docker_cmd)
