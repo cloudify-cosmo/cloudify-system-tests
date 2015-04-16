@@ -78,7 +78,7 @@ templates:
 
   - &centos_install_docker_create_overrides
     node_templates.manager.interfaces.create:
-      implementation: fabric.fabric_plugin.tasks.run_task
+      implementation: fabric.fabric_plugin.tasks.run_module_task
       inputs:
         task_mapping: cosmo_tester.resources.scripts.install_docker_centos.create
         task_properties:
