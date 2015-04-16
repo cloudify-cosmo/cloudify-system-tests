@@ -77,6 +77,7 @@ templates:
       service docker restart
 
   - &centos_install_docker_create_overrides
+    node_templates.manager.interfaces.cloudify\.interfaces\.lifecycle.start.inputs.task_properties.privileged: true
     node_templates.manager.interfaces.cloudify\.interfaces\.lifecycle.create:
       implementation: fabric.fabric_plugin.tasks.run_module_task
       inputs:
