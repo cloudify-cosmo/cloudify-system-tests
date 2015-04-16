@@ -34,6 +34,7 @@ from cosmo_tester import resources
 
 CLOUDIFY_AUTHORIZATION_HEADER = 'Authorization'
 CLOUDIFY_AUTH_TOKEN_HEADER = 'Authentication-Token'
+BASIC_AUTH_PREFIX = 'Basic '
 
 
 def process_variables(suites_yaml, unprocessed_dict):
@@ -150,7 +151,8 @@ def get_auth_header(username=None, password=None, token=None):
     header = {}
     if username and password:
         credentials = '{0}:{1}'.format(username, password)
-        header[CLOUDIFY_AUTHORIZATION_HEADER] = base64_encode(credentials)
+        header[CLOUDIFY_AUTHORIZATION_HEADER] = \
+            BASIC_AUTH_PREFIX + base64_encode(credentials)
     elif token:
         header[CLOUDIFY_AUTH_TOKEN_HEADER] = token
     return header
