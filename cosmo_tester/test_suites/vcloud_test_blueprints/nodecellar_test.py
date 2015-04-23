@@ -29,6 +29,10 @@ class VcloudNodeCellarTest(nodecellar_test.NodecellarAppTest):
             'agent_public_key': self.env.agent_public_key
         }
 
-#    @property
-#    def repo_url(self):
-#        return 'https://github.com/cloudify-cosmo/cloudify-nodecellar-example.git'
+    @property
+    def entrypoint_property_name(self):
+        return 'public_ip'
+
+    @property
+    def expected_nodes_count(self):
+        return 6
