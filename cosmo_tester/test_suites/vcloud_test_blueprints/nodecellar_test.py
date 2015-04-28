@@ -26,7 +26,6 @@ class VcloudNodeCellarTest(nodecellar_test.NodecellarAppTest):
             'catalog':  self.env.manager_server_catalog,
             'template': self.env.manager_server_template,
             'edge_gateway': self.env.edge_gateway,
-            'management_network_name': self.env.management_network_name,
             'agent_public_key': self.env.agent_public_key
         }
 
