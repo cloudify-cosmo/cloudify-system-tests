@@ -727,7 +727,7 @@ test_suites:
       - openstack_blueprints_windows
 
   lab_openstack_rest_plugins_diamond_snmp:
-    requires: [openstack, lab]
+    requires: [openstack, hp]
     tests:
       - openstack_rest_plugins
       - diamond_snmp_extension
