@@ -45,7 +45,6 @@ CLOUDIFY_SYSTEM_TESTS = 'cloudify-system-tests'
 
 
 class HandlerPackage(object):
-nose.run
     def __init__(self, handler, external, directory=None):
         if not external:
             requirements_path = os.path.join(
