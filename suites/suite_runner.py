@@ -280,11 +280,20 @@ class SuiteRunner(object):
 
             with path(self.work_dir) / tests_dir:
                 try:
+                    logger.info('bad tests are: ')
+                    nosetests(processed_tests,
+                              collect_only=True,
+                              verbose=True).wait()
+
                     logger.info('tests are: ')
                     nosetests(collect_only=True,
-                              verbose=True)
+                              verbose=True,
+                              *processed_tests).wait()
 
+
+                    logger.info('second tests are: ')
                     nosetests(verbose=True,
+                              collect_only=True,
                               nocapture=True,
                               nologcapture=True,
                               with_xunit=True,
