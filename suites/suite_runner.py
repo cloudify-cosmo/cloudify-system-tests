@@ -280,6 +280,10 @@ class SuiteRunner(object):
 
             with path(self.work_dir) / tests_dir:
                 try:
+                    logger.info('tests are: ')
+                    nosetests(collect_only=True,
+                              verbose=True)
+
                     nosetests(verbose=True,
                               nocapture=True,
                               nologcapture=True,
