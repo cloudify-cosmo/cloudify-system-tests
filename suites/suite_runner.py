@@ -286,7 +286,7 @@ class SuiteRunner(object):
                               *processed_tests).wait()
 
                     logger.info('run tests are: ')
-                    nose.run(argv=['--collect-only', '-v', processed_tests])
+                    nose.run(argv=[sys.argv[0], '-v', processed_tests])
 
                     nosetests(verbose=True,
                               nocapture=True,
