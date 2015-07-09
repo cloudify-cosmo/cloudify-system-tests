@@ -22,6 +22,7 @@ import logging
 import sh
 import yaml
 from path import path
+import nose
 
 from helpers import sh_bake
 # don't put imports that may include system tests code here
@@ -44,7 +45,7 @@ CLOUDIFY_SYSTEM_TESTS = 'cloudify-system-tests'
 
 
 class HandlerPackage(object):
-
+nose.run
     def __init__(self, handler, external, directory=None):
         if not external:
             requirements_path = os.path.join(
@@ -280,20 +281,15 @@ class SuiteRunner(object):
 
             with path(self.work_dir) / tests_dir:
                 try:
-                    logger.info('bad tests are: ')
-                    nosetests(processed_tests,
-                              collect_only=True,
-                              verbose=True).wait()
-
                     logger.info('tests are: ')
                     nosetests(collect_only=True,
                               verbose=True,
                               *processed_tests).wait()
 
+                    logger.info('run tests are: ')
+                    nose.run(argv=['--collect-only', '-v', processed_tests])
 
-                    logger.info('second tests are: ')
                     nosetests(verbose=True,
-                              collect_only=True,
                               nocapture=True,
                               nologcapture=True,
                               with_xunit=True,
