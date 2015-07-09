@@ -280,13 +280,10 @@ class SuiteRunner(object):
 
             with path(self.work_dir) / tests_dir:
                 try:
-                    logger.info('tests are: ')
-                    nosetests(collect_only=True,
-                              verbose=True,
-                              *processed_tests).wait()
-
-                    logger.info('run tests are: ')
-                    nose.run(argv=[sys.argv[0], '-v', '--collect-only', processed_tests[0]])
+                    tests_to_run = nosetests(collect_only=True,
+                                             verbose=True,
+                                             *processed_tests).wait()
+                    print 'output: {0}'.format(tests_to_run)
 
                     nosetests(verbose=True,
                               nocapture=True,
