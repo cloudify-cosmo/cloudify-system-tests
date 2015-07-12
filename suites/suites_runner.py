@@ -117,7 +117,8 @@ class TestSuite(object):
 
     @property
     def is_running(self):
-        print 'second process: {0}'.format(type(self.process))
+        print dir(self.process)
+        print self.process.__name__
         return self.process is not None and self.process.is_alive()
 
     def run(self):
@@ -131,7 +132,6 @@ class TestSuite(object):
             os.chdir(self.suite_work_dir)
             vagrant.up().wait()
             self.process = vagrant('docker-logs', f=True, _bg=True).process
-            print 'process: {0}'.format(type(self.process))
         finally:
             os.chdir(cwd)
 
