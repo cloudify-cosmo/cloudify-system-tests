@@ -22,7 +22,6 @@ import logging
 import sh
 import yaml
 from path import path
-import nose
 
 from helpers import sh_bake
 # don't put imports that may include system tests code here
