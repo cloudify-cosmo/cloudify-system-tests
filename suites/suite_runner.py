@@ -279,7 +279,7 @@ class SuiteRunner(object):
 
             with path(self.work_dir) / tests_dir:
                 try:
-                    tests_to_run = sh.nosetests(testnameextractor=True,
+                    tests_to_run = sh.nosetests(with_testnameextractor=True,
                                                 verbose=True,
                                                 *processed_tests)
                     print 'output: {0}'.format(tests_to_run)
