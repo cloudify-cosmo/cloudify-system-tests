@@ -117,8 +117,6 @@ class TestSuite(object):
 
     @property
     def is_running(self):
-        print dir(self.process)
-        print self.process.__name__
         return self.process is not None and self.process.is_alive()
 
     def run(self):
