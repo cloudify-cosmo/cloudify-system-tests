@@ -279,9 +279,12 @@ class SuiteRunner(object):
 
             with path(self.work_dir) / tests_dir:
                 try:
+                    tests_list_file_path = \
+                        suite_reports_dir / '{0}-{1}-tests_list.json'.format(
+                            self.test_suite_name, tests_dir)
                     tests_to_run = sh.nosetests(with_testnameextractor=True,
                                                 verbose=True,
-                                                tests_list_path='{0}-{1}-tests_list.json'.format(self.test_suite_name, tests_dir),
+                                                tests_list_path=tests_list_file_path,
                                                 *processed_tests)
                     print 'output: {0}'.format(tests_to_run)
 
