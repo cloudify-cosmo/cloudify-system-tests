@@ -281,6 +281,7 @@ class SuiteRunner(object):
                 try:
                     tests_to_run = sh.nosetests(with_testnameextractor=True,
                                                 verbose=True,
+                                                tests_list_path='{0}.cfy'.format(report_file),
                                                 *processed_tests)
                     print 'output: {0}'.format(tests_to_run)
 
