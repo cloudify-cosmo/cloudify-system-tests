@@ -15,7 +15,6 @@
 
 import json
 import os
-import shutil
 
 from nose.plugins import collect
 
@@ -30,7 +29,6 @@ def _write_tests_list(tests_list, test_list_path):
     with open(test_list_path, 'w') as outfile:
         print 'write to: {0}'.format(os.path.abspath(test_list_path))
         json.dump(tests_list, outfile, indent=4)
-    shutil.copy(os.path.abspath(test_list_path), '/home/nirb/Work/')
 
 
 class TestsNamesExtractor(collect.CollectOnly):
