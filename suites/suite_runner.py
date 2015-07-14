@@ -281,17 +281,17 @@ class SuiteRunner(object):
                 try:
                     tests_to_run = sh.nosetests(with_testnameextractor=True,
                                                 verbose=True,
-                                                tests_list_path='{0}.cfy'.format(report_file),
+                                                tests_list_path='{0}-{1}-tests_list.json'.format(self.test_suite_name, tests_dir),
                                                 *processed_tests)
                     print 'output: {0}'.format(tests_to_run)
 
-                    # nosetests(verbose=True,
-                    #           nocapture=True,
-                    #           nologcapture=True,
-                    #           with_xunit=True,
-                    #           xunit_file=report_file,
-                    #           xunit_testsuite_name=self.test_suite_name,
-                    #           *processed_tests).wait()
+                    nosetests(verbose=True,
+                              nocapture=True,
+                              nologcapture=True,
+                              with_xunit=True,
+                              xunit_file=report_file,
+                              xunit_testsuite_name=self.test_suite_name,
+                              *processed_tests).wait()
                 except sh.ErrorReturnCode:
                     failed_groups.append(test_group)
 

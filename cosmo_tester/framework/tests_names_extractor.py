@@ -14,7 +14,6 @@
 #  * limitations under the License.
 
 import json
-import os
 
 from nose.plugins import collect
 
@@ -27,7 +26,6 @@ def _extract_test_info(test):
 
 def _write_tests_list(tests_list, test_list_path):
     with open(test_list_path, 'w') as outfile:
-        print 'write to: {0}'.format(os.path.abspath(test_list_path))
         json.dump(tests_list, outfile, indent=4)
 
 
@@ -53,5 +51,4 @@ class TestsNamesExtractor(collect.CollectOnly):
         self.accumulated_tests.append(_extract_test_info(test))
 
     def finalize(self, result):
-        print 'acc tests: {0}'.format(self.accumulated_tests)
         _write_tests_list(self.accumulated_tests, self.tests_list_path)
