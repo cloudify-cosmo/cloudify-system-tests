@@ -277,10 +277,10 @@ class SuiteRunner(object):
                 processed_tests += test.split(' ')
 
             with path(self.work_dir) / tests_dir:
+                tests_list_file_path = \
+                    suite_reports_dir / '{0}-{1}-tests_list.json'.format(
+                        self.test_suite_name, tests_dir)
                 try:
-                    tests_list_file_path = \
-                        suite_reports_dir / '{0}-{1}-tests_list.json'.format(
-                            self.test_suite_name, tests_dir)
                     sh.nosetests(with_testnameextractor=True,
                                  verbose=True,
                                  tests_list_path=tests_list_file_path,
@@ -295,11 +295,11 @@ class SuiteRunner(object):
                               xunit_testsuite_name=self.test_suite_name,
                               *processed_tests).wait()
 
-                    logger.info('adding missing tests')
-                    self.add_missing_tests(report_file, tests_list_file_path)
-
                 except sh.ErrorReturnCode:
                     failed_groups.append(test_group)
+
+                logger.info('adding missing tests')
+                self.add_missing_tests(report_file, tests_list_file_path)
 
         if failed_groups:
             raise AssertionError('Failed test groups: {}'.format(
