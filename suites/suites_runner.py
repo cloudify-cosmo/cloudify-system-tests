@@ -49,7 +49,6 @@ SCHEDULER_INTERVAL = 30
 
 
 class TestSuite(object):
-
     def __init__(self, suite_name, suite_def, suite_work_dir, variables):
         self.suite_name = suite_name
         self.suite_def = suite_def
@@ -202,6 +201,7 @@ Handler configuration:
                 fetch_logs=False)
         else:
             import lxml.etree as et
+
             report_files = self.suite_reports_dir.files('*.xml')
             logger.info('Suite [{0}] reports: {1}'.format(
                 self.suite_name, [r.name for r in report_files]))
@@ -222,9 +222,51 @@ Handler configuration:
                 shutil.copy(tmp_file.name, reports_dir / report.name)
                 tmp_file.close()
 
+        # comparing tests that should have run to tests that actually
+        # ran, and adding missing test to the xml report
+
+        tests_summary_files = self.suite_reports_dir.files('*.json')
+        report_files = self.suite_reports_dir.files('*.xml')
+        parser = et.XMLParser(strip_cdata=False)
+        run_tests = []
+        expected_tests = []
+        missing_tests = []
+
+        # TODO what if there are no reports
+        if report_files:
+            logger.info('preparing run tests list')
+            for report in report_files:
+                root = et.parse(report.realpath(), parser)
+                test_elements = root.findall('testcase')
+                for test in test_elements:
+                    run_test_name = test.get('name')
+                    run_test_class = test.get('classname')
+                    run_test_dict = {'run_test_name': run_test_name,
+                                     'run_test_class': run_test_class}
+                    run_tests.append(run_test_dict)
+
+            logger.info('preparing expected tests list')
+            for tests_summary in tests_summary_files:
+                with open(tests_summary) as data_file:
+                    tests = json.load(data_file)
+                expected_tests.extend(tests)
+
+            logger.info('preparing missing tests list')
+            # TODO more efficient
+            for expected_test in expected_tests:
+                found = False
+                for run_test in run_tests:
+                    if (expected_test['test_name'] in
+                            run_test['run_test_name'] and expected_test['test_module'] in run_test['run_test_class']):
+                        found = True
+                        break
+                if not found:
+                    missing_tests.append(expected_test)
+
+            print missing_tests
+
 
 class SuitesScheduler(object):
-
     def __init__(self,
                  test_suites,
                  handler_configurations,
@@ -296,8 +338,8 @@ class SuitesScheduler(object):
                         if suite.started:
                             logger.info('Suite {0} will run using handler '
                                         'configuration: {1}'.format(
-                                            suite.suite_name,
-                                            suite.handler_configuration))
+                                suite.suite_name,
+                                suite.handler_configuration))
                         else:
                             logger.info(
                                 'All matching handler configurations for {0} '
@@ -458,7 +500,7 @@ def test_start():
                                 scheduling_interval=SCHEDULER_INTERVAL,
                                 optimize=True,
                                 after_suite_callback=copy_xunit_report,
-                                suite_timeout=60*60*5)
+                                suite_timeout=60 * 60 * 5)
     scheduler.run()
     return scheduler
 
@@ -541,6 +583,7 @@ def main():
     cleanup()
     validate()
     test_run()
+
 
 if __name__ == '__main__':
     main()

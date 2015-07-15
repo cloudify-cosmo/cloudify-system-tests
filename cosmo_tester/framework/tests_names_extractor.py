@@ -19,14 +19,15 @@ from nose.plugins import collect
 
 
 def _extract_test_info(test):
-    return '{0}:{1}.{2}'.format(test.test.__module__,
-                                type(test.test).__name__,
-                                test.test._testMethodName)
+    test_details_dict = {'test_module': test.test.__module__,
+                         'test_class': type(test.test).__name__,
+                         'test_name': test.test._testMethodName}
+    return test_details_dict
 
 
-def _write_tests_list(tests_list, test_list_path):
+def _write_tests_json(tests_summary, test_list_path):
     with open(test_list_path, 'w') as outfile:
-        json.dump(tests_list, outfile, indent=4)
+        json.dump(tests_summary, outfile, indent=4)
 
 
 class TestsNamesExtractor(collect.CollectOnly):
@@ -51,4 +52,4 @@ class TestsNamesExtractor(collect.CollectOnly):
         self.accumulated_tests.append(_extract_test_info(test))
 
     def finalize(self, result):
-        _write_tests_list(self.accumulated_tests, self.tests_list_path)
+        _write_tests_json(self.accumulated_tests, self.tests_list_path)
