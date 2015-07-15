@@ -286,6 +286,7 @@ class SuiteRunner(object):
                                  tests_list_path=tests_list_file_path,
                                  *processed_tests)
 
+                    logger.info('starting tests')
                     nosetests(verbose=True,
                               nocapture=True,
                               nologcapture=True,
@@ -294,6 +295,7 @@ class SuiteRunner(object):
                               xunit_testsuite_name=self.test_suite_name,
                               *processed_tests).wait()
 
+                    logger.info('adding missing tests')
                     self.add_missing_tests(report_file, tests_list_file_path)
 
                 except sh.ErrorReturnCode:
@@ -346,7 +348,7 @@ class SuiteRunner(object):
 
         logger.info('writing missing tests to xml report')
         print et.tostring(root, pretty_print=True)
-        for missing_test in missing_tests:
+        for missing_test in expected_tests:
             testcase_elem = et.SubElement(root.getroot(), 'testcase',
                                           classname='{0}.{1}'.
                                           format(missing_test['test_module'],
