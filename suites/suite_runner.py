@@ -348,14 +348,14 @@ class SuiteRunner(object):
 
         logger.info('writing missing tests to xml report')
         print et.tostring(root, pretty_print=True)
-        for missing_test in expected_tests:
+        for missing_test in missing_tests:
             testcase_elem = et.SubElement(root.getroot(), 'testcase',
                                           classname='{0}.{1}'.
                                           format(missing_test['test_module'],
                                                  missing_test['test_class']),
                                           name=missing_test['test_name'])
             et.SubElement(testcase_elem, 'error',
-                          message='test should have run, but did not')
+                          message='Test should have run, but did not')
             with open(report_file_path, 'w') as report:
                 report.write(et.tostring(root, pretty_print=True))
 
