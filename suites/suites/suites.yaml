@@ -20,10 +20,13 @@ variables:
   lab_openstack_ubuntu_precise: d81ccdfe-7482-460e-a7ce-69ea29aa129b
   lab_openstack_ubuntu_trusty: c6d36e11-f4d5-4221-b6e8-4e97914c67e9
 
-  mirantis_openstack_ubuntu_precise_image_name: Ubuntu 12.04 x64 (pre installed DevStack)
+  mirantis_openstack_ubuntu_precise_image_name: ubuntu_12_04
   mirantis_openstack_ubuntu_trusty_image_name: Ubuntu 14.04 x64 LTS
-  mirantis_openstack_ubuntu_precise: 6d90a96d-4c53-41b2-98b9-36986f622c2a
-  mirantis_openstack_ubuntu_trusty: e6d6681b-46fe-4325-861e-f56ffb3e4fbc
+  mirantis_openstack_ubuntu_precise: c19a4a25-958b-4a10-88bd-6b6d89b69e99
+  mirantis_openstack_ubuntu_trusty: 798e43f2-252e-43f5-a0a8-97371a3c8afa
+  mirantis_openstack_centos_6_5_image_name: centos_6_5
+  mirantis_openstack_centos_7_image_name: centos_7
+  mirantis_openstack_windows_image_name: windows_2012_r2
 
   aws_ec2_eu_central_1_ami_ubuntu_trusty_image_id: ami-00dae61d
   aws_ec2_medium_instance_type: m3.medium
@@ -277,6 +280,11 @@ handler_properties:
     ubuntu_trusty_image_name: '{{mirantis_openstack_ubuntu_trusty_image_name}}'
     ubuntu_image_id: '{{mirantis_openstack_ubuntu_precise}}'
     ubuntu_trusty_image_id: '{{mirantis_openstack_ubuntu_trusty}}'
+    centos_image_name: '{{mirantis_openstack_centos_6_5_image_name}}'
+    centos_image_user: root
+    centos_7_image_name: '{{mirantis_openstack_centos_7_image_name}}'
+    centos_7_image_user: centos
+    windows_image_name: '{{mirantis_openstack_windows_image_name}}'
     flavor_name: m1.small
     small_flavor_id: 2
     medium_flavor_id: 3
@@ -469,7 +477,7 @@ handler_configurations:
     inputs_override:
       <<: *mirantis_openstack_credentials_inputs
       <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests-1
+      keystone_tenant_name: system-tests/system-test-1
 
   mirantis_openstack_system_tests2:
     <<: *mirantis_openstack_handler_configuration
@@ -478,7 +486,7 @@ handler_configurations:
     inputs_override:
       <<: *mirantis_openstack_credentials_inputs
       <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests-2
+      keystone_tenant_name: system-tests/system-test-2
 
   mirantis_openstack_system_tests3:
     <<: *mirantis_openstack_handler_configuration
@@ -487,7 +495,7 @@ handler_configurations:
     inputs_override:
       <<: *mirantis_openstack_credentials_inputs
       <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests-3
+      keystone_tenant_name: system-tests/system-test-3
 
   mirantis_openstack_system_tests4:
     <<: *mirantis_openstack_handler_configuration
@@ -496,7 +504,7 @@ handler_configurations:
     inputs_override:
       <<: *mirantis_openstack_credentials_inputs
       <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests-4
+      keystone_tenant_name: system-tests/system-test-4
 
   ###############################################################################
 
@@ -711,7 +719,7 @@ test_suites:
   #####################################################################
 
   lab_openstack_chef_puppet:
-    requires: [openstack, lab]
+    requires: [openstack, mirantis]
     tests:
       - openstack_blueprints_chef_puppet
 
@@ -721,20 +729,23 @@ test_suites:
       - openstack_blueprints_windows
 
   lab_openstack_rest_plugins_diamond_snmp:
-    requires: [openstack, lab]
+    requires: [openstack, mirantis]
     tests:
       - openstack_rest_plugins
       - diamond_snmp_extension
 
   lab_openstack_security:
-    requires: [openstack, lab]
+    requires: [openstack, mirantis]
     tests:
       - openstack_security
 
-  lab_openstack_cli_packager_docker_plugin:
+  lab_openstack_cli_packager:
     requires: [openstack, lab]
     tests:
       - cli_packager
+
+  docker_plugin:
+    requires: [openstack, mirantis]
       - docker_plugin
 
   #####################################################################
