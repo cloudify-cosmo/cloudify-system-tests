@@ -42,8 +42,8 @@ vagrant = None
 reports_dir = path(__file__).dirname() / 'xunit-reports'
 
 TEST_SUITES_PATH = 'TEST_SUITES_PATH'
-DOCKER_REPOSITORY = 'cloudify/test'
-DOCKER_TAG = 'env'
+DOCKER_REPOSITORY = 'nirb-cloudify/nirb-test'
+DOCKER_TAG = 'nirb-env'
 SUITE_ENVS_DIR = 'suite-envs'
 SCHEDULER_INTERVAL = 30
 

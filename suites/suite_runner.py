@@ -354,7 +354,7 @@ class SuiteRunner(object):
                                           format(missing_test['test_module'],
                                                  missing_test['test_class']),
                                           name=missing_test['test_name'])
-            et.SubElement(testcase_elem, 'error',
+            et.SubElement(testcase_elem, 'skipped',
                           message='Test should have run, but did not')
             with open(report_file_path, 'w') as report:
                 report.write(et.tostring(root, pretty_print=True))
