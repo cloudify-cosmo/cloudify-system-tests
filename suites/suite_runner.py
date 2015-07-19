@@ -343,8 +343,8 @@ class SuiteRunner(object):
                             run_test['run_test_class'])):
                     found = True
                     break
-            if not found:
-                missing_tests.append(expected_test)
+            # if not found:
+            missing_tests.append(expected_test)
 
         logger.info('writing missing tests to xml report')
         print et.tostring(root, pretty_print=True)
