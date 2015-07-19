@@ -406,7 +406,7 @@ def get_docker_image_id():
 
 def build_docker_image():
     docker.build(
-        ['-t', '{0}:{1}'.format(DOCKER_REPOSITORY, DOCKER_TAG), '.']).wait()
+        ['-t', '-no-cache', '{0}:{1}'.format(DOCKER_REPOSITORY, DOCKER_TAG), '.']).wait()
     docker_image_id = get_docker_image_id()
     if not docker_image_id:
         raise RuntimeError(
