@@ -40,7 +40,8 @@ setup(
     ],
     entry_points={
         'nose.plugins.0.10': [
-            'testnameextractor = cosmo_tester.framework.tests_names_extractor:TestsNamesExtractor',
+            'testnameextractor = cosmo_tester.framework'
+            '.tests_names_extractor:TestsNamesExtractor',
             ]
     },
 
