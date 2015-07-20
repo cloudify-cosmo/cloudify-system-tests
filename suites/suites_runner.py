@@ -295,8 +295,8 @@ class SuitesScheduler(object):
                         if suite.started:
                             logger.info('Suite {0} will run using handler '
                                         'configuration: {1}'.format(
-                                suite.suite_name,
-                                suite.handler_configuration))
+                                            suite.suite_name,
+                                            suite.handler_configuration))
                         else:
                             logger.info(
                                 'All matching handler configurations for {0} '
@@ -406,7 +406,9 @@ def get_docker_image_id():
 
 def build_docker_image():
     docker.build(
-        ['--no-cache=true', '-t', '{0}:{1}'.format(DOCKER_REPOSITORY, DOCKER_TAG), '.']).wait()
+        ['--no-cache=true',
+         '-t',
+         '{0}:{1}'.format(DOCKER_REPOSITORY, DOCKER_TAG), '.']).wait()
     docker_image_id = get_docker_image_id()
     if not docker_image_id:
         raise RuntimeError(
