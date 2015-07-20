@@ -23,6 +23,7 @@ import unittest
 from cosmo_tester.framework.testenv import TestCase
 
 
+@unittest.skip("temporarily disabled")
 class DownloadBlueprintTest(TestCase):
     """
     CFY-196: Tests downloading of a previously uploaded blueprint.
@@ -46,7 +47,6 @@ class DownloadBlueprintTest(TestCase):
 
         super(DownloadBlueprintTest, self).tearDown()
 
-    @unittest.skip("temporarily disabled")
     def download_blueprint_test(self):
         blueprint_path = self.copy_blueprint('mocks')
         self.large_file_location = blueprint_path / "just_a_large_file.img"
