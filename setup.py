@@ -28,7 +28,7 @@ setup(
         'fabric',
         'PyYAML==3.10',
         'requests==2.7.0',
-        'sh==1.11',
+        'sh==1.09',
         'path.py==5.1',
         'nose',
         'retrying==1.3.3',

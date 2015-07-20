@@ -313,11 +313,11 @@ class SuiteRunner(object):
         run_tests = []
         missing_tests = []
 
-        logger.info('preparing expected tests list')
+        # preparing expected tests list
         with open(expected_tests_file_path) as data_file:
             expected_tests = json.load(data_file)
 
-        logger.info('preparing run tests list')
+        # preparing run tests list
         root = et.parse(report_file_path.realpath(), parser)
         test_elements = root.findall('testcase')
         for test in test_elements:
@@ -327,7 +327,7 @@ class SuiteRunner(object):
                              'run_test_class': run_test_class}
             run_tests.append(run_test_dict)
 
-        logger.info('preparing missing tests list')
+        # preparing missing tests list
         # TODO more efficient
         for expected_test in expected_tests:
             found = False
@@ -344,7 +344,7 @@ class SuiteRunner(object):
             if not found:
                 missing_tests.append(expected_test)
 
-        logger.info('writing missing tests to xml report')
+        # writing missing tests to xml report
         print et.tostring(root, pretty_print=True)
         for missing_test in missing_tests:
             testcase_elem = et.SubElement(root.getroot(), 'testcase',
