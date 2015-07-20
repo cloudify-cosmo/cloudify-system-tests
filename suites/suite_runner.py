@@ -333,14 +333,14 @@ class SuiteRunner(object):
             found = False
             for run_test in run_tests:
                 expected_test_module = expected_test['test_module']
-                expected_test_module_path = \
-                    expected_test_module[:expected_test_module.rfind('.')]
+                expected_test_class = expected_test['test_class']
+                # expected_test_module_path = \
+                #     expected_test_module[:expected_test_module.rfind('.')]
                 if (expected_test['test_name'] in
                         run_test['run_test_name'] and
-                        (expected_test_module in
-                            run_test['run_test_class'] or
-                            expected_test_module_path in
-                            run_test['run_test_class'])):
+                        ('{0}.{1}'.format(expected_test_module,
+                                          expected_test_class) ==
+                         run_test['run_test_class'])):
                     found = True
                     break
             if not found:
