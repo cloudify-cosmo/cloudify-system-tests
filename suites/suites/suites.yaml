@@ -746,6 +746,7 @@ test_suites:
 
   docker_plugin:
     requires: [openstack, mirantis]
+    tests:
       - docker_plugin
 
   #####################################################################
