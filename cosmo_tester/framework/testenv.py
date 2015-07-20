@@ -196,7 +196,6 @@ class TestEnvironment(object):
         return self
 
     def bootstrap(self, task_retries=5):
-        raise Exception('to skip')
         if self._management_running:
             return
 

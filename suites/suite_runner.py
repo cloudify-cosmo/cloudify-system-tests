@@ -334,8 +334,6 @@ class SuiteRunner(object):
             for run_test in run_tests:
                 expected_test_module = expected_test['test_module']
                 expected_test_class = expected_test['test_class']
-                # expected_test_module_path = \
-                #     expected_test_module[:expected_test_module.rfind('.')]
                 if (expected_test['test_name'] in
                         run_test['run_test_name'] and
                         ('{0}.{1}'.format(expected_test_module,
