@@ -18,12 +18,10 @@ import shutil
 import uuid
 import tarfile
 import filecmp
-import unittest
 
 from cosmo_tester.framework.testenv import TestCase
 
 
-@unittest.skip("temporarily disabled")
 class DownloadBlueprintTest(TestCase):
     """
     CFY-196: Tests downloading of a previously uploaded blueprint.
