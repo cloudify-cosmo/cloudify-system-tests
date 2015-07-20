@@ -37,7 +37,7 @@ variables:
 
   # These values are updated by the version tool
   core_branch: '3.2.1'
-  plugins_branch: '1.2.1'
+  plugins_branch: 'CFY-3187-add-cleanup-to-vsphere-handler'
 
   # These values are injected by quickbuild and are here mainly
   # for reference (i.e. they will exist in runtime either way)
@@ -295,8 +295,8 @@ handler_properties:
     ubuntu_image_id: eada2fe8-894a-4b26-ac8d-cedab010f185
     small_flavor_id: 3
 
-  vsphere:
-    template: ubuntu-configured-template
+  vsphere_handler_props:
+    template: systemt_template
 
   aws_ec2:
     ubuntu_trusty_image_id: '{{aws_ec2_eu_central_1_ami_ubuntu_trusty_image_id}}'
@@ -521,14 +521,14 @@ handler_configurations:
 
   ###############################################################################
 
-  vsphere:
+  vsphere_handler_config:
     inputs: inputs-vsphere.yaml
     handler: vsphere_handler
     env: vsphere
     external: *vsphere_plugin_external
     manager_blueprint: manager_blueprint/vsphere-manager-blueprint.yaml
-    properties: vsphere
-    manager_blueprint_override: *manager_blueprint_override
+    properties: vsphere_handler_props
+    manager_blueprint_override: *manager_blueprint_commercial_override
     inputs_override:
       vsphere_username: '{{system_test_vsphere_username}}'
       vsphere_password: '{{system_test_vsphere_password}}'
@@ -766,7 +766,7 @@ test_suites:
   ######################################################################
 
   vsphere:
-    handler_configuration: vsphere
+    handler_configuration: vsphere_handler_config
     tests:
       - vsphere_blueprints
 
