@@ -17,10 +17,8 @@ from cosmo_tester.framework.testenv import bootstrap, teardown
 
 
 def setUp():
-    # bootstrap()
-    pass
+    bootstrap()
 
 
 def tearDown():
-    # teardown()
-    pass
+    teardown()
