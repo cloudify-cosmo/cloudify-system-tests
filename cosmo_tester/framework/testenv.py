@@ -80,7 +80,7 @@ def bootstrap(task_retries=5):
     global test_environment
     if not test_environment:
         test_environment = TestEnvironment()
-        test_environment.bootsrap(task_retries)
+        test_environment.bootstrap(task_retries)
 
 
 def teardown():

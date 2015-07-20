@@ -18,6 +18,7 @@ import shutil
 import uuid
 import tarfile
 import filecmp
+from nose.plugins.skip import SkipTest
 
 from cosmo_tester.framework.testenv import TestCase
 
@@ -45,6 +46,7 @@ class DownloadBlueprintTest(TestCase):
 
         super(DownloadBlueprintTest, self).tearDown()
 
+    @SkipTest
     def download_blueprint_test(self):
         blueprint_path = self.copy_blueprint('mocks')
         self.large_file_location = blueprint_path / "just_a_large_file.img"
