@@ -281,10 +281,10 @@ class SuiteRunner(object):
                     suite_reports_dir / '{0}-{1}-tests_list.json'.format(
                         self.test_suite_name, tests_dir)
                 try:
-                    sh.nosetests(with_testnameextractor=True,
-                                 verbose=True,
-                                 tests_list_path=tests_list_file_path,
-                                 *processed_tests)
+                    nosetests(with_testnameextractor=True,
+                              verbose=True,
+                              tests_list_path=tests_list_file_path,
+                              *processed_tests)
 
                     logger.info('starting tests')
                     nosetests(verbose=True,
@@ -343,8 +343,8 @@ class SuiteRunner(object):
                             run_test['run_test_class'])):
                     found = True
                     break
-            # if not found:
-            missing_tests.append(expected_test)
+            if not found:
+                missing_tests.append(expected_test)
 
         logger.info('writing missing tests to xml report')
         print et.tostring(root, pretty_print=True)
