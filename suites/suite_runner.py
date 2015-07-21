@@ -286,7 +286,6 @@ class SuiteRunner(object):
                               tests_list_path=tests_list_file_path,
                               *processed_tests)
 
-                    logger.info('starting tests')
                     nosetests(verbose=True,
                               nocapture=True,
                               nologcapture=True,
@@ -298,7 +297,6 @@ class SuiteRunner(object):
                 except sh.ErrorReturnCode:
                     failed_groups.append(test_group)
 
-                logger.info('adding missing tests')
                 self.add_missing_tests(report_file, tests_list_file_path)
 
         if failed_groups:
