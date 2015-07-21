@@ -321,8 +321,6 @@ class SuiteRunner(object):
         for test in test_elements:
             run_test_name = test.get('name')
             run_test_class = test.get('classname')
-            # run_test_dict = {'run_test_name': run_test_name,
-            #                  'run_test_class': run_test_class}
             run_tests.add('{0}.{1}'.format(run_test_class, run_test_name))
 
         # preparing missing tests list
@@ -330,10 +328,10 @@ class SuiteRunner(object):
             expected_test_module = expected_test['test_module']
             expected_test_class = expected_test['test_class']
             expected_test_name = expected_test['test_name']
-            expected_test_full_name = '{0}.{1}.{2}' \
-                                      ''.format(expected_test_module,
-                                                expected_test_class,
-                                                expected_test_name)
+            expected_test_full_name = '{0}.{1}.{2}'.format(
+                expected_test_module,
+                expected_test_class,
+                expected_test_name)
             if expected_test_full_name not in run_tests:
                 missing_tests.append(expected_test)
 
