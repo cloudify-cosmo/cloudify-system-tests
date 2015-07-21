@@ -324,7 +324,6 @@ class SuiteRunner(object):
             # run_test_dict = {'run_test_name': run_test_name,
             #                  'run_test_class': run_test_class}
             run_tests.add('{0}.{1}'.format(run_test_class, run_test_name))
-        logger.info('run tests set: {0}'.format(run_tests))
 
         # preparing missing tests list
         for expected_test in expected_tests:
@@ -335,7 +334,6 @@ class SuiteRunner(object):
                                       ''.format(expected_test_module,
                                                 expected_test_class,
                                                 expected_test_name)
-            logger.info('exp test full name: {0}'.format(expected_test_full_name))
             if expected_test_full_name not in run_tests:
                 missing_tests.append(expected_test)
 

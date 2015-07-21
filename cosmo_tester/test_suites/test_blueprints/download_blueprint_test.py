@@ -18,48 +18,47 @@ import shutil
 import uuid
 import tarfile
 import filecmp
-import unittest
+
 from cosmo_tester.framework.testenv import TestCase
 
 
-class DownloadBlueprintTest(unittest.TestCase):
+class DownloadBlueprintTest(TestCase):
     """
     CFY-196: Tests downloading of a previously uploaded blueprint.
     CFY-995: Added a large (50MB) file to the blueprint
     """
-    #
-    # def setUp(self):
-    #     super(DownloadBlueprintTest, self).setUp()
-    #     self.blueprint_id = str(uuid.uuid4())
-    #     self.blueprint_file = '%s.tar.gz' % self.blueprint_id
-    #     tempdir_name = str(uuid.uuid4())
-    #     self.download_path = os.path.join(self.cfy.workdir, tempdir_name)
-    #     self.downloaded_archive_path = os.path.join(self.cfy.workdir,
-    #                                                 self.blueprint_file)
-    #
-    # def tearDown(self):
-    #     if os.path.exists(self.download_path):
-    #         shutil.rmtree(self.download_path)
-    #     if os.path.isfile(self.large_file_location):
-    #         os.remove(self.large_file_location)
-    #
-    #     super(DownloadBlueprintTest, self).tearDown()
+
+    def setUp(self):
+        super(DownloadBlueprintTest, self).setUp()
+        self.blueprint_id = str(uuid.uuid4())
+        self.blueprint_file = '%s.tar.gz' % self.blueprint_id
+        tempdir_name = str(uuid.uuid4())
+        self.download_path = os.path.join(self.cfy.workdir, tempdir_name)
+        self.downloaded_archive_path = os.path.join(self.cfy.workdir,
+                                                    self.blueprint_file)
+
+    def tearDown(self):
+        if os.path.exists(self.download_path):
+            shutil.rmtree(self.download_path)
+        if os.path.isfile(self.large_file_location):
+            os.remove(self.large_file_location)
+
+        super(DownloadBlueprintTest, self).tearDown()
 
     def download_blueprint_test(self):
-        # blueprint_path = self.copy_blueprint('mocks')
-        # self.large_file_location = blueprint_path / "just_a_large_file.img"
-        # self._create_file("50M", self.large_file_location)
-        # blueprint_yaml = blueprint_path / 'single-node-blueprint.yaml'
-        # self.cfy.upload_blueprint(self.blueprint_id, blueprint_yaml)
-        # self.cfy.download_blueprint(self.blueprint_id)
-        # self.assertTrue(os.path.exists(self.downloaded_archive_path))
-        # self._extract_tar_file()
-        # downloaded_blueprint_file = os.path.join(
-        #     self.download_path,
-        #     'mocks/single-node-blueprint.yaml')
-        # self.assertTrue(os.path.exists(downloaded_blueprint_file))
-        # self.assertTrue(filecmp.cmp(blueprint_yaml, downloaded_blueprint_file))
-        pass
+        blueprint_path = self.copy_blueprint('mocks')
+        self.large_file_location = blueprint_path / "just_a_large_file.img"
+        self._create_file("50M", self.large_file_location)
+        blueprint_yaml = blueprint_path / 'single-node-blueprint.yaml'
+        self.cfy.upload_blueprint(self.blueprint_id, blueprint_yaml)
+        self.cfy.download_blueprint(self.blueprint_id)
+        self.assertTrue(os.path.exists(self.downloaded_archive_path))
+        self._extract_tar_file()
+        downloaded_blueprint_file = os.path.join(
+            self.download_path,
+            'mocks/single-node-blueprint.yaml')
+        self.assertTrue(os.path.exists(downloaded_blueprint_file))
+        self.assertTrue(filecmp.cmp(blueprint_yaml, downloaded_blueprint_file))
 
     def _extract_tar_file(self):
         with tarfile.open(self.downloaded_archive_path) as tar:
