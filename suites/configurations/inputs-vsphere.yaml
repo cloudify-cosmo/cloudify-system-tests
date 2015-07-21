@@ -5,8 +5,8 @@ manager_server_name: systemt-vsphere-manager
 manager_server_user: giga
 manager_server_user_home: /home/giga
 agents_user: giga
-vsphere_datacenter_name:
-manager_server_template: ubuntu-configured-template
+vsphere_datacenter_name: ''
+manager_server_template: ''
 management_network_name: Management
 management_network_switch_distributed: true
 external_network_name: DMZ
