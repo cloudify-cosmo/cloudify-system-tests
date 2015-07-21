@@ -308,42 +308,38 @@ class SuiteRunner(object):
         # comparing tests that should have run to tests that actually
         # ran, and adding missing test to the xml report
         parser = et.XMLParser(strip_cdata=False)
-        run_tests = []
+        run_tests = set()
         missing_tests = []
 
         # preparing expected tests list
         with open(expected_tests_file_path) as data_file:
             expected_tests = json.load(data_file)
 
-        # preparing run tests list
+        # preparing run tests set
         root = et.parse(report_file_path.realpath(), parser)
         test_elements = root.findall('testcase')
         for test in test_elements:
             run_test_name = test.get('name')
             run_test_class = test.get('classname')
-            run_test_dict = {'run_test_name': run_test_name,
-                             'run_test_class': run_test_class}
-            run_tests.append(run_test_dict)
+            # run_test_dict = {'run_test_name': run_test_name,
+            #                  'run_test_class': run_test_class}
+            run_tests.add('{0}.{1}'.format(run_test_class, run_test_name))
+        logger.info('run tests set: {0}'.format(run_tests))
 
         # preparing missing tests list
-        # TODO more efficient
         for expected_test in expected_tests:
-            found = False
-            for run_test in run_tests:
-                expected_test_module = expected_test['test_module']
-                expected_test_class = expected_test['test_class']
-                if (expected_test['test_name'] in
-                        run_test['run_test_name'] and
-                        ('{0}.{1}'.format(expected_test_module,
-                                          expected_test_class) ==
-                         run_test['run_test_class'])):
-                    found = True
-                    break
-            if not found:
+            expected_test_module = expected_test['test_module']
+            expected_test_class = expected_test['test_class']
+            expected_test_name = expected_test['test_name']
+            expected_test_full_name = '{0}.{1}.{2}' \
+                                      ''.format(expected_test_module,
+                                                expected_test_class,
+                                                expected_test_name)
+            logger.info('exp test full name: {0}'.format(expected_test_full_name))
+            if expected_test_full_name not in run_tests:
                 missing_tests.append(expected_test)
 
         # writing missing tests to xml report
-        print et.tostring(root, pretty_print=True)
         for missing_test in missing_tests:
             testcase_elem = et.SubElement(root.getroot(), 'testcase',
                                           classname='{0}.{1}'.
