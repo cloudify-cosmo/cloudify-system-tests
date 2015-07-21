@@ -1,6 +1,6 @@
 vsphere_username: ''
 vsphere_password: ''
-vsphere_url: ''
+vsphere_host: ''
 manager_server_name: systemt-vsphere-manager
 manager_server_user: giga
 manager_server_user_home: /home/giga
