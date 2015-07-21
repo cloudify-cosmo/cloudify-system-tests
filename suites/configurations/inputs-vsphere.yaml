@@ -11,5 +11,6 @@ management_network_name: Management
 management_network_switch_distributed: true
 external_network_name: DMZ
 external_network_switch_distributed: true
-manager_private_key_path: ~/.ssh/cloudify
-agent_private_key_path: ~/.ssh/cloudify
+manager_private_key_path: ~/.ssh/shared-systemt-tests-key.pem
+agent_private_key_path: ~/.ssh/shared-systemt-tests-key.pem
+vsphere_resource_pool_name:

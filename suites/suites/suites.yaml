@@ -534,6 +534,7 @@ handler_configurations:
       vsphere_password: '{{system_test_vsphere_password}}'
       vsphere_host: '{{system_test_vsphere_url}}'
       vsphere_datacenter_name: '{{system_test_vsphere_vcenter_name}}'
+      vsphere_resource_pool_name: 'system_tests'
 
   ################################################################################
 
