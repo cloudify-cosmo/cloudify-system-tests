@@ -296,7 +296,7 @@ handler_properties:
     small_flavor_id: 3
 
   vsphere_handler_props:
-    template: systemt_template
+    template: systemtests-ubuntu-1404
 
   aws_ec2:
     ubuntu_trusty_image_id: '{{aws_ec2_eu_central_1_ami_ubuntu_trusty_image_id}}'
@@ -535,7 +535,7 @@ handler_configurations:
       vsphere_host: '{{system_test_vsphere_url}}'
       vsphere_datacenter_name: '{{system_test_vsphere_vcenter_name}}'
       vsphere_resource_pool_name: 'system_tests'
-      manager_server_template: 'systemt_template'
+      manager_server_template: 'systemtests-ubuntu-1404'
 
   ################################################################################
 
