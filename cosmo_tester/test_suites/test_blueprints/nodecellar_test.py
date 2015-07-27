@@ -144,14 +144,8 @@ class NodecellarAppTest(MonitoringTestCase):
         self.assertEqual(len(delta['node_state']), 1,
                          'node_state: {0}'.format(delta))
 
-        self.logger.info('Expected number of nodes: {0}'.format(
-            self.expected_nodes_count,
-        ))
-
-        self.logger.info('Found nodes: {0}'.format(len(delta['nodes'])))
-
         self.assertEqual(len(delta['nodes']), self.expected_nodes_count,
-                         'nodes: {0}'.format(delta['nodes']))
+                         'nodes: {0}'.format(delta))
 
         nodes_state = delta['node_state'].values()[0]
         self.assertEqual(len(nodes_state), self.expected_nodes_count,
