@@ -302,6 +302,25 @@ class TestCase(unittest.TestCase):
         # unlike tearDown which is not called when setUp fails (which might
         # happen when tests override setUp)
 
+    def upload_blueprint(
+            self,
+            blueprint_id):
+
+        return self.cfy.upload_blueprint(
+            blueprint_id=blueprint_id,
+            blueprint_path=str(self.blueprint_yaml))
+
+    def create_deployment(
+            self,
+            blueprint_id,
+            deployment_id,
+            inputs):
+
+        return self.cfy.create_deployment(
+            blueprint_id=blueprint_id or self.test_id,
+            deployment_id=deployment_id or self.test_id,
+            inputs=inputs)
+
     def get_manager_state(self):
         self.logger.info('Fetching manager current state')
         blueprints = {}
