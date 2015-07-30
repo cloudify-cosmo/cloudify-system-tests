@@ -1,10 +1,10 @@
 username: ''
 api_key: ''
 endpoint_url: ''
-location: 168642 # san jose
+location: 449596 # Melbourne 1
+# 168642 # san jose
 # 352494 # Hong Kong 2
 domain: manager.cloudify.org
-hostname: dev-sys-tests
 ram: 864
 cpu: 859
 disk: 1178

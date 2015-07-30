@@ -379,8 +379,10 @@ class TestCase(unittest.TestCase):
             after_state = self.get_manager_state()
         return before_state, after_state
 
-    def execute_uninstall(self, deployment_id=None):
-        self.cfy.execute_uninstall(deployment_id=deployment_id or self.test_id)
+    def execute_uninstall(self, deployment_id=None, execute_timeout=None):
+        self.cfy.execute_uninstall(
+            deployment_id=deployment_id or self.test_id,
+            execute_timeout=execute_timeout or DEFAULT_EXECUTE_TIMEOUT)
 
     def copy_blueprint(self, blueprint_dir_name, blueprints_dir=None):
         blueprint_path = path(self.workdir) / blueprint_dir_name
