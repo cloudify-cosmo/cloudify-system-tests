@@ -26,7 +26,7 @@ from cosmo_tester.framework.test_cases import MonitoringTestCase
 
 class NodecellarAppTest(MonitoringTestCase):
 
-    def _test_nodecellar_impl(self, blueprint_file):
+    def _test_nodecellar_impl(self, blueprint_file, execute_timeout=None):
         self.repo_dir = clone(self.repo_url, self.workdir, self.repo_branch)
         self.blueprint_yaml = self.repo_dir / blueprint_file
 
@@ -38,7 +38,7 @@ class NodecellarAppTest(MonitoringTestCase):
 
         self.post_install_assertions(before, after)
 
-        self.execute_uninstall()
+        self.execute_uninstall(execute_timeout=execute_timeout)
 
         self.post_uninstall_assertions()
 
