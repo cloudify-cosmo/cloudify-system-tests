@@ -21,8 +21,9 @@ import json
 import sh
 from path import path
 
-from cloudify_cli.utils import load_cloudify_working_dir_settings
-from cosmo_tester.framework.util import sh_bake
+from cloudify_cli.utils import (load_cloudify_working_dir_settings,
+                                get_configuration_path)
+from cosmo_tester.framework.util import sh_bake, YamlPatcher
 
 
 cfy = sh_bake(sh.cfy)
@@ -35,8 +36,10 @@ class CfyHelper(object):
 
     def __init__(self,
                  cfy_workdir=None,
-                 management_ip=None):
+                 management_ip=None,
+                 testcase=None):
         self._cfy_workdir = cfy_workdir
+        self._testcase = testcase
         self.tmpdir = False
         if cfy_workdir is None:
             self.tmpdir = True
@@ -53,9 +56,16 @@ class CfyHelper(object):
                   validate_only=False,
                   reset_config=False,
                   task_retries=5,
+                  task_retry_interval=90,
+                  subgraph_retries=2,
                   verbose=False):
         with self.workdir:
             cfy.init(reset_config=reset_config).wait()
+
+            with YamlPatcher(get_configuration_path()) as patch:
+                prop_path = ('local_provider_context.'
+                             'cloudify.workflows.subgraph_retries')
+                patch.set_value(prop_path, subgraph_retries)
 
             if not inputs_file:
                 inputs_file = self._get_inputs_in_temp_file({}, 'manager')
@@ -67,11 +77,12 @@ class CfyHelper(object):
                 keep_up_on_failure=keep_up_on_failure,
                 validate_only=validate_only,
                 task_retries=task_retries,
+                task_retry_interval=task_retry_interval,
                 verbose=verbose).wait()
 
-    def recover(self):
+    def recover(self, task_retries=5):
         with self.workdir:
-            cfy.recover(force=True).wait()
+            cfy.recover(force=True, task_retries=task_retries).wait()
 
     def teardown(self,
                  ignore_deployments=True,
@@ -199,6 +210,17 @@ class CfyHelper(object):
                          include_logs=True,
                          execute_timeout=DEFAULT_EXECUTE_TIMEOUT,
                          parameters=None):
+
+        if self._testcase and \
+            self._testcase.env and \
+            self._testcase.env._config_reader and \
+                self._testcase.env.transient_deployment_workers_mode_enabled:
+            # we're in transient deployment workers mode - need to verify
+            # there is no "stop deployment environment" execution
+            # running, and wait till it ends if there is one
+            self._testcase.wait_for_stop_dep_env_execution_to_end(
+                deployment_id)
+
         params_file = self._get_inputs_in_temp_file(parameters, workflow)
         with self.workdir:
             cfy.executions.start(

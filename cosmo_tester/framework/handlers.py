@@ -24,15 +24,20 @@ from cosmo_tester.framework.util import YamlPatcher, process_variables
 
 class BaseCleanupContext(object):
 
+    logger = logging.getLogger('CleanupContext')
+    logger.setLevel(logging.DEBUG)
+
     def __init__(self, context_name, env):
         self.context_name = context_name
         self.env = env
-        self.logger = logging.getLogger('CleanupContext')
-        self.logger.setLevel(logging.DEBUG)
         self.skip_cleanup = self.env.handler_configuration.get(
             'skip_cleanup', False)
 
     def cleanup(self):
+        pass
+
+    @classmethod
+    def clean_all(cls, env):
         pass
 
 
@@ -49,6 +54,14 @@ class BaseCloudifyInputsConfigReader(object):
     @property
     def resources_prefix(self):
         return self.config['resources_prefix']
+
+    @property
+    def transient_deployment_workers_mode_enabled(self):
+        manager = self.manager_blueprint['node_templates'].get('manager', {})
+        bootstrap_context = manager.get('properties', {}).get('cloudify', {})
+        transient_deployment_workers_config = bootstrap_context.get(
+            'transient_deployment_workers_mode', {})
+        return transient_deployment_workers_config.get('enabled', False)
 
     @property
     def management_user_name(self):
@@ -70,6 +83,9 @@ class BaseCloudifyInputsConfigReader(object):
 
 
 class BaseHandler(object):
+
+    logger = logging.getLogger('EnvironmentHandler')
+    logger.setLevel(logging.DEBUG)
 
     # The following attributes are mainly for documentation
     # purposes. Handler subclasses should override them

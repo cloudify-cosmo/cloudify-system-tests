@@ -200,7 +200,9 @@ class NeutronGaloreTest(TestCase):
             ip=node_states['floatingip2']['floating_ip_address'])
 
     def post_uninstall_assertions(self):
-        leftovers = self._test_cleanup_context.get_resources_to_teardown()
+        leftovers = self._test_cleanup_context.get_resources_to_teardown(
+            self.env,
+            resources_to_keep=self._test_cleanup_context.before_run)
         self.assertTrue(all([len(g) == 0 for g in leftovers.values()]))
         self.assertFalse(self._check_if_private_key_is_on_manager())
 

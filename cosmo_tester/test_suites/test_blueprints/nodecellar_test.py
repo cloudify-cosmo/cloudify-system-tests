@@ -18,12 +18,13 @@ import requests
 import json
 from requests.exceptions import ConnectionError
 from influxdb import InfluxDBClient
+from influxdb.client import InfluxDBClientError
 
-from cosmo_tester.framework.testenv import TestCase
 from cosmo_tester.framework.git_helper import clone
+from cosmo_tester.framework.test_cases import MonitoringTestCase
 
 
-class NodecellarAppTest(TestCase):
+class NodecellarAppTest(MonitoringTestCase):
 
     def _test_nodecellar_impl(self, blueprint_file):
         self.repo_dir = clone(self.repo_url, self.workdir, self.repo_branch)
@@ -81,6 +82,30 @@ class NodecellarAppTest(TestCase):
         return requests.get('http://{0}:{1}/wines'.format(
             self.public_ip, self.nodecellar_port))
 
+    def get_public_ip(self, nodes_state):
+        public_ip = None
+        entrypoint_node_name = self.entrypoint_node_name
+        entrypoint_runtime_property_name = self.entrypoint_property_name
+        for key, value in nodes_state.items():
+            if key.startswith(entrypoint_node_name):
+                public_ip = value['runtime_properties'][
+                    entrypoint_runtime_property_name]
+        return public_ip
+
+    def assert_host_state_and_runtime_properties(self, nodes_state):
+        for key, value in nodes_state.items():
+            if '_host' in key:
+                expected = self.host_expected_runtime_properties
+                for expected_property in expected:
+                    self.assertTrue(
+                        expected_property in value['runtime_properties'],
+                        'Missing {0} in runtime_properties: {1}'
+                        .format(expected_property, value))
+
+                self.assertEqual(value['state'], 'started',
+                                 'vm node should be started: {0}'
+                                 .format(nodes_state))
+
     def post_install_assertions(self, before_state, after_state):
         delta = self.get_manager_state_delta(before_state, after_state)
 
@@ -125,31 +150,14 @@ class NodecellarAppTest(TestCase):
         nodes_state = delta['node_state'].values()[0]
         self.assertEqual(len(nodes_state), self.expected_nodes_count,
                          'nodes_state: {0}'.format(nodes_state))
+        self.public_ip = self.get_public_ip(nodes_state)
+        self.assert_host_state_and_runtime_properties(nodes_state)
         self.assert_monitoring_data_exists()
-        self.public_ip = None
-        entrypoint_node_name = self.entrypoint_node_name
-        entrypoint_runtime_property_name = self.entrypoint_property_name
-        for key, value in nodes_state.items():
-            if '_host' in key:
-                expected = self.host_expected_runtime_properties
-                for expected_property in expected:
-                    self.assertTrue(
-                        expected_property in value['runtime_properties'],
-                        'Missing {0} in runtime_properties: {1}'
-                        .format(expected_property, value))
-
-                self.assertEqual(value['state'], 'started',
-                                 'vm node should be started: {0}'
-                                 .format(nodes_state))
-            if key.startswith(entrypoint_node_name):
-                self.public_ip = value['runtime_properties'][
-                    entrypoint_runtime_property_name]
-
         self.assertIsNotNone(self.public_ip,
                              'Could not find the '
                              '"{0}" node for '
                              'retrieving the public IP'
-                             .format(entrypoint_node_name))
+                             .format(self.entrypoint_node_name))
 
         events, total_events = self.client.events.get(execution_by_id.id)
 
@@ -162,17 +170,8 @@ class NodecellarAppTest(TestCase):
     def assert_monitoring_data_exists(self):
         client = InfluxDBClient(self.env.management_ip, 8086, 'root', 'root',
                                 'cloudify')
-        try:
-            # select monitoring events for deployment from the past 5 seconds.
-            # a NameError will be thrown only if NO deployment events exist
-            # in the DB regardless of time-span in query.
-            client.query('select * from /^{0}\./i '
-                         'where time > now() - 5s'
-                         .format(self.deployment_id))
-        except NameError as e:
-            self.fail('monitoring events list for deployment with ID {0} were'
-                      ' not found on influxDB. error is: {1}'
-                      .format(self.deployment_id, e))
+        self._assert_mongodb_collector_data(client)
+        self.assert_deployment_monitoring_data_exists(self.deployment_id)
 
     def post_uninstall_assertions(self):
         nodes_instances = self.client.node_instances.list(self.deployment_id)
@@ -186,6 +185,25 @@ class NodecellarAppTest(TestCase):
                       'but no error was raised.')
         except ConnectionError:
             pass
+
+    def _assert_mongodb_collector_data(self, influx_client):
+
+        # retrieve some instance id of the mongodb node
+        instance_id = self.client.node_instances.list(
+            self.deployment_id, self.mongo_node_name)[0].id
+
+        try:
+            # select metrics from the mongo collector explicitly to verify
+            # it is working properly
+            query = 'select sum(value) from /{0}\.{1}\.{' \
+                    '2}\.mongo_connections_totalCreated/' \
+                .format(self.deployment_id, self.mongo_node_name,
+                        instance_id)
+            influx_client.query(query)
+        except InfluxDBClientError as e:
+            self.fail('monitoring events for {0} node instance '
+                      'with id {1} were not found on influxDB. error is: {2}'
+                      .format(self.mongo_node_name, instance_id, e))
 
     @property
     def repo_url(self):
@@ -215,6 +233,10 @@ class NodecellarAppTest(TestCase):
     @property
     def nodecellar_port(self):
         return 8080
+
+    @property
+    def mongo_node_name(self):
+        return 'mongod'
 
 
 class OpenStackNodeCellarTestBase(NodecellarAppTest):

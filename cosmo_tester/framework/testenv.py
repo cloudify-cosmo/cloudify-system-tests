@@ -31,6 +31,7 @@ from path import path
 import fabric.api
 import fabric.context_managers
 
+from cloudify_rest_client.executions import Execution
 from cosmo_tester.framework.cfy_helper import (CfyHelper,
                                                DEFAULT_EXECUTE_TIMEOUT)
 from cosmo_tester.framework.util import (get_blueprint_path,
@@ -40,8 +41,9 @@ from cosmo_tester.framework.util import (get_blueprint_path,
                                          create_rest_client)
 
 root = logging.getLogger()
+root.setLevel(logging.INFO)
 ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 formatter = logging.Formatter(fmt='%(asctime)s [%(levelname)s] '
                                   '[%(name)s] %(message)s',
                               datefmt='%H:%M:%S')
@@ -53,7 +55,7 @@ for logging_handler in root.handlers:
 
 root.addHandler(ch)
 logger = logging.getLogger('TESTENV')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 HANDLER_CONFIGURATION = 'HANDLER_CONFIGURATION'
 SUITES_YAML_PATH = 'SUITES_YAML_PATH'
@@ -179,6 +181,10 @@ class TestEnvironment(object):
         self.install_plugins = self.handler_configuration.get(
             'install_manager_blueprint_dependencies', True)
 
+        if self.handler_configuration.get('clean_env_on_init', False) is True:
+            logger.info('Cleaning environment on init..')
+            self.handler.CleanupContext.clean_all(self)
+
         global test_environment
         test_environment = self
 
@@ -265,6 +271,13 @@ class TestCase(unittest.TestCase):
     def tearDownClass(cls):
         pass
 
+    def assert_outputs(self, expected_outputs, deployment_id=None):
+        if deployment_id is None:
+            deployment_id = self.test_id
+        outputs = self.client.deployments.outputs.get(deployment_id)
+        outputs = outputs['outputs']
+        self.assertEqual(expected_outputs, outputs)
+
     def setUp(self):
         global test_environment
         self.env = test_environment.setup()
@@ -273,7 +286,8 @@ class TestCase(unittest.TestCase):
         self.logger.info('Starting test setUp')
         self.workdir = tempfile.mkdtemp(prefix='cosmo-test-')
         self.cfy = CfyHelper(cfy_workdir=self.workdir,
-                             management_ip=self.env.management_ip)
+                             management_ip=self.env.management_ip,
+                             testcase=self)
         self.client = self.env.rest_client
         self.test_id = 'system-test-{0}'.format(time.strftime("%Y%m%d-%H%M"))
         self.blueprint_yaml = None
@@ -359,6 +373,25 @@ class TestCase(unittest.TestCase):
             execute_timeout=execute_timeout,
             inputs=inputs)
 
+    def upload_blueprint(
+            self,
+            blueprint_id):
+
+        return self.cfy.upload_blueprint(
+            blueprint_id=blueprint_id,
+            blueprint_path=str(self.blueprint_yaml))
+
+    def create_deployment(
+            self,
+            blueprint_id,
+            deployment_id,
+            inputs):
+
+        return self.cfy.create_deployment(
+            blueprint_id=blueprint_id or self.test_id,
+            deployment_id=deployment_id or self.test_id,
+            inputs=inputs)
+
     def _make_operation_with_before_after_states(self, operation, fetch_state,
                                                  *args, **kwargs):
         before_state = None
@@ -396,6 +429,25 @@ class TestCase(unittest.TestCase):
         for event in events:
             self.logger.info(json.dumps(event))
         raise AssertionError('Execution "{}" timed out'.format(execution.id))
+
+    def wait_for_stop_dep_env_execution_to_end(self, deployment_id,
+                                               timeout_seconds=240):
+        executions = self.client.executions.list(
+            deployment_id=deployment_id, include_system_workflows=True)
+        running_stop_executions = [e for e in executions if e.workflow_id ==
+                                   '_stop_deployment_environment' and
+                                   e.status not in Execution.END_STATES]
+
+        if not running_stop_executions:
+            return
+
+        if len(running_stop_executions) > 1:
+            raise RuntimeError('There is more than one running '
+                               '"_stop_deployment_environment" execution: {0}'
+                               .format(running_stop_executions))
+
+        execution = running_stop_executions[0]
+        return self.wait_for_execution(execution, timeout_seconds)
 
     def repetitive(self, func, timeout=10, exception_class=Exception,
                    args=None, kwargs=None):

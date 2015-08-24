@@ -17,7 +17,7 @@ from setuptools import setup
 
 setup(
     name='cloudify-system-tests',
-    version='3.2rc1',
+    version='3.3a4',
     author='Gigaspaces',
     author_email='cosmo-admin@gigaspaces.com',
     packages=['cosmo_tester'],
@@ -27,16 +27,22 @@ setup(
     install_requires=[
         'fabric',
         'PyYAML==3.10',
-        'requests<=2.5.1',
+        'requests==2.7.0',
         'sh==1.09',
         'path.py==5.1',
         'nose',
-        'retrying==1.2.2',
-        'cloudify==3.2rc1',
+        'retrying==1.3.3',
+        'cloudify==3.3a4',
         'elasticsearch',
         'Jinja2==2.7.2',
         'influxdb==0.1.13',
         'pywinrm==0.0.3'
-        # 'pyOpenSSL==0.14'
-    ]
+    ],
+    entry_points={
+        'nose.plugins.0.10': [
+            'testnameextractor = cosmo_tester.framework'
+            '.tests_names_extractor:TestsNamesExtractor',
+            ]
+    },
+
 )

@@ -1,7 +1,8 @@
 username: ''
 api_key: ''
 endpoint_url: ''
-location: 168642 # san jose
+location: 449596 # Melbourne 1
+# 168642 # san jose 1
 # 352494 # Hong Kong 2
 domain: manager.cloudify.org
 hostname: dev-sys-tests
@@ -16,7 +17,7 @@ private_network_only: false
 port_speed: 187
 private_vlan: ''
 public_vlan: ''
-provision_scripts: ['https://raw.githubusercontent.com/cloudify-cosmo/cloudify-softlayer-plugin/master/softlayer_plugin/scripts/postprov.sh']
+provision_scripts: ['https://raw.githubusercontent.com/cloudify-cosmo/cloudify-system-tests/master/cosmo_tester/resources/scripts/install_curl_ubuntu.sh']
 ssh_keys: [156067]
 ssh_key_filename: ~/.ssh/shared-systemt-tests-key.pem
 agents_user: root
