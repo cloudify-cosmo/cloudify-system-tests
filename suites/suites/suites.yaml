@@ -101,7 +101,7 @@ templates:
 #    node_templates.manager.properties.cloudify_packages.agents.ubuntu_agent_url: '{{ubuntu_package_agent_url}}'
 #    node_templates.manager.properties.cloudify_packages.agents.centos_agent_url: '{{centos_package_agent_url}}'
 #    node_templates.manager.properties.cloudify_packages.agents.windows_agent_url: '{{windows_package_agent_url}}'
-    node_templates.manager.properties.cloudify_packages.docker.docker_url: '{{docker_image_url}}'
+#    node_templates.manager.properties.cloudify_packages.docker.docker_url: '{{docker_image_url}}'
     node_templates.manager.properties.cloudify.workflows.task_retries: 20
     node_templates.manager.properties.cloudify.workflows.subgraph_retries: 2
 
@@ -325,7 +325,7 @@ handler_properties:
     ubuntu_image_id: '{{datacentred_openstack_ubuntu_precise}}'
     ubuntu_trusty_image_id: '{{datacentred_openstack_ubuntu_trusty}}'
     centos_image_name: '{{datacentred_openstack_centos_6_5_image_name}}'
-    centos_image_user: root
+    centos_image_user: centos
     centos_7_image_name: '{{datacentred_openstack_centos_7_image_name}}'
     centos_7_image_user: centos
     windows_image_name: '{{datacentred_openstack_windows_image_name}}'
@@ -852,7 +852,7 @@ test_suites:
       - openstack_blueprints_chef_puppet
 
   openstack_windows:
-    requires: [openstack, lab]
+    requires: [openstack, datacentred]
     tests:
       - openstack_blueprints_windows
 
@@ -877,7 +877,7 @@ test_suites:
       - docker_plugin
 
   openstack_windows_cli_package:
-    requires: [openstack, lab]
+    requires: [openstack, datacentred]
     tests:
       - cli_packager_windows
 
