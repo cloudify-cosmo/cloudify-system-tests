@@ -65,7 +65,7 @@ class OpenStackScaleNodeCellarTest(OpenStackNodeCellarTestBase):
 
     @property
     def nodecellar_port(self):
-        return 80
+        return 8080
 
     @property
     def expected_nodes_count(self):

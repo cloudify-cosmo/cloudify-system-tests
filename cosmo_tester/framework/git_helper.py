@@ -29,6 +29,13 @@ git = sh_bake(sh.git)
 
 
 def clone(url, basedir, branch=None):
+
+    the_url = 'https://github.com/cloudify-cosmo/' \
+              'cloudify-nodecellar-example.git'
+
+    if url == the_url and branch != 'tags/3.1':
+        branch = "CFY-3286-Cleanup-Nodecellar"
+
     branch = branch or os.environ.get('BRANCH_NAME_CORE', 'master')
 
     repo_name = url.split('.git')[0].split('/')[-1]
