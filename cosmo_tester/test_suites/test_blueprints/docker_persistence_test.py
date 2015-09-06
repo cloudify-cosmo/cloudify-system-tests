@@ -23,7 +23,6 @@ from time import sleep, time
 
 import fabric.api
 
-from cosmo_tester.framework.util import YamlPatcher
 from cosmo_tester.test_suites.test_blueprints import nodecellar_test
 
 
