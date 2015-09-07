@@ -188,7 +188,6 @@ templates:
 
   - &aws_ec2_plugin_external
     repo: cloudify-aws-plugin
-    branch: CFY-3286-Cleanup-Nodecellar
 
   - &agent_external
     repo: cloudify-agent
@@ -733,12 +732,6 @@ tests:
     tests:
       - system_tests/manager
       - system_tests/local
-
-  ec2_mod:
-    external: *aws_ec2_plugin_external
-    tests:
-      - system_tests/manager
-#      - system_tests/local
 
   vsphere_blueprints:
     external: *vsphere_plugin_external
