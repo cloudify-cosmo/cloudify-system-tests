@@ -105,10 +105,8 @@ class MultiManagerTest(TestCase):
         self.additional_clients[0].snapshots.upload(snapshot_file_path, 'node')
         # creating a snapshots is asynchronous, but it lasts a second or two...
         time.sleep(3)
-        try:
+        if os.path.isfile(snapshot_file_path):
             os.remove(snapshot_file_path)
-        except OSError:
-            pass
         self.logger.info('Snapshot uploaded.')
 
         self.logger.info('Restoring snapshot...')
@@ -129,9 +127,9 @@ class MultiManagerTest(TestCase):
 
     def get_inputs(self):
         return {
-            'image': '564be9dd-5a06-4a26-ba50-9453f972e483',
-            'flavor': '102',
-            'agent_user': 'ubuntu'
+            'image': self.env.ubuntu_trusty_image_name,
+            'flavor': self.env.medium_flavor_id,
+            'agent_user': self.env.ubuntu_trusty_image_user
         }
 
     @property

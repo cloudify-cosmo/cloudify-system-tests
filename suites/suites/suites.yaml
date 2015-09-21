@@ -207,6 +207,7 @@ templates:
     windows_image_name: '{{hp_openstack_windows_image_name}}'
     centos_image_user: root
     centos_7_image_user: centos
+    ubuntu_trusty_image_user: ubuntu
     flavor_name: standard.small
     small_flavor_id: 101
     medium_flavor_id: 102
