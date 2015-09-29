@@ -13,6 +13,16 @@ from cosmo_tester.framework.testenv import TestCase
 
 
 class MultiManagerTest(TestCase):
+    """
+    This test bootstraps managers, installs nodecellar using the first manager,
+    checks whether it was installed correctly, creates a snapshot, downloads it,
+    uploads it to the second manager, uninstalls nodecellar using the second
+    manager, checks whether nodecellar is actually not running and tears down
+    those managers.
+
+    It is required that there is at least one additional manager defined
+    in handler configuration.
+    """
     repo_url = ('https://github.com/cloudify-cosmo/'
                 'cloudify-nodecellar-example.git')
     nodecellar_nodejs_port = 8080
@@ -75,7 +85,14 @@ class MultiManagerTest(TestCase):
 
             time.sleep(15)
 
-    def get_nodecellar_public_ip(self):
+    def _get_nodecellar_inputs(self):
+        return {
+            'image': self.env.ubuntu_trusty_image_id,
+            'flavor': self.env.medium_flavor_id,
+            'agent_user': self.env.ubuntu_trusty_image_user
+        }
+
+    def _get_nodecellar_public_ip(self):
         for node in self.get_manager_state()['deployment_nodes']['node']:
             if node['node_id'].startswith('nodecellar_ip'):
                 return node['runtime_properties'].get(
@@ -135,7 +152,7 @@ class MultiManagerTest(TestCase):
 
         self.logger.info('Creating deployment...')
         self.client.deployments.create('node', 'node',
-                                       self.get_nodecellar_inputs())
+                                       self._get_nodecellar_inputs())
         self._wait_for_execution(
             self.client, 'create_deployment_environment',
             [Execution.TERMINATED], [Execution.CANCELLED, Execution.FAILED])
@@ -147,7 +164,7 @@ class MultiManagerTest(TestCase):
             [Execution.TERMINATED], [Execution.CANCELLED, Execution.FAILED])
         self.logger.info('Installed.')
 
-        nodejs_ip = self.get_nodecellar_public_ip()
+        nodejs_ip = self._get_nodecellar_public_ip()
         self._assert_nodecellar_running(nodejs_ip)
 
         self.logger.info('Creating snapshot...')
@@ -189,10 +206,3 @@ class MultiManagerTest(TestCase):
         self.logger.info('Uninstalled.')
 
         self._assert_nodecellar_not_running(nodejs_ip)
-
-    def get_nodecellar_inputs(self):
-        return {
-            'image': self.env.ubuntu_trusty_image_id,
-            'flavor': self.env.medium_flavor_id,
-            'agent_user': self.env.ubuntu_trusty_image_user
-        }
