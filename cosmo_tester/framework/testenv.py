@@ -103,11 +103,17 @@ class TestEnvironment(object):
         self._initial_cwd = os.getcwd()
         self._global_cleanup_context = None
         self._management_running = False
+        self._additional_management_running = []
         self.rest_client = None
+        self.additional_rest_clients = []
         self.management_ip = None
+        self.additional_management_ips = []
         self.handler = None
         self._manager_blueprint_path = None
+        self._additional_managers_blueprints_paths = []
         self._workdir = tempfile.mkdtemp(prefix='cloudify-testenv-')
+        self._additional_workdirs = []
+        self._additional_managers = 0
 
         if HANDLER_CONFIGURATION not in os.environ:
             raise RuntimeError('handler configuration name must be configured '
@@ -135,6 +141,16 @@ class TestEnvironment(object):
                                'configuration does not seem to exist: {0}'
                                .format(self.cloudify_config_path))
 
+        self.additional_cloudify_config_paths = [
+            path(os.path.expanduser(p))
+            for p in self.handler_configuration.get('additional_inputs', [])]
+
+        for p in self.additional_cloudify_config_paths:
+            if not p.isfile():
+                raise RuntimeError('config file configured in handler '
+                                   'configuration does not seem to exist: {0}'
+                                   .format(p))
+
         if 'manager_blueprint' not in self.handler_configuration:
             raise RuntimeError(
                 'manager blueprint must be configured in handler '
@@ -143,6 +159,20 @@ class TestEnvironment(object):
         manager_blueprint = self.handler_configuration['manager_blueprint']
         self._manager_blueprint_path = os.path.expanduser(
             manager_blueprint)
+
+        additional_managers_blueprints = self.handler_configuration.get(
+            'additional_managers_blueprints', [])
+        self._additional_managers_blueprints_paths = [
+            os.path.expanduser(p) for p in additional_managers_blueprints]
+        self._additional_managers = len(additional_managers_blueprints)
+
+        blueprints_num = len(self._additional_managers_blueprints_paths)
+        configs_num = len(self.additional_cloudify_config_paths)
+
+        if blueprints_num != configs_num:
+            raise RuntimeError('the number of configuration files is different '
+                               '({0}) than the number of blueprints ({1}).'
+                               .format(configs_num, blueprints_num))
 
         # make a temp config files than can be modified freely
         self._generate_unique_configurations()
@@ -179,12 +209,23 @@ class TestEnvironment(object):
         if 'manager_ip' in self.handler_configuration:
             self._running_env_setup(self.handler_configuration['manager_ip'])
 
+        if 'additional_managers_ips' in self.handler_configuration:
+            self._additional_running_env_setup(
+                self.handler_configuration['additional_managers_ips'])
+
         self.install_plugins = self.handler_configuration.get(
             'install_manager_blueprint_dependencies', True)
 
         if self.handler_configuration.get('clean_env_on_init', False) is True:
             logger.info('Cleaning environment on init..')
             self.handler.CleanupContext.clean_all(self)
+
+        self._additional_workdirs = [
+            tempfile.mkdtemp(prefix='cloudify-testenv-')
+            for _ in xrange(self._additional_managers)]
+
+        if self._additional_managers:
+            self._make_additional_managers_use_existing_resources()
 
         global test_environment
         test_environment = self
@@ -219,21 +260,49 @@ class TestEnvironment(object):
             task_retries=task_retries,
             verbose=True)
         self._running_env_setup(cfy.get_management_ip())
+
+        additional_managers_ips = []
+
+        for i, blueprint_path in enumerate(
+                self._additional_managers_blueprints_paths):
+            cfy = CfyHelper(cfy_workdir=self._additional_workdirs[i])
+            cfy.bootstrap(
+                blueprint_path,
+                inputs_file=self.additional_cloudify_config_paths[i],
+                install_plugins=self.install_plugins,
+                keep_up_on_failure=False,
+                task_retries=task_retries,
+                verbose=True)
+            additional_managers_ips.append(cfy.get_management_ip())
+
+        self._additional_running_env_setup(additional_managers_ips)
+
         self.handler.after_bootstrap(cfy.get_provider_context())
 
     def teardown(self):
         if self._global_cleanup_context is None:
             return
         self.setup()
-        cfy = CfyHelper(cfy_workdir=self._workdir)
         try:
+            for workdir, ip in zip(self._additional_workdirs,
+                                   self.additional_management_ips):
+                cfy = CfyHelper(cfy_workdir=workdir)
+                cfy.use(ip)
+                cfy.teardown(verbose=True)
+
+            cfy = CfyHelper(cfy_workdir=self._workdir)
             cfy.use(self.management_ip)
             cfy.teardown(verbose=True)
+
         finally:
             self._global_cleanup_context.cleanup()
             self.handler.after_teardown()
             if os.path.exists(self._workdir):
                 shutil.rmtree(self._workdir)
+
+            for workdir in self._additional_workdirs:
+                if os.path.exists(workdir):
+                    shutil.rmtree(workdir)
 
     def _running_env_setup(self, management_ip):
         self.management_ip = management_ip
@@ -243,6 +312,36 @@ class TestEnvironment(object):
             raise RuntimeError('Manager at {0} is not running.'
                                .format(self.management_ip))
         self._management_running = True
+
+    def _additional_running_env_setup(self, management_ips):
+        self.additional_management_ips = management_ips
+
+        for ip in self.additional_management_ips:
+            self.additional_rest_clients.append(create_rest_client(ip))
+
+            response = self.additional_rest_clients[-1].manager.get_status()
+            if not response['status'] == 'running':
+                raise RuntimeError('Additional manager at {0} is not running.'
+                                   .format(ip))
+            self._additional_management_running.append(True)
+
+    def _make_additional_managers_use_existing_resources(self):
+        props_to_change = [
+            'node_templates.management_network.properties',
+            'node_templates.management_subnet.properties',
+            'node_templates.router.properties',
+            'node_templates.agents_security_group.properties',
+            'node_templates.management_security_group.properties',
+        ]
+
+        for i, blueprint in enumerate(self._additional_managers_blueprints_paths[:]):
+            modified_blueprint = blueprint + '_modified'
+            shutil.copyfile(blueprint, modified_blueprint)
+            self._additional_managers_blueprints_paths[i] = modified_blueprint
+
+            with YamlPatcher(modified_blueprint) as patch:
+                for prop in props_to_change:
+                    patch.merge_obj(prop, {'use_external_resource': True})
 
     def __getattr__(self, item):
         """Every attribute access on this env (usually from tests doing
@@ -305,10 +404,17 @@ class TestCase(unittest.TestCase):
         self.logger.setLevel(logging.INFO)
         self.logger.info('Starting test setUp')
         self.workdir = tempfile.mkdtemp(prefix='cosmo-test-')
+        self.additional_workdirs = [tempfile.mkdtemp(prefix='cosmo-test-')
+                                    for _ in self.env.additional_management_ips]
         self.cfy = CfyHelper(cfy_workdir=self.workdir,
                              management_ip=self.env.management_ip,
                              testcase=self)
+        self.additional_cfys = [
+            CfyHelper(cfy_workdir=e[0], management_ip=e[1], testcase=self)
+            for e in zip(self.additional_workdirs,
+                         self.env.additional_management_ips)]
         self.client = self.env.rest_client
+        self.additional_clients = self.env.additional_rest_clients
         self.test_id = 'system-test-{0}'.format(time.strftime("%Y%m%d-%H%M"))
         self.blueprint_yaml = None
         self._test_cleanup_context = self.env.handler.CleanupContext(
