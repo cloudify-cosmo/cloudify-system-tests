@@ -211,6 +211,7 @@ templates:
     flavor_name: standard.small
     small_flavor_id: 101
     medium_flavor_id: 102
+    ubuntu_trusty_image_id: 34302116-bac8-4c78-9355-a6db52300aac
 
   #######################################################
 
