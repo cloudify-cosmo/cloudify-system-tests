@@ -110,6 +110,7 @@ class TestEnvironment(object):
         self.additional_management_ips = []
         self.handler = None
         self._manager_blueprint_path = None
+        self._additional_managers_blueprints_paths = []
         self._workdir = tempfile.mkdtemp(prefix='cloudify-testenv-')
         self._additional_workdirs = []
         self._additional_managers = 0
@@ -142,7 +143,7 @@ class TestEnvironment(object):
 
         self.additional_cloudify_config_paths = [
             path(os.path.expanduser(p))
-            for p in self.handler_configuration['additional_inputs']]
+            for p in self.handler_configuration.get('additional_inputs', [])]
 
         for p in self.additional_cloudify_config_paths:
             if not p.isfile():
@@ -222,6 +223,9 @@ class TestEnvironment(object):
         self._additional_workdirs = [
             tempfile.mkdtemp(prefix='cloudify-testenv-')
             for _ in xrange(self._additional_managers)]
+
+        if self._additional_managers:
+            self._make_additional_managers_use_existing_resources()
 
         global test_environment
         test_environment = self
@@ -320,6 +324,24 @@ class TestEnvironment(object):
                 raise RuntimeError('Additional manager at {0} is not running.'
                                    .format(ip))
             self._additional_management_running.append(True)
+
+    def _make_additional_managers_use_existing_resources(self):
+        props_to_change = [
+            'node_templates.management_network.properties',
+            'node_templates.management_subnet.properties',
+            'node_templates.router.properties',
+            'node_templates.agents_security_group.properties',
+            'node_templates.management_security_group.properties',
+        ]
+
+        for i, blueprint in enumerate(self._additional_managers_blueprints_paths[:]):
+            modified_blueprint = blueprint + '_modified'
+            shutil.copyfile(blueprint, modified_blueprint)
+            self._additional_managers_blueprints_paths[i] = modified_blueprint
+
+            with YamlPatcher(modified_blueprint) as patch:
+                for prop in props_to_change:
+                    patch.merge_obj(prop, {'use_external_resource': True})
 
     def __getattr__(self, item):
         """Every attribute access on this env (usually from tests doing
