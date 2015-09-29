@@ -30,7 +30,7 @@ git = sh_bake(sh.git)
 
 def clone(url, basedir, branch=None):
 
-    branch = branch or os.environ.get('BRANCH_NAME_CORE', 'master')
+    branch = branch or os.environ.get('BRANCH_NAME_CORE', '3.3m5-build')
 
     repo_name = url.split('.git')[0].split('/')[-1]
 
