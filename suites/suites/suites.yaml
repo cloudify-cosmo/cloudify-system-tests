@@ -300,7 +300,7 @@ handler_properties:
     ubuntu_trusty_image_name: '{{lab_openstack_ubuntu_trusty_image_name}}'
     centos_image_name: '{{lab_openstack_centos_6_5_image_name}}'
     centos_7_image_name: '{{lab_openstack_centos_7_image_name}}'
-    centos_7_image_id: {{lab_openstack_centos_7_image_id}}
+    centos_7_image_id: '{{lab_openstack_centos_7_image_id}}'
     windows_image_name: '{{lab_openstack_windows_image_name}}'
     ubuntu_image_id: '{{lab_openstack_ubuntu_precise}}'
     ubuntu_trusty_image_id: '{{lab_openstack_ubuntu_trusty}}'
