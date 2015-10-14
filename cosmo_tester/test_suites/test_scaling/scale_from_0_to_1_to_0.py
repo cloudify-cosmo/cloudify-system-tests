@@ -18,9 +18,9 @@ class ScaleFrom0To1To0(TestCase):
 
     def test_scale_from_0_to_1_to_0(self):
         self.upload_deploy_and_execute_install(inputs={
-            'image': '564be9dd-5a06-4a26-ba50-9453f972e483',
-            'flavor': '102',
-            'agent_user': 'ubuntu'
+            'image': self.env.ubuntu_image_id,
+            'flavor': self.env.flavor_name,
+            'agent_user': self.env.cloudify_agent_user
         })
 
         self._assert_no_hello_world_vm()
@@ -31,7 +31,7 @@ class ScaleFrom0To1To0(TestCase):
         self.wait_for_execution(scale_to_1_exec, 1000)
         self.logger.info('Finished scaling with delta=1.')
 
-        self._assert_hello_world_vm_exists_and_running()
+        self._assert_hello_world_vm_is_running()
 
         self.logger.info('Scaling with delta=-1...')
         scale_to_0_exec = self.client.executions.start(
@@ -54,12 +54,9 @@ class ScaleFrom0To1To0(TestCase):
         vm = self.client.nodes.get(self.test_id, 'vm')
         self.assertEqual(vm.number_of_instances, 0)
 
-    def _assert_hello_world_vm_exists_and_running(self):
+    def _assert_hello_world_vm_is_running(self):
         vm = self.client.nodes.get(self.test_id, 'vm')
         self.assertEqual(vm.number_of_instances, 1)
 
         outputs = self.client.deployments.outputs.get(self.test_id)['outputs']
         verify_webserver_running(outputs['http_endpoint'])
-
-
-
