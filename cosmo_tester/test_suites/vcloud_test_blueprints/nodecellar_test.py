@@ -1,5 +1,5 @@
 ########
-# Copyright (c) 2014 GigaSpaces Technologies Ltd. All rights reserved
+# Copyright (c) 2015 GigaSpaces Technologies Ltd. All rights reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,11 +37,3 @@ class VcloudNodeCellarTest(nodecellar_test.NodecellarAppTest):
     @property
     def expected_nodes_count(self):
         return 9
-
-    @property
-    def repo_url(self):
-        return 'https://github.com/cloudify-cosmo/cloudify-system-tests.git'
-
-    @property
-    def repo_branch(self):
-        return 'master'
