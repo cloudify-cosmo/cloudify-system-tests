@@ -139,3 +139,4 @@ class HelloWorldSingleHostTest(AbstractHelloWorldTest):
         self.local_env.execute('uninstall',
                                task_retries=40,
                                task_retry_interval=30)
+        self.env.management_ip = None
