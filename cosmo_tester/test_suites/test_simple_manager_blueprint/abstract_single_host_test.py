@@ -126,9 +126,9 @@ class AbstractSingleHostTest(object):
     def clear_management_ip(self):
         self.env.management_ip = None
 
-    def get_access_inputs(self):
+    @property
+    def access_credentials(self):
         return {
-            'server_ip': self.public_ip_address,
             'agent_user': self.env.centos_7_image_user,
             'agent_private_key_path': self.remote_manager_key_path
         }
