@@ -146,7 +146,7 @@ class SecurityTestBase(TestCase):
             self.env.management_ip = None
         self.addCleanup(clean_mgmt_ip)
 
-        response = self.client.manager.get_status()
+        response = self.client.blueprints.list()
         if not response['status'] == 'running':
             raise RuntimeError('Manager at {0} is not running.'
                                .format(self.env.management_ip))

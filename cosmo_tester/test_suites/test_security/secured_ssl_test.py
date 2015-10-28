@@ -98,7 +98,7 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
                 protocol=constants.DEFAULT_PROTOCOL,
                 headers=util.get_auth_header(username=TEST_CFY_USERNAME,
                                              password=TEST_CFY_PASSWORD))
-            client.manager.get_status()
+            client.blueprints.list()
             self.fail(
                 'manager should not be available on port '
                 .format(constants.DEFAULT_REST_PORT))
@@ -114,7 +114,7 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
                                          password=TEST_CFY_PASSWORD),
             trust_all=True)
 
-        response = client.manager.get_status()
+        response = client.blueprints.list()
         if not response['status'] == 'running':
             raise RuntimeError('Manager at {0} is not running.'
                                .format(self.env.management_ip))
@@ -128,7 +128,7 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
                                          password=TEST_CFY_PASSWORD),
             trust_all=False)
         try:
-            client.manager.get_status()
+            client.blueprints.list()
             self.fail('certification verification expected to fail')
         except SSLError as e:
             self.assertIn('certificate verify failed', str(e.message))
@@ -146,7 +146,7 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
             cert=util.get_resource_path(cert_path),
             trust_all=False)
         try:
-            client.manager.get_status()
+            client.blueprints.list()
             self.fail('certification verification expected to fail')
         except SSLError as e:
             self.assertIn('certificate verify failed', str(e.message))
@@ -161,7 +161,7 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
             cert=self.cert_path,
             trust_all=False)
 
-        response = client.manager.get_status()
+        response = client.blueprints.list()
         if not response['status'] == 'running':
             raise RuntimeError('Manager at {0} is not running.'
                                .format(self.env.management_ip))

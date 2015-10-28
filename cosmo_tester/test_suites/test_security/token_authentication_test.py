@@ -35,7 +35,7 @@ class TokenAuthenticationTest(SecurityTestBase):
                                     username='wrong_user',
                                     password='wrong_password'))
         self.assertRaisesRegexp(CloudifyClientError, '401: user unauthorized',
-                                client.manager.get_status)
+                                client.blueprints.list())
 
     def _assert_valid_token_authenticates(self):
         user_pass_header = util.get_auth_header(username='admin',
@@ -46,7 +46,7 @@ class TokenAuthenticationTest(SecurityTestBase):
         token_header = util.get_auth_header(token=client.tokens.get().value)
         client = CloudifyClient(self.env.management_ip, headers=token_header)
 
-        response = client.manager.get_status()
+        response = client.blueprints.list()
         if not response['status'] == 'running':
             raise RuntimeError('Failed to get manager status using token')
 
@@ -54,4 +54,4 @@ class TokenAuthenticationTest(SecurityTestBase):
         token_header = util.get_auth_header(token='wrong_token')
         client = CloudifyClient(self.env.management_ip, headers=token_header)
         self.assertRaisesRegexp(CloudifyClientError, '401: user unauthorized',
-                                client.manager.get_status)
+                                client.blueprints.list())
