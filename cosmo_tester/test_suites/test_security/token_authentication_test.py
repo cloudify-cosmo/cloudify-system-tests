@@ -39,12 +39,16 @@ class TokenAuthenticationTest(SecurityTestBase):
                                     password='wrong_password'))
         self.assertRaisesRegexp(UserUnauthorizedError,
                                 '401: user unauthorized',
-                                client.blueprints.list())
+                                client.manager.get_status)
 
     def _assert_authorized_user_succeeds(self):
         user_pass_header = util.get_auth_header(username='admin',
                                                 password='admin')
-        CloudifyClient(host=self.env.management_ip, headers=user_pass_header)
+        client = CloudifyClient(host=self.env.management_ip,
+                                headers=user_pass_header)
+        response = client.manager.get_status()
+        if not response['status'] == 'running':
+            raise RuntimeError('Failed to get manager status using token')
 
     def _assert_unauthorized_user_fails(self):
         client = CloudifyClient(host=self.env.management_ip,
@@ -52,7 +56,7 @@ class TokenAuthenticationTest(SecurityTestBase):
                                     username='user',
                                     password='user'))
         self.assertRaisesRegexp(CloudifyClientError, '401: user unauthorized',
-                                client.blueprints.list())
+                                client.manager.get_status)
 
     def _assert_valid_token_authenticates(self):
         user_pass_header = util.get_auth_header(username='admin',
@@ -63,7 +67,7 @@ class TokenAuthenticationTest(SecurityTestBase):
         token_header = util.get_auth_header(token=client.tokens.get().value)
         client = CloudifyClient(self.env.management_ip, headers=token_header)
 
-        response = client.blueprints.list()
+        response = client.manager.get_status()
         if not response['status'] == 'running':
             raise RuntimeError('Failed to get manager status using token')
 
@@ -71,4 +75,4 @@ class TokenAuthenticationTest(SecurityTestBase):
         token_header = util.get_auth_header(token='wrong_token')
         client = CloudifyClient(self.env.management_ip, headers=token_header)
         self.assertRaisesRegexp(CloudifyClientError, '401: user unauthorized',
-                                client.blueprints.list())
+                                client.manager.get_status)
