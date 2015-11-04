@@ -22,33 +22,13 @@ AUTH_HEADER_NAME = 'Authorization'
 BASIC_AUTH_PREFIX = 'Basic'
 
 
-class AuthorizeUserByUsername(AbstractAuthenticationProvider):
-
-    def _retrieve_credentials_from_request(self):
-        auth_header = request.headers.get(AUTH_HEADER_NAME)
-        if not auth_header:
-            raise RuntimeError('Request authentication header "{0}" is empty '
-                               'or missing'.format(AUTH_HEADER_NAME))
-
-        auth_header = auth_header.replace(BASIC_AUTH_PREFIX + ' ', '', 1)
-        try:
-            api_key = base64_decode(auth_header)
-        except TypeError:
-            pass
-        else:
-            api_key_parts = api_key.split(':')
-            request_user_id = api_key_parts[0]
-            request_password = api_key_parts[1]
-            if not self.request_user_id or not self.request_password:
-                raise RuntimeError('username or password not found on request')
-
-        return request_user_id, request_password
+class AuthenticateByUsername(AbstractAuthenticationProvider):
 
     def authenticate(self, userstore):
-        request_user_id, _ = self._retrieve_request_credentials()
+        request_user_id, _ = retrieve_credentials_from_request()
         if request_user_id != 'not_the_default_username':
             raise Exception('authentication of {0} failed'.
-                            format(self.request_user_id))
+                            format(request_user_id))
 
         return {'username': 'mockusername',
                 'password': 'mockpassword',
@@ -56,3 +36,24 @@ class AuthorizeUserByUsername(AbstractAuthenticationProvider):
                 'roles': [],
                 'active': True
                 }
+
+
+def retrieve_credentials_from_request():
+    auth_header = request.headers.get(AUTH_HEADER_NAME)
+    if not auth_header:
+        raise RuntimeError('Request authentication header "{0}" is empty '
+                           'or missing'.format(AUTH_HEADER_NAME))
+
+    auth_header = auth_header.replace(BASIC_AUTH_PREFIX + ' ', '', 1)
+    try:
+        api_key = base64_decode(auth_header)
+    except TypeError:
+        pass
+    else:
+        api_key_parts = api_key.split(':')
+        request_user_id = api_key_parts[0]
+        request_password = api_key_parts[1]
+        if not request_user_id or not request_password:
+            raise RuntimeError('username or password not found on request')
+
+    return request_user_id, request_password

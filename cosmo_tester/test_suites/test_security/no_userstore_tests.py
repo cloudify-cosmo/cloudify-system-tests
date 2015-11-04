@@ -52,7 +52,7 @@ class NoUserstoreTests(SecurityTestBase):
             {
                 'implementation': 'mock_auth_provider_with_no_userstore'
                                   '.auth_without_userstore:'
-                                  'AuthorizeUserByUsername',
+                                  'AuthenticateByUsername',
                 'name': 'Authorize_By_Username',
                 'properties': {}
             }
@@ -68,6 +68,7 @@ class NoUserstoreTests(SecurityTestBase):
             settings[SECURITY_PROP_PATH + '.authentication_providers'] = \
                 authentication_providers
 
+        settings[SECURITY_PROP_PATH + '.authorization_provider'] = ''
         settings[SECURITY_PROP_PATH + '.userstore_driver'] = ''
 
         return settings
