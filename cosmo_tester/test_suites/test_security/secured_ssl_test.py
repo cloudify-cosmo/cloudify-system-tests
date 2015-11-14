@@ -63,6 +63,8 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
         self.setup_secured_manager()
         # send request and verify certificate
         self._test_verify_cert()
+        # test HTTP request
+        self._test_http_request()
         # send request without certificate verification
         self._test_no_verify_cert()
         # send request that is missing a certificate
@@ -156,6 +158,22 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
             host=self.env.management_ip,
             port=constants.SECURED_REST_PORT,
             protocol=constants.SECURED_PROTOCOL,
+            headers=util.get_auth_header(username=TEST_CFY_USERNAME,
+                                         password=TEST_CFY_PASSWORD),
+            cert=self.cert_path,
+            trust_all=False)
+
+        response = client.manager.get_status()
+        if not response['status'] == 'running':
+            raise RuntimeError('Manager at {0} is not running.'
+                               .format(self.env.management_ip))
+
+    def _test_http_request(self):
+        # The HTTP request should be redirected on the server to https, and then processed
+        client = CloudifyClient(
+            host=self.env.management_ip,
+            port=constants.DEFAULT_REST_PORT,
+            protocol=constants.DEFAULT_PROTOCOL,
             headers=util.get_auth_header(username=TEST_CFY_USERNAME,
                                          password=TEST_CFY_PASSWORD),
             cert=self.cert_path,

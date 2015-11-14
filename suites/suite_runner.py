@@ -127,7 +127,8 @@ class SuiteRunner(object):
                 branch=self.branch_name_cli)
             self._clone_and_checkout_repo(
                 repo='cloudify-manager-blueprints',
-                branch=self.branch_name_manager_blueprints)
+                # branch=self.branch_name_manager_blueprints)
+                branch='CFY-3766-redirect-http-to-https-if-ssl')
 
             self._pip_install(
                 'cloudify-cli',
