@@ -402,15 +402,15 @@ handler_configurations:
       <<: *hp_openstack_region_a_inputs
       keystone_tenant_name: cloudify-cosmo-system-tests
 
-  hp_openstack_system_tests_region_b:
-    <<: *hp_openstack_handler_configuration
-    env: hp_openstack_system_tests_region_b
-    tags: [openstack, hp]
-    properties: hp_openstack_region_b_properties
-    inputs_override:
-      <<: *hp_openstack_credentials_inputs
-      <<: *hp_openstack_region_b_inputs
-      keystone_tenant_name: cloudify-cosmo-system-tests
+#  hp_openstack_system_tests_region_b:
+#    <<: *hp_openstack_handler_configuration
+#    env: hp_openstack_system_tests_region_b
+#    tags: [openstack, hp]
+#    properties: hp_openstack_region_b_properties
+#    inputs_override:
+#      <<: *hp_openstack_credentials_inputs
+#      <<: *hp_openstack_region_b_inputs
+#      keystone_tenant_name: cloudify-cosmo-system-tests
 
   hp_openstack_system_tests2_region_a:
     <<: *hp_openstack_handler_configuration
