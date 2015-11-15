@@ -127,7 +127,7 @@ class SuiteRunner(object):
                 branch=self.branch_name_cli)
             self._clone_and_checkout_repo(
                 repo='cloudify-manager-blueprints',
-                branch=self.branch_name_manager_blueprints)
+                branch='CFY-3766rc1')
 
             self._pip_install(
                 'cloudify-cli',
