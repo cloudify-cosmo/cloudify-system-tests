@@ -868,7 +868,7 @@ test_suites:
       - manager_status
 
   openstack_manager_recovery:
-    requires: [openstack, hp]
+    requires: [openstack, datacentred]
     tests:
       - manager_recovery
 
@@ -900,7 +900,7 @@ test_suites:
       - openstack_blueprints_autoheal_and_scale
 
   nontransient_deployment_workers_openstack_manager_recovery:
-    handler_configuration: nontransient_deployment_workers_hp_openstack_system_tests2_region_b
+    requires: [openstack, datacentred]
     tests:
       - manager_recovery
 
