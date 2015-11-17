@@ -851,7 +851,7 @@ tests:
   agent_tests:
     external: *agent_external
     tests:
-      - system_tests/manager -e winrm -e windows
+      - system_tests/manager -e 3_2 -e ssh -e centos -e ubuntu -e linux
 
   nodecellar_backwards_compatibility_tests:
     tests:
