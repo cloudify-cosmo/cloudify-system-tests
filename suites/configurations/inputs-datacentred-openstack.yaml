@@ -24,3 +24,4 @@ agents_security_group_name: systemt-cloudify-sg-agents
 manager_port_name: systemt-cloudify-manager-port
 # manager_volume_name: systemt-cloudify-manager-volume
 resources_prefix: ''
+rest_service_source_url: https://github.com/cloudify-cosmo/cloudify-manager/archive/CFY-4067-fix-es-clean-assert-rc1.tar.gz
