@@ -70,7 +70,6 @@ class SecuredWithSSLManagerTests(OpenStackNodeCellarTestBase,
         # send request with wrong certificate
         self._test_verify_wrong_cert()
         # send request to non secured port
-        # test commented out until functionality fixed - Jira CFY-3766
         self._test_try_to_connect_to_manager_on_non_secured_port()
         # test nodecellar without certificate verification
         self._test_openstack_nodecellar('openstack-blueprint.yaml')
