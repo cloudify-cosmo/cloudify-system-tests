@@ -734,7 +734,7 @@ tests:
 
   openstack_blueprints_without_chef_puppet_docker_windows:
     tests:
-      - cosmo_tester/test_suites/test_blueprints -e puppet -e chef -e docker -e test_manager_after_reboot -e test_create_snapshot_with_plugin
+      - cosmo_tester/test_suites/test_blueprints -e puppet -e chef -e docker -e test_manager_after_reboot
 
   manager_after_reboot:
     tests:
@@ -744,6 +744,10 @@ tests:
     tests:
       - cosmo_tester/test_suites/test_blueprints/chef_plugin_test.py
       - cosmo_tester/test_suites/test_blueprints/puppet_plugin_test.py
+
+  managed_plugins_tests:
+    tests:
+      - cosmo_tester/test_suites/test_managed_plugins
 
   snapshots_tests:
     tests:
@@ -934,6 +938,11 @@ test_suites:
     requires: [openstack, datacentred]
     tests:
       - snapshots_tests
+
+  managed_plugins:
+    requires: [openstack, datacentred]
+    tests:
+      - managed_plugins_tests
 
   rest_plugins:
     requires: [openstack, datacentred]
