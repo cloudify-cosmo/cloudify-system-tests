@@ -858,7 +858,7 @@ tests:
   agent_tests:
     external: *agent_external
     tests:
-      - system_tests/manager
+      - system_tests/manager -e test_3_2_agent -e test_ssh_agent -e ubuntu -e centos
 
   nodecellar_backwards_compatibility_tests:
     tests:
