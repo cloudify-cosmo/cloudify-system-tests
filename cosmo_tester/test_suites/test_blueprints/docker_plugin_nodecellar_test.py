@@ -54,7 +54,3 @@ class DockerPluginNodecellarTest(NodecellarAppTest):
     @property
     def nodecellar_port(self):
         return 8080
-
-    @property
-    def entrypoint_node_name(self):
-        return 'nodecellar_floatingip'

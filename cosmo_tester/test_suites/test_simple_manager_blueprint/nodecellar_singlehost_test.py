@@ -43,11 +43,3 @@ class NodecellarSingleHostTest(NodecellarAppTest, AbstractSingleHostTest):
     @property
     def host_expected_runtime_properties(self):
         return []
-
-    @property
-    def entrypoint_node_name(self):
-        return 'host'
-
-    @property
-    def entrypoint_property_name(self):
-        return 'ip'

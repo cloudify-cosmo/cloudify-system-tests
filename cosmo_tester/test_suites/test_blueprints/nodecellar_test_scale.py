@@ -60,10 +60,6 @@ class OpenStackScaleNodeCellarTest(OpenStackNodeCellarTestBase):
             expected_number_of_backends=expected_instances)
 
     @property
-    def entrypoint_node_name(self):
-        return 'nodecellar_ip'
-
-    @property
     def nodecellar_port(self):
         return 8080
 

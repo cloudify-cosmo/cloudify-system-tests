@@ -151,13 +151,10 @@ class NodecellarAppTest(MonitoringTestCase):
         self.assertEqual(len(nodes_state), self.expected_nodes_count,
                          'nodes_state: {0}'.format(nodes_state))
         self.public_ip = self.get_public_ip(nodes_state)
+        self.assertIsNotNone(self.public_ip,
+                             'Could not find the public IP in outputs.')
         self.assert_host_state_and_runtime_properties(nodes_state)
         self.assert_monitoring_data_exists()
-        self.assertIsNotNone(self.public_ip,
-                             'Could not find the '
-                             '"{0}" node for '
-                             'retrieving the public IP'
-                             .format(self.entrypoint_node_name))
 
         events, total_events = self.client.events.get(execution_by_id.id)
 
@@ -221,14 +218,6 @@ class NodecellarAppTest(MonitoringTestCase):
     @property
     def host_expected_runtime_properties(self):
         return ['ip', 'networks']
-
-    @property
-    def entrypoint_node_name(self):
-        return 'nodecellar_ip'
-
-    @property
-    def entrypoint_property_name(self):
-        return 'floating_ip_address'
 
     @property
     def nodecellar_port(self):

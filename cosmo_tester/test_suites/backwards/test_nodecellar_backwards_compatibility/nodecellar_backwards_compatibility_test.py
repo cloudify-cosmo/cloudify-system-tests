@@ -46,10 +46,6 @@ class OldVersionNodeCellarTest(OpenStackNodeCellarTestBase,
     def repo_branch(self):
         return 'tags/3.1'
 
-    @property
-    def entrypoint_node_name(self):
-        return 'nodecellar_floatingip'
-
     def get_manager_blueprint_inputs_override(self):
         # 3.1 diamond plugin is hard coded to use guest:guest
         # no need for 'install_python_compilers' because this
