@@ -628,6 +628,7 @@ handler_configurations:
     inputs_override:
       <<: *datacentred_openstack_credentials_inputs
       <<: *datacentred_openstack_inputs
+      <<: *install_python_compilers_input_override
       keystone_tenant_name: gigaspaces_system-test-1
 
   datacentred_openstack_system_tests2:
@@ -637,6 +638,7 @@ handler_configurations:
     inputs_override:
       <<: *datacentred_openstack_credentials_inputs
       <<: *datacentred_openstack_inputs
+      <<: *install_python_compilers_input_override
       keystone_tenant_name: gigaspaces_system-test-2
 
   datacentred_openstack_system_tests3:
@@ -646,6 +648,7 @@ handler_configurations:
     inputs_override:
       <<: *datacentred_openstack_credentials_inputs
       <<: *datacentred_openstack_inputs
+      <<: *install_python_compilers_input_override
       keystone_tenant_name: gigaspaces_system-test-3
 
   datacentred_openstack_system_tests4:
@@ -655,6 +658,7 @@ handler_configurations:
     inputs_override:
       <<: *datacentred_openstack_credentials_inputs
       <<: *datacentred_openstack_inputs
+      <<: *install_python_compilers_input_override
       keystone_tenant_name: gigaspaces_system-test-4
 
   ###############################################################################
