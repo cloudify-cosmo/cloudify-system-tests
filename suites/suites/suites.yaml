@@ -738,7 +738,7 @@ tests:
   cli_packager_centos:
     external: *packager_external
     tests:
-      - system_tests/test_centos6_5_bootstrap.py
+#      - system_tests/test_centos6_5_bootstrap.py
       - system_tests/test_centos7_bootstrap.py
 
   cli_packager_rhel:
