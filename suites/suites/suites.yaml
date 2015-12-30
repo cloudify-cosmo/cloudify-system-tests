@@ -194,7 +194,7 @@ templates:
 
   - &packager_external
     repo: cloudify-packager
-    branch: '{{core_branch}}'
+    branch: 'Fixed_offline_tests_wrong_key_usage'
 
   - &diamond_snmp_extension_external
     repo: cloudify-diamond-snmp-extension
