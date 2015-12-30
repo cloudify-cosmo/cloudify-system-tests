@@ -19,8 +19,8 @@ import socket
 import ssl
 import time
 
-from cosmo_tester.test_suites.test_blueprints.nodecellar_test import \
-    OpenStackNodeCellarTestBase
+from cosmo_tester.test_suites.test_blueprints.hello_world_bash_test import \
+    AbstractHelloWorldTest
 from cosmo_tester.test_suites.test_broker_security import (
     inputs,
     broker_security_test_base,
@@ -47,7 +47,7 @@ RESOURCE_ID_PROPERTY = \
 
 
 class SecuredBrokerManagerTests(
-    OpenStackNodeCellarTestBase,
+    AbstractHelloWorldTest,
     broker_security_test_base.BrokerSecurityTestBase,
 ):
 
@@ -112,19 +112,12 @@ class SecuredBrokerManagerTests(
         # the pinned certificate
         self._test_non_secured_port_still_usable()
 
-        # test nodecellar deployment
-        self._test_openstack_nodecellar('openstack-blueprint.yaml')
-
-    def get_inputs(self):
-        # Inputs for nodecellar test
-        image_id = self.env.cloudify_config['image_id']
-        flavor_id = self.env.cloudify_config['flavor_id']
-        agents_user = self.env.cloudify_config['agents_user']
-        return {
-            'image': image_id,
-            'flavor': flavor_id,
-            'agent_user': agents_user,
-        }
+        # test hello-world deployment
+        self._run(inputs={
+            'agent_user': self.env.centos_image_user,
+            'image': self.env.centos_image_name,
+            'flavor': self.env.flavor_name
+        })
 
     def _can_get_broker_connection(self,
                                    username,
