@@ -114,8 +114,8 @@ class SecuredBrokerManagerTests(
 
         # test hello-world deployment
         self._run(inputs={
-            'agent_user': self.env.centos_image_user,
-            'image': self.env.centos_image_name,
+            'agent_user': self.env.cloudify_agent_user,
+            'image': self.env.ubuntu_precise_image_name,
             'flavor': self.env.flavor_name
         })
 
