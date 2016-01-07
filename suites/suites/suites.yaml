@@ -780,7 +780,7 @@ tests:
   agent_tests:
     external: *agent_external
     tests:
-      - system_tests/manager -e winrm -e windows
+      - system_tests/manager -e ubuntu -e linux -e centos
 
   nodecellar_backwards_compatibility_tests:
     tests:
