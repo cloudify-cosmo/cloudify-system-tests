@@ -15,6 +15,7 @@
 
 
 import requests
+from time import sleep
 from neutronclient.common.exceptions import NeutronException
 from novaclient.exceptions import NotFound
 from retrying import retry
@@ -118,18 +119,7 @@ class HelloWorldBashTest(AbstractHelloWorldTest):
             'flavor': self.env.flavor_name
         }
 
-        def after_install():
-            # Some CentOS 6.X images seem to have a firewall
-            # enabled by default (e.g. datacentred).
-            # We need port 8080 to assert the web application is active,
-            # so we walk the easy route and disable the entire firewall.
-            self.run_commands_on_agent_host(
-                compute_node_id='vm',
-                user=agent_user,
-                commands=['sudo service iptables save',
-                          'sudo service iptables stop',
-                          'sudo chkconfig iptables off'])
-        self._run(inputs=inputs, after_install=after_install)
+        self._run(inputs=inputs)
 
     def _do_post_install_assertions(self):
         (floatingip_node, security_group_node, server_node) = self._instances()
@@ -177,7 +167,7 @@ class HelloWorldBashTest(AbstractHelloWorldTest):
         self.assertEquals(0, len(security_group_node.runtime_properties))
         # CFY-2670 - diamond plugin leaves one runtime property at this time
         self.assertLessEqual(set(server_node.runtime_properties.keys()),
-                             {'diamond_paths', 'old_cloudify_agent'})
+                             {'agent_status', 'diamond_paths', 'old_cloudify_agent'})
 
 
 @retry(stop_max_attempt_number=10, wait_fixed=5000)
@@ -185,6 +175,7 @@ def verify_webserver_running(http_endpoint):
     """
     This method is also used by two_deployments_test!
     """
+    sleep(60)
     server_response = requests.get(http_endpoint, timeout=15)
     if server_response.status_code != 200:
         raise AssertionError('Unexpected status code: {}'
