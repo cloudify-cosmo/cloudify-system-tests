@@ -167,7 +167,8 @@ class HelloWorldBashTest(AbstractHelloWorldTest):
         self.assertEquals(0, len(security_group_node.runtime_properties))
         # CFY-2670 - diamond plugin leaves one runtime property at this time
         self.assertLessEqual(set(server_node.runtime_properties.keys()),
-                             {'agent_status', 'diamond_paths', 'old_cloudify_agent'})
+                             {'agent_status', 'diamond_paths',
+                              'old_cloudify_agent'})
 
 
 @retry(stop_max_attempt_number=10, wait_fixed=5000)
