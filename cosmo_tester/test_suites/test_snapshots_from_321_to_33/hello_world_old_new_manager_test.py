@@ -111,7 +111,7 @@ class HelloWorldSnapshotMigrationFrom_3_2_1_To_3_3_Test(TestCase):
             'https://github.com/cloudify-cosmo/'
             'cloudify-manager-blueprints.git',
             self.workdir,
-            '3.3'
+            '3.3.1-sec1'
         )
 
         self.runtime_property_value = self.test_id + '-runtime-property'
