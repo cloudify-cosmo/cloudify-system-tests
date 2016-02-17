@@ -155,19 +155,19 @@ templates:
     <<: *new_manager_blueprint_override
     <<: *openstack_manager_blueprint_sg_override
 
-  - &openstack_security_override
-    <<: *openstack_manager_blueprint_override
+  - &security_override
     node_templates.manager_configuration.properties.security.ssl:
-      enabled: true
+      enabled: false
       secure_internal_communication: true
 
   - &datacentred_openstack_manager_blueprint_override
     <<: *openstack_manager_blueprint_override
-    <<: *openstack_security_override
+    <<: *security_override
     node_templates.management_subnet.properties.subnet.dns_nameservers: [8.8.4.4, 8.8.8.8]
 
   - &aws_ec2_manager_blueprint_override
     <<: *new_manager_blueprint_override
+    <<: *security_override
     <<: *aws_ec2_manager_blueprint_sg_override
 
   - &nontransient_deployment_workers_manager_blueprint_override
