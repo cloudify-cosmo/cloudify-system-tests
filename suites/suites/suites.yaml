@@ -158,7 +158,7 @@ templates:
   - &security_override
     node_templates.manager_configuration.properties.security.ssl:
       enabled: false
-      secure_internal_communication: true
+      secure_internal_communication: false
 
   - &datacentred_openstack_manager_blueprint_override
     <<: *openstack_manager_blueprint_override
