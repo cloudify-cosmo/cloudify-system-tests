@@ -194,7 +194,7 @@ templates:
           secret_key: my_secret
           expires_in_seconds: 600
       ssl:
-        enabled: true
+        enabled: false
         secure_internal_communication: true
       audit_log_file: /var/log/cloudify/rest/rest-security-audit.log
       audit_log_level: INFO # values: CRITICAL, ERROR, WARNING, INFO, DEBUG
