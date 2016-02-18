@@ -25,7 +25,7 @@ from cosmo_tester.framework.testenv import TestCase
 
 # SECURITY_PROP_PATH = 'node_types.cloudify\.nodes\.MyCloudifyManager.' \
 #                      'properties.security.default'
-SECURITY_NODE_PATH = 'node_templates.manager_configuration.properties.security'
+SECURITY_PROP_PATH = 'node_templates.manager_configuration.properties.security'
 REST_PLUGIN_PATH = 'node_templates.rest_service.properties.plugins'
 USERDATA_PATH = 'node_templates.manager_host.properties.parameters.user_data'
 
