@@ -156,7 +156,7 @@ templates:
     <<: *openstack_manager_blueprint_sg_override
 
   - &security_override
-    security:
+    node_templates.manager_configuration.properties.security:
       enabled: { get_input: security_enabled }
       admin_username: { get_input: admin_username }
       admin_password: { get_input: admin_password }
