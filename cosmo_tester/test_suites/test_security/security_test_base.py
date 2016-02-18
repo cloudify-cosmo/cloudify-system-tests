@@ -23,8 +23,9 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.testenv import TestCase
 
 
-SECURITY_PROP_PATH = 'node_types.cloudify\.nodes\.MyCloudifyManager.' \
-                     'properties.security.default'
+# SECURITY_PROP_PATH = 'node_types.cloudify\.nodes\.MyCloudifyManager.' \
+#                      'properties.security.default'
+SECURITY_NODE_PATH = 'node_templates.manager_configuration.properties.security'
 REST_PLUGIN_PATH = 'node_templates.rest_service.properties.plugins'
 USERDATA_PATH = 'node_templates.manager_host.properties.parameters.user_data'
 
@@ -126,7 +127,8 @@ class SecurityTestBase(TestCase):
 
     def _update_manager_blueprint(self):
         security_settings = self.get_security_settings()
-        with util.YamlPatcher(self.test_manager_types_path) as patch:
+        # with util.YamlPatcher(self.test_manager_types_path) as patch:
+        with util.YamlPatcher(self.test_manager_blueprint_path) as patch:
             for key, value in security_settings.items():
                 patch.set_value(key, value)
 
