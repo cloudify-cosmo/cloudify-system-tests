@@ -949,7 +949,7 @@ test_suites:
       - docker_nodecellar
 
   aws_ec2_windows_cli_package:
-    requires: aws_ec2
+    handler_configuration: aws_ec2
     tests:
       - cli_packager_windows
 
