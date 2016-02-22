@@ -194,7 +194,7 @@ templates:
           secret_key: my_secret
           expires_in_seconds: 600
       ssl:
-        enabled: false
+        enabled: true
         secure_internal_communication: true
       audit_log_file: /var/log/cloudify/rest/rest-security-audit.log
       audit_log_level: INFO # values: CRITICAL, ERROR, WARNING, INFO, DEBUG
@@ -395,6 +395,7 @@ handler_properties:
     rhel_7_image_id: '{{aws_ec2_frankfurt_rhel_7_image_id}}'
     rhel_65_image_id: '{{aws_ec2_frankfurt_rhel_65_image_id}}'
     windows_server_2012_r2_image_id: '{{aws_ec2_eu_central_1_windows_server_2012_r2_image_id}}'
+    windows_server_2012_user: 'Administrator'
     medium_instance_type: '{{aws_ec2_medium_instance_type}}'
     micro_instance_type: '{{aws_ec2_micro_instance_type}}'
     rhel_7_image_user: '{{rhel_7_image_user}}'
