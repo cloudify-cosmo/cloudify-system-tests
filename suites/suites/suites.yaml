@@ -948,8 +948,8 @@ test_suites:
       - docker_plugin
       - docker_nodecellar
 
-  openstack_windows_cli_package:
-    requires: [openstack, datacentred]
+  aws_ec2_windows_cli_package:
+    requires: aws_ec2
     tests:
       - cli_packager_windows
 
