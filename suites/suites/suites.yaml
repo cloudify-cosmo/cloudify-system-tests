@@ -157,7 +157,7 @@ templates:
 
   - &security_override
     node_templates.manager_configuration.properties.security:
-      enabled: false
+      enabled: { get_input: security_enabled }
       admin_username: { get_input: admin_username }
       admin_password: { get_input: admin_password }
       authentication_providers:
