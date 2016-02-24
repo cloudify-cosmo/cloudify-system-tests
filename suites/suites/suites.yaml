@@ -247,7 +247,7 @@ templates:
 
   - &packager_external
     repo: cloudify-packager
-    branch: 'CFY-4639-AWS-based-offline-package-tests-missing-functionality-master'
+    branch: '3.3.1-sec1'
 
   - &diamond_snmp_extension_external
     repo: cloudify-diamond-snmp-extension
