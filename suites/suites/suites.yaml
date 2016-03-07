@@ -196,7 +196,7 @@ templates:
 
   - &packager_external
     repo: cloudify-packager
-    branch: '{{core_branch}}'
+    branch: packager_system_tests
 
   - &diamond_snmp_extension_external
     repo: cloudify-diamond-snmp-extension
