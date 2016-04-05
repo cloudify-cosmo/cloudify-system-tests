@@ -16,17 +16,15 @@
 import time
 
 from requests import ConnectionError
-from cloudify_rest_client.exceptions\
-    import DeploymentEnvironmentCreationPendingError
 from cosmo_tester.framework.util import create_rest_client
-from cosmo_tester.test_suites.test_blueprints.nodecellar_test\
-    import OpenStackNodeCellarTestBase
+from cosmo_tester.test_suites.test_blueprints.hello_world_bash_test import \
+    AbstractHelloWorldTest
 from cosmo_tester.test_suites.test_marketplace_image_builder\
     .abstract_packer_test import AbstractPackerTest
 from cosmo_tester.framework.cfy_helper import CfyHelper
 
 
-class OpenstackNodecellarTest(OpenStackNodeCellarTestBase, AbstractPackerTest):
+class OpenstackNodecellarTest(AbstractHelloWorldTest, AbstractPackerTest):
 
     def setUp(self):
         super(OpenstackNodecellarTest, self).setUp()
@@ -55,11 +53,15 @@ class OpenstackNodecellarTest(OpenStackNodeCellarTestBase, AbstractPackerTest):
                 pass
 
         conf = self.env.cloudify_config
+
+        self.openstack_agents_secgroup = 'system-tests-security-group'
+        self.openstack_agents_keypair = conf.get('system-tests-keypair-name',
+                                                 'system-tests-keypair')
+
         self.openstack_nodecellar_test_config_inputs = {
             'user_ssh_key': conf['openstack_ssh_keypair_name'],
-            'agents_security_group_name': 'system-tests-security-group',
-            'agents_keypair_name': conf.get('system-tests-keypair-name',
-                                            'system-tests-keypair'),
+            'agents_security_group_name': self.openstack_agents_secgroup,
+            'agents_keypair_name': self.openstack_agents_keypair,
             'agents_user': conf.get('openstack_agents_user', 'ubuntu'),
             'openstack_username': conf['keystone_username'],
             'openstack_password': conf['keystone_password'],
@@ -86,6 +88,8 @@ class OpenstackNodecellarTest(OpenStackNodeCellarTestBase, AbstractPackerTest):
                     deployment_id='config',
                     inputs=self.openstack_nodecellar_test_config_inputs,
                 )
+                self.addCleanup(self._delete_agents_secgroup)
+                self.addCleanup(self._delete_agents_keypair)
                 deployment_created = True
             except Exception as err:
                 # TODO: This should be a more specific exception
@@ -116,7 +120,23 @@ class OpenstackNodecellarTest(OpenStackNodeCellarTestBase, AbstractPackerTest):
 
         self.cfy = CfyHelper(management_ip=self.openstack_manager_public_ip)
 
-        self._test_nodecellar_impl('openstack-nova-net-blueprint.yaml')
+        self._run(inputs={
+            'agent_user': 'ubuntu',
+            'image': self.env.ubuntu_trusty_image_name,
+            'flavor': self.env.flavor_name
+        })
+
+    def _delete_agents_keypair(self):
+        conn = self._get_conn_openstack()
+        keypair = conn.keypairs.find(name=self.openstack_agents_keypair)
+        keypair.delete()
+
+    def _delete_agents_secgroup(self):
+        conn = self._get_conn_openstack()
+        secgroup = conn.security_groups.find(
+            name=self.openstack_agents_secgroup
+        )
+        secgroup.delete()
 
     def get_public_ip(self, nodes_state):
         return self.openstack_manager_public_ip
