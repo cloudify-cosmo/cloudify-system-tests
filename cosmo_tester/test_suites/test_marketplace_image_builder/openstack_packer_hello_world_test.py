@@ -69,7 +69,13 @@ class OpenstackHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
             'openstack_region': conf['region'],
         }
 
+        # Arbitrary sleep to wait for manager to actually finish starting as
+        # otherwise we suffer timeouts in the next section
+        # TODO: This would be better if it actually had some way of checking
+        # the manager was fully up and we had a reasonable upper bound on how
+        # long we should expect to wait for that
         time.sleep(90)
+
         # We have to retry this a few times, as even after the manager is
         # accessible we still see failures trying to create deployments
         deployment_created = False
@@ -78,7 +84,7 @@ class OpenstackHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
         while not deployment_created:
             attempt += 1
             if attempt >= max_attempts:
-                raise RuntimeError('Manager did not start in time')
+                raise RuntimeError('Manager not created in time')
             else:
                 time.sleep(3)
             try:
@@ -91,9 +97,12 @@ class OpenstackHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
                 self.addCleanup(self._delete_agents_keypair)
                 deployment_created = True
             except Exception as err:
-                # TODO: This should be a more specific exception
                 if attempt >= max_attempts:
                     raise err
+                else:
+                   self.logger.warn(
+                       'Saw error {}. Retrying.'.format(str(err))
+                   )
 
         attempt = 0
         max_attempts = 40
@@ -111,11 +120,12 @@ class OpenstackHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
                 )
                 execution_started = True
             except Exception as err:
-                # The error is a 'DeploymentEnvironmentCreationPendingError',
-                # but catching that doesn't work, so we have to catch all
-                # TODO: Figure out what error we really should catch
                 if attempt >= max_attempts:
                     raise err
+                else:
+                    self.logger.warn(
+                        'Saw error {}. Retrying.'.format(str(err))
+                    )
 
         self.cfy = CfyHelper(management_ip=self.openstack_manager_public_ip)
 
