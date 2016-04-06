@@ -24,13 +24,12 @@ from cosmo_tester.test_suites.test_marketplace_image_builder\
 from cosmo_tester.framework.cfy_helper import CfyHelper
 
 
-class OpenstackNodecellarTest(AbstractHelloWorldTest, AbstractPackerTest):
+class OpenstackHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
 
     def setUp(self):
-        super(OpenstackNodecellarTest, self).setUp()
+        super(OpenstackHelloWorldTest, self).setUp()
 
-    def test_nodecellar_single_host(self):
-        self.logger.info('TEST')  # TODO: Remove this line
+    def test_hello_world_openstack(self):
         self.build_with_packer(only='openstack')
         self.deploy_image_openstack()
 
@@ -58,7 +57,7 @@ class OpenstackNodecellarTest(AbstractHelloWorldTest, AbstractPackerTest):
         self.openstack_agents_keypair = conf.get('system-tests-keypair-name',
                                                  'system-tests-keypair')
 
-        self.openstack_nodecellar_test_config_inputs = {
+        self.openstack_hello_world_test_config_inputs = {
             'user_ssh_key': conf['openstack_ssh_keypair_name'],
             'agents_security_group_name': self.openstack_agents_secgroup,
             'agents_keypair_name': self.openstack_agents_keypair,
@@ -86,7 +85,7 @@ class OpenstackNodecellarTest(AbstractHelloWorldTest, AbstractPackerTest):
                 self.client.deployments.create(
                     blueprint_id='CloudifySettings',
                     deployment_id='config',
-                    inputs=self.openstack_nodecellar_test_config_inputs,
+                    inputs=self.openstack_hello_world_test_config_inputs,
                 )
                 self.addCleanup(self._delete_agents_secgroup)
                 self.addCleanup(self._delete_agents_keypair)

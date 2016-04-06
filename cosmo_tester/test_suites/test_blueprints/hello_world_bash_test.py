@@ -82,7 +82,13 @@ class AbstractHelloWorldTest(MonitoringTestCase):
         self.assert_deployment_monitoring_data_exists(
             influx_host_ip=influx_host_ip)
 
+        # Failures were observed during one test where a workflow was still
+        # running when the uninstall workflow was requested. This is an
+        # arbitrary delay to work around this issue.
+        # TODO: This would be better replaced with a repeating check for all
+        # workflows (including system) on the deployment to have finished
         time.sleep(90)
+
         self.logger.info('Uninstalling deployment...')
         self.execute_uninstall()
 
