@@ -120,11 +120,14 @@ class OpenstackNodecellarTest(AbstractHelloWorldTest, AbstractPackerTest):
 
         self.cfy = CfyHelper(management_ip=self.openstack_manager_public_ip)
 
-        self._run(inputs={
-            'agent_user': 'ubuntu',
-            'image': self.env.ubuntu_trusty_image_name,
-            'flavor': self.env.flavor_name
-        })
+        self._run(
+            inputs={
+                'agent_user': 'ubuntu',
+                'image': self.env.ubuntu_trusty_image_name,
+                'flavor': self.env.flavor_name
+            },
+            influx_host_ip=self.openstack_manager_public_ip,
+        )
 
     def _delete_agents_keypair(self):
         conn = self._get_conn_openstack()

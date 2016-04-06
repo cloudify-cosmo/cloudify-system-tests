@@ -14,6 +14,7 @@
 #    * limitations under the License.
 
 
+import time
 import requests
 from neutronclient.common.exceptions import NeutronException
 from novaclient.exceptions import NotFound
@@ -81,6 +82,7 @@ class AbstractHelloWorldTest(MonitoringTestCase):
         self.assert_deployment_monitoring_data_exists(
             influx_host_ip=influx_host_ip)
 
+        time.sleep(90)
         self.logger.info('Uninstalling deployment...')
         self.execute_uninstall()
 
