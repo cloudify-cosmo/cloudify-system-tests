@@ -33,6 +33,8 @@ DEFAULT_PACKER_URL = 'https://releases.hashicorp.com/packer/' \
 DEFAULT_PACKER_FILE = 'cloudify.json'
 DEFAULT_CLOUDIFY_VERSION = '3.3.1'
 DEFAULT_AMI = "ami-91feb7fb"
+DEFAULT_AWS_REGION = "us-east-1"
+DEFAULT_AWS_INSTANCE_TYPE = 'm3.medium'
 SUPPORTED_ENVS = [
     'aws',
     'openstack',
@@ -63,11 +65,11 @@ class AbstractPackerTest(object):
             aws_access_key_id=self.env.cloudify_config[
                 'aws_access_key'],
             aws_secret_access_key=self.env.cloudify_config[
-                'aws_secret_access_key'],
+                'aws_secret_key'],
         )
 
     def _find_image_aws(self):
-        conn = self.get_conn_aws()
+        conn = self._get_conn_aws()
 
         image_id = None
 
@@ -81,15 +83,52 @@ class AbstractPackerTest(object):
         return image_id
 
     def deploy_image_aws(self):
-        # TODO
-        raise NotImplementedError()
+        blueprint_path = self.copy_blueprint('aws-vpc-start-vm')
+        self.aws_blueprint_yaml = os.path.join(
+            blueprint_path,
+            'blueprint.yaml'
+        )
+
+        self.aws_inputs = {
+            'image_id': self.images['aws'],
+            'instance_type': self.build_inputs['aws_instance_type'],
+            'vpc_id': self.env.cloudify_config['aws_vpc_id'],
+            'vpc_subnet_id': self.env.cloudify_config['aws_subnet_id'],
+            'server_name': 'marketplace-system-test-manager',
+            'aws_access_key_id': self.build_inputs['aws_access_key'],
+            'aws_secret_access_key': self.build_inputs['aws_secret_key'],
+            'ec2_region_name': self.build_inputs['aws_region'],
+        }
+
+        self.logger.info('initialize local env for running the '
+                         'blueprint that starts a vm')
+        self.aws_manager_env = local.init_env(
+            self.aws_blueprint_yaml,
+            inputs=self.aws_inputs,
+            name=self._testMethodName,
+            ignored_modules=cli_constants.IGNORED_LOCAL_WORKFLOW_MODULES
+        )
+
+        self.logger.info('starting vm to serve as the management vm')
+        self.aws_manager_env.execute('install',
+                                     task_retries=10,
+                                     task_retry_interval=30)
+
+        outputs = self.aws_manager_env.outputs()
+        self.aws_manager_public_ip = outputs[
+            'simple_vm_public_ip_address'
+        ]
+
+        self.addCleanup(self._undeploy_image_aws)
 
     def _undeploy_image_aws(self):
-        # TODO
-        raise NotImplementedError()
+        # Private method as it is used for cleanup
+        self.aws_manager_env.execute('uninstall',
+                                     task_retries=40,
+                                     task_retry_interval=30)
 
     def _delete_image_aws(self, image_id):
-        conn = self.get_conn_aws()
+        conn = self._get_conn_aws()
         image = conn.get_all_images(image_ids=[image_id])[0]
         image.deregister()
 
@@ -146,7 +185,6 @@ class AbstractPackerTest(object):
             'blueprint.yaml'
         )
         self.prefix = 'packer-system-test-{0}'.format(self.test_id)
-        self.manager_blueprint_overrides = {}
 
         self.openstack_inputs = {
             'prefix': self.prefix,
@@ -259,7 +297,7 @@ class AbstractPackerTest(object):
             openstack_url = 'OPENSTACK IDENTITY ENDPOINT NOT SET'
         # Provide 'not set' defaults for most to allow for running e.g. just
         # the openstack tests without complaining about lack of aws settings
-        inputs = {
+        self.build_inputs = {
             "name_prefix": name_prefix,
             "cloudify_version": self.env.cloudify_config.get(
                 'marketplace_cloudify_version',
@@ -276,6 +314,14 @@ class AbstractPackerTest(object):
             "aws_source_ami": self.env.cloudify_config.get(
                 'marketplace_source_ami',
                 DEFAULT_AMI
+            ),
+            "aws_region": self.env.cloudify_config.get(
+                'aws_region',
+                DEFAULT_AWS_REGION
+            ),
+            "aws_instance_type": self.env.cloudify_config.get(
+                'aws_instance_type',
+                DEFAULT_AWS_INSTANCE_TYPE
             ),
             "openstack_ssh_keypair_name": self.env.cloudify_config.get(
                 'openstack_ssh_keypair',
@@ -319,11 +365,11 @@ class AbstractPackerTest(object):
                 'OPENSTACK SECURITY GROUP NOT SET'
             ),
         }
-        inputs = json.dumps(inputs)
+        inputs = json.dumps(self.build_inputs)
         with open(destination_path, 'w') as inputs_handle:
             inputs_handle.write(inputs)
 
-    def build_with_packer(self, name_prefix='system-tests', only=None):
+    def build_with_packer(self, name_prefix='marketplace-system-tests', only=None):
         self.name_prefix = name_prefix
         if only is None:
             self.images = {environment: None for environment in SUPPORTED_ENVS}
