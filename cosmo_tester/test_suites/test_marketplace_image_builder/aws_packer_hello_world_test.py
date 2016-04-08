@@ -134,15 +134,16 @@ class AWSHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
 
         time.sleep(120)
 
-        # TODO
-        #self._run(
-        #    inputs={
-        #        'agent_user': 'ubuntu',
-        #        'image': self.env.ubuntu_trusty_image_name,
-        #        'flavor': self.env.flavor_name
-        #    },
-        #    influx_host_ip=self.openstack_manager_public_ip,
-        #)
+        self._run(
+            blueprint_file='ec2-vpc-blueprint.yaml',
+            inputs={
+                'agent_user': 'ubuntu',
+                'image_id': conf['aws_trusty_image_id'],
+                'vpc_id': conf['aws_vpc_id'],
+                'vpc_subnet_id': conf['aws_subnet_id'],
+            },
+            influx_host_ip=self.aws_manager_public_ip,
+        )
 
     def _delete_agents_keypair(self):
         conn = self._get_conn_aws()

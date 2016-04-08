@@ -18,6 +18,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 
 from cosmo_tester.framework import git_helper as git
 
@@ -416,6 +417,13 @@ class AbstractPackerTest(object):
             cwd=marketplace_path,
         )
         assert build_status == 0
+
+        # A test on AWS failed due to no image being found despite the image
+        # existing, so we will put a small delay here to reduce the chance of
+        # that recurring
+        # It would be nice if there were a better way to do this, but it
+        # depends on the environment and maximum wait time is unclear
+        time.sleep(15)
 
         self._check_for_images()
 

@@ -24,7 +24,7 @@ from cosmo_tester.framework.git_helper import clone
 from cosmo_tester.framework.test_cases import MonitoringTestCase
 
 
-CLOUDIFY_HELLO_WORLD_EXAMPLE_URL = "https://github.com/cloudify-cosmo/" \
+CLOUDIFY_HELLO_WORLD_EXAMPLE_URL = "https://github.com/geokala/" \
                                    "cloudify-hello-world-example.git"
 
 
