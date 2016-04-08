@@ -79,20 +79,17 @@ class AWSHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
         attempt = 0
         max_attempts = 40
         while not deployment_created:
-            self.logger.info('STUFF-A')
             attempt += 1
             if attempt >= max_attempts:
                 raise RuntimeError('Manager not created in time')
             else:
                 time.sleep(3)
             try:
-                self.logger.info('STUFF-B')
                 self.client.deployments.create(
                     blueprint_id='CloudifySettings',
                     deployment_id='config',
                     inputs=self.aws_hello_world_test_config_inputs,
                 )
-                self.logger.info('STUFF-C')
                 self.addCleanup(self._delete_agents_secgroup)
                 self.addCleanup(self._delete_agents_keypair)
                 deployment_created = True
@@ -108,19 +105,16 @@ class AWSHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
         max_attempts = 40
         execution_started = False
         while not execution_started:
-            self.logger.info('STUFF-D')
             attempt += 1
             if attempt >= max_attempts:
                 raise RuntimeError('Manager did not start in time')
             else:
                 time.sleep(3)
             try:
-                self.logger.info('STUFF-E')
                 self.client.executions.start(
                     deployment_id='config',
                     workflow_id='install',
                 )
-                self.logger.info('STUFF-F')
                 execution_started = True
             except Exception as err:
                 if attempt >= max_attempts:
