@@ -17,6 +17,8 @@ import time
 
 from requests import ConnectionError
 from cosmo_tester.framework.util import create_rest_client
+from cloudify_rest_client.exceptions import CloudifyClientError
+from cosmo_tester.framework.util import create_rest_client
 from cosmo_tester.test_suites.test_blueprints.hello_world_bash_test import \
     AbstractHelloWorldTest
 from cosmo_tester.test_suites.test_marketplace_image_builder\
@@ -48,7 +50,11 @@ class AWSHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
                 time.sleep(3)
             try:
                 response = self.client.manager.get_status()
+            except CloudifyClientError:
+                # Manager not fully ready
+                pass
             except ConnectionError:
+                # Timeout
                 pass
 
         conf = self.env.cloudify_config

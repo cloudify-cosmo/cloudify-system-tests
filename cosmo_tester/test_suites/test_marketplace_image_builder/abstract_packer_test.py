@@ -365,6 +365,10 @@ class AbstractPackerTest(object):
                 'openstack_security_group',
                 'OPENSTACK SECURITY GROUP NOT SET'
             ),
+            "cloudify_version": self.env.cloudify_config.get(
+                'marketplace_cloudify_version',
+                '3.4m4'
+            ),
         }
         inputs = json.dumps(self.build_inputs)
         with open(destination_path, 'w') as inputs_handle:
