@@ -31,7 +31,8 @@ git = sh_bake(sh.git)
 def clone(url, basedir, branch=None):
 
     branch = branch or os.environ.get('BRANCH_NAME_CORE', 'master')
-
+    if 'cloudify-manager-blueprints' in url:
+        branch = 'CFY-4986-add-influxdb-retention-policy'
     repo_name = url.split('.git')[0].split('/')[-1]
 
     target = path(os.path.join(basedir, 'git', repo_name))
@@ -45,6 +46,8 @@ def clone(url, basedir, branch=None):
 
 
 def checkout(repo_path, branch, force=False):
+    if 'cloudify-manager-blueprints' in repo_path:
+        branch = 'CFY-4986-add-influxdb-retention-policy'
     logger.info('Checking out to {0} branch in repo {1}'
                 .format(branch, repo_path))
     target = path(repo_path)
