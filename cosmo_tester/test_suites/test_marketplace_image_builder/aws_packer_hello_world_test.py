@@ -153,8 +153,9 @@ class AWSHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
         sgs = conn.get_all_security_groups()
         candidate_sgs = [
             sg for sg in sgs
-            if sg.name == self.aws_agents_secgroup
-            and sg.vpc_id == self.env.cloudify_config['aws_vpc_id']
+            if sg.name == self.aws_agents_secgroup and
+            # 'and' is on previous line due to PEP8
+            sg.vpc_id == self.env.cloudify_config['aws_vpc_id']
         ]
         if len(candidate_sgs) != 1:
             raise RuntimeError('Could not clean up agents security group')

@@ -164,8 +164,9 @@ class AbstractPackerTest(object):
         # Get just the images belonging to this tenant
         images = [
             image for image in images
-            if 'owner_id' in image['metadata'].keys()
-            and image['metadata']['owner_id'] == my_tenant_id
+            if 'owner_id' in image['metadata'].keys() and
+            # 'and' on previous line due to PEP8
+            image['metadata']['owner_id'] == my_tenant_id
         ]
         self.logger.info('All images: %s' % images)
         self.logger.info('Searching by prefix: %s' % self.name_prefix)
