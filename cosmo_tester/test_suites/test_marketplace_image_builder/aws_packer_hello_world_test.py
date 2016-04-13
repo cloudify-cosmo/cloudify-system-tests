@@ -16,7 +16,6 @@
 import time
 
 from requests import ConnectionError
-from cosmo_tester.framework.util import create_rest_client
 from cloudify_rest_client.exceptions import CloudifyClientError
 from cosmo_tester.framework.util import create_rest_client
 from cosmo_tester.test_suites.test_blueprints.hello_world_bash_test import \
@@ -103,9 +102,9 @@ class AWSHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
                 if attempt >= max_attempts:
                     raise err
                 else:
-                   self.logger.warn(
-                       'Saw error {}. Retrying.'.format(str(err))
-                   )
+                    self.logger.warn(
+                        'Saw error {}. Retrying.'.format(str(err))
+                    )
 
         attempt = 0
         max_attempts = 40

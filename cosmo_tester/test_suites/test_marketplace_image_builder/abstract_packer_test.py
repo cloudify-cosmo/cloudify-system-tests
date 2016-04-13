@@ -374,7 +374,9 @@ class AbstractPackerTest(object):
         with open(destination_path, 'w') as inputs_handle:
             inputs_handle.write(inputs)
 
-    def build_with_packer(self, name_prefix='marketplace-system-tests', only=None):
+    def build_with_packer(self,
+                          name_prefix='marketplace-system-tests',
+                          only=None):
         self.name_prefix = name_prefix
         if only is None:
             self.images = {environment: None for environment in SUPPORTED_ENVS}
