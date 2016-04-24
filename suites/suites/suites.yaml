@@ -59,6 +59,8 @@ variables:
   # as well.
   system_tests_branch: _
 
+  manager_blueprints_branch: CFY-4952-upgrade-support_4
+
   system_tests_shared_key: _
 
   cloudify_automation_token: _
