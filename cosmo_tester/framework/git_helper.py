@@ -35,7 +35,8 @@ def clone(url, basedir, branch=None):
     repo_name = url.split('.git')[0].split('/')[-1]
 
     target = path(os.path.join(basedir, 'git', repo_name))
-
+    if 'blueprints' in repo_name:
+        branch = 'CFY-5210-move-restservice-packaging-to-omnibus'
     logger.info("Cloning {0} to {1}".format(url, target))
     git.clone(url, str(target)).wait()
     with target:
@@ -45,6 +46,8 @@ def clone(url, basedir, branch=None):
 
 
 def checkout(repo_path, branch, force=False):
+    if 'blueprints' in repo_path:
+        branch = 'CFY-5210-move-restservice-packaging-to-omnibus'
     logger.info('Checking out to {0} branch in repo {1}'
                 .format(branch, repo_path))
     target = path(repo_path)
