@@ -63,6 +63,7 @@ pip install -e cloudify-openstack-plugin
 
 * Run a test using `nosetests`:
 For tests located under the cloudify-system-tests package:
+_Note: you have to `cd` into the cloudify-system-tests directory for it to work._
 ```
 export HANDLER_CONFIGURATION=/path/to/sample-handler-configuration.yaml
 nosetests -s cosmo_tester/test_suites/test_blueprints/nodecellar_test.py:OpenStackNodeCellarTest
