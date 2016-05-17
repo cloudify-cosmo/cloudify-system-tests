@@ -87,6 +87,7 @@ variables:
   system_tests_branch: _
 
   system_tests_shared_key: _
+  system_tests_shared_public: _
 
   cloudify_automation_token: _
 
@@ -125,7 +126,6 @@ variables:
   system_tests_azure_client_id: _
   system_tests_azure_client_secret: _
   system_tests_azure_password: _
-  system_tests_azure_key_data: _
 
 #####################################################################################
 
@@ -418,6 +418,8 @@ handler_properties:
     resource_prefix: '{{azure_resource_prefix}}'
     resource_suffix: '{{azure_resource_suffix}}'
     location: '{{azure_location_westeu}}'
+    password: '{{system_tests_azure_password}}'
+    keydata: '{{system_tests_shared_public}}'
     standard_a2_size: '{{azure_size_standard_a2}}'
     os_family_linux: '{{azure_os_family_linux}}'
     username_ubuntu_trusty: '{{azure_os_ubuntu_username}}'
@@ -438,8 +440,6 @@ handler_properties:
     image_offer_windows: '{{azure_os_microsoft_image_offer}}'
     image_sku_windows: '{{azure_os_microsoft_image_sku}}'
     image_version_windows: '{{azure_os_microsoft_image_version}}'
-    password: '{{system_tests_azure_password}}'
-    keydata: '{{system_tests_azure_key_data}}'
 
 #####################################################################################
 
@@ -708,6 +708,8 @@ handler_configurations:
       client_id: '{{system_tests_azure_client_id}}'
       client_secret: '{{system_tests_azure_client_secret}}'
       location: '{{azure_location_westeu}}'
+      agent_local_key_path: '~/.ssh/shared-systemt-tests-key.pem'
+      ssh_key_filename: '~/.ssh/shared-systemt-tests-key.pem'
       vm_size: '{{azure_size_standard_a2}}'
       vm_os_family: '{{azure_os_family_linux}}'
       vm_image_publisher: '{{azure_os_centos_final_image_publisher}}'
@@ -719,7 +721,7 @@ handler_configurations:
       vm_os_pubkeys:
           - path: '{{azure_os_centos_authorized_keys}}'
             keyData:
-              '{{system_tests_azure_key_data}}'
+              '{{system_tests_shared_public}}'
 
 ################################################################################
 
