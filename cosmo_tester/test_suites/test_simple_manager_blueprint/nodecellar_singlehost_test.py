@@ -34,7 +34,7 @@ class NodecellarSingleHostTest(NodecellarAppTest, AbstractSingleHostTest):
 
     def get_inputs(self):
         return dict(self.access_credentials,
-                    **{'manager_host_ip': self.private_ip_address})
+                    **{'host_ip': self.private_ip_address})
 
     @property
     def expected_nodes_count(self):
