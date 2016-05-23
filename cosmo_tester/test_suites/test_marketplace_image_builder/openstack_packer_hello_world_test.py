@@ -30,8 +30,8 @@ class OpenstackHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
     def setUp(self):
         super(OpenstackHelloWorldTest, self).setUp()
 
-    def test_hello_world_openstack(self):
-        self.build_with_packer(only='openstack')
+    def test_insecure_hello_world_openstack(self):
+        self.build_with_packer(only='openstack', secure=False)
         self.deploy_image_openstack()
 
         self.client = create_rest_client(

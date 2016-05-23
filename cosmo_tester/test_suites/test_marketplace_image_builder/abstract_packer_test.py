@@ -35,7 +35,7 @@ DEFAULT_PACKER_FILE = 'cloudify.json'
 DEFAULT_CLOUDIFY_VERSION = '3.3.1'
 DEFAULT_AMI = "ami-91feb7fb"
 DEFAULT_AWS_REGION = "us-east-1"
-DEFAULT_AWS_INSTANCE_TYPE = 'm3.medium'
+DEFAULT_AWS_INSTANCE_TYPE = 'm3.large'
 SUPPORTED_ENVS = [
     'aws',
     'openstack',
@@ -290,7 +290,7 @@ class AbstractPackerTest(object):
         )
         return repo_path
 
-    def _build_inputs(self, destination_path, name_prefix):
+    def _build_inputs(self, destination_path, name_prefix, secure=True):
         openstack_url = self.env.cloudify_config.get('keystone_url')
         if openstack_url is not None:
             # TODO: Do a join on this if the URL doesn't have 2.0 already
@@ -368,8 +368,9 @@ class AbstractPackerTest(object):
             ),
             "cloudify_version": self.env.cloudify_config.get(
                 'marketplace_cloudify_version',
-                '3.4m4'
+                'master'
             ),
+            "cloudify_manager_security_enabled": str(secure),
         }
         inputs = json.dumps(self.build_inputs)
         with open(destination_path, 'w') as inputs_handle:
@@ -377,7 +378,8 @@ class AbstractPackerTest(object):
 
     def build_with_packer(self,
                           name_prefix='marketplace-system-tests',
-                          only=None):
+                          only=None,
+                          secure=True):
         self.name_prefix = name_prefix
         if only is None:
             self.images = {environment: None for environment in SUPPORTED_ENVS}
@@ -402,6 +404,7 @@ class AbstractPackerTest(object):
                 inputs_file_name
             ),
             name_prefix=name_prefix,
+            secure=secure,
         )
 
         # Build the packer command

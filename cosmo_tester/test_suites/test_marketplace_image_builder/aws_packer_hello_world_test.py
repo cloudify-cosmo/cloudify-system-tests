@@ -30,8 +30,8 @@ class AWSHelloWorldTest(AbstractHelloWorldTest, AbstractPackerTest):
     def setUp(self):
         super(AWSHelloWorldTest, self).setUp()
 
-    def test_hello_world_openstack(self):
-        self.build_with_packer(only='aws')
+    def test_insecure_hello_world_aws(self):
+        self.build_with_packer(only='aws', secure=False)
         self.deploy_image_aws()
 
         self.client = create_rest_client(
