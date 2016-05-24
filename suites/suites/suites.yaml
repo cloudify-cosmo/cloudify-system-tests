@@ -125,7 +125,6 @@ variables:
   system_tests_azure_tenant_id: _
   system_tests_azure_client_id: _
   system_tests_azure_client_secret: _
-  system_tests_azure_password: _
 
 #####################################################################################
 
@@ -276,7 +275,7 @@ templates:
 
   - &azure_plugin_external
     repo: cloudify-azure-plugin
-    branch: 'CFY-5203-v1.4'
+    branch: 'master'
 
   #######################################################
 
@@ -418,7 +417,6 @@ handler_properties:
     resource_prefix: '{{azure_resource_prefix}}'
     resource_suffix: '{{azure_resource_suffix}}'
     location: '{{azure_location_westeu}}'
-    password: '{{system_tests_azure_password}}'
     keydata: '{{system_tests_shared_public}}'
     standard_a2_size: '{{azure_size_standard_a2}}'
     os_family_linux: '{{azure_os_family_linux}}'
@@ -703,6 +701,8 @@ handler_configurations:
     manager_blueprint: azure-manager-blueprint.yaml
     manager_blueprint_override: *azure_manager_blueprint_sg_override
     inputs_override:
+      resource_prefix: '{{azure_resource_prefix}}'
+      resource_suffix: '{{azure_resource_suffix}}'
       subscription_id: '{{system_tests_azure_subscription_id}}'
       tenant_id: '{{system_tests_azure_tenant_id}}'
       client_id: '{{system_tests_azure_client_id}}'
