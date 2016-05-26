@@ -49,11 +49,12 @@ variables:
   vcloud_instance: 7f26733b-b8c5-4621-ae28-6033cd465b79
   vcloud_url: https://vca.vmware.com
 
-  azure_resource_suffix: 0
+  azure_resource_suffix: 1
   azure_resource_prefix: mgr
   azure_location_westus: westus
   azure_location_westeu: westeurope
   azure_size_standard_a2: Standard_A2
+  azure_size_standard_a3: Standard_A3
   azure_os_family_linux: linux
   azure_os_ubuntu_username: ubuntu
   azure_os_ubuntu_authorized_keys: /home/ubuntu/.ssh/authorized_keys
@@ -125,6 +126,7 @@ variables:
   system_tests_azure_tenant_id: _
   system_tests_azure_client_id: _
   system_tests_azure_client_secret: _
+  system_tests_azure_manager_password: cmVV2h3wKt
 
 #####################################################################################
 
@@ -710,7 +712,7 @@ handler_configurations:
       location: '{{azure_location_westeu}}'
       agent_local_key_path: '~/.ssh/shared-systemt-tests-key.pem'
       ssh_key_filename: '~/.ssh/shared-systemt-tests-key.pem'
-      vm_size: '{{azure_size_standard_a2}}'
+      vm_size: '{{azure_size_standard_a3}}'
       vm_os_family: '{{azure_os_family_linux}}'
       vm_image_publisher: '{{azure_os_centos_final_image_publisher}}'
       vm_image_offer: '{{azure_os_centos_final_image_offer}}'
