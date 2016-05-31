@@ -228,6 +228,16 @@ class CfyHelper(object):
             cfy.deployments.get(
                 deployment_id=deployment_id, verbose=verbose).wait()
 
+    def update_deployment(self, deployment_id,
+                          blueprint_path,
+                          inputs=None,
+                          verbose=False):
+        with self.workdir:
+            cfy.deployments.update(deployment_id=deployment_id,
+                                   blueprint_path=blueprint_path,
+                                   inputs=inputs,
+                                   verbose=verbose)
+
     def get_execution(self, execution_id, verbose=False):
         with self.workdir:
             cfy.executions.get(
