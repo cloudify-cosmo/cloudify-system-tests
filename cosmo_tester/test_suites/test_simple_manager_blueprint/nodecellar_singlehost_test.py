@@ -34,11 +34,12 @@ class NodecellarSingleHostTest(NodecellarAppTest, AbstractSingleHostTest):
 
     def get_inputs(self):
         return dict(self.access_credentials,
-                    **{'host_ip': self.private_ip_address})
+                    **{'nodejs_host_ip': self.private_ip_address,
+                       'mongod_host_ip': self.private_ip_address})
 
     @property
     def expected_nodes_count(self):
-        return 4
+        return 5
 
     @property
     def host_expected_runtime_properties(self):
@@ -46,7 +47,7 @@ class NodecellarSingleHostTest(NodecellarAppTest, AbstractSingleHostTest):
 
     @property
     def entrypoint_node_name(self):
-        return 'host'
+        return 'nodejs_host_ip'
 
     @property
     def entrypoint_property_name(self):
