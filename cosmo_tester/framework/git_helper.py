@@ -35,6 +35,8 @@ def clone(url, basedir, branch=None):
     repo_name = url.split('.git')[0].split('/')[-1]
 
     target = path(os.path.join(basedir, 'git', repo_name))
+    if 'cloudify-packager' in repo_name:
+        branch = 'fix_windows_test_path'
 
     logger.info("Cloning {0} to {1}".format(url, target))
     git.clone(url, str(target)).wait()
@@ -45,6 +47,8 @@ def clone(url, basedir, branch=None):
 
 
 def checkout(repo_path, branch, force=False):
+    if 'cloudify-packager' in repo_path:
+        branch = 'fix_windows_test_path'
     logger.info('Checking out to {0} branch in repo {1}'
                 .format(branch, repo_path))
     target = path(repo_path)
