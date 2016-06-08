@@ -197,7 +197,7 @@ templates:
 
   - &packager_external
     repo: cloudify-packager
-    branch: '{{core_branch}}'
+    branch: 'fix_windows_test_path'
 
   - &diamond_snmp_extension_external
     repo: cloudify-diamond-snmp-extension
