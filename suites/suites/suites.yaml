@@ -276,7 +276,7 @@ templates:
 
   - &azure_plugin_external
     repo: cloudify-azure-plugin
-    branch: 'CFY-5416-use-retry-on-async'
+    branch: 'master'
 
   #######################################################
 
