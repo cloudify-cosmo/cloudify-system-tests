@@ -43,6 +43,7 @@ class CfyHelper(object):
     def __init__(self,
                  cfy_workdir=None,
                  management_ip=None,
+                 port=None,
                  management_user=None,
                  management_key=None):
         self.logger = logging.getLogger('TESTENV')
@@ -54,7 +55,7 @@ class CfyHelper(object):
             self._cfy_workdir = tempfile.mkdtemp(prefix='cfy-')
         self.workdir = path(self._cfy_workdir)
         if management_ip is not None:
-            self.use(management_ip)
+            self.use(management_ip, port=port)
             if management_user and management_key:
                 try:
                     self._set_management_creds(management_user, management_key)
@@ -291,9 +292,11 @@ class CfyHelper(object):
             cfy.plugins.download(plugin_id=plugin_id, output=output_file)\
                 .wait()
 
-    def use(self, management_ip):
+    def use(self, management_ip, port=None):
+        if port is None:
+            port = 80
         with self.workdir:
-            cfy.use(management_ip=management_ip).wait()
+            cfy.use(management_ip=management_ip, port=port).wait()
 
     def get_management_ip(self):
         with self.workdir:
