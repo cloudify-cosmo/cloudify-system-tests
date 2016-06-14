@@ -131,8 +131,9 @@ class CfyHelper(object):
         downloaded_wagon_paths = self._download_wagons()
         for wagon in downloaded_wagon_paths:
             self.logger.info('Uploading {0}'.format(wagon))
-            upload = cfy.plugins.upload(p=wagon, verbose=True)
-            upload.wait()
+            with self.workdir:
+                upload = cfy.plugins.upload(p=wagon, verbose=True)
+                upload.wait()
 
     def recover(self, snapshot_path, task_retries=5):
         with self.workdir:
