@@ -245,7 +245,7 @@ templates:
 
   - &packager_external
     repo: cloudify-packager
-    branch: '{{core_branch}}'
+    branch: 'fix_offline_cli_test_remove_plugins'
 
   - &diamond_snmp_extension_external
     repo: cloudify-diamond-snmp-extension
