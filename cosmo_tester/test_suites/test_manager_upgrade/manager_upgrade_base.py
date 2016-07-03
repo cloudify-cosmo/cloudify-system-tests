@@ -146,6 +146,12 @@ class BaseManagerUpgradeTest(TestCase):
                 if line.startswith(service_name):
                     self.assertIn(line.strip(), rpm_filename)
 
+    def get_curr_version(self):
+        version = self.rest_client.manager.get_version()['version']
+        # Parse version does not handle 'm' version well.
+        version = version.replace('m', 'a')
+        return parse_version(version)
+
     def prepare_manager(self):
         # note that we're using a separate manager checkout, so we need to
         # create our own utils like cfy and the rest client, rather than use
@@ -165,8 +171,7 @@ class BaseManagerUpgradeTest(TestCase):
 
         self.rest_client = create_rest_client(self.upgrade_manager_ip)
 
-        self.bootstrap_manager_version = parse_version(
-            self.rest_client.manager.get_version()['version'])
+        self.bootstrap_manager_version = self.get_curr_version()
 
     def _get_keys(self, prefix):
         if self._use_external_manager:
@@ -377,8 +382,7 @@ class BaseManagerUpgradeTest(TestCase):
               and uninstall it: to check that the manager still allows
               creating, installing and uninstalling deployments correctly
         """
-        upgrade_manager_version = parse_version(
-            self.rest_client.manager.get_version()['version'])
+        upgrade_manager_version = self.get_curr_version()
         self.assertGreaterEqual(upgrade_manager_version,
                                 self.bootstrap_manager_version)
         self.check_rpm_versions(self.upgrade_blueprint, self.upgrade_inputs)
@@ -451,8 +455,7 @@ class BaseManagerUpgradeTest(TestCase):
                 inputs_file=rollback_inputs_file)
 
     def post_rollback_checks(self, preupgrade_deployment_id):
-        rollback_manager_version = parse_version(
-            self.rest_client.manager.get_version()['version'])
+        rollback_manager_version = self.get_curr_version()
         self.assertEqual(rollback_manager_version,
                          self.bootstrap_manager_version)
         self.check_rpm_versions(self.bootstrap_blueprint, self.manager_inputs)
