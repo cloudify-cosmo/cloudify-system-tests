@@ -150,14 +150,15 @@ class BaseManagerUpgradeTest(TestCase):
         version = version.replace('m', 'a')
         return parse_version(version)
 
-    def prepare_manager(self):
+    def prepare_manager(self, username='', password='', ssl_enabled=False):
         # note that we're using a separate manager checkout, so we need to
         # create our own utils like cfy and the rest client, rather than use
         # the testenv ones
         self.cfy_workdir = tempfile.mkdtemp(prefix='manager-upgrade-')
         self.addCleanup(shutil.rmtree, self.cfy_workdir)
         self.manager_cfy = CfyHelper(cfy_workdir=self.cfy_workdir)
-        self.manager_inputs = self._get_bootstrap_inputs()
+        self.manager_inputs = self._get_bootstrap_inputs(
+                username=username, password=password, ssl_enabled=ssl_enabled)
 
         if self._use_external_manager:
             upgrade_config = self.env.handler_configuration['upgrade_manager']
@@ -185,12 +186,15 @@ class BaseManagerUpgradeTest(TestCase):
                             prefix + '-agents-key')
             return ssh_key_filename, agent_key_path
 
-    def _get_bootstrap_inputs(self):
+    def _get_bootstrap_inputs(self,
+                              username='',
+                              password='',
+                              ssl_enabled=False):
         prefix = self.test_id
 
         ssh_key_filename, agent_key_path = self._get_keys(prefix)
 
-        return {
+        inputs = {
             'keystone_username': self.env.keystone_username,
             'keystone_password': self.env.keystone_password,
             'keystone_tenant_name': self.env.keystone_tenant_name,
@@ -229,6 +233,11 @@ class BaseManagerUpgradeTest(TestCase):
             # installed from source on the manager.
             'install_python_compilers': True
         }
+        if username and password:
+            inputs.update(admin_username=username, admin_password=password)
+        if ssl_enabled:
+            inputs.update(ssl_enabled=ssl_enabled)
+        return inputs
 
     def get_bootstrap_blueprint(self):
         manager_repo_dir = tempfile.mkdtemp(prefix='manager-upgrade-')
