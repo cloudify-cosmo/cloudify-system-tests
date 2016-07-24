@@ -43,7 +43,7 @@ BOOTSTRAP_BRANCH = '3.4rc1'
 
 UPGRADE_REPO_URL = 'https://github.com/cloudify-cosmo/' \
                    'cloudify-manager-blueprints.git'
-UPGRADE_BRANCH = 'master'
+UPGRADE_BRANCH = '3.4.1'
 
 
 class BaseManagerUpgradeTest(TestCase):
