@@ -63,7 +63,7 @@ class ManagerMaintenanceModeTest(TestCase):
                         exception_class=AssertionError, args=['activating'])
 
         self.logger.info('cancelling installation')
-        self.cfy.cancel_execution(execution['id'])
+        self.cfy.executions.cancel(execution['id'])
 
         self.logger.info(
             "checking if maintenance status has changed to 'activated'")

@@ -74,7 +74,7 @@ class OpenstackPluginTests(TestCase):
         inputs_file = self.cfy._get_inputs_in_temp_file(inputs, self.test_id)
         self.cfy.bootstrap(self.blueprint_path,
                            inputs_file=inputs_file,
-                           reset_config=True,
+                           reset_context=True,
                            validate_only=True,
                            task_retries=1)
 

@@ -31,7 +31,7 @@ from cloudify.workflows import local
 
 from cosmo_tester.framework.testenv import TestCase
 from cosmo_tester.framework.git_helper import clone
-from cosmo_tester.framework.cfy_helper import CfyHelper
+from cosmo_tester.framework.cfy_helper import get_cfy
 
 from cosmo_tester.framework.util import create_rest_client, YamlPatcher
 
@@ -158,7 +158,7 @@ class BaseManagerUpgradeTest(TestCase):
         # the testenv ones
         self.cfy_workdir = tempfile.mkdtemp(prefix='manager-upgrade-')
         self.addCleanup(shutil.rmtree, self.cfy_workdir)
-        self.manager_cfy = CfyHelper(cfy_workdir=self.cfy_workdir)
+        self.manager_cfy = get_cfy()
         self.manager_inputs = self._get_bootstrap_inputs()
 
         if self._use_external_manager:

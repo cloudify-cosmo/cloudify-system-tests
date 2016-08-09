@@ -138,8 +138,7 @@ class ManyDeploymentsTest(MonitoringTestCase):
                 start_time = time.time()
                 self.create_deployment(blueprint_id=self.test_id,
                                        deployment_id=self.test_id+str(
-                                           number_of_deployments),
-                                       inputs='')
+                                           number_of_deployments))
                 self.wait_until_all_deployment_executions_end(
                     deployment_id=self.test_id+str(number_of_deployments))
                 end_create_deployment_time = time.time()

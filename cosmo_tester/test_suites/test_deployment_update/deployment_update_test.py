@@ -137,10 +137,13 @@ class DeploymentUpdateTest(testenv.TestCase):
 
     @wait_for_deployment_update_to_finish
     def _update_deployment(self, deployment_id, blueprint_path, inputs=None):
+        inputs = inputs or {}
         self.update_counter += 1
-        self.cfy.update_deployment(deployment_id,
-                                   blueprint_path,
-                                   **({'inputs': inputs} if inputs else {}))
+        self.cfy.deployments.update(
+            deployment_id,
+            blueprint_path=blueprint_path,
+            inputs=inputs
+        )
 
     def _create_modified_deployment(self):
         self.modified_dir = os.path.join(self.workdir, 'modified_blueprint')

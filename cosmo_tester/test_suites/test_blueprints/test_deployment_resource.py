@@ -32,9 +32,9 @@ class DeploymentResourceTest(TestCase):
         self.logger.info('blueprint_id/deployment_id = {0}'.format(
             blueprint_id))
         blueprint_path = self.copy_blueprint('deployment-resource')
-        blueprint_yaml = blueprint_path / 'blueprint.yaml'
-        self.cfy.upload_blueprint(blueprint_id, blueprint_yaml)
-        self.cfy.create_deployment(
+        self.blueprint_yaml = blueprint_path / 'blueprint.yaml'
+        self.upload_blueprint(blueprint_id)
+        self.create_deployment(
             blueprint_id,
             deployment_id,
             inputs={'resource_path': RESOURCE_PATH})

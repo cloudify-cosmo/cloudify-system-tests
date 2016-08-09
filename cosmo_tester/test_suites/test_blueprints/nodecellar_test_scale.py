@@ -88,9 +88,8 @@ class OpenStackScaleNodeCellarTest(OpenStackNodeCellarTestBase):
 
     def _test_cleanup(self):
         try:
-            self.cfy.delete_deployment(deployment_id=self.test_id,
-                                       ignore_live_nodes=True)
-            self.cfy.delete_blueprint(blueprint_id=self.test_id)
+            self.cfy.deployments.delete(self.test_id, force=True).wait()
+            self.cfy.blueprints.delete(self.test_id).wait()
         except Exception as e:
             self.logger.info('During cleanup: {0}'.format(e))
 

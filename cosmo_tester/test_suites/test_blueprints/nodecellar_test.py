@@ -35,7 +35,7 @@ class NodecellarAppTest(MonitoringTestCase):
 
         before, after = self.install(
             inputs=self.get_inputs(),
-            execute_timeout=execute_timeout
+            timeout=execute_timeout
         )
 
         self.post_install_assertions(before, after)

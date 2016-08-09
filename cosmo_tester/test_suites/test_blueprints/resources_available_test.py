@@ -41,4 +41,4 @@ class ResourcesAvailableTest(TestCase):
         except ConnectionError:
             pass
 
-        self.cfy.delete_blueprint(self.test_id)
+        self.cfy.blueprints.delete(self.test_id).wait()

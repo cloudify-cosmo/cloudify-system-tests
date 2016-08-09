@@ -26,13 +26,14 @@ class ExecutionLoggingTest(TestCase):
         self.install()
         for user_cause in [False, True]:
             with self.assertRaises(sh.ErrorReturnCode):
-                self.cfy.execute_workflow(
+                self.cfy.executions.start(
                     'execute_operation',
                     deployment_id=self.test_id,
                     include_logs=True,
                     parameters={'operation': 'test.op',
                                 'operation_kwargs': {
-                                    'user_cause': user_cause}})
+                                    'user_cause': user_cause}}
+                ).wait()
         executions = self.client.executions.list(
             deployment_id=self.test_id,
             workflow_id='execute_operation').items
