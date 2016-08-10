@@ -138,7 +138,7 @@ class BaseAuthTest(security_test_base.SecurityTestBase):
         for deployment_id in deployment_ids:
             self.wait_until_all_deployment_executions_end(deployment_id)
             self.cfy.deployments.delete(deployment_id, force=True)
-        self.cfy.delete_blueprint(blueprint_id)
+        self.cfy.blueprints.delete(blueprint_id)
 
     ##############################
     # blueprint tests

@@ -206,7 +206,7 @@ class HelloWorldSnapshotMigrationFrom_3_2_1_To_3_3_Test(TestCase):
             )
 
         self.addCleanup(self._teardown_manager_3_3)
-        self.cfy.bootstrap(
+        self.cfy_helper.bootstrap(
             blueprint_path,
             inputs=os.path.join(self.workdir, NEW_MANAGER_INPUTS_NAME),
         )
@@ -515,7 +515,7 @@ class HelloWorldSnapshotMigrationFrom_3_2_1_To_3_3_Test(TestCase):
 
         # agents migration
         self.logger.info('-- Installing agents')
-        self.cfy.install_agents(HELLOWORLD_APP_NAME)
+        self.cfy.agents.install(HELLOWORLD_APP_NAME)
 
     def _uninstall_hello_world(self):
         self.logger.info('Uninstalling Helloworld application by '

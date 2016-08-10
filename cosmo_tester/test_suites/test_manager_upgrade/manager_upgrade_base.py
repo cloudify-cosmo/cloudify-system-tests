@@ -317,7 +317,10 @@ class BaseManagerUpgradeTest(TestCase):
         )
         self.addCleanup(shutil.rmtree, hello_repo_dir)
         hello_blueprint_path = hello_repo_path / 'blueprint.yaml'
-        self.manager_cfy.upload_blueprint(blueprint_id, hello_blueprint_path)
+        self.cfy.blueprints.upload(
+            hello_blueprint_path,
+            blueprint_id=blueprint_id
+        )
 
         inputs = {
             'agent_user': self.env.ubuntu_image_user,
@@ -445,7 +448,10 @@ class BaseManagerUpgradeTest(TestCase):
             self.fail('elasticsearch isnt listening on the changed port')
 
     def uninstall_deployment(self, deployment_id):
-        self.manager_cfy.execute_uninstall(deployment_id)
+        self.manager_cfy.executions.start(
+            'uninstall',
+            deployment_id=deployment_id
+        )
 
     def rollback_manager(self, blueprint=None, inputs=None):
         blueprint = blueprint or self.upgrade_blueprint

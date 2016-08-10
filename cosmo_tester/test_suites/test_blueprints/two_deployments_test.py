@@ -51,7 +51,7 @@ class TwoDeploymentsTest(TestCase):
             self.modify_yaml(blueprint_path=blueprint_yaml,
                              security_group_name=sg)
 
-            self.install(
+            self.upload_deploy_and_execute_install(
                 blueprint_path=blueprint_yaml,
                 blueprint_id=blueprint_id,
                 deployment_id=deployment_id,

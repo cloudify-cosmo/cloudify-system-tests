@@ -23,7 +23,7 @@ class ExecutionLoggingTest(TestCase):
     def test_execution_logging(self):
         blueprint_dir = self.copy_blueprint('execution-logging')
         self.blueprint_yaml = blueprint_dir / 'blueprint.yaml'
-        self.install()
+        self.upload_deploy_and_execute_install()
         for user_cause in [False, True]:
             with self.assertRaises(sh.ErrorReturnCode):
                 self.cfy.executions.start(

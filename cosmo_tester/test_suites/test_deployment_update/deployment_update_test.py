@@ -79,9 +79,10 @@ class DeploymentUpdateTest(testenv.TestCase):
         deployment_id = str(uuid.uuid4())
         modified_port = '9090'
 
-        self.addCleanup(self.execute_uninstall,
-                        deployment_id=deployment_id,
-                        delete_deployment_and_blueprint=True)
+        self.addCleanup(
+            self.uninstall_delete_deployment_and_blueprint,
+            deployment_id=deployment_id
+        )
         self._upload_helloworld_and_deploy(deployment_id,
                                            blueprint_file=self._blueprint_name,
                                            inputs=self._hello_world_inputs)

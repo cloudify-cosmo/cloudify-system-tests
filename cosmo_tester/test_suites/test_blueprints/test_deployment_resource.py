@@ -33,11 +33,15 @@ class DeploymentResourceTest(TestCase):
             blueprint_id))
         blueprint_path = self.copy_blueprint('deployment-resource')
         self.blueprint_yaml = blueprint_path / 'blueprint.yaml'
-        self.upload_blueprint(blueprint_id)
-        self.create_deployment(
+        self.cfy.blueprints.upload(
+            self.blueprint_yaml,
+            blueprint_id=blueprint_id
+        )
+        self.cfy_helper.create_deployment(
             blueprint_id,
             deployment_id,
-            inputs={'resource_path': RESOURCE_PATH})
+            inputs={'resource_path': RESOURCE_PATH}
+        )
         deployment_folder_on_manager = \
             '/opt/manager/resources/deployments/{0}'.format(deployment_id)
 

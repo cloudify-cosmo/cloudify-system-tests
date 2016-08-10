@@ -45,7 +45,10 @@ class DownloadBlueprintTest(TestCase):
         self.large_file_location = blueprint_path / "just_a_large_file.img"
         self._create_file("50M", self.large_file_location)
         self.blueprint_yaml = blueprint_path / 'single-node-blueprint.yaml'
-        self.upload_blueprint(self.blueprint_id)
+        self.cfy.blueprints.upload(
+            self.blueprint_yaml,
+            blueprint_id=self.blueprint_id
+        )
         self.cfy.blueprints.download(
             self.blueprint_id,
             output_path=self.downloaded_archive_path

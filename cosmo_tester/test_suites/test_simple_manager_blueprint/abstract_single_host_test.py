@@ -107,10 +107,9 @@ class AbstractSingleHostTest(object):
 
     def _bootstrap(self):
         self.addCleanup(self.cfy.teardown)
-        self.cfy.bootstrap(
+        self.cfy_helper.bootstrap(
             self.test_manager_blueprint_path,
             inputs=self.test_inputs_path,
-            task_retries=5
         )
 
     def _running_env_setup(self, management_ip):

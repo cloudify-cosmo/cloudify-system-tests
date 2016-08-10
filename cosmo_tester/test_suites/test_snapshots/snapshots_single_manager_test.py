@@ -54,7 +54,7 @@ class SnapshotsSingleManagerTest(HelloWorldBashTest):
         snapshot_id = 'helloworld_sn-{0}'.format(time.strftime("%Y%m%d-%H%M"))
 
         dep_inputs = self.client.deployments.get(self.deployment_id).inputs
-        self.create_deployment(
+        self.cfy_helper.create_deployment(
             self.blueprint_id,
             self.additional_dep_id,
             inputs=dep_inputs
@@ -76,8 +76,8 @@ class SnapshotsSingleManagerTest(HelloWorldBashTest):
             snapshot = self.client.snapshots.get(snapshot_id)
         self.assertEqual('created', snapshot.status)
 
-        self.cfy.delete_deployment(self.deployment_id, ignore_live_nodes=True)
-        self.cfy.delete_deployment(self.additional_dep_id)
+        self.cfy.deployments.delete(self.deployment_id, force=True)
+        self.cfy.deployments.delete(self.additional_dep_id)
         self.client.blueprints.delete(self.blueprint_id)
 
         def get_sorted_plugins():
