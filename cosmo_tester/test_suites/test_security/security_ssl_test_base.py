@@ -37,22 +37,14 @@ class SSLTestBase(SecurityTestBase):
         super(SSLTestBase, self)._set_credentials_env_vars()
         os.environ[constants.CLOUDIFY_SSL_TRUST_ALL] = 'true'
 
-    def set_rest_client(self):
-        self.client = CloudifyClient(
-            host=self.env.management_ip,
+    def create_rest_client(self, management_ip):
+        return CloudifyClient(
+            host=management_ip,
             port=constants.SECURED_REST_PORT,
-            protocol=constants.SECURED_PROTOCOL,
+            protocol=constants.SECURED_REST_PROTOCOL,
             headers=util.get_auth_header(username=self.TEST_CFY_USERNAME,
                                          password=self.TEST_CFY_PASSWORD),
             trust_all=True)
-
-    # def _running_env_setup(self):
-    #     self.env.management_ip = self.cfy.get_management_ip()
-    #     self.set_rest_client()
-
-        def clean_mgmt_ip():
-            self.env.management_ip = None
-        self.addCleanup(clean_mgmt_ip)
 
     def is_ssl_enabled(self):
         return True

@@ -17,86 +17,40 @@ import json as _json
 import sys
 import shutil
 
-import fabric
-import fabric.network
-import fabric.api as ssh
-import fabric.context_managers
 from path import path
 
+from cosmo_tester.framework import dockercompute
 from cosmo_tester.framework import util
 from cosmo_tester.framework.testenv import bootstrap, teardown, TestCase
 
 
 def setUp():
     bootstrap()
-    _dockercompute_manager_setup()
 
 
 def tearDown():
     teardown()
 
 
-def _dockercompute_manager_setup():
-    _install_docker_and_configure_image()
-    _upload_dockercompute_plugin()
-
-
-def _install_docker_and_configure_image():
-    from cosmo_tester.framework.testenv import test_environment
-    username = test_environment.management_user_name
-    with fabric.context_managers.settings(
-            host_string=test_environment.management_ip,
-            user=username,
-            key_filename=test_environment.management_key_path):
-        try:
-            images = ssh.run('docker images --format "{{.Repository}}"')
-            if 'cloudify/centos' not in images:
-                raise RuntimeError
-        except:
-            workdir = '/root/dockercompute'
-            commands = [
-                'mkdir -p {0}'.format(workdir),
-                'cd {0}'.format(workdir),
-                'curl -fsSL -o get-docker.sh https://get.docker.com',
-                'bash ./get-docker.sh',
-                'usermod -aG docker {0}'.format(username),
-                'systemctl start docker',
-                'systemctl enable docker',
-                'systemctl status docker',
-            ]
-            ssh.sudo(' && '.join(commands))
-            # Need to reset the connection so subsequent docker calls don't
-            # need sudo
-            fabric.network.disconnect_all()
-            with fabric.context_managers.cd(workdir):
-                ssh.put(util.get_resource_path('dockercompute/Dockerfile'),
-                        'Dockerfile', use_sudo=True)
-                ssh.sudo('docker build -t cloudify/centos:7 .')
-
-
-def _upload_dockercompute_plugin():
-    from cosmo_tester.framework.testenv import test_environment
-    client = test_environment.rest_client
-    docker_compute_plugin = client.plugins.list(
-        package_name='cloudify-dockercompute-plugin',
-        _include=['id']).items
-    if docker_compute_plugin:
-        return
-    wagon_path = util.create_wagon(
-        source_dir=util.get_resource_path('dockercompute/plugin'),
-        target_dir=test_environment._workdir)
-    client.plugins.upload(wagon_path)
-
-
 class DockerComputeTestCase(TestCase):
 
     def setUp(self):
         super(DockerComputeTestCase, self).setUp()
+        dockercompute.manager_setup()
 
-        def cleanup():
-            with self.manager_env_fabric(warn_only=True) as api:
-                api.run('docker rm -f $(docker ps -aq)')
-        self.addCleanup(cleanup)
+    def tearDown(self):
+        # I would rather have this clean added using addCleanup
+        # problem is env.management_ip may be cleared by a test
+        # using addCleanup and when we get to this point we no longer
+        # have an ip. addCleanup funcs are called *after* tearDown
+        # so we should be good (hopefully)
+        with self.manager_env_fabric(warn_only=True) as api:
+            api.run(
+                'docker -H {0} rm -f $('
+                'docker -H {0} ps -aq --filter '
+                'ancestor=cloudify/centos-plain:7)'
+                .format(self.docker_host))
+        super(DockerComputeTestCase, self).tearDown()
 
     def request(self, url, method='GET', json=False, connect_timeout=10):
         command = "curl -X {0} --connect-timeout {1} '{2}'".format(
@@ -127,7 +81,8 @@ class DockerComputeTestCase(TestCase):
             node_id,
             deployment_id=deployment_id).runtime_properties['container_id']
         with self.manager_env_fabric() as api:
-            api.run('docker rm -f {0}'.format(container_id))
+            api.run('docker -H {0} rm -f {1}'.format(
+                self.docker_host, container_id))
 
     def _instance(self, node_id, deployment_id):
         deployment_id = deployment_id or self.test_id
@@ -147,3 +102,7 @@ class DockerComputeTestCase(TestCase):
             patcher.obj['imports'].append(target_plugin_yaml_name)
         shutil.copy(util.get_resource_path('dockercompute/plugin.yaml'),
                     blueprint_yaml.dirname() / target_plugin_yaml_name)
+
+    @property
+    def docker_host(self):
+        return self.env.handler_configuration.get('docker_host', 'fd://')

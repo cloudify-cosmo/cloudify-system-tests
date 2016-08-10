@@ -444,6 +444,8 @@ handler_properties:
     image_sku_windows: '{{azure_os_microsoft_image_sku}}'
     image_version_windows: '{{azure_os_microsoft_image_version}}'
 
+  docker_properties: {}
+
 #####################################################################################
 
 handler_configurations:

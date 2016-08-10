@@ -13,18 +13,18 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-from cosmo_tester.test_suites.test_blueprints.nodecellar_test \
-    import OpenStackNodeCellarTestBase
+from cosmo_tester.test_suites.test_dockercompute import DockerComputeTestCase
+from cosmo_tester.test_suites.test_dockercompute import test_helloworld
 from cosmo_tester.test_suites.test_security.security_ssl_test_base import \
     SSLTestBase
 
 
 class SecuredSSLVerifyDynamicCertPrivateIpNodecellarTest(
-      OpenStackNodeCellarTestBase, SSLTestBase):
+        DockerComputeTestCase, SSLTestBase):
 
     def test_secured_ssl_verify_dynamic_cert_private_ip_nodecellar(self):
         self.setup_secured_manager()
-        self._test_openstack_nodecellar('openstack-blueprint.yaml')
+        test_helloworld.run_docker_hello_world(self)
 
     def get_manager_blueprint_inputs_override(self):
         inputs = \

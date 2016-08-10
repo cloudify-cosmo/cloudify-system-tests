@@ -57,21 +57,11 @@ class BaseCloudifyInputsConfigReader(object):
 
     @property
     def management_user_name(self):
-        raise NotImplementedError('management_user_name property must be '
-                                  'implemented by concrete handler config '
-                                  'reader')
+        return self.config['ssh_user']
 
     @property
     def management_key_path(self):
-        raise NotImplementedError('management_key_path property must be '
-                                  'implemented by concrete handler config '
-                                  'reader')
-
-    @property
-    def docker_url(self):
-        manager = self.manager_blueprint['node_templates'].get('manager', {})
-        packages = manager.get('properties', {}).get('cloudify_packages', {})
-        return packages.get('docker', {}).get('docker_url')
+        return self.config['ssh_key_filename']
 
 
 class BaseHandler(object):
@@ -104,10 +94,6 @@ class BaseHandler(object):
         self.env._config_reader = self.CloudifyConfigReader(
             self.env.cloudify_config,
             manager_blueprint_path=self.env._manager_blueprint_path)
-
-    @property
-    def is_docker_bootstrap(self):
-        return self.env._config_reader.docker_url is not None
 
     def before_bootstrap(self, manager_blueprint_path, inputs_path):
         pass

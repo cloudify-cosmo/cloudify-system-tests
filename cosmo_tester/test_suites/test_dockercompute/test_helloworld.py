@@ -25,8 +25,7 @@ from cosmo_tester.test_suites.test_blueprints.hello_world_bash_test import (
 class DockerComputeHelloWorldTest(DockerComputeTestCase):
 
     def test_dockercompute_hello_world(self):
-        helloworld = DockerHelloWorld(self)
-        helloworld.full_test()
+        run_docker_hello_world(self)
 
 
 class DockerHelloWorld(object):
@@ -96,3 +95,8 @@ class DockerHelloWorld(object):
             self._url = 'http://{0}:8080'.format(
                 self.test_case.ip('vm', deployment_id=self.deployment_id))
         return self._url
+
+
+def run_docker_hello_world(test_case):
+    helloworld = DockerHelloWorld(test_case)
+    helloworld.full_test()

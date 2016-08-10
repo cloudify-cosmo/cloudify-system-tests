@@ -42,8 +42,8 @@ class SecurityTestBase(TestCase):
             self._update_userstore_file()
         self._update_manager_blueprint()
         self._set_credentials_env_vars()
+        self.addCleanup(self.clear_mgmt_and_security_settings)
         self._bootstrap()
-        self._running_env_setup()
 
     def _copy_manager_blueprint(self):
         inputs_path, mb_path = util.generate_unique_configurations(
@@ -179,11 +179,9 @@ class SecurityTestBase(TestCase):
 
     def _bootstrap(self):
         self.addCleanup(self.cfy.teardown, force=True)
-        self.bootstrap(
-            self.test_manager_blueprint_path,
-            inputs=self.test_inputs_path,
-            install_plugins=self.env.install_plugins
-        )
+        self.bootstrap(self.test_manager_blueprint_path,
+                       inputs=self.test_inputs_path,
+                       create_rest_client_func=self.create_rest_client)
 
     def _set_credentials_env_vars(self):
         os.environ[constants.CLOUDIFY_USERNAME_ENV] = self.TEST_CFY_USERNAME
@@ -192,24 +190,14 @@ class SecurityTestBase(TestCase):
     def _unset_credentials_env_vars(self):
         os.environ.pop(constants.CLOUDIFY_USERNAME_ENV, None)
         os.environ.pop(constants.CLOUDIFY_PASSWORD_ENV, None)
+        os.environ.pop(constants.CLOUDIFY_SSL_TRUST_ALL, None)
 
-    def set_rest_client(self):
-        self.client = CloudifyClient(
-            host=self.env.management_ip,
+    def create_rest_client(self, management_ip):
+        return CloudifyClient(
+            host=management_ip,
             headers=util.get_auth_header(username=self.TEST_CFY_USERNAME,
                                          password=self.TEST_CFY_PASSWORD))
-        self.env.rest_client = self.client
 
-    def _running_env_setup(self):
-
-        def clear_mgmt_and_security_settings():
-            self.env.management_ip = None
-            self._unset_credentials_env_vars()
-        self.addCleanup(clear_mgmt_and_security_settings)
-        self.env.management_ip = self.cfy.get_management_ip()
-        self.set_rest_client()
-
-        response = self.client.manager.get_status()
-        if not response['status'] == 'running':
-            raise RuntimeError('Manager at {0} is not running.'
-                               .format(self.env.management_ip))
+    def clear_mgmt_and_security_settings(self):
+        self.env.management_ip = None
+        self._unset_credentials_env_vars()

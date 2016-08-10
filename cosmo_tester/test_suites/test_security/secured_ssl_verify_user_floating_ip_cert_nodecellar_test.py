@@ -19,8 +19,8 @@ from cloudify_cli import constants
 from cloudify_rest_client import CloudifyClient
 
 from cosmo_tester.framework import util
-from cosmo_tester.test_suites.test_blueprints.nodecellar_test import \
-    OpenStackNodeCellarTestBase
+from cosmo_tester.test_suites.test_dockercompute import DockerComputeTestCase
+from cosmo_tester.test_suites.test_dockercompute import test_helloworld
 from cosmo_tester.test_suites.test_security.security_ssl_test_base import \
     SSLTestBase
 
@@ -36,7 +36,7 @@ RESOURCE_ID_PROPERTY = \
 
 
 class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
-      OpenStackNodeCellarTestBase, SSLTestBase):
+      DockerComputeTestCase, SSLTestBase):
 
     def get_manager_blueprint_additional_props_override(self):
         return {
@@ -78,7 +78,7 @@ class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
         # test commented out until functionality fixed - Jira CFY-3766
         self._test_try_to_connect_to_manager_on_non_secured_port()
         # test nodecellar without certificate verification
-        self._test_openstack_nodecellar('openstack-blueprint.yaml')
+        test_helloworld.run_docker_hello_world(self)
 
     def _handle_ssl_files(self):
         ssl_dir = os.path.join(self.workdir, 'manager-blueprint/resources/ssl')
@@ -99,7 +99,7 @@ class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
         client = CloudifyClient(
             host=self.env.management_ip,
             port=constants.DEFAULT_REST_PORT,
-            protocol=constants.DEFAULT_PROTOCOL,
+            protocol=constants.DEFAULT_REST_PROTOCOL,
             headers=util.get_auth_header(username=self.TEST_CFY_USERNAME,
                                          password=self.TEST_CFY_PASSWORD),
             cert=self.cert_path,
@@ -108,7 +108,7 @@ class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
         response = client.manager.get_status()
         if not response['status'] == 'running':
             raise RuntimeError('Failed to get server status from {0}://{1}:{2}'
-                               .format(constants.DEFAULT_PROTOCOL,
+                               .format(constants.DEFAULT_REST_PROTOCOL,
                                        self.env.management_ip,
                                        constants.DEFAULT_REST_PORT))
 
@@ -116,7 +116,7 @@ class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
         client = CloudifyClient(
             host=self.env.management_ip,
             port=constants.SECURED_REST_PORT,
-            protocol=constants.SECURED_PROTOCOL,
+            protocol=constants.SECURED_REST_PROTOCOL,
             headers=util.get_auth_header(username=self.TEST_CFY_USERNAME,
                                          password=self.TEST_CFY_PASSWORD),
             trust_all=True)
@@ -130,7 +130,7 @@ class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
         client = CloudifyClient(
             host=self.env.management_ip,
             port=constants.SECURED_REST_PORT,
-            protocol=constants.SECURED_PROTOCOL,
+            protocol=constants.SECURED_REST_PROTOCOL,
             headers=util.get_auth_header(username=self.TEST_CFY_USERNAME,
                                          password=self.TEST_CFY_PASSWORD),
             trust_all=False)
@@ -147,7 +147,7 @@ class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
         client = CloudifyClient(
             host=self.env.management_ip,
             port=constants.SECURED_REST_PORT,
-            protocol=constants.SECURED_PROTOCOL,
+            protocol=constants.SECURED_REST_PROTOCOL,
             headers=util.get_auth_header(username=self.TEST_CFY_USERNAME,
                                          password=self.TEST_CFY_PASSWORD),
             cert=util.get_resource_path(cert_path),
@@ -162,7 +162,7 @@ class SecuredSSLVerifyUserCertOpenstackNodecellarTest(
         client = CloudifyClient(
             host=self.env.management_ip,
             port=constants.SECURED_REST_PORT,
-            protocol=constants.SECURED_PROTOCOL,
+            protocol=constants.SECURED_REST_PROTOCOL,
             headers=util.get_auth_header(username=self.TEST_CFY_USERNAME,
                                          password=self.TEST_CFY_PASSWORD),
             cert=self.cert_path,

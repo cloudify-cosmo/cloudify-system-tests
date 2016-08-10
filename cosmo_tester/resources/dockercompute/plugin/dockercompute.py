@@ -23,9 +23,10 @@ from cloudify.decorators import operation
 from cloudify.utils import LocalCommandRunner, CommandExecutionException
 from cloudify.exceptions import NonRecoverableError
 
-IMAGE = 'cloudify/centos:7'
+IMAGE = 'cloudify/centos-plain:7'
 PUBLIC_KEY_CONTAINER_PATH = '/etc/ssh/ssh_host_rsa_key.pub'
 PRIVATE_KEY_CONTAINER_PATH = '/etc/ssh/ssh_host_rsa_key'
+DOCKER_HOST_FILE_PATH = '/root/dockercompute/docker_host'
 
 
 @operation
@@ -128,7 +129,9 @@ def _docker_exec(container_id, args, quiet=False):
 
 
 def _docker(subcommand, args, quiet=False):
-    return _run('docker {0} {1}'.format(subcommand, args), quiet=quiet)
+    return _run('docker -H {0} {1} {2}'.format(_docker_host(),
+                                               subcommand, args),
+                quiet=quiet)
 
 
 def _run(command, quiet=False):
@@ -138,3 +141,10 @@ def _run(command, quiet=False):
 
 def _key_path():
     return os.path.join(ctx.plugin.workdir, '{0}.key'.format(ctx.instance.id))
+
+
+def _docker_host():
+    if not os.path.exists(DOCKER_HOST_FILE_PATH):
+        return 'fd://'
+    with open(DOCKER_HOST_FILE_PATH) as f:
+        return f.read().strip()
