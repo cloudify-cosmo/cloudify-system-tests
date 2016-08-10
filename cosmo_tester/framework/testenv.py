@@ -615,8 +615,8 @@ class TestCase(unittest.TestCase):
                             .format(error=e))
             time.sleep(1)
 
-    def get_manager_ip(self):
-        return get_profile_context().manager_ip
+    def get_manager_ip(self, profile_name=None):
+        return get_profile_context(profile_name).manager_ip
 
-    def get_provider_context(self):
-        return get_profile_context().provider_context
+    def get_provider_context(self, profile_name=None):
+        return get_profile_context(profile_name).provider_context

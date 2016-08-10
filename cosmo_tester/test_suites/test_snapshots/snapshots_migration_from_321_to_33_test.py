@@ -208,7 +208,7 @@ class HelloWorldSnapshotMigrationFrom_3_2_1_To_3_3_Test(TestCase):
         self.addCleanup(self._teardown_manager_3_3)
         self.cfy.bootstrap(
             blueprint_path,
-            os.path.join(self.workdir, NEW_MANAGER_INPUTS_NAME),
+            inputs=os.path.join(self.workdir, NEW_MANAGER_INPUTS_NAME),
         )
 
         self.client = create_rest_client(self.cfy.get_management_ip())

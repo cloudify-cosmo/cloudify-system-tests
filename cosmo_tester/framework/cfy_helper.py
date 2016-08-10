@@ -14,29 +14,21 @@
 #    * limitations under the License.
 
 import os
-import json
 import shutil
 import logging
-import tempfile
 from contextlib import contextmanager
 
 import sh
 import sys
 import yaml
 import requests
-from path import path
 
-# from cloudify_cli.utils import (load_cloudify_working_dir_settings,
-#                                 get_configuration_path,
-#                                 update_wd_settings)
 from cosmo_tester.framework.util import (sh_bake,
                                          YamlPatcher,
                                          download_file)
 
-
 # cfy = sh_bake(sh.cfy)
 cfy_out = sh.cfy
-_cfy = None
 
 DEFAULT_EXECUTE_TIMEOUT = 1800
 INPUTS = 'inputs'
@@ -49,25 +41,22 @@ def get_cfy(
         manager_key=None,
         manager_port='22'
 ):
-    global _cfy
-    if _cfy:
-        return _cfy
 
-    _cfy = sh.cfy.bake(
+    cfy = sh.cfy.bake(
         _err_to_out=True,
         _out=lambda l: sys.stdout.write(l),
         _tee=True
     )
 
     if manager_ip is not None:
-        _cfy.use(
+        cfy.use(
             manager_ip,
             manager_user=manager_user,
             manager_key=manager_key,
             manager_port=manager_port
         )
 
-    return _cfy
+    return cfy
 
 
 class CfyHelper(object):
@@ -104,9 +93,6 @@ class CfyHelper(object):
             #             'Failed to set management creds. Note that you will '
             #             'not be able to perform ssh actions after bootstrap. '
             #             'Reason: {0}'.format(ex))
-
-    def bootstrap(self, *args, **kwargs):
-        self._cli.bootstrap(*args, **kwargs).wait()
 
     def _bootstrap(self,
                   blueprint_path,
