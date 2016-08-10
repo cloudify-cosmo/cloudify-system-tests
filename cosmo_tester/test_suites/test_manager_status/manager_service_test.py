@@ -150,7 +150,7 @@ class RebootManagerTest(TestCase):
         os.close(fd)
         self.logger.info('Testing `cfy logs download`')
         try:
-            self.cfy.logs.download(output_path=tmp_log_archive).wait()
+            self.cfy.logs.download(output_path=tmp_log_archive)
             with closing(tarfile.open(name=tmp_log_archive)) as tar:
                 files = [f.name for f in tar.getmembers()]
                 self.assertIn('cloudify/journalctl.log', files)
@@ -160,7 +160,7 @@ class RebootManagerTest(TestCase):
             os.remove(tmp_log_archive)
 
         self.logger.info('Testing `cfy logs backup`')
-        self.cfy.logs.backup(verbose=True).wait()
+        self.cfy.logs.backup(verbose=True)
         try:
             self.assertTrue(
                 sudo('tar -xzvf /var/log/cloudify-manager-logs_*').succeeded)
@@ -170,7 +170,7 @@ class RebootManagerTest(TestCase):
             sudo('rm /var/log/cloudify-manager-logs_*')
 
         self.logger.info('Testing `cfy logs purge`')
-        self.cfy.logs.purge(force=True).wait()
+        self.cfy.logs.purge(force=True)
         self.assertTrue(run(
             '[ ! -s /var/log/cloudify/nginx/cloudify.access.log ]',).succeeded)
         self.logger.info('Success!')
@@ -179,9 +179,6 @@ class RebootManagerTest(TestCase):
         self._update_fabric_env()
         self.logger.info('Test list without tmux installed...')
         try:
-            # TODO: Adding .wait() here results in CloudifyCliError being
-            # raised instead of sh.ErrorReturnCode_1. Not sure if this is
-            # the expected behaviour
             self.cfy.ssh(list_sessions=True)
         except sh.ErrorReturnCode_1 as ex:
             self.assertIn('tmux executable not found on manager', str(ex))
@@ -190,12 +187,12 @@ class RebootManagerTest(TestCase):
         sudo('yum install tmux -y')
 
         self.logger.info('Test listing sessions when non are available..')
-        output = self.cfy.ssh(list_sessions=True).wait().stdout.splitlines()[-1]
+        output = self.cfy.ssh(list_sessions=True).stdout.splitlines()[-1]
         self.assertIn('No sessions are available', output)
         sudo('yum remove tmux -y')
 
         self.logger.info('Test running ssh command...')
-        self.cfy.ssh(command='echo yay! > /tmp/ssh_test_output_file').wait()
+        self.cfy.ssh(command='echo yay! > /tmp/ssh_test_output_file')
         self._check_remote_file_content('/tmp/ssh_test_output_file', 'yay!')
 
     def _check_remote_file_content(self, remote_path, desired_content):

@@ -53,7 +53,7 @@ class DownloadInstallPluginTest(TestCase):
         self.cfy.plugins.download(
             plugin.id,
             output_path=self.downloaded_archive_path
-        ).wait()
+        )
         self.assertTrue(os.path.exists(self.downloaded_archive_path))
 
         # assert plugin metadata integrity
@@ -94,8 +94,8 @@ class DownloadInstallPluginTest(TestCase):
             self.assertEqual(outputs.outputs['test_output'], test_input_value)
         finally:
             self.execute_uninstall()
-            self.cfy.deployments.delete(self.test_id).wait()
-            self.cfy.blueprints.delete(self.test_id).wait()
+            self.cfy.deployments.delete(self.test_id)
+            self.cfy.blueprints.delete(self.test_id)
             shutil.rmtree(blueprint_path)
 
     def _delete_all_plugins(self):

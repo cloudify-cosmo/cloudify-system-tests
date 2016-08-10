@@ -33,7 +33,7 @@ class ExecutionLoggingTest(TestCase):
                     parameters={'operation': 'test.op',
                                 'operation_kwargs': {
                                     'user_cause': user_cause}}
-                ).wait()
+                )
         executions = self.client.executions.list(
             deployment_id=self.test_id,
             workflow_id='execute_operation').items

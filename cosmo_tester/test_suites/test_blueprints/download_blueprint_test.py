@@ -49,7 +49,7 @@ class DownloadBlueprintTest(TestCase):
         self.cfy.blueprints.download(
             self.blueprint_id,
             output_path=self.downloaded_archive_path
-        ).wait()
+        )
         self.assertTrue(os.path.exists(self.downloaded_archive_path))
         self._extract_tar_file()
         downloaded_blueprint_file = os.path.join(

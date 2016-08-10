@@ -54,8 +54,11 @@ class SnapshotsSingleManagerTest(HelloWorldBashTest):
         snapshot_id = 'helloworld_sn-{0}'.format(time.strftime("%Y%m%d-%H%M"))
 
         dep_inputs = self.client.deployments.get(self.deployment_id).inputs
-        self.cfy.create_deployment(self.blueprint_id, self.additional_dep_id,
-                                   inputs=dep_inputs)
+        self.create_deployment(
+            self.blueprint_id,
+            self.additional_dep_id,
+            inputs=dep_inputs
+        )
         self.wait_until_all_deployment_executions_end(self.additional_dep_id)
 
         self.client.snapshots.create(snapshot_id, True, True)

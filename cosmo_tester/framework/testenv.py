@@ -31,10 +31,8 @@ import fabric.api
 import fabric.context_managers
 from path import path
 
-from cosmo_tester.framework.cfy_helper import (get_cfy,
-                                               get_manager_ip,
-                                               get_provider_context,
-                                               DEFAULT_EXECUTE_TIMEOUT)
+from cloudify_cli.env import get_profile_context
+from cosmo_tester.framework.cfy_helper import get_cfy, DEFAULT_EXECUTE_TIMEOUT
 from cosmo_tester.framework.util import (get_blueprint_path,
                                          process_variables,
                                          YamlPatcher,
@@ -219,8 +217,8 @@ class TestEnvironment(object):
             keep_up_on_failure=False,
             task_retries=task_retries,
             verbose=True)
-        self._running_env_setup(get_manager_ip())
-        self.handler.after_bootstrap(get_provider_context())
+        self._running_env_setup(self.get_manager_ip())
+        self.handler.after_bootstrap(self.get_provider_context())
 
     def teardown(self):
         if self._global_cleanup_context is None:
@@ -430,6 +428,7 @@ class TestCase(unittest.TestCase):
             inputs=None):
 
         blueprint_path = blueprint_path or str(self.blueprint_yaml)
+        inputs = self._get_inputs_in_temp_file(inputs, deployment_id)
 
         return self._make_operation_with_before_after_states(
             self.cfy.install,
@@ -451,7 +450,7 @@ class TestCase(unittest.TestCase):
         return self.cfy.blueprints.upload(
             str(self.blueprint_yaml),
             blueprint_id=blueprint_id
-        ).wait()
+        )
 
     def create_deployment(
             self,
@@ -460,11 +459,33 @@ class TestCase(unittest.TestCase):
             inputs=''):
         self.logger.info("attempting to create_deployment deployment {0}"
                          .format(deployment_id))
+
+        inputs = self._get_inputs_in_temp_file(inputs, deployment_id)
+
         return self.cfy.deployments.create(
             blueprint_id=blueprint_id,
             deployment_id=deployment_id,
             inputs=inputs
-        ).wait()
+        )
+
+    def _get_dict_in_temp_file(self, dictionary, prefix, suffix):
+        dictionary = dictionary or {}
+        file_ = tempfile.mktemp(prefix='{0}-'.format(prefix),
+                                suffix=suffix,
+                                dir=self.workdir)
+        with open(file_, 'w') as f:
+            f.write(yaml.dump(dictionary))
+        return file_
+
+    def _get_inputs_in_temp_file(self, inputs, inputs_prefix):
+        return self._get_dict_in_temp_file(dictionary=inputs,
+                                           prefix=inputs_prefix,
+                                           suffix='-inputs.json')
+
+    def _get_parameters_in_temp_file(self, parameters, parameters_prefix):
+        return self._get_dict_in_temp_file(dictionary=parameters,
+                                           prefix=parameters_prefix,
+                                           suffix='-parameters.json')
 
     def _make_operation_with_before_after_states(self, operation, fetch_state,
                                                  *args, **kwargs):
@@ -472,7 +493,7 @@ class TestCase(unittest.TestCase):
         after_state = None
         if fetch_state:
             before_state = self.get_manager_state()
-        operation(*args, **kwargs).wait()
+        operation(*args, **kwargs)
         if fetch_state:
             after_state = self.get_manager_state()
         return before_state, after_state
@@ -545,7 +566,7 @@ class TestCase(unittest.TestCase):
     @contextmanager
     def manager_env_fabric(self, **kwargs):
         with fabric.context_managers.settings(
-                host_string=get_manager_ip(),
+                host_string=self.get_manager_ip(),
                 user=self.env.management_user_name,
                 key_filename=self.env.management_key_path,
                 **kwargs):
@@ -595,4 +616,7 @@ class TestCase(unittest.TestCase):
             time.sleep(1)
 
     def get_manager_ip(self):
-        return get_manager_ip()
+        return get_profile_context().manager_ip
+
+    def get_provider_context(self):
+        return get_profile_context().provider_context

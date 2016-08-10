@@ -81,8 +81,8 @@ class TwoManagersTest(HelloWorldBashTest):
                 patch.append_value(prop, '2')
 
         self.cfy2.bootstrap(
-            blueprint_path=second_manager_blueprint_path,
-            inputs_file=second_cloudify_config_path,
+            second_manager_blueprint_path,
+            inputs=second_cloudify_config_path,
             install_plugins=self.env.install_plugins,
             keep_up_on_failure=False,
             task_retries=5,

@@ -82,7 +82,7 @@ class BrokerSecurityTestBase(TestCase):
             inputs=self.test_inputs_path,
             task_retries=5,
             install_plugins=self.env.install_plugins
-        ).wait()
+        )
 
     def set_rest_client(self):
         self.client = CloudifyClient(

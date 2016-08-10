@@ -46,9 +46,9 @@ class TestManagerPreupgradeValidations(TestCase):
         """Simply run the validations to check that they pass."""
         inputs = self.get_upgrade_inputs()
         with self.cfy.maintenance_mode():
-            self.cfy.upgrade_manager(
-                blueprint_path=self.get_simple_blueprint(),
-                inputs_file=inputs,
+            self.cfy.upgrade(
+                self.get_simple_blueprint(),
+                inputs=inputs,
                 validate_only=True)
 
     def test_elasticsearch_up(self):
@@ -60,9 +60,9 @@ class TestManagerPreupgradeValidations(TestCase):
         inputs = self.get_upgrade_inputs()
         with self.change_es_port(), self.cfy.maintenance_mode():
             try:
-                self.cfy.upgrade_manager(
-                    blueprint_path=self.get_simple_blueprint(),
-                    inputs_file=inputs,
+                self.cfy.upgrade(
+                    self.get_simple_blueprint(),
+                    inputs=inputs,
                     validate_only=True)
             except sh.ErrorReturnCode as e:
                 self.assertIn(
@@ -82,9 +82,9 @@ class TestManagerPreupgradeValidations(TestCase):
         inputs = self.get_upgrade_inputs(elasticsearch_heap_size='1m')
         with self.cfy.maintenance_mode():
             try:
-                self.cfy.upgrade_manager(
-                    blueprint_path=blueprint_path,
-                    inputs_file=inputs,
+                self.cfy.upgrade(
+                    blueprint_path,
+                    inputs=inputs,
                     validate_only=True)
             except sh.ErrorReturnCode as e:
                 self.assertIn(
@@ -116,9 +116,9 @@ class TestManagerPreupgradeValidations(TestCase):
             ]:
                 with self.disable_service(service_name):
                     try:
-                        self.cfy.upgrade_manager(
-                            blueprint_path=blueprint_path,
-                            inputs_file=inputs,
+                        self.cfy.upgrade(
+                            blueprint_path,
+                            inputs=inputs,
                             validate_only=True)
                     except sh.ErrorReturnCode as e:
                         self.assertIn(
@@ -153,9 +153,9 @@ class TestManagerPreupgradeValidations(TestCase):
             ]:
                 with self.move_upgrade_dirs(node_name):
                     try:
-                        self.cfy.upgrade_manager(
-                            blueprint_path=blueprint_path,
-                            inputs_file=inputs,
+                        self.cfy.upgrade(
+                            blueprint_path,
+                            inputs=inputs,
                             validate_only=True)
                     except sh.ErrorReturnCode as e:
                         self.assertIn(
@@ -181,9 +181,9 @@ class TestManagerPreupgradeValidations(TestCase):
 
         with self.cfy.maintenance_mode():
             try:
-                self.cfy.upgrade_manager(
-                    blueprint_path=blueprint_path,
-                    inputs_file=inputs,
+                self.cfy.upgrade(
+                    blueprint_path,
+                    inputs=inputs,
                     validate_only=True)
             except sh.ErrorReturnCode as e:
                 self.assertIn('rabbitmq properties must not change',
@@ -231,9 +231,9 @@ class TestManagerPreupgradeValidations(TestCase):
         with self.cfy.maintenance_mode():
             for inputs in failing_inputs:
                 try:
-                    self.cfy.upgrade_manager(
-                        blueprint_path=blueprint_path,
-                        inputs_file=inputs,
+                    self.cfy.upgrade(
+                        blueprint_path,
+                        inputs=inputs,
                         validate_only=True)
                 except sh.ErrorReturnCode as e:
                     self.assertIn('manager-config properties must not change',
@@ -263,9 +263,9 @@ class TestManagerPreupgradeValidations(TestCase):
 
         with self.cfy.maintenance_mode(), self.change_ssh_user():
             try:
-                self.cfy.upgrade_manager(
-                    blueprint_path=blueprint_path,
-                    inputs_file=self.get_upgrade_inputs(),
+                self.cfy.upgrade(
+                    blueprint_path,
+                    inputs=self.get_upgrade_inputs(),
                     validate_only=True)
 
             except sh.ErrorReturnCode as e:
@@ -298,7 +298,7 @@ class TestManagerPreupgradeValidations(TestCase):
             'ssh_port': 22
         }
         inputs.update(override)
-        return self.cfy._get_inputs_in_temp_file(inputs, 'upgrade')
+        return self._get_inputs_in_temp_file(inputs, 'upgrade')
 
     def get_node_properties_path(self, node_name):
         """Path to the node's properties.json file"""

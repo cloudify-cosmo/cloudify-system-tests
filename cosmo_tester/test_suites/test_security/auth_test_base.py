@@ -82,7 +82,7 @@ class BaseAuthTest(security_test_base.SecurityTestBase):
         self._login_cli(self.admin_username, self.admin_password)
         # item 0 has already been deleted in _assert_delete_blueprint
         for blueprint_id in blueprint_ids[1:]:
-            self.cfy.blueprints.delete(blueprint_id).wait()
+            self.cfy.blueprints.delete(blueprint_id)
 
     def _assert_deployment_operations(self):
         blueprint_id = 'test_deployment_blueprint1'
@@ -91,7 +91,7 @@ class BaseAuthTest(security_test_base.SecurityTestBase):
         self.cfy.blueprints.upload(
             self.blueprint_path,
             blueprint_id=blueprint_id
-        ).wait()
+        )
 
         # test
         deployment_ids = self._assert_create_deployment(blueprint_id)
@@ -102,8 +102,8 @@ class BaseAuthTest(security_test_base.SecurityTestBase):
         self._login_cli(self.admin_username, self.admin_password)
         # item 0 has already been deleted in _assert_delete_deployment
         for deployment_id in deployment_ids[1:]:
-            self.cfy.deployments.delete(deployment_id).wait()
-        self.cfy.blueprints.delete(blueprint_id).wait()
+            self.cfy.deployments.delete(deployment_id)
+        self.cfy.blueprints.delete(blueprint_id)
 
     def _assert_execution_operations(self):
         blueprint_id = 'test_execution_blueprint1'
@@ -115,7 +115,7 @@ class BaseAuthTest(security_test_base.SecurityTestBase):
         self.cfy.blueprints.upload(
             self.blueprint_path,
             blueprint_id=blueprint_id
-        ).wait()
+        )
         for deployment_id in deployment_ids:
             self.cfy.deployments.create(
                 blueprint_id=blueprint_id,
@@ -137,7 +137,7 @@ class BaseAuthTest(security_test_base.SecurityTestBase):
         self._login_cli(self.admin_username, self.admin_password)
         for deployment_id in deployment_ids:
             self.wait_until_all_deployment_executions_end(deployment_id)
-            self.cfy.delete_deployment(deployment_id, ignore_live_nodes=True)
+            self.cfy.deployments.delete(deployment_id, force=True)
         self.cfy.delete_blueprint(blueprint_id)
 
     ##############################
@@ -471,7 +471,7 @@ class BaseAuthTest(security_test_base.SecurityTestBase):
     def _execute_and_get_streams(self, method, *args, **kwargs):
         with self._capture_streams() as (out, err):
             try:
-                method(*args, **kwargs).wait()
+                method(*args, **kwargs)
             except ErrorReturnCode:
                 pass
             except UserUnauthorizedError as e:

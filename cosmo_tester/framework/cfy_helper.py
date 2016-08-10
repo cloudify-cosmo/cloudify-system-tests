@@ -21,6 +21,7 @@ import tempfile
 from contextlib import contextmanager
 
 import sh
+import sys
 import yaml
 import requests
 from path import path
@@ -28,8 +29,6 @@ from path import path
 # from cloudify_cli.utils import (load_cloudify_working_dir_settings,
 #                                 get_configuration_path,
 #                                 update_wd_settings)
-from cloudify_cli.config.config import CLOUDIFY_CONFIG_PATH
-from cloudify_cli.env import get_profile_context
 from cosmo_tester.framework.util import (sh_bake,
                                          YamlPatcher,
                                          download_file)
@@ -37,7 +36,7 @@ from cosmo_tester.framework.util import (sh_bake,
 
 # cfy = sh_bake(sh.cfy)
 cfy_out = sh.cfy
-
+_cfy = None
 
 DEFAULT_EXECUTE_TIMEOUT = 1800
 INPUTS = 'inputs'
@@ -50,24 +49,25 @@ def get_cfy(
         manager_key=None,
         manager_port='22'
 ):
-    cfy = sh_bake(sh.cfy)
+    global _cfy
+    if _cfy:
+        return _cfy
+
+    _cfy = sh.cfy.bake(
+        _err_to_out=True,
+        _out=lambda l: sys.stdout.write(l),
+        _tee=True
+    )
+
     if manager_ip is not None:
-        cfy.use(
+        _cfy.use(
             manager_ip,
             manager_user=manager_user,
             manager_key=manager_key,
             manager_port=manager_port
         )
 
-    return cfy
-
-
-def get_manager_ip():
-        return get_profile_context().manager_ip
-
-
-def get_provider_context():
-    return get_profile_context().provider_context
+    return _cfy
 
 
 class CfyHelper(object):
@@ -409,25 +409,6 @@ class CfyHelper(object):
         cfy.local(
             'install-plugins',
             blueprint_path=blueprint_path).wait()
-
-    def _get_dict_in_temp_file(self, dictionary, prefix, suffix):
-        dictionary = dictionary or {}
-        file_ = tempfile.mktemp(prefix='{0}-'.format(prefix),
-                                suffix=suffix,
-                                dir=self.workdir)
-        with open(file_, 'w') as f:
-            f.write(json.dumps(dictionary))
-        return file_
-
-    def _get_inputs_in_temp_file(self, inputs, inputs_prefix):
-        return self._get_dict_in_temp_file(dictionary=inputs,
-                                           prefix=inputs_prefix,
-                                           suffix='-inputs.json')
-
-    def _get_parameters_in_temp_file(self, parameters, parameters_prefix):
-        return self._get_dict_in_temp_file(dictionary=parameters,
-                                           prefix=parameters_prefix,
-                                           suffix='-parameters.json')
 
     def upgrade_manager(self,
                         blueprint_path,
