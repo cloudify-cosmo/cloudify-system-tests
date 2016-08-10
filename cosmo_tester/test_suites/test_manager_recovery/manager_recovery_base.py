@@ -189,4 +189,4 @@ class BaseManagerRecoveryTest(TestCase):
         # override the client instance to use the correct ip
         self.client = CloudifyClient(self.get_manager_ip())
 
-        self.addCleanup(self.cfy.teardown)
+        self.addCleanup(self.cfy.teardown, force=True)

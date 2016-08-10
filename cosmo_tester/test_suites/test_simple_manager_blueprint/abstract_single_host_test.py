@@ -106,7 +106,7 @@ class AbstractSingleHostTest(object):
                            self.remote_manager_key_path)
 
     def _bootstrap(self):
-        self.addCleanup(self.cfy.teardown)
+        self.addCleanup(self.cfy.teardown, force=True)
         self.cfy_helper.bootstrap(
             self.test_manager_blueprint_path,
             inputs=self.test_inputs_path,

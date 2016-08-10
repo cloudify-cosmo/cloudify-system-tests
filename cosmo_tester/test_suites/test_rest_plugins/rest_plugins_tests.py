@@ -91,4 +91,4 @@ class RestPluginsTests(TestCase):
             inputs=self.test_inputs_path,
             install_plugins=self.env.install_plugins
         )
-        self.addCleanup(self.cfy.teardown)
+        self.addCleanup(self.cfy.teardown, force=True)

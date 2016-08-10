@@ -229,7 +229,7 @@ class TestEnvironment(object):
         cfy = get_cfy()
         try:
             cfy.use(self.management_ip)
-            cfy.teardown(verbose=True)
+            cfy.teardown(force=True, verbose=True)
         finally:
             self._global_cleanup_context.cleanup()
             self.handler.after_teardown()

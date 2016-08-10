@@ -218,7 +218,7 @@ class HelloWorldSnapshotMigrationFrom_3_2_1_To_3_3_Test(TestCase):
     def _teardown_manager_3_3(self):
         self.logger.info('Tearing down manager 3.3')
 
-        self.cfy.teardown()
+        self.cfy.teardown(force=True)
 
     def _run_code_on_manager_3_3(self, code):
         self.logger.info("Running custom code on manager 3.3: '{0}'"
