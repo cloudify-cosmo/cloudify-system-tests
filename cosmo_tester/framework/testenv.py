@@ -219,8 +219,8 @@ class TestEnvironment(object):
             keep_up_on_failure=False,
             task_retries=task_retries,
             verbose=True)
-        self._running_env_setup(self.get_manager_ip())
-        self.handler.after_bootstrap(self.get_provider_context())
+        self._running_env_setup(get_profile_context().manager_ip)
+        self.handler.after_bootstrap(get_profile_context().provider_context)
 
     def teardown(self):
         if self._global_cleanup_context is None:
