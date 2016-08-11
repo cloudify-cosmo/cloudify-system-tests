@@ -344,7 +344,7 @@ class TestCase(unittest.TestCase):
         self.logger.info('Starting test setUp')
         self.workdir = tempfile.mkdtemp(prefix='cosmo-test-')
         management_user = getattr(self.env, 'management_user_name', None)
-        management_port = getattr(self.env, 'management_port', None)
+        management_port = getattr(self.env, 'management_port', 22)
         management_key_path = getattr(self.env, 'management_key_path', None)
 
         self.client = self.env.rest_client
@@ -354,7 +354,7 @@ class TestCase(unittest.TestCase):
 
         self.cfy = get_cfy()
         self.cfy.use(
-            manager_ip=self.env.management_ip,
+            self.env.management_ip,
             manager_user=management_user,
             manager_key=management_key_path,
             manager_port=management_port

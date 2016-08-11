@@ -93,8 +93,8 @@ class AbstractSingleHostTest(object):
 
         # preparing inputs file for bootstrap
         self.test_inputs_path = \
-            self.cfy._get_inputs_in_temp_file(self.bootstrap_inputs,
-                                              self._testMethodName)
+            self.cfy.get_inputs_in_temp_file(self.bootstrap_inputs,
+                                             self._testMethodName)
         self._bootstrap()
         self._running_env_setup(self.public_ip_address)
 
