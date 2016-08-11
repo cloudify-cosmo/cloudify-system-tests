@@ -64,7 +64,7 @@ class NodecellarBackwardsCompatibilityTestBase(TestCase):
 
     def _bootstrap(self):
         self.addCleanup(self.cfy.teardown, force=True)
-        self.cfy_helper.bootstrap(
+        self.bootstrap(
             self.test_manager_blueprint_path,
             inputs=self.test_inputs_path,
             install_plugins=self.env.install_plugins

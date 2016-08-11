@@ -139,8 +139,7 @@ class ManyDeploymentsTest(MonitoringTestCase):
         try:
             while True:
                 start_time = time.time()
-                self.cfy_helper.create_deployment(
-                    blueprint_id=self.test_id,
+                self.create_deployment(
                     deployment_id=self.test_id+str(number_of_deployments)
                 )
                 self.wait_until_all_deployment_executions_end(

@@ -18,30 +18,29 @@ import os
 import sys
 import time
 import json
+import yaml
 import copy
 import shutil
 import logging
+import requests
 import tempfile
 import unittest
 import importlib
+import fabric.api
+from path import path
+import fabric.context_managers
 from contextlib import contextmanager
 
-import yaml
-import fabric.api
-import fabric.context_managers
-from path import path
-
 from cloudify_cli.env import get_profile_context
-from cosmo_tester.framework.cfy_helper import (get_cfy,
-                                               DEFAULT_EXECUTE_TIMEOUT,
-                                               CfyHelper)
+from cloudify_rest_client.executions import Execution
+from cloudify_cli.config.config import CLOUDIFY_CONFIG_PATH
 from cosmo_tester.framework.util import (get_blueprint_path,
                                          process_variables,
                                          YamlPatcher,
+                                         download_file,
                                          generate_unique_configurations,
-                                         create_rest_client)
-
-from cloudify_rest_client.executions import Execution
+                                         create_rest_client,
+                                         get_cfy)
 
 root = logging.getLogger()
 root.setLevel(logging.INFO)
@@ -60,8 +59,9 @@ root.addHandler(ch)
 logger = logging.getLogger('TESTENV')
 logger.setLevel(logging.INFO)
 
-HANDLER_CONFIGURATION = 'HANDLER_CONFIGURATION'
+DEFAULT_EXECUTE_TIMEOUT = 1800
 SUITES_YAML_PATH = 'SUITES_YAML_PATH'
+HANDLER_CONFIGURATION = 'HANDLER_CONFIGURATION'
 
 test_environment = None
 
@@ -319,8 +319,7 @@ class TestCase(unittest.TestCase):
                 self.logger.error('Failed executions found.')
             for e in executions:
                 self.logger.error('Execution {0} logs:'.format(e.id))
-                self.logger.error(self.cfy.list_events(
-                    execution_id=e.id, verbosity='-vv'))
+                self.logger.error(self.cfy.events.list(e.id, '-vv'))
 
         return
 
@@ -335,24 +334,32 @@ class TestCase(unittest.TestCase):
         self.env = test_environment.setup()
         self.logger = logging.getLogger(self._testMethodName)
         self.logger.setLevel(logging.INFO)
+        # TODO: remove before merging
+        logger = logging.getLogger('sh.command')
+        logger.setLevel(logging.WARNING)
+        logger = logging.getLogger('sh.stream_bufferer')
+        logger.setLevel(logging.WARNING)
+        logger = logging.getLogger('cloudify.rest_client')
+        logger.setLevel(logging.WARNING)
         self.logger.info('Starting test setUp')
         self.workdir = tempfile.mkdtemp(prefix='cosmo-test-')
         management_user = getattr(self.env, 'management_user_name', None)
+        management_port = getattr(self.env, 'management_port', None)
         management_key_path = getattr(self.env, 'management_key_path', None)
 
         self.client = self.env.rest_client
         self.test_id = 'system-test-{0}-{1}'.format(
             self._testMethodName,
             time.strftime("%Y%m%d-%H%M"))
-        self.cfy_helper = CfyHelper(
-            client=self.client,
-            workdir=self.workdir,
-            test_id=self.test_id,
+
+        self.cfy = get_cfy()
+        self.cfy.use(
             manager_ip=self.env.management_ip,
             manager_user=management_user,
-            manager_key=management_key_path
+            manager_key=management_key_path,
+            manager_port=management_port
         )
-        self.cfy = self.cfy_helper.cfy
+
         self.blueprint_yaml = None
         self._test_cleanup_context = self.env.handler.CleanupContext(
             self._testMethodName, self.env)
@@ -537,7 +544,7 @@ class TestCase(unittest.TestCase):
             inputs=None):
 
         blueprint_path = blueprint_path or str(self.blueprint_yaml)
-        inputs = self.cfy_helper.get_inputs_in_temp_file(inputs, deployment_id)
+        inputs = self.get_inputs_in_temp_file(inputs, deployment_id)
 
         return self._make_operation_with_before_after_states(
             self.cfy.install,
@@ -584,3 +591,121 @@ class TestCase(unittest.TestCase):
             timeout=DEFAULT_EXECUTE_TIMEOUT,
             include_logs=True
         )
+
+    def _get_dict_in_temp_file(self, dictionary, prefix, suffix):
+        # If the input is None/{}/[]/'' just pass an empty string
+        if not dictionary:
+            return ''
+
+        # In case it's a path/string representing a path, we can return it as is
+        try:
+            if os.path.isfile(dictionary):
+                # Cast from path to string, if necessary
+                return str(dictionary)
+        except TypeError:
+            pass
+
+        file_ = tempfile.mktemp(prefix='{0}-'.format(prefix),
+                                suffix=suffix,
+                                dir=self.workdir)
+        with open(file_, 'w') as f:
+            f.write(yaml.dump(dictionary))
+        return file_
+
+    def get_inputs_in_temp_file(self, inputs, inputs_prefix):
+        return self._get_dict_in_temp_file(dictionary=inputs,
+                                           prefix=inputs_prefix,
+                                           suffix='-inputs.yaml')
+
+    def get_parameters_in_temp_file(self, parameters, parameters_prefix):
+        return self._get_dict_in_temp_file(dictionary=parameters,
+                                           prefix=parameters_prefix,
+                                           suffix='-parameters.yaml')
+
+    def create_deployment(
+            self,
+            blueprint_id=None,
+            deployment_id=None,
+            inputs=''):
+        self.logger.info("Attempting to create_deployment deployment {0}"
+                         .format(deployment_id))
+
+        blueprint_id = blueprint_id or self.test_id
+        deployment_id = deployment_id or self.test_id
+        inputs = self.get_inputs_in_temp_file(inputs, deployment_id)
+
+        return self.cfy.deployments.create(
+            blueprint_id=blueprint_id,
+            deployment_id=deployment_id,
+            inputs=inputs
+        )
+
+    def bootstrap(self,
+                  blueprint_path,
+                  inputs=None,
+                  install_plugins=True,
+                  keep_up_on_failure=False,
+                  validate_only=False,
+                  task_retries=5,
+                  task_retry_interval=90,
+                  subgraph_retries=2,
+                  verbose=False):
+
+        with YamlPatcher(CLOUDIFY_CONFIG_PATH) as patch:
+            prop_path = ('local_provider_context.'
+                         'cloudify.workflows.subgraph_retries')
+            patch.set_value(prop_path, subgraph_retries)
+
+        inputs_file = self.get_inputs_in_temp_file(inputs, 'manager')
+
+        self.cfy.bootstrap(
+            blueprint_path,
+            inputs=inputs_file,
+            install_plugins=install_plugins,
+            keep_up_on_failure=keep_up_on_failure,
+            validate_only=validate_only,
+            task_retries=task_retries,
+            task_retry_interval=task_retry_interval,
+            verbose=verbose,
+        )
+
+        if not validate_only:
+            self._upload_plugins()
+
+    def _download_wagons(self):
+        self.logger.info('Downloading Wagons...')
+
+        wagon_paths = []
+
+        plugin_urls_location = (
+            'https://raw.githubusercontent.com/cloudify-cosmo/'
+            'cloudify-versions/{branch}/packages-urls/plugin-urls.yaml'.format(
+                branch=os.environ.get('BRANCH_NAME_CORE', 'master'),
+            )
+        )
+
+        plugins = yaml.load(
+            requests.get(plugin_urls_location).text
+        )['plugins']
+        for plugin in plugins:
+            self.logger.info(
+                'Downloading: {0}...'.format(plugin['wgn_url'])
+            )
+            wagon_paths.append(
+                download_file(plugin['wgn_url'])
+            )
+        return wagon_paths
+
+    def _upload_plugins(self):
+        downloaded_wagon_paths = self._download_wagons()
+        for wagon in downloaded_wagon_paths:
+            self.logger.info('Uploading {0}'.format(wagon))
+            self.cfy.plugins.upload(wagon, verbose=True)
+
+    @contextmanager
+    def maintenance_mode(self):
+        self.cfy.maintenance_mode.activate(wait=True)
+        try:
+            yield
+        finally:
+            self.cfy.maintenance_mode.deactivate(wait=True)

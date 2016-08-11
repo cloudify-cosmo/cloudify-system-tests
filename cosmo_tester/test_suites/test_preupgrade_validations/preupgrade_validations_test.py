@@ -45,7 +45,7 @@ class TestManagerPreupgradeValidations(TestCase):
     def test_default_validations(self):
         """Simply run the validations to check that they pass."""
         inputs = self.get_upgrade_inputs()
-        with self.cfy.maintenance_mode():
+        with self.maintenance_mode():
             self.cfy.upgrade(
                 self.get_simple_blueprint(),
                 inputs=inputs,
@@ -58,7 +58,7 @@ class TestManagerPreupgradeValidations(TestCase):
         the port number the validation is checking.
         """
         inputs = self.get_upgrade_inputs()
-        with self.change_es_port(), self.cfy.maintenance_mode():
+        with self.change_es_port(), self.maintenance_mode():
             try:
                 self.cfy.upgrade(
                     self.get_simple_blueprint(),
@@ -80,7 +80,7 @@ class TestManagerPreupgradeValidations(TestCase):
         # which surely must be lower than whatever the manager is
         # currently using!
         inputs = self.get_upgrade_inputs(elasticsearch_heap_size='1m')
-        with self.cfy.maintenance_mode():
+        with self.maintenance_mode():
             try:
                 self.cfy.upgrade(
                     blueprint_path,
@@ -102,7 +102,7 @@ class TestManagerPreupgradeValidations(TestCase):
         blueprint_path = self.get_simple_blueprint()
         inputs = self.get_upgrade_inputs()
 
-        with self.cfy.maintenance_mode():
+        with self.maintenance_mode():
             # we can't test nginx or the restservice this way, because if we
             # turn them off, we won't be able to execute the upgrade :)
             for service_name, display_name in [
@@ -139,7 +139,7 @@ class TestManagerPreupgradeValidations(TestCase):
         blueprint_path = self.get_simple_blueprint()
         inputs = self.get_upgrade_inputs()
 
-        with self.cfy.maintenance_mode():
+        with self.maintenance_mode():
             for node_name in [
                 'influxdb',
                 'rabbitmq',
@@ -179,7 +179,7 @@ class TestManagerPreupgradeValidations(TestCase):
         changed_properties = self.get_changed_rabbit_properties()
         inputs = self.get_upgrade_inputs(**changed_properties)
 
-        with self.cfy.maintenance_mode():
+        with self.maintenance_mode():
             try:
                 self.cfy.upgrade(
                     blueprint_path,
@@ -228,7 +228,7 @@ class TestManagerPreupgradeValidations(TestCase):
             ),
         ]
 
-        with self.cfy.maintenance_mode():
+        with self.maintenance_mode():
             for inputs in failing_inputs:
                 try:
                     self.cfy.upgrade(
@@ -261,7 +261,7 @@ class TestManagerPreupgradeValidations(TestCase):
         self.use_existing_on_update(blueprint_path, 'manager_configuration',
                                     False)
 
-        with self.cfy.maintenance_mode(), self.change_ssh_user():
+        with self.maintenance_mode(), self.change_ssh_user():
             try:
                 self.cfy.upgrade(
                     blueprint_path,
@@ -298,7 +298,7 @@ class TestManagerPreupgradeValidations(TestCase):
             'ssh_port': 22
         }
         inputs.update(override)
-        return self._get_inputs_in_temp_file(inputs, 'upgrade')
+        return self.get_inputs_in_temp_file(inputs, 'upgrade')
 
     def get_node_properties_path(self, node_name):
         """Path to the node's properties.json file"""

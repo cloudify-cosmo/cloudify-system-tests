@@ -85,7 +85,7 @@ class OpenStackScaleNodeCellarTest(OpenStackNodeCellarTestBase):
             delta=delta,
             scale_compute=True
         )
-        parameters = self._get_parameters_in_temp_file(parameters, 'scale')
+        parameters = self.get_parameters_in_temp_file(parameters, 'scale')
         self.cfy.executtion.start(
             'scale',
             deployment_id=self.test_id,

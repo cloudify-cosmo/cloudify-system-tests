@@ -20,7 +20,7 @@ from influxdb import InfluxDBClient
 from cloudify_rest_client.exceptions import CloudifyClientError
 from cosmo_tester.framework.git_helper import clone
 from cosmo_tester.framework.test_cases import MonitoringTestCase
-from cosmo_tester.framework.cfy_helper import DEFAULT_EXECUTE_TIMEOUT
+from cosmo_tester.framework.testenv import DEFAULT_EXECUTE_TIMEOUT
 
 
 class NodecellarAppTest(MonitoringTestCase):

@@ -86,7 +86,7 @@ class RestPluginsTests(TestCase):
         self.assertIn('mock_attribute_value', output)
 
     def _bootstrap(self):
-        self.cfy_helper.bootstrap(
+        self.bootstrap(
             self.test_manager_blueprint_path,
             inputs=self.test_inputs_path,
             install_plugins=self.env.install_plugins

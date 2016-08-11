@@ -48,8 +48,8 @@ class ExecutionLoggingTest(TestCase):
                           expect_debug,
                           expect_traceback,
                           expect_rest_logs):
-            events = self.cfy.list_events(execution_id=no_user_cause_ex_id,
-                                          verbosity=verbosity)
+            events = self.cfy.events.list(no_user_cause_ex_id, verbosity)
+
             assert_in = self.assertIn
             assert_not_in = self.assertNotIn
             assert_in('INFO: INFO_MESSAGE', events)
@@ -63,13 +63,14 @@ class ExecutionLoggingTest(TestCase):
             assert_not_in('RuntimeError: ERROR_MESSAGE', events)
             rest_assert = assert_in if expect_rest_logs else assert_not_in
             rest_assert('Sending request:', events)
-            user_cause_events = self.cfy.list_events(
-                execution_id=user_cause_ex_id,
-                verbosity=verbosity)
+            user_cause_events = self.cfy.events.list(
+                user_cause_ex_id,
+                verbosity
+            )
             causes_assert = assert_in if expect_traceback else assert_not_in
             causes_assert('Causes', user_cause_events)
             causes_assert('RuntimeError: ERROR_MESSAGE', user_cause_events)
-        assert_output(verbosity='',
+        assert_output(verbosity=[],  # sh handles '' as an argument, but not []
                       expect_traceback=False,
                       expect_debug=False,
                       expect_rest_logs=False)
@@ -82,10 +83,6 @@ class ExecutionLoggingTest(TestCase):
                       expect_debug=True,
                       expect_rest_logs=False)
         assert_output(verbosity='-vvv',
-                      expect_traceback=True,
-                      expect_debug=True,
-                      expect_rest_logs=True)
-        assert_output(verbosity='--debug',
                       expect_traceback=True,
                       expect_debug=True,
                       expect_rest_logs=True)

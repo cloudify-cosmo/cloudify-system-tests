@@ -20,9 +20,9 @@ import string
 
 from cloudify_rest_client.exceptions import CloudifyClientError
 
-from cosmo_tester.framework.cfy_helper import get_cfy
 from cosmo_tester.framework.testenv import bootstrap, teardown
-from cosmo_tester.framework.util import create_rest_client, YamlPatcher
+from cosmo_tester.framework.util import create_rest_client, \
+    YamlPatcher, get_cfy
 from cosmo_tester.test_suites.test_blueprints.hello_world_bash_test import (
     HelloWorldBashTest)
 

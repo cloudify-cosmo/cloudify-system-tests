@@ -72,7 +72,7 @@ class OpenstackPluginTests(TestCase):
         inputs['nova_url'] = nova_url
         inputs['neutron_url'] = neutron_url
 
-        self.cfy_helper.bootstrap(
+        self.bootstrap(
             self.blueprint_path,
             inputs=inputs,
             validate_only=True,

@@ -31,9 +31,8 @@ from cloudify.workflows import local
 
 from cosmo_tester.framework.testenv import TestCase
 from cosmo_tester.framework.git_helper import clone
-from cosmo_tester.framework.cfy_helper import get_cfy
-
-from cosmo_tester.framework.util import create_rest_client, YamlPatcher
+from cosmo_tester.framework.util import create_rest_client, \
+    YamlPatcher, get_cfy
 
 
 BOOTSTRAP_REPO_URL = 'https://github.com/cloudify-cosmo/' \
@@ -265,7 +264,7 @@ class BaseManagerUpgradeTest(TestCase):
 
     def bootstrap_manager(self):
         self.bootstrap_blueprint = self.get_bootstrap_blueprint()
-        inputs_path = self.manager_cfy._get_inputs_in_temp_file(
+        inputs_path = self.get_inputs_in_temp_file(
             self.manager_inputs, self._testMethodName)
 
         try:
@@ -327,7 +326,7 @@ class BaseManagerUpgradeTest(TestCase):
             'image': self.env.ubuntu_trusty_image_name,
             'flavor': self.env.flavor_name
         }
-        inputs = self._get_inputs_in_temp_file(inputs, deployment_id)
+        inputs = self.get_inputs_in_temp_file(inputs, deployment_id)
         self.manager_cfy.deployments.create(
             deployment_id,
             blueprint_id=blueprint_id,
@@ -374,12 +373,12 @@ class BaseManagerUpgradeTest(TestCase):
             'ssh_port': 22,
             'elasticsearch_endpoint_port': 9900
         }
-        upgrade_inputs_file = self._get_inputs_in_temp_file(
+        upgrade_inputs_file = self.get_inputs_in_temp_file(
             self.upgrade_inputs,
             self._testMethodName
         )
 
-        with self.manager_cfy.maintenance_mode():
+        with self.maintenance_mode():
             self.manager_cfy.upgrade(
                 self.upgrade_blueprint,
                 inputs=upgrade_inputs_file,
@@ -462,12 +461,12 @@ class BaseManagerUpgradeTest(TestCase):
             'ssh_port': 22,
             'ssh_user': self.manager_inputs['ssh_user']
         }
-        rollback_inputs_file = self._get_inputs_in_temp_file(
+        rollback_inputs_file = self.get_inputs_in_temp_file(
             rollback_inputs,
             self._testMethodName
         )
 
-        with self.manager_cfy.maintenance_mode():
+        with self.maintenance_mode():
             self.manager_cfy.rollback(blueprint, inputs=rollback_inputs_file)
 
     def post_rollback_checks(self, preupgrade_deployment_id):

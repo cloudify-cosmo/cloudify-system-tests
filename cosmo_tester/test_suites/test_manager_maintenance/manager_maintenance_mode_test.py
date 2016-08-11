@@ -44,9 +44,7 @@ class ManagerMaintenanceModeTest(TestCase):
             self.blueprint_yaml,
             blueprint_id=self.test_id
         )
-        self.cfy_helper.create_deployment(
-            self.test_id,
-            self.test_id,
+        self.create_deployment(
             inputs={
                 'image': self.env.ubuntu_trusty_image_id,
                 'flavor': self.env.small_flavor_id,

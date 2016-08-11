@@ -206,7 +206,7 @@ class HelloWorldSnapshotMigrationFrom_3_2_1_To_3_3_Test(TestCase):
             )
 
         self.addCleanup(self._teardown_manager_3_3)
-        self.cfy_helper.bootstrap(
+        self.bootstrap(
             blueprint_path,
             inputs=os.path.join(self.workdir, NEW_MANAGER_INPUTS_NAME),
         )

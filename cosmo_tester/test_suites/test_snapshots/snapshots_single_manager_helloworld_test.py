@@ -74,7 +74,7 @@ class SnapshotsHelloWorldTest(TestCase):
             'image': self.env.ubuntu_trusty_image_name,
             'flavor': self.env.flavor_name
         }
-        self.cfy_helper.create_deployment(
+        self.create_deployment(
             blueprint_id,
             deployment_id,
             inputs=inputs

@@ -123,7 +123,7 @@ class MultiDeploymentParallelExecutionTest(MonitoringTestCase):
         inputs = params_dict.get('inputs', '')
         self.logger.info("creating deployment {0}"
                          .format(deployment_id))
-        result = self.cfy_helper.create_deployment(
+        result = self.create_deployment(
             blueprint_id,
             deployment_id,
             inputs

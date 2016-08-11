@@ -28,7 +28,7 @@ class ManyInstancesTest(TestCase):
             self.blueprint_yaml,
             blueprint_id=self.test_id
         )
-        self.cfy_helper.create_deployment(self.test_id, self.test_id)
+        self.create_deployment()
 
         # elasticsearch takes its time, so it might initially fail
         # with IndexError

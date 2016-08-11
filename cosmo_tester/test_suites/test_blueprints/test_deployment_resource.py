@@ -37,7 +37,7 @@ class DeploymentResourceTest(TestCase):
             self.blueprint_yaml,
             blueprint_id=blueprint_id
         )
-        self.cfy_helper.create_deployment(
+        self.create_deployment(
             blueprint_id,
             deployment_id,
             inputs={'resource_path': RESOURCE_PATH}

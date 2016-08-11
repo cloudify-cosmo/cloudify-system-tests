@@ -34,7 +34,7 @@ class BaseManagerRecoveryTest(TestCase):
         self._copy_manager_blueprint()
 
         # bootstrap and install
-        self.bootstrap()
+        self._bootstrap()
         self._install_blueprint()
 
     def _pre_recover_actions(self):
@@ -118,7 +118,7 @@ class BaseManagerRecoveryTest(TestCase):
         # the same. this will also test that the workflows worker is still
         # responding to tasks.
         parameters = {'operation': 'cloudify.interfaces.greet.hello'}
-        parameters = self._get_parameters_in_temp_file(
+        parameters = self.get_parameters_in_temp_file(
             parameters,
             self.deployment_id
         )
@@ -179,8 +179,8 @@ class BaseManagerRecoveryTest(TestCase):
             recover,
             fetch_state=True)
 
-    def bootstrap(self):
-        self.cfy_helper.bootstrap(
+    def _bootstrap(self):
+        self.bootstrap(
             self.test_manager_blueprint_path,
             inputs=self.test_inputs_path,
             install_plugins=self.env.install_plugins

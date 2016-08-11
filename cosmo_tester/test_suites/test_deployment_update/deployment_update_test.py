@@ -138,7 +138,7 @@ class DeploymentUpdateTest(testenv.TestCase):
 
     @wait_for_deployment_update_to_finish
     def _update_deployment(self, deployment_id, blueprint_path, inputs=None):
-        inputs = self._get_inputs_in_temp_file(inputs, deployment_id)
+        inputs = self.get_inputs_in_temp_file(inputs, deployment_id)
         self.update_counter += 1
         self.cfy.deployments.update(
             deployment_id,
