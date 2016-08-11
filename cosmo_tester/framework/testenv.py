@@ -652,6 +652,8 @@ class TestCase(unittest.TestCase):
                   subgraph_retries=2,
                   verbose=False):
 
+        self.cfy.init(reset_context=True)
+
         with YamlPatcher(CLOUDIFY_CONFIG_PATH) as patch:
             prop_path = ('local_provider_context.'
                          'cloudify.workflows.subgraph_retries')
