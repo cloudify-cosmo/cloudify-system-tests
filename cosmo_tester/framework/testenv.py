@@ -335,12 +335,12 @@ class TestCase(unittest.TestCase):
         self.logger = logging.getLogger(self._testMethodName)
         self.logger.setLevel(logging.INFO)
         # TODO: remove before merging
-        logger = logging.getLogger('sh.command')
-        logger.setLevel(logging.WARNING)
-        logger = logging.getLogger('sh.stream_bufferer')
-        logger.setLevel(logging.WARNING)
-        logger = logging.getLogger('cloudify.rest_client')
-        logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('sh.command')
+        # logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('sh.stream_bufferer')
+        # logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('cloudify.rest_client')
+        # logger.setLevel(logging.WARNING)
         self.logger.info('Starting test setUp')
         self.workdir = tempfile.mkdtemp(prefix='cosmo-test-')
         management_user = getattr(self.env, 'management_user_name', None)
@@ -353,12 +353,13 @@ class TestCase(unittest.TestCase):
             time.strftime("%Y%m%d-%H%M"))
 
         self.cfy = get_cfy()
-        self.cfy.use(
-            self.env.management_ip,
-            manager_user=management_user,
-            manager_key=management_key_path,
-            manager_port=management_port
-        )
+        if self.env.management_ip:
+            self.cfy.use(
+                self.env.management_ip,
+                manager_user=management_user,
+                manager_key=management_key_path,
+                manager_port=management_port
+            )
 
         self.blueprint_yaml = None
         self._test_cleanup_context = self.env.handler.CleanupContext(
