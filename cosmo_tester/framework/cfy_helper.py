@@ -150,6 +150,15 @@ class CfyHelper(object):
 
     def _get_dict_in_temp_file(self, dictionary, prefix, suffix):
         dictionary = dictionary or {}
+
+        # In case it's a path/string representing a path, we can return it as is
+        try:
+            if os.path.isfile(dictionary):
+                # Cast from path to string, if necessary
+                return str(dictionary)
+        except TypeError:
+            pass
+
         file_ = tempfile.mktemp(prefix='{0}-'.format(prefix),
                                 suffix=suffix,
                                 dir=self._workdir)
