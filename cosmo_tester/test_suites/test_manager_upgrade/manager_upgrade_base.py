@@ -282,8 +282,7 @@ class BaseManagerUpgradeTest(TestCase):
 
             self._execute_command(cfy_init_cmd.split(), cwd=self.cfy_workdir)
             # execute bootstrap
-            bootstrap_cmd = '{0}/cfy bootstrap -p {1} -i {2} ' \
-                            '--install-plugins'\
+            bootstrap_cmd = '{0}/cfy bootstrap {1} -i {2} --install-plugins'\
                 .format(py_bin_path, self.bootstrap_blueprint, inputs_path)
             self._execute_command(bootstrap_cmd.split(), cwd=self.cfy_workdir)
 
