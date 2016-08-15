@@ -539,7 +539,7 @@ class TestCase(unittest.TestCase):
     @contextmanager
     def manager_env_fabric(self, **kwargs):
         with fabric.context_managers.settings(
-                host_string=self.get_manager_ip(),
+                host_string=self.env.management_ip or self.get_manager_ip(),
                 user=self.env.management_user_name,
                 key_filename=self.env.management_key_path,
                 **kwargs):
