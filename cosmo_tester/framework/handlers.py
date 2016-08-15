@@ -109,7 +109,7 @@ class BaseHandler(object):
     def is_docker_bootstrap(self):
         return self.env._config_reader.docker_url is not None
 
-    def before_bootstrap(self):
+    def before_bootstrap(self, manager_blueprint_path, inputs_path):
         pass
 
     def after_bootstrap(self, provider_context):

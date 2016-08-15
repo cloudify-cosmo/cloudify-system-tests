@@ -240,9 +240,14 @@ class TestEnvironment(object):
             patch.set_value(prop_path, subgraph_retries)
 
         if not validate_only:
-            self.before_bootstrap(
-                manager_blueprint_path=blueprint_path,
-                inputs_path=inputs_path)
+            # TODO: add manager_blueprint_path and inputs path arguments to
+            # openstack_plugin
+            try:
+                self.before_bootstrap(
+                    manager_blueprint_path=blueprint_path,
+                    inputs_path=inputs_path)
+            except TypeError:
+                self.before_bootstrap()
 
         cfy.bootstrap(
             blueprint_path,
