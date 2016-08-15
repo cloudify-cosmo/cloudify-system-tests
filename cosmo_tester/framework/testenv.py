@@ -657,7 +657,7 @@ class TestCase(unittest.TestCase):
         cfy.uninstall(
             deployment_id or self.test_id,
             workflow_id='uninstall',
-            parameters=None,
+            parameters=self.get_parameters_in_temp_file({}, 'uninstall'),
             allow_custom_parameters=False,
             timeout=DEFAULT_EXECUTE_TIMEOUT,
             include_logs=True
