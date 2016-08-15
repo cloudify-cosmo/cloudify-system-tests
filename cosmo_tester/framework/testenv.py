@@ -208,19 +208,58 @@ class TestEnvironment(object):
 
         self._global_cleanup_context = self.handler.CleanupContext(
             'testenv', self)
-        cfy = get_cfy()
 
-        self.handler.before_bootstrap()
+        self._bootstrap(self._manager_blueprint_path,
+                        inputs_path=self.cloudify_config_path,
+                        install_plugins=self.install_plugins,
+                        keep_up_on_failure=False,
+                        task_retries=task_retries,
+                        verbose=True)
+
+    def _bootstrap(self,
+                   blueprint_path,
+                   inputs_path=None,
+                   install_plugins=None,
+                   keep_up_on_failure=False,
+                   validate_only=False,
+                   task_retries=5,
+                   task_retry_interval=90,
+                   subgraph_retries=2,
+                   verbose=False,
+                   create_rest_client_func=None):
+
+        if install_plugins is None:
+            install_plugins = test_environment.install_plugins
+
+        cfy = get_cfy()
         cfy.init(reset_context=True)
+
+        with YamlPatcher(CLOUDIFY_CONFIG_PATH) as patch:
+            prop_path = ('local_provider_context.'
+                         'cloudify.workflows.subgraph_retries')
+            patch.set_value(prop_path, subgraph_retries)
+
+        if not validate_only:
+            self.before_bootstrap(
+                manager_blueprint_path=blueprint_path,
+                inputs_path=inputs_path)
+
         cfy.bootstrap(
-            self._manager_blueprint_path,
-            inputs=self.cloudify_config_path,
-            install_plugins=self.install_plugins,
-            keep_up_on_failure=False,
+            blueprint_path,
+            inputs=inputs_path,
+            install_plugins=install_plugins,
+            keep_up_on_failure=keep_up_on_failure,
+            validate_only=validate_only,
             task_retries=task_retries,
-            verbose=True)
-        self._running_env_setup(get_profile_context().manager_ip)
-        self.handler.after_bootstrap(get_profile_context().provider_context)
+            task_retry_interval=task_retry_interval,
+            verbose=verbose,
+        )
+
+        if not validate_only:
+            self._upload_plugins()
+            self._running_env_setup(get_profile_context().manager_ip,
+                                    create_rest_client_func)
+            self.after_bootstrap(get_profile_context().provider_context)
 
     def teardown(self):
         if self._global_cleanup_context is None:
@@ -236,9 +275,10 @@ class TestEnvironment(object):
             if os.path.exists(self._workdir):
                 shutil.rmtree(self._workdir)
 
-    def _running_env_setup(self, management_ip):
+    def _running_env_setup(self, management_ip, create_rest_client_func=None):
+        create_rest_client_func = create_rest_client_func or create_rest_client
         self.management_ip = management_ip
-        self.rest_client = create_rest_client(management_ip)
+        self.rest_client = create_rest_client_func(management_ip)
         response = self.rest_client.manager.get_status()
         if not response['status'] == 'running':
             raise RuntimeError('Manager at {0} is not running.'
@@ -262,6 +302,36 @@ class TestEnvironment(object):
         else:
             raise AttributeError(
                 'Property \'{0}\' was not found in env'.format(item))
+
+    def _download_wagons(self):
+        self.logger.info('Downloading Wagons...')
+
+        wagon_paths = []
+
+        plugin_urls_location = (
+            'https://raw.githubusercontent.com/cloudify-cosmo/'
+            'cloudify-versions/{branch}/packages-urls/plugin-urls.yaml'.format(
+                branch=os.environ.get('BRANCH_NAME_CORE', 'master'),
+            )
+        )
+
+        plugins = yaml.load(
+            requests.get(plugin_urls_location).text
+        )['plugins']
+        for plugin in plugins:
+            self.logger.info(
+                'Downloading: {0}...'.format(plugin['wgn_url'])
+            )
+            wagon_paths.append(
+                download_file(plugin['wgn_url'])
+            )
+        return wagon_paths
+
+    def _upload_plugins(self):
+        downloaded_wagon_paths = self._download_wagons()
+        for wagon in downloaded_wagon_paths:
+            self.logger.info('Uploading {0}'.format(wagon))
+            get_cfy().plugins.upload(wagon, verbose=True)
 
 
 class TestCase(unittest.TestCase):
@@ -364,17 +434,17 @@ class TestCase(unittest.TestCase):
         self.blueprint_yaml = None
         self._test_cleanup_context = self.env.handler.CleanupContext(
             self._testMethodName, self.env)
-        # register cleanup
         self.addCleanup(self._cleanup)
         self.maxDiff = 1024 * 1024 * 10
 
     def _cleanup(self):
+        self.logger.info('Starting test cleanup')
         self.env.setup()
         self._test_cleanup_context.cleanup()
         shutil.rmtree(self.workdir)
 
     def tearDown(self):
-        self.logger.info('Starting test tearDown')
+        pass
         # note that the cleanup function is registered in setUp
         # because it is called regardless of whether setUp succeeded or failed
         # unlike tearDown which is not called when setUp fails (which might
@@ -598,7 +668,8 @@ class TestCase(unittest.TestCase):
         if not dictionary:
             return ''
 
-        # In case it's a path/string representing a path, we can return it as is
+        # In case it's a path/string representing a path, we can return it as
+        # is
         try:
             if os.path.isfile(dictionary):
                 # Cast from path to string, if necessary
@@ -644,66 +715,26 @@ class TestCase(unittest.TestCase):
     def bootstrap(self,
                   blueprint_path,
                   inputs=None,
-                  install_plugins=True,
+                  install_plugins=None,
                   keep_up_on_failure=False,
                   validate_only=False,
                   task_retries=5,
                   task_retry_interval=90,
                   subgraph_retries=2,
-                  verbose=False):
-
-        self.cfy.init(reset_context=True)
-
-        with YamlPatcher(CLOUDIFY_CONFIG_PATH) as patch:
-            prop_path = ('local_provider_context.'
-                         'cloudify.workflows.subgraph_retries')
-            patch.set_value(prop_path, subgraph_retries)
-
-        inputs_file = self.get_inputs_in_temp_file(inputs, 'manager')
-
-        self.cfy.bootstrap(
+                  verbose=False,
+                  create_rest_client_func=None):
+        self.env._bootstrap(
             blueprint_path,
-            inputs=inputs_file,
+            inputs_path=self.get_inputs_in_temp_file(inputs, 'manager'),
             install_plugins=install_plugins,
             keep_up_on_failure=keep_up_on_failure,
             validate_only=validate_only,
             task_retries=task_retries,
             task_retry_interval=task_retry_interval,
+            subgraph_retries=subgraph_retries,
             verbose=verbose,
-        )
-
-        if not validate_only:
-            self._upload_plugins()
-
-    def _download_wagons(self):
-        self.logger.info('Downloading Wagons...')
-
-        wagon_paths = []
-
-        plugin_urls_location = (
-            'https://raw.githubusercontent.com/cloudify-cosmo/'
-            'cloudify-versions/{branch}/packages-urls/plugin-urls.yaml'.format(
-                branch=os.environ.get('BRANCH_NAME_CORE', 'master'),
-            )
-        )
-
-        plugins = yaml.load(
-            requests.get(plugin_urls_location).text
-        )['plugins']
-        for plugin in plugins:
-            self.logger.info(
-                'Downloading: {0}...'.format(plugin['wgn_url'])
-            )
-            wagon_paths.append(
-                download_file(plugin['wgn_url'])
-            )
-        return wagon_paths
-
-    def _upload_plugins(self):
-        downloaded_wagon_paths = self._download_wagons()
-        for wagon in downloaded_wagon_paths:
-            self.logger.info('Uploading {0}'.format(wagon))
-            self.cfy.plugins.upload(wagon, verbose=True)
+            create_rest_client_func=create_rest_client_func)
+        self.client = self.env.rest_client
 
     @contextmanager
     def maintenance_mode(self):
