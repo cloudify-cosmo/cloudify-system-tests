@@ -304,4 +304,3 @@ class RebootManagerTest(TestCase):
                             'Verifying compressed log exists: {0}...'.format(
                                 compressed_log_path))
                         self.assertTrue(exists(compressed_log_path))
-

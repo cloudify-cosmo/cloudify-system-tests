@@ -58,7 +58,8 @@ class DockerHAProxyNodeCellar(DockerNodeCellar):
             delta=delta,
             scale_compute=True
         )
-        parameters = self.test_case.get_parameters_in_temp_file(parameters, 'scale')
+        parameters = self.test_case.get_parameters_in_temp_file(parameters,
+                                                                'scale')
         self.test_case.cfy.executions.start(
             'scale',
             deployment_id=self.deployment_id,
