@@ -1,0 +1,195 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.4/types.yaml
+  - http://www.getcloudify.org/spec/fabric-plugin/1.4.1/plugin.yaml
+  - http://www.getcloudify.org/spec/aws-plugin/1.4.1/plugin.yaml
+
+inputs:
+
+  slave_on_master:
+    description: install slave and master on the same machine
+    type: string
+    default: 'false'
+
+  master_private_ip:
+      description: slave private ip
+      type: string
+      default: localhost
+
+  machine_type:
+    description: Jenkins machine-type for install.sh scrip usage
+    type: string
+    default: 'master'
+
+  master_webserver_port:
+    description: Jenkins Master port
+    type: integer
+    default: 8080
+
+  ssh_user:
+    type: string
+    default: 'ubuntu'
+
+  ssh_key:
+    type: string
+
+  jenkins_user_name:
+    type: string
+    default: 'jenkins'
+
+  vault_token:
+    type: string
+
+  github_username:
+    type: string
+
+  github_password:
+    type: string
+
+  aws_access_key_id:
+    description: Your AWS access key id
+    type: string
+    default: ''
+
+  aws_secret_access_key:
+    description: Your AWS secret key
+    type: string
+    default: ''
+
+  aws_region_name:
+    description: Sets the AWS region
+    type: string
+    default: ''
+
+  ec2_region_endpoint:
+    description: Sets the AWS region endpoint
+    type: string
+    default: ''
+
+  aws_server_image_id:
+    description: Which AMI will be used
+    type: string
+    default: ''
+
+  my_security_group_id:
+    description: Security name created by Cloudify
+    type: string
+    default: ''
+
+  keypair_name:
+    description: Keypair name created by Cloudify in AWS
+    type: string
+    default: jenkins_master_kepair
+
+  my_server_id:
+    description: instance id in AWS
+    type: string
+    default: ''
+
+dsl_definitions:
+  aws_config: &AWS_CONFIG
+    aws_access_key_id: { get_input: aws_access_key_id }
+    aws_secret_access_key: { get_input: aws_secret_access_key }
+    ec2_region_name: { get_input: aws_region_name }
+    ec2_region_endpoint: { get_input: ec2_region_endpoint }
+
+  slave_fabric_env: &slave_fabric_env
+    host_string: { get_attribute: [ my_host, public_ip_address ] }
+    user: { get_input: ssh_user }
+    key_filename: { get_input: ssh_key }
+
+node_templates:
+   slave:
+     type: cloudify.nodes.Compute
+     properties:
+       install_agent: false
+     interfaces:
+       cloudify.interfaces.lifecycle:
+         create:
+           implementation: fabric.fabric_plugin.tasks.run_script
+           inputs:
+             script_path: scripts/install.sh
+             process:
+               env:
+                 MASTER_HOST_IP: { get_input: master_private_ip }
+                 JENKINS_MACHINE_TYPE: { get_input: machine_type }
+                 JENKINS_PORT: { get_input: master_webserver_port }
+                 JENKINS_USER_NAME: { get_input: jenkins_user_name }
+                 SLAVE_ON_MASTER: { get_input: slave_on_master }
+                 VAULT_TOKEN: { get_input: vault_token }
+                 GITHUB_USERNAME: { get_input: github_username }
+                 GITHUB_PASSWORD: { get_input: github_password }
+                 SSH_PASSWORD: { get_input: ssh_key }
+             use_sudo: false
+             fabric_env: *slave_fabric_env
+         start:
+           implementation: fabric.fabric_plugin.tasks.run_commands
+           inputs:
+             commands:
+               - sudo service jenkins-slave restart
+             use_sudo: false
+             fabric_env: *slave_fabric_env
+         stop:
+           implementation: fabric.fabric_plugin.tasks.run_commands
+           inputs:
+             commands:
+               - sudo service jenkins-slave stop
+             use_sudo: false
+             fabric_env: *slave_fabric_env
+     relationships:
+           - target: my_host
+             type: cloudify.relationships.contained_in
+
+   my_host:
+     # Set the sceme to use, based on Cloudify cloudify.aws.nodes.Instance type
+     type: cloudify.aws.nodes.Instance
+     capabilities:
+       # Set the amount of instances you want
+       scalable:
+         properties:
+           default_instances: 1
+     # Set of properties to define your template
+     properties:
+       aws_config: *AWS_CONFIG
+       resource_id: { get_input: my_server_id }
+       install_agent: false
+       image_id: { get_input: aws_server_image_id }
+       instance_type: m3.medium
+     relationships:
+     # Position the resource in Cloudify hierarchy
+       - target: my_keypair
+         type: cloudify.aws.relationships.instance_connected_to_keypair
+       - target: my_security_group
+         type: cloudify.aws.relationships.instance_connected_to_security_group
+
+   my_keypair:
+     # Resource needed to connect to VM
+     type: cloudify.aws.nodes.KeyPair
+     properties:
+       aws_config: *AWS_CONFIG
+       resource_id: { get_input: keypair_name }
+       private_key_path: { get_input: ssh_key }
+
+   my_security_group:
+     # Creates the Security group for the VM
+     type: cloudify.aws.nodes.SecurityGroup
+     properties:
+       description: ds
+       aws_config: *AWS_CONFIG
+       use_external_resource: False
+       resource_id: { get_input: my_security_group_id }
+       rules:
+        - ip_protocol: tcp
+          from_port: 0
+          to_port: 65000
+          cidr_ip: 0.0.0.0/0
+
+
+outputs:
+  my_server:
+    description: My server running on AWS
+    value:
+      active_server_ip: { get_attribute: [ my_host, public_ip_address ] }
+      keypair_path: { get_property: [ my_keypair, private_key_path ] }
+
