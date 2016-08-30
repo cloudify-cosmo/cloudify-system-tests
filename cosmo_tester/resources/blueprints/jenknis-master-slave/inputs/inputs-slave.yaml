@@ -1,4 +1,3 @@
-
 master_private_ip: ''
 
 master_webserver_port: '8080'
@@ -30,4 +29,3 @@ aws_server_image_id: 'ami-ed82e39e'
 my_security_group_id: 'jenkins_slave_sec_group'
 
 keypair_name: 'slave_key'
-

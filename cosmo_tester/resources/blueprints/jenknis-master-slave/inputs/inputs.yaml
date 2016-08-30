@@ -1,4 +1,3 @@
-
 master_webserver_port: '8080'
 
 machine_type: 'master'
@@ -28,4 +27,3 @@ aws_server_image_id: 'ami-ed82e39e'
 my_security_group_id: 'jenkins_master_sec_group'
 
 keypair_name: 'agent_key'
-

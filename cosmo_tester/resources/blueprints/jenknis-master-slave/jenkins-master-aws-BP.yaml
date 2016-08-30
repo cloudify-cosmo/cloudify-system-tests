@@ -193,4 +193,3 @@ outputs:
       description: Web server external endpoint
       value: { concat: ['http://', { get_attribute: [ my_host, public_ip_address ] },
                         ':', { get_input: master_webserver_port }] }
-

@@ -192,4 +192,3 @@ outputs:
     value:
       active_server_ip: { get_attribute: [ my_host, public_ip_address ] }
       keypair_path: { get_property: [ my_keypair, private_key_path ] }
-
