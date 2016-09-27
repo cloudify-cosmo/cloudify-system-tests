@@ -331,6 +331,9 @@ class TestEnvironment(object):
             requests.get(plugin_urls_location).text
         )['plugins']
         for plugin in plugins:
+            if plugin['name'] == 'openstack_centos_core':
+                plugin['wgn_url'] = 'http://repository.cloudifysource.org/org/cloudify3/wagons/cloudify-openstack-plugin/1.4/cloudify_openstack_plugin-1.4-py27-none-linux_x86_64-centos-Core.wgn'
+                plugin['plugin_yaml_url'] = 'http://www.getcloudify.org/spec/openstack-plugin/1.4/plugin.yaml'
             self.logger.info(
                 'Downloading: {0}...'.format(plugin['wgn_url'])
             )
