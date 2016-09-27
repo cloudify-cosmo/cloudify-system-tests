@@ -15,6 +15,19 @@ This repository contains Cloudify's system tests which in most cases mean that t
 
 In addition, plugins functionality is tested and Cloudify's examples.
 
+* requirements:
+
+pip version 1.5 or higher.
+python-devel (centos).
+python-dev (ubuntu).
+gcc (ubuntu, centos).
+
+yum install python-devel gcc -y
+apt-get install python-dev gcc -y
+
+add server_name to the manager-inputs file.
+
+
 ## Running System Tests
 
 The following example demonstrates how to run Cloudify's node cellar example system test on an OpenStack environment:
