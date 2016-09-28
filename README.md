@@ -15,17 +15,17 @@ This repository contains Cloudify's system tests which in most cases mean that t
 
 In addition, plugins functionality is tested and Cloudify's examples.
 
-* requirements:
+* Requirements:
 
-pip version 1.5 or higher.
-python-devel (centos).
-python-dev (ubuntu).
-gcc (ubuntu, centos).
+<ul><li>pip version 1.5 or higher.</li>
+<li>python-devel (centos).</li>
+<li>python-dev (ubuntu).</li>
+<li>gcc</li></ul>
 
 yum install python-devel gcc -y
 apt-get install python-dev gcc -y
 
-add server_name to the manager-inputs file.
+In order to get the test running, uncomment the manager_server_name in the manager-inputs file of your manager blueprint.
 
 
 ## Running System Tests
