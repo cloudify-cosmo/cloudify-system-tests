@@ -13,8 +13,11 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+from nose.tools import nottest
 from test_cli_package import TestCliPackage
 from ubuntu_base import Ubuntu14Base
+from telecom_base import TelecomBase
+from cosmo_tester.framework.ui_phantomjs_env import UiPhantomjsEnv
 
 
 class TestUbuntu14(Ubuntu14Base, TestCliPackage):
@@ -22,3 +25,16 @@ class TestUbuntu14(Ubuntu14Base, TestCliPackage):
     def test_ubuntu14_cli_package(self):
         self._add_dns()
         self._test_cli_package()
+
+
+class TestUbuntu14Telecom(Ubuntu14Base, TestCliPackage, TelecomBase):
+    @property
+    def package_parameter_name(self):
+        return 'DEBIAN_TELCO_CLI_PACKAGE_URL'
+
+    @nottest
+    def test_ubuntu14_telecom_cli_package(self):
+        self._add_dns()
+        self._test_cli_package()
+        self.driver = UiPhantomjsEnv.setup_phantomjs_env()
+        self._verify_telecom_manager_edition()

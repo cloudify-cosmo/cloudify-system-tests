@@ -23,12 +23,14 @@ import base64
 from nose.tools import nottest
 import winrm
 import yaml
+from cosmo_tester.framework.ui_phantomjs_env import UiPhantomjsEnv
 
 from cloudify_cli import constants as cli_constants
 
 from cosmo_tester.framework.util import YamlPatcher
 from test_cli_package import TestCliPackage, CHECK_URL
 from test_offline_cli_package import TestOfflineCliPackage
+from telecom_base import TelecomBase
 
 WINRM_PORT = 5985
 CLI_PACKAGE_EXE = 'windows-cli-package.exe'
@@ -384,6 +386,23 @@ class TestWindowsBootstrap(TestWindowsBase):
     def test_windows_cli_package(self):
         self._add_dns_on_windows()
         self._test_cli_package()
+
+    def add_dns_nameservers_to_manager_blueprint(self, local_modify_script):
+        pass
+
+
+class TestWindowsTelecomBootstrap(TestWindowsBase, TelecomBase):
+
+    @property
+    def package_parameter_name(self):
+        return 'WINDOWS_TELCO_CLI_PACKAGE_URL'
+
+    @nottest
+    def test_windows_telecom_cli_package(self):
+        self._add_dns_on_windows()
+        self._test_cli_package()
+        self.driver = UiPhantomjsEnv.setup_phantomjs_env()
+        self._verify_telecom_manager_edition()
 
     def add_dns_nameservers_to_manager_blueprint(self, local_modify_script):
         pass
