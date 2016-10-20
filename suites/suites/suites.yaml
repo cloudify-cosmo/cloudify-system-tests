@@ -12,14 +12,6 @@ variables:
   lab_openstack_ubuntu_precise: d81ccdfe-7482-460e-a7ce-69ea29aa129b
   lab_openstack_ubuntu_trusty: c6d36e11-f4d5-4221-b6e8-4e97914c67e9
 
-  mirantis_openstack_ubuntu_precise_image_name: ubuntu_12_04
-  mirantis_openstack_ubuntu_trusty_image_name: Ubuntu 14.04 x64 LTS
-  mirantis_openstack_ubuntu_precise: c19a4a25-958b-4a10-88bd-6b6d89b69e99
-  mirantis_openstack_ubuntu_trusty: 798e43f2-252e-43f5-a0a8-97371a3c8afa
-  mirantis_openstack_centos_6_5_image_name: centos_6_5
-  mirantis_openstack_centos_7_image_name: centos_7
-  mirantis_openstack_windows_image_name: windows_2012_r2
-
   datacentred_openstack_ubuntu_precise_image_name: Ubuntu 12.04
   datacentred_openstack_ubuntu_trusty_image_name: Ubuntu 14.04
   datacentred_openstack_ubuntu_precise: 2f91391d-ff21-4410-a063-d4e947845980
@@ -101,9 +93,6 @@ variables:
 
   system_tests_lab_os_username: _
   system_tests_lab_os_password: _
-
-  system_tests_mirantis_os_username: _
-  system_tests_mirantis_os_password: _
 
   system_tests_datacentred_os_username: _
   system_tests_datacentred_os_password: _
@@ -290,10 +279,6 @@ templates:
     keystone_username: '{{system_tests_lab_os_username}}'
     keystone_password: '{{system_tests_lab_os_password}}'
 
-  - &mirantis_openstack_credentials_inputs
-    keystone_username: '{{system_tests_mirantis_os_username}}'
-    keystone_password: '{{system_tests_mirantis_os_password}}'
-
   - &datacentred_openstack_credentials_inputs
     keystone_username: '{{system_tests_datacentred_os_username}}'
     keystone_password: '{{system_tests_datacentred_os_password}}'
@@ -302,9 +287,6 @@ templates:
 
   - &lab_openstack_inputs
     image_id: '{{lab_openstack_centos_7_image_id}}'
-
-  - &mirantis_openstack_inputs
-    image_id: '{{mirantis_openstack_ubuntu_trusty}}'
 
   - &datacentred_openstack_inputs
     image_id: '{{datacentred_openstack_centos_7_image_id}}'
@@ -321,13 +303,6 @@ templates:
     manager_blueprint: openstack-manager-blueprint.yaml
     manager_blueprint_override: *openstack_manager_blueprint_override
     properties: lab_openstack_properties
-
-  - &mirantis_openstack_handler_configuration
-    <<: *openstack_handler_configuration
-    inputs: inputs-mirantis-openstack.yaml
-    manager_blueprint: openstack-manager-blueprint.yaml
-    manager_blueprint_override: *openstack_manager_blueprint_override
-    properties: mirantis_openstack_properties
 
   - &datacentred_openstack_handler_configuration
     <<: *openstack_handler_configuration
@@ -354,20 +329,6 @@ handler_properties:
     flavor_name: m1.small
     small_flavor_id: ba4e08fd-e4c5-4233-a906-f1bb31cb659d
     medium_flavor_id: 8b5be402-98e6-461c-8425-56f708187c13
-
-  mirantis_openstack_properties:
-    ubuntu_precise_image_name: '{{mirantis_openstack_ubuntu_precise_image_name}}'
-    ubuntu_trusty_image_name: '{{mirantis_openstack_ubuntu_trusty_image_name}}'
-    ubuntu_precise_image_id: '{{mirantis_openstack_ubuntu_precise}}'
-    ubuntu_trusty_image_id: '{{mirantis_openstack_ubuntu_trusty}}'
-    centos_image_name: '{{mirantis_openstack_centos_6_5_image_name}}'
-    centos_image_user: root
-    centos_7_image_name: '{{mirantis_openstack_centos_7_image_name}}'
-    centos_7_image_user: centos
-    windows_image_name: '{{mirantis_openstack_windows_image_name}}'
-    flavor_name: m1.small
-    small_flavor_id: 2
-    medium_flavor_id: 3
 
   datacentred_openstack_properties:
     ubuntu_image_user: '{{ubuntu_image_user}}'
@@ -490,44 +451,6 @@ handler_configurations:
       <<: *lab_openstack_credentials_inputs
       <<: *lab_openstack_inputs
       keystone_tenant_name: system-tests/system-test-5
-
-  ###############################################################################
-
-  mirantis_openstack_system_tests1:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_1
-    tags: [openstack, mirantis]
-    inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-1
-
-  mirantis_openstack_system_tests2:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_2
-    tags: [openstack, mirantis]
-    inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-2
-
-  mirantis_openstack_system_tests3:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_3
-    tags: [openstack, mirantis]
-    inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-3
-
-  mirantis_openstack_system_tests4:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_4
-    tags: [openstack, mirantis]
-    inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-4
 
   ###############################################################################
 
