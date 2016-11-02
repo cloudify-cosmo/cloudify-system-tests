@@ -14,6 +14,3 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-
-def setUp():
-    raise RuntimeError('Snapshot tests are currently skipped.')
