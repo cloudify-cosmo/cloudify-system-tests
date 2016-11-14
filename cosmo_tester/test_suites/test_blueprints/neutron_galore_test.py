@@ -13,11 +13,13 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import os
+import socket
 import time
 
 import fabric.api
 import fabric.contrib.files
+
+from retrying import retry
 
 from cosmo_tester.framework.testenv import TestCase
 from cosmo_tester.framework.util import (
@@ -160,14 +162,14 @@ class NeutronGaloreTest(TestCase):
             {'remote_ip_prefix': '0.0.0.0/0',
              'port_range_min': 0,
              'port_range_max': 0,
-             'protocol': 'icmp',
+             'protocol': 'ssh',
              'direction': 'ingress'})
         self.assert_obj_list_contains_subset(
             openstack['sg_3']['security_group_rules'],
             {'remote_ip_prefix': '0.0.0.0/0',
              'port_range_min': 0,
              'port_range_max': 0,
-             'protocol': 'icmp',
+             'protocol': 'ssh',
              'direction': 'egress'})
         self.assertEqual(node_states['floatingip']['floating_ip_address'],
                          openstack['floatingip']['floating_ip_address'])
@@ -197,8 +199,7 @@ class NeutronGaloreTest(TestCase):
         self.assert_router_connected_to_subnet(openstack['router']['id'],
                                                openstack['router_ports'],
                                                openstack['subnet']['id'])
-        # check the ICMP security group rule for allowing ping is ok
-        self._assert_ping_to_server(
+        self._assert_ssh_connectivity(
             ip=node_states['floatingip2']['floating_ip_address'])
 
     def post_uninstall_assertions(self):
@@ -230,16 +231,13 @@ class NeutronGaloreTest(TestCase):
 
         self._post_use_external_resource_uninstall_assertions(bp_and_dep_name)
 
-    def _assert_ping_to_server(self, ip):
-        for i in range(3):
-            exit_code = os.system('ping -c 1 {0}'.format(ip))
-            if exit_code == 0:
-                return
-            else:
-                time.sleep(3)
-
-        self.fail('Failed to ping server {0}; Exit code for ping command was '
-                  '{1}'.format(ip, exit_code))
+    @retry(stop_max_attempt_number=10, wait_fixed=5000)
+    def _assert_ssh_connectivity(self, ip):
+        self.logger.info(
+                'Verifying SSH port is reachable... [ip={}]'.format(ip))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(10)
+        s.connect((ip, 22))
 
     def _modify_blueprint_use_external_resource(self):
         node_instances = self.client.node_instances.list(
