@@ -131,13 +131,12 @@ node_templates:
             disable_default_egress_rules: True
             rules:
                 -   protocol: icmp
-                    port_range_min: 0
-                    port_range_max: 0
+                    port: -1
                     remote_ip_prefix: 0.0.0.0/0
                 -   direction: egress
                     protocol: icmp
                     remote_ip_prefix: 0.0.0.0/0
-                    port: 0
+                    port: -1
     security_group_4:
         type: cloudify.openstack.nodes.SecurityGroup
         properties:
