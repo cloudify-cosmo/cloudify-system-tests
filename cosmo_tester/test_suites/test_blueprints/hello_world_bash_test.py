@@ -136,6 +136,9 @@ class HelloWorldBashTest(AbstractHelloWorldTest):
                 commands=['sudo service iptables save',
                           'sudo service iptables stop',
                           'sudo chkconfig iptables off'])
+            import time
+            self.logger.info('############# sleeping for an hour ###########')
+            time.sleep(60 * 60)
         self._run(inputs=inputs, after_install=after_install)
 
     def _do_post_install_assertions(self):
