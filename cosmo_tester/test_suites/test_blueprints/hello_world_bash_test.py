@@ -113,7 +113,14 @@ class HelloWorldBashTest(AbstractHelloWorldTest):
             'image': self.env.ubuntu_trusty_image_name,
             'flavor': self.env.flavor_name
         }
-        self._run(inputs=inputs, delete_deployment=False)
+
+        def after_install():
+            import time
+            self.logger.info('############# sleeping for an hour ###########')
+            time.sleep(60 * 60)
+
+        self._run(inputs=inputs, delete_deployment=False,
+                  after_install=after_install)
         # checking reinstallation scenario
         self._run(inputs=inputs, is_existing_deployment=True)
 
