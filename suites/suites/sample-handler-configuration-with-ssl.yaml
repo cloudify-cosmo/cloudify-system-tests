@@ -1,0 +1,122 @@
+######################################################
+### NOTE: If you plan on using this sample configuration,
+### please copy it to some directory that is not
+### managed by git to avoid accidental commits
+
+######################################################
+# first tries to import system_tests.{0} (external handlers)
+# falls back to suites.helpers.handlers.{0}.handler (non external handlers)
+handler: openstack_handler
+
+######################################################
+# full path to manager blueprint inputs
+inputs: ~/path/to/inputs.yaml
+
+######################################################
+# full path to manager blueprint
+manager_blueprint: ~/path/to/manager-blueprint.yaml
+
+######################################################
+# name of handler_properties entry in suites.yaml.
+# each property of the named entry will be accessible as
+# an attribute of self.env in tests.
+# e.g. for {my_image_id: afd32-312d} the following applies
+# in tests: self.env.my_image_id == 'afd32-312d'.
+# specifying this attribute is required depending on
+# the handler in use and the tests that are to be
+# executed
+properties: datacentred_openstack_properties
+
+######################################################
+# if specified, tests will run using an existing manager,
+# otherwise, bootstrap will be called in the beginning of
+# each test suite and teardown at the end of it.
+# manager_ip:
+
+######################################################
+# this feature is used extensively in suites.yaml
+# though it is less useful when running tests locally.
+# any entry specified here will override (or add) an entry
+# to the inputs.yaml file.
+# dot notation may be used to override nested fields
+# (uses YamlPatcher internally)
+inputs_override:
+  rabbitmq_ssl_enabled: true
+  rabbitmq_cert_private: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC4pXhZBdwGr5XA
+    ris+0Dp1m1YMbeu6432OgX2qyn5AQ0Vu9Oz8l6Vb876wcPYPVaPjZ3nkSItRcCgC
+    HfMEiLeJOTj0OiAGm7vDZuIxIIft7kMrZqxUKv8QFBEmvPgLikHxU8K31daqc/sY
+    m5cFJbgz/XpVhF83c4GNUIW636SixeJS7VxIvKVQPXL4Yijsza/xuRg6WzZuRCtI
+    I0Z6IkaEqkrRWfcjARonEqBqhyU6XqnYgqDRM3ghipCtDwXEP6CxwqxkvQY7EgwD
+    7mZt++VU92ROyStYS9/k1t0wML+6KXGFD+XzGUpEzreXRMZ9OLqf2lsbGisaqSe3
+    T8RaeeQVAgMBAAECggEARSJfbyWMfkxby6rqsjgQy1v/2eOGMZFfv22oebwbjUAi
+    zSqTWPgGh+k5aqLA3nj4RfrGXrzyvOk7cZ95ECeIYK62Lmtc9lx07vKkmjRN8L4X
+    FDb7KwB2Q7Tfvxtd3CRGEG+GJoLAP03xpAMNhnXbBExR85b+d6qdxSVzDMcTw4Wl
+    IxQBbfQJn3kqY7FP+HiIBkzKHHA8Tjq8WvaohyR4y44EFpVf+PBRmFppM0IPWIx+
+    c0p3wYfj2Z/U1wYHVRg2ywKAyv/zU5xkdoFL3m8hddA/t1LLhywt+fJ1C2BqR7jX
+    jgIBRvxORYXmsV1PvKPJfnpVwqBkmIZ4/r9SdIjouQKBgQDdmLhGAuErSANYpO2w
+    fqjcTs4qkrGaZVquDh6LOonKLA35azHLFnFSH2xQozhVeZXmLroEraKMt5gabOne
+    +4wA8Pzt9Mt0qzuSO4NYt6tcuHd6uSTGrk4LQF2PGiqWI/qvBt6iQC6f5O79k3GV
+    NMO8sJXLlDQf4RdEZGtZJUEq1wKBgQDVUC1nNgFKITyRACRJltju8NeaPgmKsM6A
+    /E7vT2a+J+w3T5CpQp8R/c0QTxEwasHOPou2k14eSgwEdig3DCTc4F7Li8qb78fe
+    eIwUdF5uZPAHN9iRtpOXhpxT+MwI04QLg380dOiQ25A5+G6r48kUMgodFwlbRs7y
+    GtK2U1ZW8wKBgErL5r8y75/1UbPVD6m4RvT94Jb8JtiPh3kiqOqj2qiUEC91IDyF
+    mcB3fM8HGNe5D4C/muhDV4+Z1MxuoM40KACVVzpWm2oI9jWYwu/qJvxIA4Q4BBLP
+    +OXRVwMbeO5uvInhjrpDYbl0w7pxzy/mvH7vN9CceK+eAYWDQ7y2V3XHAoGAcl9J
+    6NQA/wExG0HrMvXJnNvPjikDLrS8FFaz8AYvvXdkZQepNce9yIS/paXvPnmPLolE
+    mgEL7sufA+liiJlfTnqS+Sob2V5IWRVjbjgyxZgjRot/+Cjfm9gWC8QTigv2+cFo
+    u/SPGdRP0XVNyaYZk1V9LLnET4d4wED3h8DJQ1cCgYB6GVo5OY0n/v/rI/WVdiKq
+    OL3HVlBwxYj9yFvGcYJX9JPnf+YaYsLr91BceeASJ0OmBXhhOb6eHyW93pKJXonZ
+    KSwNVceeo7X50XQrDHvTz4BgOhwlulQwoam8Z4OTK2gjJo2QGUJPA1+HUADg6hvI
+    rZDPMHTbsqTQUsT7V5COyQ==
+    -----END PRIVATE KEY-----
+  rabbitmq_cert_public: |
+    -----BEGIN CERTIFICATE-----
+    MIIEDzCCAvegAwIBAgIJAM5zcZVbmCrQMA0GCSqGSIb3DQEBCwUAMIGdMQswCQYD
+    VQQGEwJJUzEPMA0GA1UECAwGSXNyYWVsMREwDwYDVQQHDAhIZXJ6bGl5YTETMBEG
+    A1UECgwKR2lnYXNwYWNlczEMMAoGA1UECwwDUiZEMRwwGgYDVQQDDBNzZXJ2ZXIu
+    Y2xvdWRpZnkub3JnMSkwJwYJKoZIhvcNAQkBFhpjb3Ntby1hZG1pbkBnaWdhc3Bh
+    Y2VzLmNvbTAeFw0xNTA0MTIwNzIxMzlaFw0xNjA0MTEwNzIxMzlaMIGdMQswCQYD
+    VQQGEwJJUzEPMA0GA1UECAwGSXNyYWVsMREwDwYDVQQHDAhIZXJ6bGl5YTETMBEG
+    A1UECgwKR2lnYXNwYWNlczEMMAoGA1UECwwDUiZEMRwwGgYDVQQDDBNzZXJ2ZXIu
+    Y2xvdWRpZnkub3JnMSkwJwYJKoZIhvcNAQkBFhpjb3Ntby1hZG1pbkBnaWdhc3Bh
+    Y2VzLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALileFkF3Aav
+    lcCuKz7QOnWbVgxt67rjfY6BfarKfkBDRW707PyXpVvzvrBw9g9Vo+NneeRIi1Fw
+    KAId8wSIt4k5OPQ6IAabu8Nm4jEgh+3uQytmrFQq/xAUESa8+AuKQfFTwrfV1qpz
+    +xiblwUluDP9elWEXzdzgY1QhbrfpKLF4lLtXEi8pVA9cvhiKOzNr/G5GDpbNm5E
+    K0gjRnoiRoSqStFZ9yMBGicSoGqHJTpeqdiCoNEzeCGKkK0PBcQ/oLHCrGS9BjsS
+    DAPuZm375VT3ZE7JK1hL3+TW3TAwv7opcYUP5fMZSkTOt5dExn04up/aWxsaKxqp
+    J7dPxFp55BUCAwEAAaNQME4wHQYDVR0OBBYEFEgftshgMq6qbvH4F0y/w8N1trlI
+    MB8GA1UdIwQYMBaAFEgftshgMq6qbvH4F0y/w8N1trlIMAwGA1UdEwQFMAMBAf8w
+    DQYJKoZIhvcNAQELBQADggEBAEpvfex7wx4l0i/SumHce9dpWMaGxhe1GMbarS2/
+    W7o2Sd2g6l50SKdtyNbrUAr8a+In4UJm8jpGJygWPuPO6OeoykZRiN5ei0GKfpdW
+    x4LvzGVvxiKRfq7V2S6xlvK4+QlVgG/a+GK4gcClvYG8c5ru9m2XdQBju6yOe5b1
+    1odqTrTDejeO6k9cOjvzz7XY1L17o2FKBb/DUl2VGbdX4vzasCZWQRk04C4Lip/1
+    2ykJ/8hTYf+C4Y1K0kLrslC7X9lvgp1RvjFJSNIalJDqpG7hY0GKhWaL22LvStW0
+    7ybZ4/DbYYq/fdl4SLqiFNysZhpxK8+w6trEPobA6N0XbAI=
+    -----END CERTIFICATE-----
+
+######################################################
+# same as inputs_override but for the manager blueprint
+manager_blueprint_override:
+  'node_templates.management_security_group.properties.rules[append]':
+    port_range_max: 8086
+    port_range_min: 8086
+    remote_ip_prefix: '0.0.0.0/0'
+  'node_templates.management_security_group.properties.rules[append] ':
+    port_range_max: 5671
+    port_range_min: 5671
+    remote_ip_prefix: '0.0.0.0/0'
+
+######################################################
+# if set to true, handler cleanup context will not
+# actually clean resources at the end of each test
+# and after teardown (this only applies if the used
+# handler implemented this)
+# skip_cleanup: false
+
+######################################################
+# set to false to prevent the --install-plugins
+# flag from being passed to the `cfy bootstrap` command
+# install_manager_blueprint_dependencies: true
