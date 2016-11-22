@@ -113,9 +113,11 @@ class HelloWorldBashTest(AbstractHelloWorldTest):
             'image': self.env.ubuntu_trusty_image_name,
             'flavor': self.env.flavor_name
         }
-        self._run(inputs=inputs, delete_deployment=False)
+        self._run(inputs=inputs)
         # checking reinstallation scenario
-        self._run(inputs=inputs, is_existing_deployment=True)
+        self._run(inputs=inputs,
+                  is_existing_deployment=True,
+                  delete_deployment=True)
 
     def test_hello_world_on_centos(self):
         agent_user = self.env.centos_image_user
