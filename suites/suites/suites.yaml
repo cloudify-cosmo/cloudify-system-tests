@@ -175,10 +175,6 @@ templates:
     <<: *openstack_manager_blueprint_override
     node_templates.management_subnet.properties.subnet.dns_nameservers: [8.8.4.4, 8.8.8.8]
 
-  - &rackspace_openstack_manager_blueprint_override
-    <<: *openstack_manager_blueprint_override
-    node_templates.router.properties.router.ha: false
-
   - &aws_ec2_manager_blueprint_override
     <<: *new_manager_blueprint_override
     <<: *aws_ec2_manager_blueprint_sg_override
@@ -291,7 +287,7 @@ templates:
     <<: *openstack_handler_configuration
     inputs: inputs-rackspace-openstack.yaml
     manager_blueprint: openstack-manager-blueprint.yaml
-    manager_blueprint_override: *rackspace_openstack_manager_blueprint_override
+    manager_blueprint_override: *openstack_manager_blueprint_override
     properties: rackspace_openstack_properties
 
 #####################################################################################
