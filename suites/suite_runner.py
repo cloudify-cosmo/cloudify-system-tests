@@ -217,7 +217,7 @@ class SuiteRunner(object):
                              self.handler_configuration['manager_blueprint'])
         self.handler_configuration['inputs'] = self.inputs_path
         if 'clean_env_on_init' not in self.handler_configuration:
-            self.handler_configuration['clean_env_on_init'] = True
+            self.handler_configuration['clean_env_on_init'] = False
         generated_suites_yaml = self.suites_yaml.copy()
         handler_configuration_name = self.test_suite['handler_configuration']
         generated_suites_yaml['handler_configurations'] = {
