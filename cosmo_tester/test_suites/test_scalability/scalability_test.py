@@ -38,6 +38,8 @@ class ScalabilityTest(TestCase):
             manager_password=self.MANAGER_PASSWORD
         )
 
+        self.blueprint_ids = []
+        self.deployment_ids = []
         self.test_done = False
 
         t1 = Thread(target=self._upload_blueprints, name='Upload')
@@ -48,6 +50,8 @@ class ScalabilityTest(TestCase):
             self.client.blueprints.list()
             sleep(3)
 
+        self._clean_manager()
+
     def _upload_blueprints(self):
         blueprint_path = self.copy_blueprint('scalability')
         self.blueprint_yaml = blueprint_path / 'blueprint.yaml'
@@ -55,6 +59,7 @@ class ScalabilityTest(TestCase):
 
         for i in range(3000):
             blueprint_id = uuid4()
+            self.blueprint_ids.append(blueprint_id)
             self.cfy.blueprints.upload(
                 self.blueprint_yaml,
                 blueprint_id=blueprint_id
@@ -62,7 +67,7 @@ class ScalabilityTest(TestCase):
 
             if i % 100 == 0:
                 deployment_id = '{0}_dep'.format(blueprint_id)
-
+                self.deployment_ids.append(deployment_id)
                 self.create_deployment(
                     blueprint_id=blueprint_id,
                     deployment_id=deployment_id,
@@ -70,3 +75,10 @@ class ScalabilityTest(TestCase):
                 )
 
         self.test_done = True
+
+    def _clean_manager(self):
+        for deployment_id in self.deployment_ids:
+            self.delete_deployment(deployment_id)
+
+        for blueprint_id in self.blueprint_ids:
+            self.delete_blueprint(blueprint_id)
