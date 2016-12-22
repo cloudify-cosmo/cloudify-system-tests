@@ -12,13 +12,15 @@ variables:
   lab_openstack_ubuntu_precise: d81ccdfe-7482-460e-a7ce-69ea29aa129b
   lab_openstack_ubuntu_trusty: c6d36e11-f4d5-4221-b6e8-4e97914c67e9
 
-  mirantis_openstack_ubuntu_precise_image_name: ubuntu_12_04
-  mirantis_openstack_ubuntu_trusty_image_name: Ubuntu 14.04 x64 LTS
-  mirantis_openstack_ubuntu_precise: c19a4a25-958b-4a10-88bd-6b6d89b69e99
-  mirantis_openstack_ubuntu_trusty: 798e43f2-252e-43f5-a0a8-97371a3c8afa
-  mirantis_openstack_centos_6_5_image_name: centos_6_5
-  mirantis_openstack_centos_7_image_name: centos_7
-  mirantis_openstack_windows_image_name: windows_2012_r2
+  rackspace_openstack_ubuntu_precise_image_name: ???
+  rackspace_openstack_ubuntu_trusty_image_name: 'Ubuntu 14.04.1 LTS Trusty Tahr (cloudimg)'
+  rackspace_openstack_ubuntu_precise: ???
+  rackspace_openstack_ubuntu_trusty: e41430f7-9131-495b-927f-e7dc4b8994c8
+  rackspace_openstack_centos_6_5_image_name: 'centos_6.6'
+  rackspace_openstack_centos_7_image_name: 'CentOS-7-x86_64-GenericCloud-1608'
+  rackspace_openstack_centos_7_image_id: c76d5b15-bf64-4402-bea6-9f4957ac0c6d
+  rackspace_openstack_windows_image_name: ???
+  rackspace_openstack_windows_image_id: ???
 
   datacentred_openstack_ubuntu_precise_image_name: Ubuntu 12.04
   datacentred_openstack_ubuntu_trusty_image_name: Ubuntu 14.04
@@ -102,8 +104,8 @@ variables:
   system_tests_lab_os_username: _
   system_tests_lab_os_password: _
 
-  system_tests_mirantis_os_username: _
-  system_tests_mirantis_os_password: _
+  system_tests_rackspace_os_username: _
+  system_tests_rackspace_os_password: _
 
   system_tests_datacentred_os_username: _
   system_tests_datacentred_os_password: _
@@ -290,9 +292,9 @@ templates:
     keystone_username: '{{system_tests_lab_os_username}}'
     keystone_password: '{{system_tests_lab_os_password}}'
 
-  - &mirantis_openstack_credentials_inputs
-    keystone_username: '{{system_tests_mirantis_os_username}}'
-    keystone_password: '{{system_tests_mirantis_os_password}}'
+  - &rackspace_openstack_credentials_inputs
+    keystone_username: '{{system_tests_rackspace_os_username}}'
+    keystone_password: '{{system_tests_rackspace_os_password}}'
 
   - &datacentred_openstack_credentials_inputs
     keystone_username: '{{system_tests_datacentred_os_username}}'
@@ -303,8 +305,8 @@ templates:
   - &lab_openstack_inputs
     image_id: '{{lab_openstack_centos_7_image_id}}'
 
-  - &mirantis_openstack_inputs
-    image_id: '{{mirantis_openstack_ubuntu_trusty}}'
+  - &rackspace_openstack_inputs
+    image_id: '{{rackspace_openstack_centos_7_image_id}}'
 
   - &datacentred_openstack_inputs
     image_id: '{{datacentred_openstack_centos_7_image_id}}'
@@ -322,12 +324,12 @@ templates:
     manager_blueprint_override: *openstack_manager_blueprint_override
     properties: lab_openstack_properties
 
-  - &mirantis_openstack_handler_configuration
+  - &rackspace_openstack_handler_configuration
     <<: *openstack_handler_configuration
-    inputs: inputs-mirantis-openstack.yaml
+    inputs: inputs-rackspace-openstack.yaml
     manager_blueprint: openstack-manager-blueprint.yaml
     manager_blueprint_override: *openstack_manager_blueprint_override
-    properties: mirantis_openstack_properties
+    properties: rackspace_openstack_properties
 
   - &datacentred_openstack_handler_configuration
     <<: *openstack_handler_configuration
@@ -385,6 +387,23 @@ handler_properties:
     flavor_name: dc1.2x2.40
     small_flavor_id: c4b193d2-f331-4250-9b15-bbfde97c462a
     medium_flavor_id: 8f4b7ae1-b8c2-431f-bb0c-362a5ece0381
+
+  rackspace_openstack_properties:
+    ubuntu_image_user: '{{ubuntu_image_user}}'
+    ubuntu_precise_image_name: '{{rackspace_openstack_ubuntu_precise_image_name}}'
+    ubuntu_trusty_image_name: '{{rackspace_openstack_ubuntu_trusty_image_name}}'
+    ubuntu_precise_image_id: '{{rackspace_openstack_ubuntu_precise}}'
+    ubuntu_trusty_image_id: '{{rackspace_openstack_ubuntu_trusty}}'
+    centos_image_name: '{{rackspace_openstack_centos_6_5_image_name}}'
+    centos_image_user: centos
+    centos_7_image_name: '{{rackspace_openstack_centos_7_image_name}}'
+    centos_7_image_id: '{{rackspace_openstack_centos_7_image_id}}'
+    centos_7_image_user: centos
+    windows_image_name: '{{rackspace_openstack_windows_image_name}}'
+    windows_image_id: '{{rackspace_openstack_windows_image_id}}'
+    flavor_name: m1.large
+    small_flavor_id: 2
+    medium_flavor_id: 4
 
   pclab47_devstack_nova_net:
     ubuntu_precise_image_name: ubuntu
@@ -504,41 +523,95 @@ handler_configurations:
 
   ###############################################################################
 
-  mirantis_openstack_system_tests1:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_1
-    tags: [openstack, mirantis]
+  rackspace_openstack_system_tests1:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_1
+    tags: [openstack, rackspace]
     inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-1
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-1
 
-  mirantis_openstack_system_tests2:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_2
-    tags: [openstack, mirantis]
+  rackspace_openstack_system_tests2:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_2
+    tags: [openstack, rackspace]
     inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-2
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-2
 
-  mirantis_openstack_system_tests3:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_3
-    tags: [openstack, mirantis]
+  rackspace_openstack_system_tests3:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_3
+    tags: [openstack, rackspace]
     inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-3
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-3
 
-  mirantis_openstack_system_tests4:
-    <<: *mirantis_openstack_handler_configuration
-    env: mirantis_openstack_4
-    tags: [openstack, mirantis]
+  rackspace_openstack_system_tests4:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_4
+    tags: [openstack, rackspace]
     inputs_override:
-      <<: *mirantis_openstack_credentials_inputs
-      <<: *mirantis_openstack_inputs
-      keystone_tenant_name: system-tests/system-test-4
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-4
+
+  rackspace_openstack_system_tests5:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_5
+    tags: [openstack, rackspace]
+    inputs_override:
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-5
+
+  rackspace_openstack_system_tests6:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_6
+    tags: [openstack, rackspace]
+    inputs_override:
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-6
+
+  rackspace_openstack_system_tests7:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_7
+    tags: [openstack, rackspace]
+    inputs_override:
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-7
+
+  rackspace_openstack_system_tests8:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_8
+    tags: [openstack, rackspace]
+    inputs_override:
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-8
+
+  rackspace_openstack_system_tests9:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_9
+    tags: [openstack, rackspace]
+    inputs_override:
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-9
+
+  rackspace_openstack_system_tests10:
+    <<: *rackspace_openstack_handler_configuration
+    env: rackspace_openstack_10
+    tags: [openstack, rackspace]
+    inputs_override:
+      <<: *rackspace_openstack_credentials_inputs
+      <<: *rackspace_openstack_inputs
+      keystone_tenant_name: system-tests-10
 
   ###############################################################################
 
@@ -909,57 +982,57 @@ tests:
 test_suites:
 
   openstack_blueprints_no_chef_puppet_docker:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - openstack_blueprints_without_chef_puppet_docker_windows
 
   host_pool_plugin:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - host_pool_plugin
 
   openstack_manager_status:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - manager_status
 
   openstack_manager_recovery:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - manager_recovery
 
   openstack_maintenance_mode:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - maintenance_mode
 
   openstack_manager_upgrade:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - manager_upgrade
 
   openstack_manager_upgrade_validations:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - manager_upgrade_validations
 
   openstack_deployment_update:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
     - deployment_update
 
   openstack_plugin:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - openstack_plugin
 
   openstack_watchdog:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - watchdog_tests
 
   openstack_simple_manager:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - simple_manager_blueprint
 
