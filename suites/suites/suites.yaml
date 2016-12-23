@@ -19,8 +19,8 @@ variables:
   rackspace_openstack_centos_6_5_image_name: 'centos_6.6'
   rackspace_openstack_centos_7_image_name: 'CentOS-7-x86_64-GenericCloud-1608'
   rackspace_openstack_centos_7_image_id: c76d5b15-bf64-4402-bea6-9f4957ac0c6d
-  rackspace_openstack_windows_image_name: ???
-  rackspace_openstack_windows_image_id: ???
+  rackspace_openstack_windows_image_name: windows_server_2012_r2_standard_eval
+  rackspace_openstack_windows_image_id: 36522832-43e1-4690-aadc-148cb493f415
 
   datacentred_openstack_ubuntu_precise_image_name: Ubuntu 12.04
   datacentred_openstack_ubuntu_trusty_image_name: Ubuntu 14.04
@@ -1046,38 +1046,38 @@ test_suites:
   #####################################################################
 
   openstack_chef_puppet:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - openstack_blueprints_chef_puppet
 
   snapshots:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - snapshots_tests
 
   managed_plugins:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - managed_plugins_tests
 
   rest_plugins:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - openstack_rest_plugins
 
   diamond_snmp:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - diamond_snmp_extension
 
   openstack_security:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - broker_security
       - manager_security
 
   external_components:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - external_components
 
@@ -1087,7 +1087,7 @@ test_suites:
       - active_dir_authentication
 
   docker_plugin:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - docker_nodecellar
       - docker_plugin
@@ -1103,7 +1103,7 @@ test_suites:
       - cli_packager_windows
 
   openstack_centos_cli_package:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - cli_packager_centos
 
@@ -1118,17 +1118,17 @@ test_suites:
       - cli_packager_debian
 
   agent:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - agent_tests
 
   openstack_manager_after_reboot:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - manager_after_reboot
 
   openstack_backwards_nodecellar:
-    requires: [openstack, datacentred]
+    requires: [openstack, rackspace]
     tests:
       - nodecellar_backwards_compatibility_tests
 
