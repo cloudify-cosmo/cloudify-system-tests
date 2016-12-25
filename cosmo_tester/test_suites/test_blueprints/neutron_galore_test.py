@@ -94,23 +94,23 @@ class NeutronGaloreTest(TestCase):
                          ['version'], 4)
         self.assertTrue(port_assigned_addr.startswith('10.10.10.'))
         self.assert_obj_list_contains_subset(
-            openstack['server']['security_groups'],
-            {'name': p('neutron_test_security_group_dst')})
+                openstack['server']['security_groups'],
+                {'name': p('neutron_test_security_group_dst')})
         self.assert_obj_list_contains_subset(
-            openstack['server']['security_groups'],
-            {'name': p('neutron_test_security_group_src')})
+                openstack['server']['security_groups'],
+                {'name': p('neutron_test_security_group_src')})
         self.assert_obj_list_contains_subset(
-            openstack['server']['security_groups'],
-            {'name': agents_security_group})
+                openstack['server']['security_groups'],
+                {'name': agents_security_group})
         self.assert_obj_list_contains_subset(
-            openstack['server2']['security_groups'],
-            {'name': p('neutron_test_security_group_3')})
+                openstack['server2']['security_groups'],
+                {'name': p('neutron_test_security_group_3')})
         self.assert_obj_list_contains_subset(
-            openstack['server2']['security_groups'],
-            {'name': p('neutron_test_security_group_4')})
+                openstack['server2']['security_groups'],
+                {'name': p('neutron_test_security_group_4')})
         self.assert_obj_list_contains_subset(
-            openstack['server2']['security_groups'],
-            {'name': agents_security_group})
+                openstack['server2']['security_groups'],
+                {'name': agents_security_group})
         self.assertEqual(openstack['server']['name'], p('novaservertest'))
         self.assertEqual(openstack['port']['name'], p('neutron_test_port'))
         self.assertEqual(port_fixed_ip, port_assigned_addr)
@@ -138,37 +138,35 @@ class NeutronGaloreTest(TestCase):
         self.assertEqual(3, len(openstack['sg_dst']['security_group_rules']))
         self.assertEqual(2, len(openstack['sg_3']['security_group_rules']))
         self.assert_obj_list_contains_subset(
-            openstack['sg_dst']['security_group_rules'],
-            {'remote_ip_prefix': '1.2.3.0/24',
-             'port_range_min': 80,
-             'port_range_max': 80,
-             'direction': 'ingress'})
+                openstack['sg_dst']['security_group_rules'],
+                {'remote_ip_prefix': '1.2.3.0/24',
+                 'port_range_min': 80,
+                 'port_range_max': 80,
+                 'direction': 'ingress'})
         self.assert_obj_list_contains_subset(
-            openstack['sg_dst']['security_group_rules'],
-            {'remote_ip_prefix': '2.3.4.0/24',
-             'port_range_min': 65500,
-             'port_range_max': 65510,
-             'direction': 'ingress'})
+                openstack['sg_dst']['security_group_rules'],
+                {'remote_ip_prefix': '2.3.4.0/24',
+                 'port_range_min': 65500,
+                 'port_range_max': 65510,
+                 'direction': 'ingress'})
         self.assert_obj_list_contains_subset(
-            openstack['sg_dst']['security_group_rules'],
-            {'remote_group_id': sg_src_id,
-             'port_range_min': 65521,
-             'port_range_max': 65521,
-             'direction': 'ingress'})
+                openstack['sg_dst']['security_group_rules'],
+                {'remote_group_id': sg_src_id,
+                 'port_range_min': 65521,
+                 'port_range_max': 65521,
+                 'direction': 'ingress'})
         self.assert_obj_list_contains_subset(
-            openstack['sg_3']['security_group_rules'],
-            {'remote_ip_prefix': '0.0.0.0/0',
-             'port_range_min': 0,
-             'port_range_max': 0,
-             'protocol': 'icmp',
-             'direction': 'ingress'})
+                openstack['sg_3']['security_group_rules'],
+                {'remote_ip_prefix': '0.0.0.0/0',
+                 'port': None,
+                 'protocol': 'icmp',
+                 'direction': 'ingress'})
         self.assert_obj_list_contains_subset(
-            openstack['sg_3']['security_group_rules'],
-            {'remote_ip_prefix': '0.0.0.0/0',
-             'port_range_min': 0,
-             'port_range_max': 0,
-             'protocol': 'icmp',
-             'direction': 'egress'})
+                openstack['sg_3']['security_group_rules'],
+                {'remote_ip_prefix': '0.0.0.0/0',
+                 'port': None,
+                 'protocol': 'icmp',
+                 'direction': 'egress'})
         self.assertEqual(node_states['floatingip']['floating_ip_address'],
                          openstack['floatingip']['floating_ip_address'])
         self.assertEqual(node_states['floatingip2']['floating_ip_address'],
@@ -199,17 +197,18 @@ class NeutronGaloreTest(TestCase):
                                                openstack['subnet']['id'])
         # check the ICMP security group rule for allowing ping is ok
         self._assert_ping_to_server(
-            ip=node_states['floatingip2']['floating_ip_address'])
+                ip=node_states['floatingip2']['floating_ip_address'])
 
     def post_uninstall_assertions(self):
         leftovers = self._test_cleanup_context.get_resources_to_teardown(
-            self.env,
-            resources_to_keep=self._test_cleanup_context.before_run)
+                self.env,
+                resources_to_keep=self._test_cleanup_context.before_run)
         if leftovers['key_pairs']:
             for key_id in leftovers['key_pairs']:
                 self.assertTrue(self.test_id not in key_id)
         self.assertTrue(all(
-            [len(g) == 0 for k, g in leftovers.items() if k != 'key_pairs']))
+                [len(g) == 0 for k, g in leftovers.items()
+                 if k != 'key_pairs']))
         self.assertFalse(self._check_if_private_key_is_on_manager())
 
     def _test_use_external_resource(self, inputs):
@@ -219,12 +218,14 @@ class NeutronGaloreTest(TestCase):
 
         bp_and_dep_name = self.test_id + '-use-external-resource'
         _, after = self.upload_deploy_and_execute_install(
-            blueprint_id=bp_and_dep_name,
-            deployment_id=bp_and_dep_name,
-            inputs=inputs)
+                blueprint_id=bp_and_dep_name,
+                deployment_id=bp_and_dep_name,
+                inputs=inputs)
 
         self._post_use_external_resource_install_assertions(
-            bp_and_dep_name, before_openstack_infra_state, after['node_state'])
+                bp_and_dep_name,
+                before_openstack_infra_state,
+                after['node_state'])
 
         self.execute_uninstall(bp_and_dep_name)
 
@@ -243,22 +244,22 @@ class NeutronGaloreTest(TestCase):
 
     def _modify_blueprint_use_external_resource(self):
         node_instances = self.client.node_instances.list(
-            deployment_id=self.test_id)
+                deployment_id=self.test_id)
 
         node_id_to_external_resource_id = {
             node_instance.node_id: node_instance.runtime_properties[
                 'external_id'] for node_instance in node_instances
-        }
+            }
 
         with YamlPatcher(self.blueprint_yaml) as patch:
             for node_id, resource_id in \
                     node_id_to_external_resource_id.iteritems():
                 patch.merge_obj(
-                    'node_templates.{0}.properties'.format(node_id),
-                    {
-                        'use_external_resource': True,
-                        'resource_id': resource_id
-                    })
+                        'node_templates.{0}.properties'.format(node_id),
+                        {
+                            'use_external_resource': True,
+                            'resource_id': resource_id
+                        })
 
     def _post_use_external_resource_install_assertions(
             self, use_external_resource_deployment_id,
@@ -270,22 +271,14 @@ class NeutronGaloreTest(TestCase):
         # verify there aren't any new resources on Openstack, except key pairs
         after_openstack_infra_state = self.env.handler.openstack_infra_state()
         delta = self.env.handler.openstack_infra_state_delta(
-            before_openstack_infra_state, after_openstack_infra_state)
-        for delta_of_single_type_key, \
-                delta_of_single_type_value in delta.items():
+                before_openstack_infra_state, after_openstack_infra_state)
+        for delta_of_single_type_key, delta_of_single_type_value in \
+                delta.items():
             if delta_of_single_type_key == 'key_pairs':
                 for key_pair_id in delta_of_single_type_value.keys():
                     self.assertTrue(self.test_id not in key_pair_id)
             else:
                 self.assertFalse(delta_of_single_type_value)
-
-        # verify the runtime properties of the new deployment's nodes
-        # original_deployment_node_states = self.get_node_states(
-        #     after_nodes_state, self.test_id)
-        # use_external_resource_deployment_node_states = self.get_node_states(
-        #     after_nodes_state, use_external_resource_deployment_id)
-        # self.assertDictEqual(original_deployment_node_states,
-        #                      use_external_resource_deployment_node_states)
 
     def _post_use_external_resource_uninstall_assertions(
             self, use_external_resource_deployment_id):
@@ -295,13 +288,13 @@ class NeutronGaloreTest(TestCase):
 
         # verify the external resources are all still up and running
         original_deployment_node_states = self.get_node_states(
-            self.get_manager_state()['node_state'], self.test_id)
+                self.get_manager_state()['node_state'], self.test_id)
         self.post_install_assertions(original_deployment_node_states)
 
         # verify the use_external_resource deployment has no runtime
         # properties on the nodes
         node_instances = self.client.node_instances.list(
-            deployment_id=use_external_resource_deployment_id)
+                deployment_id=use_external_resource_deployment_id)
         instances_with_runtime_props = [instance for instance in node_instances
                                         if instance.runtime_properties]
         self.assertEquals(0, len(instances_with_runtime_props))
@@ -363,11 +356,11 @@ class NeutronGaloreTest(TestCase):
             'sg_3': neutron.show_security_group(states['sg_3'][eid])[sg],
             'sg_4': neutron.show_security_group(states['sg_4'][eid])[sg],
             'floatingip': neutron.show_floatingip(
-                states['floatingip'][eid])['floatingip'],
+                    states['floatingip'][eid])['floatingip'],
             'floatingip2': neutron.show_floatingip(
-                states['floatingip2'][eid])['floatingip'],
+                    states['floatingip2'][eid])['floatingip'],
             'floatingip3': neutron.show_floatingip(
-                states['floatingip3'][eid])['floatingip'],
+                    states['floatingip3'][eid])['floatingip'],
             'router_ports': neutron.list_ports(device_id=rid)['ports'],
             'keypair': nova.keypairs.get(states['keypair'][eid]).to_dict()
         }
@@ -382,7 +375,7 @@ class NeutronGaloreTest(TestCase):
     def assert_obj_list_contains_subset(self, obj_list, subset):
         for obj in obj_list:
             if all([obj.get(key) == value for key, value in subset.items()]):
-                    return
+                return
         self.fail('Could not find {0} in {1}'.format(subset, obj_list))
 
     def assert_router_connected_to_subnet(self, router_id,
@@ -403,4 +396,4 @@ class NeutronGaloreTest(TestCase):
     def _remove_private_key(self):
         with self.manager_env_fabric(timeout=30) as fabric_api:
             fabric_api.sudo('test -f {0} && rm {0} || true'.format(
-                PRIVATE_KEY_PATH))
+                    PRIVATE_KEY_PATH))
