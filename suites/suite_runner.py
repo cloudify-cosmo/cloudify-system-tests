@@ -125,12 +125,19 @@ class SuiteRunner(object):
                 repo='cloudify-cli',
                 branch=self.branch_name_cli)
             self._clone_and_checkout_repo(
+                repo='cloudify-agent',
+                branch=self.branch_name_core)
+            self._clone_and_checkout_repo(
                 repo='cloudify-manager-blueprints',
                 branch=self.branch_name_manager_blueprints)
 
             self._pip_install(
                 'cloudify-cli',
                 requirements=os.path.join(self.work_dir, 'cloudify-cli',
+                                          'dev-requirements.txt'))
+            self._pip_install(
+                'cloudify-agent',
+                requirements=os.path.join(self.work_dir, 'cloudify-agent',
                                           'dev-requirements.txt'))
             self._pip_install(CLOUDIFY_SYSTEM_TESTS, editable=True)
 
