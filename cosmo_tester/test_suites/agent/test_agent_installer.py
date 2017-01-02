@@ -260,7 +260,8 @@ def install_script(name, windows, user, manager_host):
             'rest_host': manager_host,
             'file_server_host': manager_host,
             'broker_ip': manager_host,
-            'name': name
+            'name': name,
+            'agent_rest_cert_path': None
         }})
     try:
         current_ctx.set(ctx)
