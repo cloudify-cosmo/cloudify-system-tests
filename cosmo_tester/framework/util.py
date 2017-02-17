@@ -27,6 +27,7 @@ import tempfile
 import yaml
 import jinja2
 from path import path
+import requests
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
@@ -209,6 +210,17 @@ def create_rest_client(manager_ip,
         password=password or cli_env.get_password(),
         tenant=tenant or cli_env.get_tenant_name()
     )
+
+
+def get_plugin_wagon_urls():
+    """Get plugin wagon urls from the cloudify-versions repository."""
+    plugin_urls_location = (
+        'https://raw.githubusercontent.com/cloudify-cosmo/'
+        'cloudify-versions/{branch}/packages-urls/plugin-urls.yaml'.format(
+                branch=os.environ.get('BRANCH_NAME_CORE', 'master'),
+        )
+    )
+    return yaml.load(requests.get(plugin_urls_location).text)['plugins']
 
 
 class YamlPatcher(object):

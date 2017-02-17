@@ -1,0 +1,13 @@
+# the following attributes will be available for tests using the "attributes" fixture.
+
+cloudify_username: cloudify
+cloudify_password: cloudify
+cloudify_tenant: default_tenant
+
+cloudify_manager_image_name: cloudify-manager-premium-4.0m14
+centos7_username: centos
+centos7_image_name: CentOS-7-x86_64-GenericCloud-1608
+floating_network_id: dda079ce-12cf-4309-879a-8e67aec94de4
+external_gateway: GATEWAY_NET
+large_flavor_name: m1.large
+medium_flavor_name: m1.medium
