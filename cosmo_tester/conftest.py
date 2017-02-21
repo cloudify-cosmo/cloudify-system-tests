@@ -14,8 +14,8 @@ import pytest
 import sh
 import yaml
 
-import cosmo_tester
 from cosmo_tester.framework import util
+from cosmo_tester.fixtures import *
 
 
 class AttributesDict(dict):
@@ -50,52 +50,26 @@ class SSHKey(object):
         self.public_key_path = public_key_path
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='module')
 def cfy(request):
     cfy = util.sh_bake(sh.cfy)
-    if request.cls:
-        request.cls.cfy = cfy
     return cfy
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='module')
 def attributes(request, logger):
     attributes_file = util.get_resource_path('attributes.yaml')
     logger.info('Loading attributes from: %s', attributes_file)
     with open(attributes_file, 'r') as f:
         attrs = AttributesDict(yaml.load(f))
-        if request.cls:
-            request.cls.attributes = attrs
         return attrs
 
 
-@pytest.fixture(scope='class')
-def logger(request):
-    logger = logging.getLogger('test-logger')
-    logger.setLevel(logging.INFO)
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s [%(levelname)s] '
-                                      '[%(name)s] %(message)s',
-                                  datefmt='%H:%M:%S')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    if request.cls:
-        request.cls.logger = logger
-    return logger
-
-
-@pytest.fixture(scope='class')
-def class_tmpdir(request, logger):
-    if request.cls:
-        suffix = request.cls.__name__
-    else:
-        suffix = request.module.__name__
+@pytest.fixture(scope='module')
+def module_tmpdir(request, logger):
+    suffix = request.module.__name__
     temp_dir = Path(tempfile.mkdtemp(suffix=suffix))
     logger.info('Created temp folder: %s', temp_dir)
-
-    if request.cls:
-        request.cls.tmpdir = temp_dir
 
     yield temp_dir
 
@@ -103,11 +77,11 @@ def class_tmpdir(request, logger):
     shutil.rmtree(temp_dir)
 
 
-@pytest.fixture(scope='class')
-def ssh_key(request, class_tmpdir, logger):
-    private_key_path = class_tmpdir / 'key.pem'
-    public_key_path = class_tmpdir / 'key.pem.pub'
-    logger.info('Creating temporary SSH keys at: %s', class_tmpdir)
+@pytest.fixture(scope='module')
+def ssh_key(module_tmpdir, logger):
+    private_key_path = module_tmpdir / 'key.pem'
+    public_key_path = module_tmpdir / 'key.pem.pub'
+    logger.info('Creating temporary SSH keys at: %s', module_tmpdir)
     if os.system("ssh-keygen -t rsa -f {} -q -N ''".format(
             private_key_path)) != 0:
         raise IOError('Error creating SSH key: {}'.format(private_key_path))
@@ -120,7 +94,7 @@ def ssh_key(request, class_tmpdir, logger):
     private_key_path.remove()
 
 
-def upload_openstack_plugin_to_manager(rest_client, logger):
+def upload_openstack_plugin_to_manager(rest_client, cfy, logger):
     plugins_list = util.get_plugin_wagon_urls()
     openstack_plugin_wagon = [
         x['wgn_url'] for x in plugins_list
@@ -133,6 +107,7 @@ def upload_openstack_plugin_to_manager(rest_client, logger):
     logger.info('Uploading openstack plugin to manager.. [%s]',
                 openstack_plugin_wagon[0])
     rest_client.plugins.upload(openstack_plugin_wagon[0])
+    cfy.plugins.list()
 
 
 # TODO: create a context manager on CloudifyManager class for running fabric commands
@@ -150,14 +125,15 @@ def upload_necessary_files_to_manager(manager, openstack_config_file, logger):
         fabric_api.put(manager.local_ssh_key.private_key_path,
                        manager.remote_private_key_path,
                        use_sudo=True)
+        fabric_api.sudo('chmod 400 {}'.format(manager.remote_private_key_path))
 
 
-@pytest.fixture(scope='class')
-def manager(request, cfy, ssh_key, class_tmpdir, attributes, logger):
+@pytest.fixture(scope='module')
+def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a cloudify manager from an image in rackspace OpenStack."""
     logger.info('Creating cloudify manager from image..')
 
-    openstack_config_file = class_tmpdir / 'openstack_config.json'
+    openstack_config_file = module_tmpdir / 'openstack_config.json'
     openstack_config_file.write_text(json.dumps({
         'username': os.environ['OS_USERNAME'],
         'password': os.environ['OS_PASSWORD'],
@@ -165,13 +141,13 @@ def manager(request, cfy, ssh_key, class_tmpdir, attributes, logger):
         'auth_url': os.environ['OS_AUTH_URL']
     }, indent=2))
 
-    terraform_template_file = class_tmpdir / 'openstack-vm.tf'
+    terraform_template_file = module_tmpdir / 'openstack-vm.tf'
 
     shutil.copy(util.get_resource_path('terraform/openstack-vm.tf'),
                 terraform_template_file)
 
     terraform = util.sh_bake(sh.terraform)
-    terraform_inputs_file = class_tmpdir / 'terraform-vars.json'
+    terraform_inputs_file = module_tmpdir / 'terraform-vars.json'
     terraform_inputs_file.write_text(json.dumps({
         'resource_suffix': str(uuid.uuid4()),
         'public_key_path': ssh_key.public_key_path,
@@ -181,7 +157,7 @@ def manager(request, cfy, ssh_key, class_tmpdir, attributes, logger):
     }, indent=2))
 
     try:
-        with class_tmpdir:
+        with module_tmpdir:
             terraform.apply(['-var-file', terraform_inputs_file])
             outputs = AttributesDict({k: v['value'] for k, v in json.loads(
                     terraform.output(['-json']).stdout).items()})
@@ -201,7 +177,7 @@ def manager(request, cfy, ssh_key, class_tmpdir, attributes, logger):
     except sh.ErrorReturnCode as e:
         logger.error('Error creating cloudify manager from image: %s', e)
         try:
-            with class_tmpdir:
+            with module_tmpdir:
                 terraform.destroy(
                     ['-var-file', terraform_inputs_file, '-force'])
         except sh.ErrorReturnCode as ex:
@@ -209,15 +185,12 @@ def manager(request, cfy, ssh_key, class_tmpdir, attributes, logger):
         raise
 
     upload_necessary_files_to_manager(manager, openstack_config_file, logger)
-    upload_openstack_plugin_to_manager(manager.client, logger)
-
-    if request.cls:
-        request.cls.manager = manager
+    upload_openstack_plugin_to_manager(manager.client, cfy, logger)
 
     yield manager
 
     logger.info('Destroying cloudify manager..')
-    with class_tmpdir:
+    with module_tmpdir:
         terraform.destroy(['-var-file', terraform_inputs_file, '-force'])
 
 

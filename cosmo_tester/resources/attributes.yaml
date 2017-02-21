@@ -7,6 +7,11 @@ cloudify_tenant: default_tenant
 cloudify_manager_image_name: cloudify-manager-premium-4.0m14
 centos7_username: centos
 centos7_image_name: CentOS-7-x86_64-GenericCloud-1608
+centos6_username: centos
+centos6_image_name: centos_6.6
+ubuntu_username: ubuntu
+#ubuntu_16_04_image_name: ubuntu_16.04_xenial
+ubuntu_16_04_image_name: ubuntu_16.04_xenial_with_python
 floating_network_id: dda079ce-12cf-4309-879a-8e67aec94de4
 external_gateway: GATEWAY_NET
 large_flavor_name: m1.large
