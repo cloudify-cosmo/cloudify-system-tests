@@ -39,7 +39,8 @@ setup(
         'fasteners==0.13.0',
         # Wagon version has been left out since it better reflects the user
         # use-case
-        'wagon==0.3.2'
+        'wagon==0.3.2',
+        'pytest==3.0.4'
     ],
     entry_points={
         'nose.plugins.0.10': [
