@@ -83,6 +83,7 @@ class HelloWorldExample(object):
         self.cfy.executions.start.uninstall(
                 ['-d', self._deployment_id, '-p', 'ignore_failure=true', '-f'])
 
+    @retry(stop_max_attempt_number=3, wait_fixed=10000)
     def _disable_iptables(self, http_endpoint):
         self.logger.info('Disabling iptables on hello world vm..')
         ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', http_endpoint)[0]
@@ -161,8 +162,16 @@ def test_hello_world_on_centos_6(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_logger(logger):
-    logger.info('hello logger!')
+def test_hello_world_on_ubuntu_14_04(hello_world, attributes):
+    hello_world.inputs.update({
+        'agent_user': attributes.ubuntu_username,
+        'image': attributes.ubuntu_14_04_image_name,
+    })
+    hello_world.verify_all()
+
+
+# def test_logger(logger):
+#     logger.info('hello logger!')
 
 # Not yet supported.
 # def test_hello_world_on_ubuntu_16_04(hello_world, attributes):

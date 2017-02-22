@@ -10,7 +10,7 @@ centos7_image_name: CentOS-7-x86_64-GenericCloud-1608
 centos6_username: centos
 centos6_image_name: centos_6.6
 ubuntu_username: ubuntu
-#ubuntu_16_04_image_name: ubuntu_16.04_xenial
+ubuntu_14_04_image_name: 'Ubuntu 14.04.1 LTS Trusty Tahr (cloudimg)'
 ubuntu_16_04_image_name: ubuntu_16.04_xenial_with_python
 floating_network_id: dda079ce-12cf-4309-879a-8e67aec94de4
 external_gateway: GATEWAY_NET
