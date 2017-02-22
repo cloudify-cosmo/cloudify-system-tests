@@ -35,6 +35,10 @@ from cloudify_rest_client import CloudifyClient
 from cosmo_tester import resources
 
 
+class AttributesDict(dict):
+    __getattr__ = dict.__getitem__
+
+
 def download_file(url, destination=''):
 
     if not destination:
