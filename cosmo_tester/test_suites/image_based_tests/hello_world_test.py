@@ -170,8 +170,8 @@ def test_hello_world_on_ubuntu_14_04(hello_world, attributes):
     hello_world.verify_all()
 
 
-# def test_logger(logger):
-#     logger.info('hello logger!')
+def test_logger(logger):
+    logger.info('hello logger!')
 
 # Not yet supported.
 # def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
