@@ -137,7 +137,8 @@ def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     openstack_config_file.write_text(json.dumps({
         'username': os.environ['OS_USERNAME'],
         'password': os.environ['OS_PASSWORD'],
-        'tenant_name': os.environ['OS_TENANT_NAME'],
+        'tenant_name': os.environ.get('OS_TENANT_NAME',
+                                      os.environ['OS_PROJECT_NAME']),
         'auth_url': os.environ['OS_AUTH_URL']
     }, indent=2))
 
