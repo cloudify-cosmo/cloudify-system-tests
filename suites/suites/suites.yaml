@@ -229,7 +229,7 @@ templates:
 
   - &aws_ec2_plugin_external
     repo: cloudify-aws-plugin
-    branch: '1.4.3'
+    branch: 'AWS-79-1.4.4'
 
   - &vcloud_plugin_external
     repo: tosca-vcloud-plugin
