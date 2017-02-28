@@ -39,6 +39,10 @@ class AttributesDict(dict):
     __getattr__ = dict.__getitem__
 
 
+def get_cli_version():
+    return cli_env.get_version_data()['version']
+
+
 def download_file(url, destination=''):
 
     if not destination:

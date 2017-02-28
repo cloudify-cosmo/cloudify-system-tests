@@ -7,6 +7,7 @@ variable "flavor" {}
 
 
 output "public_ip_address" { value = "${openstack_networking_floatingip_v2.floatingip.address}" }
+output "private_ip_address" { value = "${openstack_compute_instance_v2.server.access_ip_v4}" }
 output "router_name" { value = "${openstack_networking_router_v2.router.name}" }
 output "router_id" { value = "${openstack_networking_router_v2.router.id}" }
 output "network_name" { value = "${openstack_networking_network_v2.network.name}" }

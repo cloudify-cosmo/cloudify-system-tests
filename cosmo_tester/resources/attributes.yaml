@@ -1,10 +1,10 @@
 # the following attributes will be available for tests using the "attributes" fixture.
 
-cloudify_username: cloudify
-cloudify_password: cloudify
+cloudify_username: admin
+cloudify_password: admin
 cloudify_tenant: default_tenant
 
-cloudify_manager_image_name: cloudify-manager-premium-4.0m14
+cloudify_manager_image_name_prefix: cloudify-manager-premium
 centos7_username: centos
 centos7_image_name: CentOS-7-x86_64-GenericCloud-1608
 centos6_username: centos

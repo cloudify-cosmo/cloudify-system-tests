@@ -7,6 +7,7 @@ import tempfile
 
 from path import Path
 import pytest
+import sh
 import yaml
 
 from cosmo_tester.framework import util
@@ -69,3 +70,9 @@ def attributes(request, logger):
     with open(attributes_file, 'r') as f:
         attrs = util.AttributesDict(yaml.load(f))
         return attrs
+
+
+@pytest.fixture(scope='module')
+def cfy(request):
+    cfy = util.sh_bake(sh.cfy)
+    return cfy
