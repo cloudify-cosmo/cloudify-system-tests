@@ -27,12 +27,16 @@ import tempfile
 import yaml
 import jinja2
 from path import path
+from path import Path
 import requests
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
 
+import cosmo_tester
 from cosmo_tester import resources
+
+MANAGER_PACKAGE_URL_FILE = 'cloudify-premium/packages-urls/manager-single-tar.yaml'  # noqa
 
 
 class AttributesDict(dict):
@@ -229,6 +233,18 @@ def get_plugin_wagon_urls():
         )
     )
     return yaml.load(requests.get(plugin_urls_location).text)['plugins']
+
+
+def get_manager_resources_package_url():
+    package_url_file = Path(
+            os.path.abspath(os.path.join(
+                    os.path.dirname(cosmo_tester.__file__),
+                    '../..',
+                    MANAGER_PACKAGE_URL_FILE)))
+    if not package_url_file.exists():
+        raise IOError('File containing manager premium single tar URL not '
+                      'found: {}'.format(package_url_file))
+    return package_url_file.text().strip(os.linesep)
 
 
 class YamlPatcher(object):

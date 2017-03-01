@@ -30,7 +30,7 @@ from cosmo_tester.framework import git_helper
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_OPENSTACK_CONFIG_PATH = '/root/openstack_config.json'
 
-MANAGER_BLUEPRINTS_REPO_URL = "https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git"  # noqa
+MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
 
 
 class CloudifyManager(object):
@@ -51,7 +51,6 @@ class CloudifyManager(object):
         self._terraform_inputs_file = self.tmpdir / 'terraform-vars.json'
 
     def _create_manager(self):
-        """Bootstraps a manager on an existing VM."""
         pass
 
     @abstractmethod
@@ -64,14 +63,20 @@ class CloudifyManager(object):
         """Creates an image based Cloudify manager."""
         manager = ImageBasedCloudifyManager(cfy, ssh_key, tmpdir, attributes,
                                             logger)
+        logger.info('Creating cloudify manager from image..')
         manager.create()
         return manager
 
     @staticmethod
     def create_bootstrap_based(cfy, ssh_key, tmpdir, attributes, logger):
         """Bootstraps a Cloudify manager using simple manager blueprint."""
-        manager = BootstrapBasedCloudifyManager(cfy, ssh_key, tmpdir,
-                                                attributes, logger)
+        manager = BootstrapBasedCloudifyManager(cfy,
+                                                ssh_key,
+                                                tmpdir,
+                                                attributes,
+                                                logger)
+        logger.info('Bootstrapping cloudify manager using simple '
+                    'manager blueprint..')
         manager.create()
         return manager
 
@@ -106,8 +111,6 @@ class CloudifyManager(object):
 
         The openstack credentials file and private key file for SSHing
         to provisioned VMs are uploaded to the server."""
-        self.logger.info('Creating cloudify manager from image..')
-
         openstack_config_file = self.tmpdir / 'openstack_config.json'
         openstack_config_file.write_text(json.dumps({
             'username': os.environ['OS_USERNAME'],
@@ -142,6 +145,10 @@ class CloudifyManager(object):
                                 self._terraform.output(['-json']).stdout).items()})
             self.attributes.update(outputs)
             self._ip_address = outputs.public_ip_address
+            self._private_ip_address = outputs.private_ip_address
+
+            self._create_manager()
+
             self._client = util.create_rest_client(
                     self.ip_address,
                     username=self.attributes.cloudify_username,
@@ -230,6 +237,8 @@ class BootstrapBasedCloudifyManager(CloudifyManager):
 
     def __init__(self, *args, **kwargs):
         super(BootstrapBasedCloudifyManager, self).__init__(*args, **kwargs)
+        self._manager_resources_package = \
+            util.get_manager_resources_package_url()
         self._manager_blueprints_path = None
         self._inputs_file = None
 
@@ -250,13 +259,17 @@ class BootstrapBasedCloudifyManager(CloudifyManager):
 
     def _create_inputs_file(self):
         self._inputs_file = self.tmpdir / 'inputs.json'
-        self._inputs_file.write_text(json.dumps({
+        bootstrap_inputs = json.dumps({
             'public_ip': self.ip_address,
             'private_ip': self.private_ip_address,
+            'ssh_user': self.attributes.centos7_username,
             'ssh_key_filename': self.ssh_key.private_key_path,
             'admin_username': self.attributes.cloudify_username,
-            'admin_password': self.attributes.cloudify_password
-        }, indent=2))
+            'admin_password': self.attributes.cloudify_password,
+            'manager_resources_package': self._manager_resources_package},
+            indent=2)
+        self.logger.info('Bootstrap inputs:%s%s', os.linesep, bootstrap_inputs)
+        self._inputs_file.write_text(bootstrap_inputs)
 
     def _bootstrap_manager(self):
         manager_blueprint_path = \
