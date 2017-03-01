@@ -96,6 +96,11 @@ class CloudifyManager(object):
             raise RuntimeError('client was not set!')
         return self._client
 
+    @property
+    def remote_private_key_path(self):
+        """Returns the private key path on the manager."""
+        return REMOTE_PRIVATE_KEY_PATH
+
     def create(self):
         """Creates the OpenStack infrastructure for a Cloudify manager.
 
