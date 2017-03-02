@@ -44,6 +44,9 @@ class HelloWorldExample(object):
         self.disable_iptables = False
         self._blueprint_file = None
         self._inputs = None
+        self._cloned_to = None
+        self._blueprint_id = 'hello-{0}'.format(str(uuid.uuid4()))
+        self._deployment_id = self._blueprint_id
 
     @property
     def blueprint_file(self):
@@ -75,42 +78,61 @@ class HelloWorldExample(object):
         return self._cleanup_required
 
     def verify_all(self):
-        hello_world_path = git_helper.clone(
-                CLOUDIFY_HELLO_WORLD_EXAMPLE_URL,
-                str(self.tmpdir))
-        blueprint_file = hello_world_path / self.blueprint_file
-        unique_id = 'hello-{0}'.format(str(uuid.uuid4()))
-        self.logger.info(
-                'Uploading blueprint: %s [id=%s]', blueprint_file, unique_id)
-        self.manager.client.blueprints.upload(blueprint_file, unique_id)
-        self.logger.info(
-                'Creating deployment [id=%s] with the following inputs:%s%s',
-                unique_id, os.linesep, json.dumps(self.inputs, indent=2))
-        deployment = self.manager.client.deployments.create(
-                unique_id, unique_id, inputs=self.inputs)
-        self._deployment_id = deployment.id
-        self.cfy.deployments.list()
-        self.logger.info('Installing deployment...')
-        self._cleanup_required = True
-        self.cfy.executions.start.install(['-d', deployment.id])
-        outputs = self.manager.client.deployments.outputs.get(deployment.id)['outputs']
+        self.upload_blueprint()
+        self.create_deployment()
+        self.install()
+        self.verify_installation()
+        self.uninstall()
+        self.delete_deployment()
+
+    def delete_deployment(self):
+        self.logger.info('Deleting deployment...')
+        self.manager.client.deployments.delete(self._deployment_id)
+
+    def uninstall(self):
+        self.logger.info('Uninstalling deployment...')
+        self.cfy.executions.start.uninstall(['-d', self._deployment_id])
+        self._cleanup_required = False
+
+    def verify_installation(self):
+        outputs = self.manager.client.deployments.outputs.get(
+                self._deployment_id)['outputs']
         self.logger.info('Deployment outputs: %s%s',
                          os.linesep, json.dumps(outputs, indent=2))
-
         http_endpoint = outputs['http_endpoint']
         if self.disable_iptables:
             self._disable_iptables(http_endpoint)
-
         assert_webserver_running(http_endpoint, self.logger)
-        assert_events(deployment.id, self.manager, self.logger)
-        assert_metrics(deployment.id, self.manager.ip_address, self.logger)
+        assert_events(self._deployment_id, self.manager, self.logger)
+        assert_metrics(
+                self._deployment_id, self.manager.ip_address, self.logger)
 
-        self.logger.info('Uninstalling deployment...')
-        self.cfy.executions.start.uninstall(['-d', deployment.id])
-        self._cleanup_required = False
+    def install(self):
+        self.logger.info('Installing deployment...')
+        self._cleanup_required = True
+        self.cfy.executions.start.install(['-d', self._deployment_id])
 
-        self.logger.info('Deleting deployment...')
-        self.manager.client.deployments.delete(deployment.id)
+    def create_deployment(self):
+        self.logger.info(
+                'Creating deployment [id=%s] with the following inputs:%s%s',
+                self._unique_id, os.linesep, json.dumps(self.inputs, indent=2))
+        self.manager.client.deployments.create(
+                self._unique_id, self._unique_id, inputs=self.inputs)
+        self.cfy.deployments.list()
+
+    def upload_blueprint(self):
+        self._clone_example()
+        blueprint_file = self._cloned_to / self.blueprint_file
+        self.logger.info('Uploading blueprint: %s [id=%s]',
+                         blueprint_file,
+                         self._blueprint_id)
+        self.manager.client.blueprints.upload(blueprint_file, self._unique_id)
+
+    def _clone_example(self):
+        if not self._cloned_to:
+            self._cloned_to = git_helper.clone(
+                    CLOUDIFY_HELLO_WORLD_EXAMPLE_URL,
+                    str(self.tmpdir))
 
     def cleanup(self):
         self.logger.info('Performing hello world cleanup..')
