@@ -57,10 +57,9 @@ def test_hello_world_on_ubuntu_14_04(hello_world, attributes):
 def test_logger(image_based_manager, logger):
     logger.info('hello logger!')
 
-# Not yet supported.
-# def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
-#     hello_world.inputs.update({
-#         'agent_user': attributes.ubuntu_username,
-#         'image': attributes.ubuntu_16_04_image_name,
-#     })
-#     hello_world.verify_all()
+def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
+    hello_world.inputs.update({
+        'agent_user': attributes.ubuntu_username,
+        'image': attributes.ubuntu_16_04_image_name,
+    })
+    hello_world.verify_all()
