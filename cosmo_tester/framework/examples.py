@@ -115,9 +115,9 @@ class HelloWorldExample(object):
     def create_deployment(self):
         self.logger.info(
                 'Creating deployment [id=%s] with the following inputs:%s%s',
-                self._unique_id, os.linesep, json.dumps(self.inputs, indent=2))
+                self._deployment_id, os.linesep, json.dumps(self.inputs, indent=2))
         self.manager.client.deployments.create(
-                self._unique_id, self._unique_id, inputs=self.inputs)
+                self._deployment_id, self._blueprint_id, inputs=self.inputs)
         self.cfy.deployments.list()
 
     def upload_blueprint(self):
@@ -126,7 +126,7 @@ class HelloWorldExample(object):
         self.logger.info('Uploading blueprint: %s [id=%s]',
                          blueprint_file,
                          self._blueprint_id)
-        self.manager.client.blueprints.upload(blueprint_file, self._unique_id)
+        self.manager.client.blueprints.upload(blueprint_file, self._blueprint_id)
 
     def _clone_example(self):
         if not self._cloned_to:

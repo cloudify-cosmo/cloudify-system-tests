@@ -16,6 +16,25 @@
 import pytest
 
 from cosmo_tester.framework import examples
+from cosmo_tester.framework.cloudify_manager import CloudifyManager
+
+
+@pytest.fixture(scope='module')
+def manager(
+        request, cfy, ssh_key, module_tmpdir, attributes, logger):
+    """Creates a cloudify manager from an image in rackspace OpenStack."""
+    manager = CloudifyManager.create_image_based(
+            cfy, ssh_key, module_tmpdir, attributes, logger)
+
+    with manager.ssh() as fabric_api:
+        fabric_api.run('echo "idan moyal"')
+
+    # WORKER_COUNT in /etc/sysconfig/cloudify-restservice
+    # set to 1.
+
+    yield manager
+
+    manager.destroy()
 
 
 @pytest.fixture(scope='function')
@@ -29,34 +48,5 @@ def hello_world(cfy, image_based_manager, attributes, ssh_key, tmpdir, logger):
         hw.cleanup()
 
 
-def test_hello_world_on_centos_7(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.centos7_username,
-        'image': attributes.centos7_image_name,
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_on_centos_6(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.centos6_username,
-        'image': attributes.centos6_image_name,
-    })
-    hello_world.disable_iptables = True
-    hello_world.verify_all()
-
-
-def test_hello_world_on_ubuntu_14_04(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.ubuntu_username,
-        'image': attributes.ubuntu_14_04_image_name,
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.ubuntu_username,
-        'image': attributes.ubuntu_16_04_image_name,
-    })
-    hello_world.verify_all()
+def test_concurrent_delete_deployment(manager, attributes):
+    pass

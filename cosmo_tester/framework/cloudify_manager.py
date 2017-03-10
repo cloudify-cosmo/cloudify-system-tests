@@ -15,6 +15,7 @@
 
 from abc import ABCMeta, abstractmethod
 
+from contextlib import contextmanager
 import json
 import os
 import shutil
@@ -106,6 +107,15 @@ class CloudifyManager(object):
         """Returns the private key path on the manager."""
         return REMOTE_PRIVATE_KEY_PATH
 
+    @contextmanager
+    def ssh(self, **kwargs):
+        with fabric_context_managers.settings(
+                host_string=self.ip_address,
+                user=self.attributes.centos7_username,
+                key_filename=self.ssh_key.private_key_path,
+                **kwargs):
+            yield fabric_api
+
     def create(self):
         """Creates the OpenStack infrastructure for a Cloudify manager.
 
@@ -186,25 +196,20 @@ class CloudifyManager(object):
                     os.linesep, json.dumps(plugins_list, indent=2))
             raise RuntimeError('OpenStack plugin not found in wagons list')
         self.logger.info('Uploading openstack plugin to manager.. [%s]',
-                    openstack_plugin_wagon[0])
+                         openstack_plugin_wagon[0])
         self.client.plugins.upload(openstack_plugin_wagon[0])
         self.cfy.plugins.list()
 
     def _upload_necessary_files_to_manager(self, openstack_config_file):
         self.logger.info('Uploading necessary files to manager..')
-        with fabric_context_managers.settings(
-                host_string=self.ip_address,
-                user=self.attributes.centos7_username,
-                key_filename=self.ssh_key.private_key_path,
-                connections_attempts=3,
-                abort_on_prompts=True):
-            fabric_api.put(openstack_config_file,
+        with self.ssh() as fabric_ssh:
+            fabric_ssh.put(openstack_config_file,
                            REMOTE_OPENSTACK_CONFIG_PATH,
                            use_sudo=True)
-            fabric_api.put(self.ssh_key.private_key_path,
+            fabric_ssh.put(self.ssh_key.private_key_path,
                            REMOTE_PRIVATE_KEY_PATH,
                            use_sudo=True)
-            fabric_api.sudo('chmod 400 {}'.format(REMOTE_PRIVATE_KEY_PATH))
+            fabric_ssh.sudo('chmod 400 {}'.format(REMOTE_PRIVATE_KEY_PATH))
 
     def destroy(self):
         """Destroys the OpenStack infrastructure."""
