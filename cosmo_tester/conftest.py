@@ -73,6 +73,12 @@ def attributes(request, logger):
 
 
 @pytest.fixture(scope='module')
-def cfy(request):
+def cfy(module_tmpdir, logger):
+    work_dir = os.environ.get('CFY_WORKDIR')
+    if not work_dir:
+        os.environ['CFY_WORKDIR'] = module_tmpdir
+    logger.info('CFY_WORKDIR is set to %s', os.environ['CFY_WORKDIR'])
     cfy = util.sh_bake(sh.cfy)
-    return cfy
+    yield cfy
+    if not work_dir:
+        del os.environ['CFY_WORKDIR']
