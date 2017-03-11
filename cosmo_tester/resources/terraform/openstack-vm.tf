@@ -5,9 +5,6 @@ variable "private_key_path" {}
 variable "image" {}
 variable "flavor" {}
 
-
-output "public_ip_address" { value = "${openstack_networking_floatingip_v2.floatingip.address}" }
-output "private_ip_address" { value = "${openstack_compute_instance_v2.server.network.0.fixed_ip_v4}" }
 output "router_name" { value = "${openstack_networking_router_v2.router.name}" }
 output "router_id" { value = "${openstack_networking_router_v2.router.id}" }
 output "network_name" { value = "${openstack_networking_network_v2.network.name}" }
@@ -17,8 +14,12 @@ output "subnet_id" { value = "${openstack_networking_subnet_v2.subnet.id}" }
 output "security_group_name" { value = "${openstack_compute_secgroup_v2.security_group.name}" }
 output "security_group_id" { value = "${openstack_compute_secgroup_v2.security_group.id}" }
 output "keypair_name" { value = "${openstack_compute_keypair_v2.keypair.name}" }
-output "server_name" { value = "${openstack_compute_instance_v2.server.name}" }
-output "server_id" { value = "${openstack_compute_instance_v2.server.id}" }
+{% for server in servers %}
+output "public_ip_address_{{ loop.counter }}" { value = "${openstack_networking_floatingip_v2.floatingip{{ loop.counter }}.address}" }
+output "private_ip_address_{{ loop.counter }}" { value = "${openstack_compute_instance_v2.server{{ loop.counter }}.network.0.fixed_ip_v4}" }
+output "server_name_{{ loop.counter }}" { value = "${openstack_compute_instance_v2.server{{ loop.counter }}.name}" }
+output "server_id_{{ loop.counter }}" { value = "${openstack_compute_instance_v2.server{{ loop.counter }}.id}" }
+{% endfor %}
 
 
 resource "openstack_networking_router_v2" "router" {
@@ -76,12 +77,15 @@ resource "openstack_compute_keypair_v2" "keypair" {
   public_key = "${file("${var.public_key_path}")}"
 }
 
-resource "openstack_networking_floatingip_v2" "floatingip" {
+
+{% for server in servers %}
+
+resource "openstack_networking_floatingip_v2" "floatingip{{ loop.counter }}" {
   pool = "GATEWAY_NET"
 }
 
-resource "openstack_compute_instance_v2" "server" {
-  name = "server-${var.resource_suffix}"
+resource "openstack_compute_instance_v2" "server{{ loop.index }}" {
+  name = "server-{{ loop.index }}-${var.resource_suffix}"
   image_name = "${var.image}"
   flavor_name = "${var.flavor}"
   key_pair = "${openstack_compute_keypair_v2.keypair.name}"
@@ -104,4 +108,4 @@ resource "openstack_compute_instance_v2" "server" {
   }
 }
 
-
+{% endfor %}
