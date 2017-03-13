@@ -171,7 +171,7 @@ class TestEnvironment(object):
                 'system_tests.{0}'.format(handler))
         except ImportError:
             handler_module = importlib.import_module(
-                'suites.helpers.handlers.{0}.handler'.format(handler))
+                'suites.helpers.handlers.{0}'.format(handler))
         handler_class = handler_module.handler
         self.handler = handler_class(self)
 
