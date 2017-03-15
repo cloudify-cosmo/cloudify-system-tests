@@ -15,10 +15,10 @@ output "security_group_name" { value = "${openstack_compute_secgroup_v2.security
 output "security_group_id" { value = "${openstack_compute_secgroup_v2.security_group.id}" }
 output "keypair_name" { value = "${openstack_compute_keypair_v2.keypair.name}" }
 {% for server in servers %}
-output "public_ip_address_{{ loop.counter }}" { value = "${openstack_networking_floatingip_v2.floatingip{{ loop.counter }}.address}" }
-output "private_ip_address_{{ loop.counter }}" { value = "${openstack_compute_instance_v2.server{{ loop.counter }}.network.0.fixed_ip_v4}" }
-output "server_name_{{ loop.counter }}" { value = "${openstack_compute_instance_v2.server{{ loop.counter }}.name}" }
-output "server_id_{{ loop.counter }}" { value = "${openstack_compute_instance_v2.server{{ loop.counter }}.id}" }
+output "public_ip_address_{{ loop.index0 }}" { value = "${openstack_networking_floatingip_v2.floatingip{{ loop.index0 }}.address}" }
+output "private_ip_address_{{ loop.index0 }}" { value = "${openstack_compute_instance_v2.server{{ loop.index0 }}.network.0.fixed_ip_v4}" }
+output "server_name_{{ loop.index0 }}" { value = "${openstack_compute_instance_v2.server{{ loop.index0 }}.name}" }
+output "server_id_{{ loop.index0 }}" { value = "${openstack_compute_instance_v2.server{{ loop.index0 }}.id}" }
 {% endfor %}
 
 
@@ -80,12 +80,12 @@ resource "openstack_compute_keypair_v2" "keypair" {
 
 {% for server in servers %}
 
-resource "openstack_networking_floatingip_v2" "floatingip{{ loop.counter }}" {
+resource "openstack_networking_floatingip_v2" "floatingip{{ loop.index0 }}" {
   pool = "GATEWAY_NET"
 }
 
-resource "openstack_compute_instance_v2" "server{{ loop.index }}" {
-  name = "server-{{ loop.index }}-${var.resource_suffix}"
+resource "openstack_compute_instance_v2" "server{{ loop.index0 }}" {
+  name = "server-{{ loop.index0 }}-${var.resource_suffix}"
   image_name = "${var.image}"
   flavor_name = "${var.flavor}"
   key_pair = "${openstack_compute_keypair_v2.keypair.name}"
@@ -93,7 +93,7 @@ resource "openstack_compute_instance_v2" "server{{ loop.index }}" {
   network {
     uuid = "${openstack_networking_network_v2.network.id}"
   }
-  floating_ip = "${openstack_networking_floatingip_v2.floatingip.address}"
+  floating_ip = "${openstack_networking_floatingip_v2.floatingip{{ loop.index0 }}.address}"
 
   provisioner "remote-exec" {
     inline = [

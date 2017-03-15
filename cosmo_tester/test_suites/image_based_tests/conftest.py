@@ -15,16 +15,16 @@
 
 import pytest
 
-from cosmo_tester.framework.cloudify_manager import CloudifyManager
+#from cosmo_tester.framework.cloudify_manager import CloudifyCluster
 
 
-@pytest.fixture(scope='module')
-def image_based_manager(
-        request, cfy, ssh_key, module_tmpdir, attributes, logger):
-    """Creates a cloudify manager from an image in rackspace OpenStack."""
-    manager = CloudifyManager.create_image_based(
-            cfy, ssh_key, module_tmpdir, attributes, logger)
-
-    yield manager
-
-    manager.destroy()
+# @pytest.fixture(scope='module')
+# def image_based_manager(
+#         request, cfy, ssh_key, module_tmpdir, attributes, logger):
+#     """Creates a cloudify manager from an image in rackspace OpenStack."""
+#     cluster = CloudifyCluster.create_image_based(
+#             cfy, ssh_key, module_tmpdir, attributes, logger)
+#
+#     yield cluster.managers[0]
+#
+#     cluster.destroy()

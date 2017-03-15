@@ -1,3 +1,18 @@
+#########
+# Copyright (c) 2017 GigaSpaces Technologies Ltd. All rights reserved
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+#  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  * See the License for the specific language governing permissions and
+#  * limitations under the License.
+
 
 import logging
 import os
@@ -41,30 +56,35 @@ def module_tmpdir(request, logger):
 
 class SSHKey(object):
 
-    def __init__(self, private_key_path, public_key_path):
-        self.private_key_path = private_key_path
-        self.public_key_path = public_key_path
+    def __init__(self, tmpdir, logger):
+        self.private_key_path = tmpdir / 'key.pem'
+        self.public_key_path = tmpdir / 'key.pem.pub'
+        self.logger = logger
+        self.tmpdir = tmpdir
+
+    def create(self):
+        self.logger.info('Creating SSH keys at: %s', self.tmpdir)
+        if os.system("ssh-keygen -t rsa -f {} -q -N ''".format(
+                self.private_key_path)) != 0:
+            raise IOError('Error creating SSH key: {}'.format(
+                    self.private_key_path))
+        if os.system('chmod 400 {}'.format(self.private_key_path)) != 0:
+            raise IOError('Error setting private key file permission')
+
+    def delete(self):
+        self.private_key_path.remove()
+        self.public_key_path.remove()
 
 
 @pytest.fixture(scope='module')
 def ssh_key(module_tmpdir, logger):
-    private_key_path = module_tmpdir / 'key.pem'
-    public_key_path = module_tmpdir / 'key.pem.pub'
-    logger.info('Creating temporary SSH keys at: %s', module_tmpdir)
-    if os.system("ssh-keygen -t rsa -f {} -q -N ''".format(
-            private_key_path)) != 0:
-        raise IOError('Error creating SSH key: {}'.format(private_key_path))
-    if os.system('chmod 400 {}'.format(private_key_path)) != 0:
-        raise IOError('Error setting private key file permission')
-
-    yield SSHKey(private_key_path, public_key_path)
-
-    public_key_path.remove()
-    private_key_path.remove()
+    key = SSHKey(module_tmpdir, logger)
+    key.create()
+    yield key
+    key.delete()
 
 
-@pytest.fixture(scope='module')
-def attributes(request, logger):
+def get_attributes(logger):
     attributes_file = util.get_resource_path('attributes.yaml')
     logger.info('Loading attributes from: %s', attributes_file)
     with open(attributes_file, 'r') as f:
@@ -73,12 +93,14 @@ def attributes(request, logger):
 
 
 @pytest.fixture(scope='module')
+def attributes(logger):
+    return get_attributes(logger)
+
+
+@pytest.fixture(scope='module')
 def cfy(module_tmpdir, logger):
-    work_dir = os.environ.get('CFY_WORKDIR')
-    if not work_dir:
-        os.environ['CFY_WORKDIR'] = module_tmpdir
-    logger.info('CFY_WORKDIR is set to %s', os.environ['CFY_WORKDIR'])
+    os.environ['CFY_WORKDIR'] = module_tmpdir
+    logger.info('CFY_WORKDIR is set to %s', module_tmpdir)
     cfy = util.sh_bake(sh.cfy)
-    yield cfy
-    if not work_dir:
-        del os.environ['CFY_WORKDIR']
+    cfy(['--version'])
+    return cfy

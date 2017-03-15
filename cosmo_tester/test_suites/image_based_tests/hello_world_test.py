@@ -16,6 +16,8 @@
 import pytest
 
 from cosmo_tester.framework import examples
+from cosmo_tester.framework.fixtures import image_based_manager
+
 
 
 @pytest.fixture(scope='function')
