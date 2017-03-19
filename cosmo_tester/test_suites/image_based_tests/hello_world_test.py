@@ -19,16 +19,13 @@ from cosmo_tester.framework import examples
 from cosmo_tester.framework.fixtures import image_based_manager
 
 
-
 @pytest.fixture(scope='function')
 def hello_world(cfy, image_based_manager, attributes, ssh_key, tmpdir, logger):
     hw = examples.HelloWorldExample(
             cfy, image_based_manager, attributes, ssh_key, logger, tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     yield hw
-    if hw.cleanup_required:
-        logger.info('Hello world cleanup required..')
-        hw.cleanup()
+    hw.cleanup()
 
 
 def test_hello_world_on_centos_7(hello_world, attributes):

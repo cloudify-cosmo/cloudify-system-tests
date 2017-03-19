@@ -22,6 +22,7 @@ import uuid
 
 from fabric import api as fabric_api
 from fabric import context_managers as fabric_context_managers
+from influxdb import InfluxDBClient
 import jinja2
 import retrying
 import sh
@@ -52,6 +53,8 @@ class _CloudifyManager(object):
         self._ssh_key = ssh_key
         self._cfy = cfy
         self._attributes = attributes
+        self.influxdb_client = InfluxDBClient(public_ip_address, 8086,
+                                              'root', 'root', 'cloudify')
 
     @property
     def remote_private_key_path(self):
