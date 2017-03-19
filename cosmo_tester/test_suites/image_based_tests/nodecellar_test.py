@@ -16,13 +16,13 @@
 import pytest
 
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
-from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.fixtures import image_based_manager as manager
 
 
 @pytest.fixture(scope='function')
-def nodecellar(cfy, image_based_manager, attributes, ssh_key, tmpdir, logger):
+def nodecellar(cfy, manager, attributes, ssh_key, tmpdir, logger):
     nc = NodeCellarExample(
-            cfy, image_based_manager, attributes, ssh_key, logger, tmpdir)
+            cfy, manager, attributes, ssh_key, logger, tmpdir)
     nc.blueprint_file = 'openstack-blueprint.yaml'
     yield nc
     nc.cleanup()
@@ -30,3 +30,16 @@ def nodecellar(cfy, image_based_manager, attributes, ssh_key, tmpdir, logger):
 
 def test_nodecellar_example(nodecellar):
     nodecellar.verify_all()
+
+
+@pytest.fixture(scope='function')
+def nodecellar_singlehost(cfy, manager, attributes, ssh_key, tmpdir, logger):
+    nc = NodeCellarExample(
+            cfy, manager, attributes, ssh_key, logger, tmpdir)
+    nc.blueprint_file = 'simple-blueprint.yaml'
+    return nc
+
+
+def test_nodecellar_singlehost_example(nodecellar_singlehost):
+    nodecellar_singlehost.verify_all()
+

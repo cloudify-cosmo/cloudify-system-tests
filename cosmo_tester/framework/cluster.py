@@ -26,6 +26,7 @@ from influxdb import InfluxDBClient
 import jinja2
 import retrying
 import sh
+from cloudify_rest_client.exceptions import CloudifyClientError
 
 from cosmo_tester.framework import util
 from cosmo_tester.framework import git_helper
@@ -232,6 +233,14 @@ class CloudifyCluster(object):
         try:
             manager.client.plugins.upload(openstack_plugin_wagon[0])
             self._cfy.plugins.list()
+        except CloudifyClientError as cce:
+            if cce.status_code == 500:
+                self._logger.error('%s when trying to upload OpenStack plugin to the manager', cce)
+                self._logger.info('Getting rest service log..')
+                with manager.ssh():
+                    fabric_api.run('tail -n 1000 /var/log/cloudify/rest/cloudify-rest-service.log')
+                self._logger.info('==END-OF-REST-SERVICE-LOG==')
+            raise
         except Exception as e:
             self._logger.error(
                     'Error uploading OpenStack plugin to manager: %s', e)

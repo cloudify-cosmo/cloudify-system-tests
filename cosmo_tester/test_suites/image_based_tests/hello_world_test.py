@@ -16,13 +16,13 @@
 import pytest
 
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
-from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.fixtures import image_based_manager as manager
 
 
 @pytest.fixture(scope='function')
-def hello_world(cfy, image_based_manager, attributes, ssh_key, tmpdir, logger):
+def hello_world(cfy, manager, attributes, ssh_key, tmpdir, logger):
     hw = HelloWorldExample(
-            cfy, image_based_manager, attributes, ssh_key, logger, tmpdir)
+            cfy, manager, attributes, ssh_key, logger, tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     yield hw
     hw.cleanup()
@@ -59,3 +59,15 @@ def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
         'image': attributes.ubuntu_16_04_image_name,
     })
     hello_world.verify_all()
+
+
+@pytest.fixture(scope='function')
+def hello_world_singlehost(cfy, manager, attributes, ssh_key, tmpdir, logger):
+    hw = HelloWorldExample(
+            cfy, manager, attributes, ssh_key, logger, tmpdir)
+    hw.blueprint_file = 'singlehost-blueprint.yaml'
+    return hw
+
+
+def test_hello_world_single_host(hello_world_singlehost, attributes):
+    hello_world_singlehost.verify_all()

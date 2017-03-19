@@ -669,10 +669,6 @@ tests:
     tests:
       - cosmo_tester/test_suites/test_openstack_plugin
 
-  simple_manager_blueprint:
-    tests:
-      - cosmo_tester/test_suites/test_simple_manager_blueprint
-
   external_components:
     tests:
       - cosmo_tester/test_suites/test_external_components
@@ -813,11 +809,6 @@ test_suites:
     requires: [openstack, rackspace]
     tests:
       - openstack_plugin
-
-  openstack_simple_manager:
-    requires: [openstack, rackspace]
-    tests:
-      - simple_manager_blueprint
 
   openstack_chef:
     requires: [openstack, rackspace]

@@ -45,6 +45,13 @@ class HelloWorldExample(AbstractExample):
                     'flavor': self.attributes.medium_flavor_name,
                     'network_name': self.attributes.network_name
                 }
+            elif self._blueprint_file == 'singlehost-blueprint.yaml':
+                self._inputs = {
+                    'server_ip': self.manager.ip_address,
+                    'agent_user': self.attributes.centos7_username,
+                    'agent_private_key_path':
+                        self.manager.remote_private_key_path,
+                }
             else:
                 self._inputs = {}
         return self._inputs
