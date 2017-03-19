@@ -229,8 +229,13 @@ class CloudifyCluster(object):
         self._logger.info('Uploading openstack plugin [%s] to %s..',
                           openstack_plugin_wagon[0],
                           manager)
-        manager.client.plugins.upload(openstack_plugin_wagon[0])
-        self._cfy.plugins.list()
+        try:
+            manager.client.plugins.upload(openstack_plugin_wagon[0])
+            self._cfy.plugins.list()
+        except Exception as e:
+            self._logger.error(
+                    'Error uploading OpenStack plugin to manager: %s', e)
+            raise
 
     def _upload_necessary_files_to_manager(self,
                                            manager,

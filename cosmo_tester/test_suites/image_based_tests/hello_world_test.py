@@ -15,13 +15,13 @@
 
 import pytest
 
-from cosmo_tester.framework import examples
+from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.fixtures import image_based_manager
 
 
 @pytest.fixture(scope='function')
 def hello_world(cfy, image_based_manager, attributes, ssh_key, tmpdir, logger):
-    hw = examples.HelloWorldExample(
+    hw = HelloWorldExample(
             cfy, image_based_manager, attributes, ssh_key, logger, tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     yield hw

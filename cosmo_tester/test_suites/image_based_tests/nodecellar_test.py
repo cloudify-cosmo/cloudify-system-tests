@@ -15,13 +15,13 @@
 
 import pytest
 
-from cosmo_tester.framework import examples
+from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
 from cosmo_tester.framework.fixtures import image_based_manager
 
 
 @pytest.fixture(scope='function')
 def nodecellar(cfy, image_based_manager, attributes, ssh_key, tmpdir, logger):
-    nc = examples.NodeCellarExample(
+    nc = NodeCellarExample(
             cfy, image_based_manager, attributes, ssh_key, logger, tmpdir)
     nc.blueprint_file = 'openstack-blueprint.yaml'
     yield nc

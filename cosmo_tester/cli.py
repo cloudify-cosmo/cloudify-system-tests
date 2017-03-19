@@ -87,7 +87,7 @@ def destroy():
     cluster.destroy()
 
     logger.info('Cloudify manager destroyed!')
-    tmpdir.removedirs_p()
+    tmpdir.rmtree_p()
 
 
 def create_parser():
