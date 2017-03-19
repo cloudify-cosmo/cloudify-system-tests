@@ -12,10 +12,13 @@
 #    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
+
 import requests
 import json
 from requests.exceptions import ConnectionError
 from influxdb import InfluxDBClient
+
+from nose.tools import nottest
 
 from cloudify_rest_client.exceptions import CloudifyClientError
 from cosmo_tester.framework.git_helper import clone
@@ -277,5 +280,6 @@ class OpenStackNodeCellarTestBase(NodecellarAppTest):
 
 class OpenStackNodeCellarTest(OpenStackNodeCellarTestBase):
 
+    @nottest
     def test_openstack_nodecellar(self):
         self._test_openstack_nodecellar('deprecated-openstack-blueprint.yaml')
