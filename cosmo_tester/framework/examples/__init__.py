@@ -55,8 +55,22 @@ class AbstractExample(testtools.TestCase):
         self._blueprint_file = value
 
     @property
+    def blueprint_path(self):
+        if not self._cloned_to:
+            raise RuntimeError('_cloned_to is not set')
+        return self._cloned_to / self.blueprint_file
+
+    @property
     def cleanup_required(self):
         return self._cleanup_required
+
+    @property
+    def outputs(self):
+        outputs = self.manager.client.deployments.outputs.get(
+                self.deployment_id)['outputs']
+        self.logger.info('Deployment outputs: %s%s',
+                         os.linesep, json.dumps(outputs, indent=2))
+        return outputs
 
     def verify_all(self):
         self.upload_blueprint()

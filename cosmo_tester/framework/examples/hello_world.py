@@ -58,11 +58,7 @@ class HelloWorldExample(AbstractExample):
 
     def verify_installation(self):
         super(HelloWorldExample, self).verify_installation()
-        outputs = self.manager.client.deployments.outputs.get(
-                self.deployment_id)['outputs']
-        self.logger.info('Deployment outputs: %s%s',
-                         os.linesep, json.dumps(outputs, indent=2))
-        http_endpoint = outputs['http_endpoint']
+        http_endpoint = self.outputs['http_endpoint']
         if self.disable_iptables:
             self._disable_iptables(http_endpoint)
         self.assert_webserver_running(http_endpoint)

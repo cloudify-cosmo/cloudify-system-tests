@@ -52,11 +52,7 @@ class NodeCellarExample(AbstractExample):
 
     def verify_installation(self):
         super(NodeCellarExample, self).verify_installation()
-        outputs = self.manager.client.deployments.outputs.get(
-                self.deployment_id)['outputs']
-        self.logger.info('Deployment outputs: %s%s',
-                         os.linesep, json.dumps(outputs, indent=2))
-        self.assert_nodecellar_working(outputs['endpoint'])
+        self.assert_nodecellar_working(self.outputs['endpoint'])
         self.assert_mongodb_collector_data()
 
     def assert_mongodb_collector_data(self):

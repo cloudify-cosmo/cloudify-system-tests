@@ -203,7 +203,8 @@ class CloudifyCluster(object):
                 manager.use()
                 self._upload_necessary_files_to_manager(manager,
                                                         openstack_config_file)
-                self._upload_openstack_plugin_to_manager(manager)
+                self._upload_plugin_to_manager(manager,
+                                               'openstack_centos_core')
 
             self._logger.info('Cloudify cluster successfully created!')
 
@@ -217,21 +218,23 @@ class CloudifyCluster(object):
             raise
 
     @retrying.retry(stop_max_attempt_number=3, wait_fixed=3000)
-    def _upload_openstack_plugin_to_manager(self, manager):
+    def _upload_plugin_to_manager(self, manager, plugin_name):
         plugins_list = util.get_plugin_wagon_urls()
-        openstack_plugin_wagon = [
+        plugin_wagon = [
             x['wgn_url'] for x in plugins_list
-            if x['name'] == 'openstack_centos_core']
-        if len(openstack_plugin_wagon) != 1:
+            if x['name'] == plugin_name]
+        if len(plugin_wagon) != 1:
             self._logger.error(
-                    'OpenStack plugin wagon not found in:%s%s',
-                    os.linesep, json.dumps(plugins_list, indent=2))
-            raise RuntimeError('OpenStack plugin not found in wagons list')
-        self._logger.info('Uploading openstack plugin [%s] to %s..',
-                          openstack_plugin_wagon[0],
+                    '%s plugin wagon not found in:%s%s',
+                    plugin_name, os.linesep, json.dumps(plugins_list, indent=2))
+            raise RuntimeError(
+                    '{} plugin not found in wagons list'.format(plugin_name))
+        self._logger.info('Uploading %s plugin [%s] to %s..',
+                          plugin_name,
+                          plugin_wagon[0],
                           manager)
         try:
-            manager.client.plugins.upload(openstack_plugin_wagon[0])
+            manager.client.plugins.upload(plugin_wagon[0])
             self._cfy.plugins.list()
         except CloudifyClientError as cce:
             if cce.status_code == 500:
