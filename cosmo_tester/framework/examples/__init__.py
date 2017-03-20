@@ -15,11 +15,11 @@
 
 import json
 import os
-import testtools
 import uuid
 from abc import ABCMeta
 
 import pytest
+import testtools
 
 from cosmo_tester.framework import git_helper
 
@@ -30,12 +30,14 @@ class AbstractExample(testtools.TestCase):
 
     REPOSITORY_URL = None
 
-    def __init__(self, cfy, manager, attributes, ssh_key, logger, tmpdir):
+    def __init__(self, cfy, manager, attributes, ssh_key, logger, tmpdir,
+                 branch=None):
         self.attributes = attributes
         self.logger = logger
         self.manager = manager
         self.cfy = cfy
         self.tmpdir = tmpdir
+        self.branch = branch
         self._ssh_key = ssh_key
         self._cleanup_required = False
         self._blueprint_file = None
@@ -116,9 +118,9 @@ class AbstractExample(testtools.TestCase):
 
     def _clone_example(self):
         if not self._cloned_to:
-            self._cloned_to = git_helper.clone(
-                    self.REPOSITORY_URL,
-                    str(self.tmpdir))
+            self._cloned_to = git_helper.clone(self.REPOSITORY_URL,
+                                               str(self.tmpdir),
+                                               branch=self.branch)
 
     def cleanup(self):
         if self._cleanup_required:

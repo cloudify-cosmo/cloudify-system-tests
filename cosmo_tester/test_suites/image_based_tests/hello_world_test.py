@@ -69,5 +69,5 @@ def hello_world_singlehost(cfy, manager, attributes, ssh_key, tmpdir, logger):
     return hw
 
 
-def test_hello_world_single_host(hello_world_singlehost, attributes):
+def test_hello_world_single_host(hello_world_singlehost):
     hello_world_singlehost.verify_all()

@@ -736,10 +736,6 @@ tests:
     tests:
       - system_tests/manager
 
-  nodecellar_backwards_compatibility_tests:
-    tests:
-      - cosmo_tester/test_suites/backwards/test_nodecellar_backwards_compatibility
-
   manager_rollback:
     tests:
       - cosmo_tester/test_suites/test_manager_upgrade/rollback_idempotency_test.py
@@ -855,11 +851,6 @@ test_suites:
     handler_configuration: aws_ec2
     tests:
       - cli_packager_debian
-
-  openstack_backwards_nodecellar:
-    requires: [openstack, rackspace]
-    tests:
-      - nodecellar_backwards_compatibility_tests
 
   vsphere:
     handler_configuration: vsphere_handler_config
