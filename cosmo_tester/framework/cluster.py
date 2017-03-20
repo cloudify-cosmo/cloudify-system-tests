@@ -240,9 +240,16 @@ class CloudifyCluster(object):
             if cce.status_code == 500:
                 self._logger.error('%s when trying to upload OpenStack plugin to the manager', cce)
                 self._logger.info('Getting rest service log..')
+                self._logger.info('=== START cloudify-rest-service.log ===')
                 with manager.ssh():
-                    fabric_api.run('tail -n 1000 /var/log/cloudify/rest/cloudify-rest-service.log')
-                self._logger.info('==END-OF-REST-SERVICE-LOG==')
+                    fabric_api.run('tail -n 250 /var/log/cloudify/rest/cloudify-rest-service.log')
+                self._logger.info('=== END cloudify-rest-service.log ===')
+                self._logger.info('Getting management worker log..')
+                self._logger.info('=== START cloudify.management_worker.log ===')
+                with manager.ssh():
+                    fabric_api.run('tail -n 250 /var/log/cloudify/mgmtworker/cloudify.management_worker.log')
+                self._logger.info('=== END cloudify.management_worker.log ===')
+
             raise
         except Exception as e:
             self._logger.error(

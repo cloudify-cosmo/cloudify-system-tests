@@ -753,10 +753,6 @@ tests:
     tests:
       - cosmo_tester/test_suites/test_preupgrade_validations
 
-  deployment_update:
-    tests:
-      - cosmo_tester/test_suites/test_deployment_update/deployment_update_test.py:DeploymentUpdateOSTest
-
   agent_tests:
     tests:
       - cosmo_tester/test_suites/agent
@@ -794,11 +790,6 @@ test_suites:
     requires: [openstack, rackspace]
     tests:
       - manager_upgrade_validations
-
-  openstack_deployment_update:
-    requires: [openstack, rackspace]
-    tests:
-    - deployment_update
 
   agent:
     requires: [openstack, rackspace]
