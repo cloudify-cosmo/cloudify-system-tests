@@ -101,6 +101,15 @@ def attributes(logger):
 def cfy(module_tmpdir, logger):
     os.environ['CFY_WORKDIR'] = module_tmpdir
     logger.info('CFY_WORKDIR is set to %s', module_tmpdir)
+    # Copy CLI configuration file if exists in home folder
+    # this way its easier to customize the configuration when running
+    # tests locally.
+    cli_config_path = Path(os.path.expanduser('~/.cloudify/config.yaml'))
+    if cli_config_path.exists():
+        logger.info('Using CLI configuration file from: %s', cli_config_path)
+        new_cli_config_dir = module_tmpdir / '.cloudify'
+        new_cli_config_dir.mkdir()
+        cli_config_path.copy(new_cli_config_dir / 'config.yaml')
     cfy = util.sh_bake(sh.cfy)
     cfy(['--version'])
     return cfy

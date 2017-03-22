@@ -114,7 +114,15 @@ class AbstractExample(testtools.TestCase):
     def install(self):
         self.logger.info('Installing deployment...')
         self._cleanup_required = True
-        self.cfy.executions.start.install(['-d', self.deployment_id])
+        try:
+            self.cfy.executions.start.install(['-d', self.deployment_id])
+        except Exception as e:
+            if 'if there is a running system-wide' in e.message:
+                self.logger.error('Error on deployment execution: %s', e)
+                self.logger.info('Listing executions..')
+                self.cfy.executions.list(['-d', self.deployment_id])
+                self.cfy.executions.list(['--include-system-workflows'])
+            raise
 
     def _clone_example(self):
         if not self._cloned_to:

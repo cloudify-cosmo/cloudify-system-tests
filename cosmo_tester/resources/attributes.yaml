@@ -23,3 +23,4 @@ floating_network_id: dda079ce-12cf-4309-879a-8e67aec94de4
 external_gateway: GATEWAY_NET
 large_flavor_name: m1.large
 medium_flavor_name: m1.medium
+small_flavor_name: m1.small
