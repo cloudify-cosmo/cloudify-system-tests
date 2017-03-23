@@ -14,22 +14,21 @@
 #    * limitations under the License.
 
 import os
-import uuid
 import time
+import uuid
 
-import pytest
 import testtools
 
 from cloudify import constants
+from cloudify.compute import create_multi_mimetype_userdata
+from cloudify.mocks import MockCloudifyContext
+from cloudify.state import current_ctx
 from cloudify_agent.api import defaults
 from cloudify_agent.installer import script
-from cloudify.state import current_ctx
-from cloudify.mocks import MockCloudifyContext
-from cloudify.compute import create_multi_mimetype_userdata
 from cosmo_tester.framework import util
 
 
-from cosmo_tester.framework.fixtures import image_based_manager as manager  # noqa
+EXPECTED_FILE_CONTENT = 'CONTENT'
 
 
 
@@ -129,11 +128,7 @@ def test_centos_agent_alive_after_reboot(cfy, manager, attributes):
             })
 
 
-def test_winrm_agent_alive_after_reboot(cfy, manager, attributes, logger):
-
-    logger.info('### SLEEPING ###')
-    import time
-    time.sleep(60*2)
+def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
 
     _test_agent_alive_after_reboot(
             cfy,
@@ -150,29 +145,87 @@ def test_winrm_agent_alive_after_reboot(cfy, manager, attributes, logger):
             })
 
 
+def test_winrm_agent(cfy, manager, attributes):
+
+    blueprint_path = util.get_resource_path(
+            'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
+    blueprint_id = deployment_id = str(uuid.uuid4())
+
+    manager.client.blueprints.upload(blueprint_path, blueprint_id)
+    manager.client.deployments.create(
+            deployment_id, blueprint_id, inputs={
+                'image': attributes.windows_server_2012_image_name,
+                'flavor': attributes.medium_flavor_name,
+                'user': attributes.windows_server_2012_username,
+                'network_name': attributes.network_name,
+                'private_key_path': manager.remote_private_key_path,
+                'keypair_name': attributes.keypair_name
+            })
+    try:
+        cfy.executions.start.install(['-d', deployment_id])
+    finally:
+        cfy.executions.start.uninstall(['-d', deployment_id])
+
+
+# Two different tests for ubuntu/centos
+# because of different disable requiretty logic
+def test_centos_core_userdata_agent(cfy, manager, attributes):
+    _test_linux_userdata_agent(image=attributes.centos7_image_name,
+                               flavor=attributes.small_flavor_name,
+                               user=attributes.centos7_username,
+                               install_method='init_script')
+
+
+def _test_linux_userdata_agent(image, flavor, user, install_method,
+                               install_userdata=None, name=None):
+    file_path = '/tmp/test_file'
+    userdata = '#! /bin/bash\necho {0} > {1}\nchmod 777 {1}'.format(
+            EXPECTED_FILE_CONTENT, file_path)
+    if install_userdata:
+        userdata = create_multi_mimetype_userdata([userdata,
+                                                   install_userdata])
+    _test_userdata_agent(image=image,
+                         flavor=flavor,
+                         user=user,
+                         os_family='linux',
+                         userdata=userdata,
+                         file_path=file_path,
+                         install_method=install_method,
+                         name=name)
+
+
+def _test_userdata_agent(cfy, manager, inputs, image, flavor, user,
+                         os_family, userdata, file_path, install_method,
+                         name=None):
+    blueprint_id = deployment_id = 'userdata{0}'.format(time.time())
+    blueprint_path = util.get_resource_path(
+            'agent/userdata-agent-blueprint/userdata-agent-blueprint.yaml')
+
+    manager.client.blueprints.upload(blueprint_path, blueprint_id)
+    manager.client.deployments.create(
+            deployment_id, blueprint_id, inputs=inputs)
+
+    cfy.executions.start.install(['-d', deployment_id])
+    cfy.executions.start.execute_operation(
+            deployment_id=deployment_id,
+            parameters={
+                'operation': 'cloudify.interfaces.reboot_test.reboot',
+                'node_ids': ['host']
+            })
+
+    try:
+        assert {
+            'MY_ENV_VAR': 'MY_ENV_VAR_VALUE',
+            'file_content': EXPECTED_FILE_CONTENT
+        } == manager.client.deployment.outputs(deployment_id).outputs
+    finally:
+        cfy.executions.start.uninstall(['-d', deployment_id])
+
+
 class AgentInstallerTest(testtools.TestCase):
 
-    expected_file_content = 'CONTENT'
 
-    def test_winrm_agent(self):
 
-        self.blueprint_yaml = util.get_resource_path(
-                'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
-        self.upload_deploy_and_execute_install(
-                inputs={
-                    'image': self.env.windows_image_name,
-                    'flavor': self.env.medium_flavor_id
-                }
-        )
-        self.execute_uninstall()
-
-    # Two different tests for ubuntu/centos
-    # because of different disable requiretty logic
-    def test_centos_core_userdata_agent(self):
-        self._test_linux_userdata_agent(image=self.env.centos_7_image_name,
-                                        flavor=self.env.small_flavor_id,
-                                        user=self.env.centos_7_image_user,
-                                        install_method='init_script')
 
     def test_ubuntu_trusty_userdata_agent(self):
         self._test_linux_userdata_agent(image=self.env.ubuntu_trusty_image_id,
@@ -193,23 +246,6 @@ class AgentInstallerTest(testtools.TestCase):
                                         install_method='provided',
                                         name=name,
                                         install_userdata=install_userdata)
-
-    def _test_linux_userdata_agent(self, image, flavor, user, install_method,
-                                   install_userdata=None, name=None):
-        file_path = '/tmp/test_file'
-        userdata = '#! /bin/bash\necho {0} > {1}\nchmod 777 {1}'.format(
-                self.expected_file_content, file_path)
-        if install_userdata:
-            userdata = create_multi_mimetype_userdata([userdata,
-                                                       install_userdata])
-        self._test_userdata_agent(image=image,
-                                  flavor=flavor,
-                                  user=user,
-                                  os_family='linux',
-                                  userdata=userdata,
-                                  file_path=file_path,
-                                  install_method=install_method,
-                                  name=name)
 
     def test_windows_userdata_agent(self,
                                     install_method='init_script',
@@ -241,29 +277,6 @@ class AgentInstallerTest(testtools.TestCase):
                                          name=name,
                                          install_userdata=install_userdata)
 
-    def _test_userdata_agent(self, image, flavor, user, os_family,
-                             userdata, file_path, install_method,
-                             name=None):
-        deployment_id = 'userdata{0}'.format(time.time())
-        self.blueprint_yaml = util.get_resource_path(
-                'agent/userdata-agent-blueprint/userdata-agent-blueprint.yaml')
-        self.upload_deploy_and_execute_install(
-                deployment_id=deployment_id,
-                inputs={
-                    'image': image,
-                    'flavor': flavor,
-                    'agent_user': user,
-                    'os_family': os_family,
-                    'userdata': userdata,
-                    'file_path': file_path,
-                    'install_method': install_method,
-                    'name': name
-                }
-        )
-        self.assert_outputs({'MY_ENV_VAR': 'MY_ENV_VAR_VALUE',
-                             'file_content': self.expected_file_content},
-                            deployment_id=deployment_id)
-        self.execute_uninstall(deployment_id=deployment_id)
 
     def _manager_host(self):
         nova_client, _, _ = self.env.handler.openstack_clients()
