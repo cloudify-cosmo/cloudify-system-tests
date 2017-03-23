@@ -11,11 +11,9 @@ inputs:
   image:
     description: >
       Image to be used when launching agent VM's
-
   flavor:
     description: >
       Flavor of the agent VM's
-
   user:
     description: >
       User to use during remote connection to VM.

@@ -17,19 +17,18 @@ import os
 import time
 import uuid
 
-import testtools
-
 from cloudify import constants
 from cloudify.compute import create_multi_mimetype_userdata
 from cloudify.mocks import MockCloudifyContext
 from cloudify.state import current_ctx
 from cloudify_agent.api import defaults
 from cloudify_agent.installer import script
+
 from cosmo_tester.framework import util
+from cosmo_tester.framework.fixtures import image_based_manager as manager  # noqa
 
 
 EXPECTED_FILE_CONTENT = 'CONTENT'
-
 
 
 def test_3_2_agent(cfy, manager, attributes):
@@ -170,33 +169,118 @@ def test_winrm_agent(cfy, manager, attributes):
 # Two different tests for ubuntu/centos
 # because of different disable requiretty logic
 def test_centos_core_userdata_agent(cfy, manager, attributes):
-    _test_linux_userdata_agent(image=attributes.centos7_image_name,
-                               flavor=attributes.small_flavor_name,
-                               user=attributes.centos7_username,
-                               install_method='init_script')
+    _test_linux_userdata_agent(
+            cfy,
+            manager,
+            attributes,
+            image=attributes.centos7_image_name,
+            flavor=attributes.small_flavor_name,
+            user=attributes.centos7_username,
+            install_method='init_script')
 
 
-def _test_linux_userdata_agent(image, flavor, user, install_method,
-                               install_userdata=None, name=None):
+def test_ubuntu_trusty_userdata_agent(cfy, manager, attributes):
+    _test_linux_userdata_agent(
+            cfy,
+            manager,
+            attributes,
+            image=attributes.ubuntu_14_04_image_name,
+            flavor=attributes.small_flavor_name,
+            user=attributes.ubuntu_username,
+            install_method='init_script')
+
+
+def test_ubuntu_trusty_provided_userdata_agent(cfy, manager, attributes):
+    name = 'cloudify_agent'
+    user = attributes.ubuntu_username
+    install_userdata = install_script(name=name,
+                                      windows=False,
+                                      user=user,
+                                      manager_host=manager.private_ip_address)
+    _test_linux_userdata_agent(
+            cfy,
+            manager,
+            attributes,
+            image=attributes.ubuntu_14_04_image_name,
+            flavor=attributes.small_flavor_name,
+            user=user,
+            install_method='provided',
+            name=name,
+            install_userdata=install_userdata)
+
+
+def test_windows_userdata_agent(cfy,
+                                manager,
+                                attributes,
+                                install_method='init_script',
+                                name=None,
+                                install_userdata=None):
+    user = attributes.windows_server_2012_username
+    file_path = 'C:\\Users\\{0}\\test_file'.format(user)
+    userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
+            EXPECTED_FILE_CONTENT, file_path)
+    if install_userdata:
+        userdata = create_multi_mimetype_userdata([userdata,
+                                                   install_userdata])
+    inputs = {
+        'image': attributes.windows_server_2012_image_name,
+        'user': user,
+        'flavor': attributes.medium_flavor_name,
+        'os_family': 'windows',
+        'userdata': userdata,
+        'file_path': file_path,
+        'install_method': install_method,
+        'name': name,
+        'keypair_name': attributes.keypair_name,
+        'private_key_path': manager.remote_private_key_path,
+        'network_name': attributes.network_name
+    }
+    _test_userdata_agent(cfy, manager, inputs)
+
+
+def test_windows_provided_userdata_agent(cfy, manager, attributes):
+    name = 'cloudify_agent'
+    install_userdata = install_script(
+            name=name,
+            windows=True,
+            user=attributes.windows_server_2012_username,
+            manager_host=manager.private_ip_address)
+    test_windows_userdata_agent(
+            cfy,
+            manager,
+            attributes,
+            install_method='provided',
+            name=name,
+            install_userdata=install_userdata)
+
+
+def _test_linux_userdata_agent(cfy, manager, attributes, image, flavor, user,
+                               install_method, install_userdata=None,
+                               name=None):
     file_path = '/tmp/test_file'
     userdata = '#! /bin/bash\necho {0} > {1}\nchmod 777 {1}'.format(
             EXPECTED_FILE_CONTENT, file_path)
     if install_userdata:
         userdata = create_multi_mimetype_userdata([userdata,
                                                    install_userdata])
-    _test_userdata_agent(image=image,
-                         flavor=flavor,
-                         user=user,
-                         os_family='linux',
-                         userdata=userdata,
-                         file_path=file_path,
-                         install_method=install_method,
-                         name=name)
+    inputs = {
+        'image': image,
+        'user': user,
+        'flavor': flavor,
+        'os_family': 'linux',
+        'userdata': userdata,
+        'file_path': file_path,
+        'install_method': install_method,
+        'name': name,
+        'keypair_name': attributes.keypair_name,
+        'private_key_path': manager.remote_private_key_path,
+        'network_name': attributes.network_name
+    }
+
+    _test_userdata_agent(cfy, manager, inputs)
 
 
-def _test_userdata_agent(cfy, manager, inputs, image, flavor, user,
-                         os_family, userdata, file_path, install_method,
-                         name=None):
+def _test_userdata_agent(cfy, manager, inputs):
     blueprint_id = deployment_id = 'userdata{0}'.format(time.time())
     blueprint_path = util.get_resource_path(
             'agent/userdata-agent-blueprint/userdata-agent-blueprint.yaml')
@@ -206,12 +290,6 @@ def _test_userdata_agent(cfy, manager, inputs, image, flavor, user,
             deployment_id, blueprint_id, inputs=inputs)
 
     cfy.executions.start.install(['-d', deployment_id])
-    cfy.executions.start.execute_operation(
-            deployment_id=deployment_id,
-            parameters={
-                'operation': 'cloudify.interfaces.reboot_test.reboot',
-                'node_ids': ['host']
-            })
 
     try:
         assert {
@@ -222,74 +300,7 @@ def _test_userdata_agent(cfy, manager, inputs, image, flavor, user,
         cfy.executions.start.uninstall(['-d', deployment_id])
 
 
-class AgentInstallerTest(testtools.TestCase):
-
-
-
-
-    def test_ubuntu_trusty_userdata_agent(self):
-        self._test_linux_userdata_agent(image=self.env.ubuntu_trusty_image_id,
-                                        flavor=self.env.small_flavor_id,
-                                        user='ubuntu',
-                                        install_method='init_script')
-
-    def test_ubuntu_trusty_provided_userdata_agent(self):
-        name = 'cloudify_agent'
-        user = 'ubuntu'
-        install_userdata = install_script(name=name,
-                                          windows=False,
-                                          user=user,
-                                          manager_host=self._manager_host())
-        self._test_linux_userdata_agent(image=self.env.ubuntu_trusty_image_id,
-                                        flavor=self.env.small_flavor_id,
-                                        user=user,
-                                        install_method='provided',
-                                        name=name,
-                                        install_userdata=install_userdata)
-
-    def test_windows_userdata_agent(self,
-                                    install_method='init_script',
-                                    name=None,
-                                    install_userdata=None):
-        user = 'Administrator'
-        file_path = 'C:\\Users\\{0}\\test_file'.format(user)
-        userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
-                self.expected_file_content, file_path)
-        if install_userdata:
-            userdata = create_multi_mimetype_userdata([userdata,
-                                                       install_userdata])
-        self._test_userdata_agent(image=self.env.windows_image_name,
-                                  flavor=self.env.medium_flavor_id,
-                                  user=user,
-                                  os_family='windows',
-                                  userdata=userdata,
-                                  file_path=file_path,
-                                  install_method=install_method,
-                                  name=name)
-
-    def test_windows_provided_userdata_agent(self):
-        name = 'cloudify_agent'
-        install_userdata = install_script(name=name,
-                                          windows=True,
-                                          user='Administrator',
-                                          manager_host=self._manager_host())
-        self.test_windows_userdata_agent(install_method='provided',
-                                         name=name,
-                                         install_userdata=install_userdata)
-
-
-    def _manager_host(self):
-        nova_client, _, _ = self.env.handler.openstack_clients()
-        for server in nova_client.servers.list():
-            if server.name == self.env.management_server_name:
-                for network, network_ips in server.networks.items():
-                    if network == self.env.management_network_name:
-                        return network_ips[0]
-        self.fail('Failed finding manager rest host')
-
-
 def install_script(name, windows, user, manager_host):
-
     env_vars = {}
     env_vars[constants.REST_PORT_KEY] = str(defaults.INTERNAL_REST_PORT)
     env_vars[constants.MANAGER_FILE_SERVER_URL_KEY] = \
