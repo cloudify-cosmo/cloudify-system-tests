@@ -101,12 +101,15 @@ class AbstractExample(testtools.TestCase):
         self.logger.info('Uploading blueprint: %s [id=%s]',
                          blueprint_file,
                          self.blueprint_id)
-        self.manager.client.blueprints.upload(blueprint_file, self.blueprint_id)
+        self.manager.client.blueprints.upload(
+                blueprint_file, self.blueprint_id)
 
     def create_deployment(self):
         self.logger.info(
                 'Creating deployment [id=%s] with the following inputs:%s%s',
-                self.deployment_id, os.linesep, json.dumps(self.inputs, indent=2))
+                self.deployment_id,
+                os.linesep,
+                json.dumps(self.inputs, indent=2))
         self.manager.client.deployments.create(
                 self.deployment_id, self.blueprint_id, inputs=self.inputs)
         self.cfy.deployments.list()
@@ -149,8 +152,8 @@ class AbstractExample(testtools.TestCase):
                            'where time > now() - 5s'
                            .format(self.deployment_id))
         except NameError as e:
-            pytest.fail('Monitoring events list for deployment with ID {0} were'
-                        ' not found on influxDB. error is: {1}'
+            pytest.fail('Monitoring events list for deployment with ID {0} '
+                        'were not found on influxDB. error is: {1}'
                         .format(self.deployment_id, e))
 
     def assert_deployment_events_exist(self):

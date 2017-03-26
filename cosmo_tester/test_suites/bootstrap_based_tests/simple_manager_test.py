@@ -32,7 +32,8 @@ def bootstrap_based_manager(
 
 
 @pytest.fixture(scope='function')
-def hello_world(cfy, bootstrap_based_manager, attributes, ssh_key, tmpdir, logger):
+def hello_world(cfy, bootstrap_based_manager, attributes, ssh_key, tmpdir,
+                logger):
     hw = examples.HelloWorldExample(
             cfy, bootstrap_based_manager, attributes, ssh_key, logger, tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'

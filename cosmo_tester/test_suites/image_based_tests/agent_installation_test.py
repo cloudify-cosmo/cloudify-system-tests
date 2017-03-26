@@ -144,8 +144,7 @@ def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
             })
 
 
-def test_winrm_agent(cfy, manager, attributes):
-
+def test_winrm_agent(cfy, manager, attributes, logger):
     blueprint_path = util.get_resource_path(
             'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
     blueprint_id = deployment_id = str(uuid.uuid4())

@@ -26,5 +26,3 @@ def bootstrap_based_manager(
     yield cluster.managers[0]
 
     cluster.destroy()
-
-

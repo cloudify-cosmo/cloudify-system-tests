@@ -41,7 +41,8 @@ setup(
         # use-case
         'wagon==0.3.2',
         'pytest==3.0.4',
-        'testtools==2.2.0'
+        'testtools==2.2.0',
+        'openstacksdk==0.9.13'
     ],
     entry_points={
         'nose.plugins.0.10': [

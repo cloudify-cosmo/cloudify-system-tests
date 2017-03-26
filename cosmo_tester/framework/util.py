@@ -26,6 +26,7 @@ import tempfile
 
 import yaml
 import jinja2
+from openstack import connection as openstack_connection
 from path import path
 from path import Path
 import requests
@@ -58,6 +59,15 @@ def download_file(url, destination=''):
     f = urllib.URLopener()
     f.retrieve(final_url, destination)
     return destination
+
+
+def create_openstack_client():
+    conn = openstack_connection.Connection(
+            auth_url=os.environ['OS_AUTH_URL'],
+            project_name=os.environ['OS_PROJECT_NAME'],
+            username=os.environ['OS_USERNAME'],
+            password=os.environ['OS_PASSWORD'])
+    return conn
 
 
 def process_variables(suites_yaml, unprocessed_dict):

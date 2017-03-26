@@ -13,8 +13,6 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import json
-import os
 import re
 
 from fabric import api as fabric_api
@@ -81,7 +79,8 @@ class HelloWorldExample(AbstractExample):
     @retry(stop_max_attempt_number=10, wait_fixed=5000)
     def assert_webserver_running(self, http_endpoint):
         self.logger.info(
-                'Verifying web server is running on: {0}'.format(http_endpoint))
+                'Verifying web server is running on: {0}'.format(
+                        http_endpoint))
         server_response = requests.get(http_endpoint, timeout=15)
         if server_response.status_code != 200:
             pytest.fail('Unexpected status code: {}'.format(

@@ -46,7 +46,8 @@ class _CloudifyManager(object):
                  rest_client,
                  ssh_key,
                  cfy,
-                 attributes):
+                 attributes,
+                 logger):
         self.index = index
         self.ip_address = public_ip_address
         self.private_ip_address = private_ip_address
@@ -54,6 +55,8 @@ class _CloudifyManager(object):
         self._ssh_key = ssh_key
         self._cfy = cfy
         self._attributes = attributes
+        self._logger = logger
+        self._openstack = util.create_openstack_client()
         self.influxdb_client = InfluxDBClient(public_ip_address, 8086,
                                               'root', 'root', 'cloudify')
 
@@ -81,6 +84,28 @@ class _CloudifyManager(object):
                 self._attributes.cloudify_username,
                 self._attributes.cloudify_password,
                 self._attributes.cloudify_tenant).split())
+
+    @property
+    def server_id(self):
+        """Returns this server's Id from the terraform outputs."""
+        key = 'server_id_{}'.format(self.index)
+        return self._attributes[key]
+
+    def delete(self):
+        """Deletes this manager's VM from the OpenStack envrionment."""
+        self._logger.info('Deleting server.. [id=%s]', self.server_id)
+        self._openstack.compute.delete_server(self.server_id)
+        self._wait_for_server_to_be_deleted()
+
+    @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
+    def _wait_for_server_to_be_deleted(self):
+        self._logger.info('Waiting for server to terminate..')
+        servers = [x for x in self._openstack.compute.servers()
+                   if x.id == self.server_id]
+        if servers:
+            self._logger.info('- server.status = %s', servers[0].status)
+        assert len(servers) == 0
+        self._logger.info('Server terminated!')
 
 
 class CloudifyCluster(object):
@@ -193,7 +218,8 @@ class CloudifyCluster(object):
                                        self._terraform_inputs_file])
                 outputs = util.AttributesDict(
                         {k: v['value'] for k, v in json.loads(
-                                self._terraform.output(['-json']).stdout).items()})
+                                self._terraform.output(
+                                        ['-json']).stdout).items()})
             self._attributes.update(outputs)
             self._create_managers_list(outputs)
 
@@ -226,7 +252,9 @@ class CloudifyCluster(object):
         if len(plugin_wagon) != 1:
             self._logger.error(
                     '%s plugin wagon not found in:%s%s',
-                    plugin_name, os.linesep, json.dumps(plugins_list, indent=2))
+                    plugin_name,
+                    os.linesep,
+                    json.dumps(plugins_list, indent=2))
             raise RuntimeError(
                     '{} plugin not found in wagons list'.format(plugin_name))
         self._logger.info('Uploading %s plugin [%s] to %s..',
@@ -238,16 +266,16 @@ class CloudifyCluster(object):
             self._cfy.plugins.list()
         except CloudifyClientError as cce:
             if cce.status_code == 500:
-                self._logger.error('%s when trying to upload OpenStack plugin to the manager', cce)
+                self._logger.error('%s when trying to upload OpenStack plugin to the manager', cce)  # noqa
                 self._logger.info('Getting rest service log..')
                 self._logger.info('=== START cloudify-rest-service.log ===')
                 with manager.ssh():
-                    fabric_api.run('tail -n 250 /var/log/cloudify/rest/cloudify-rest-service.log')
+                    fabric_api.run('tail -n 250 /var/log/cloudify/rest/cloudify-rest-service.log')  # noqa
                 self._logger.info('=== END cloudify-rest-service.log ===')
                 self._logger.info('Getting management worker log..')
-                self._logger.info('=== START cloudify.management_worker.log ===')
+                self._logger.info('=== START cloudify.management_worker.log ===')  # noqa
                 with manager.ssh():
-                    fabric_api.run('tail -n 250 /var/log/cloudify/mgmtworker/cloudify.management_worker.log')
+                    fabric_api.run('tail -n 250 /var/log/cloudify/mgmtworker/cloudify.management_worker.log')  # noqa
                 self._logger.info('=== END cloudify.management_worker.log ===')
 
             raise
@@ -292,7 +320,8 @@ class CloudifyCluster(object):
                                                    rest_clinet,
                                                    self._ssh_key,
                                                    self._cfy,
-                                                   self._attributes))
+                                                   self._attributes,
+                                                   self._logger))
 
 
 class ImageBasedCloudifyCluster(CloudifyCluster):
@@ -349,7 +378,8 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
             'admin_password': self._attributes.cloudify_password,
             'manager_resources_package': self._manager_resources_package},
             indent=2)
-        self._logger.info('Bootstrap inputs:%s%s', os.linesep, bootstrap_inputs)
+        self._logger.info(
+                'Bootstrap inputs:%s%s', os.linesep, bootstrap_inputs)
         self._inputs_file.write_text(bootstrap_inputs)
 
     def _bootstrap_manager(self):
