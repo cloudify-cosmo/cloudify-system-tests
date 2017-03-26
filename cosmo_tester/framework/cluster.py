@@ -261,27 +261,23 @@ class CloudifyCluster(object):
                           plugin_name,
                           plugin_wagon[0],
                           manager)
+        # we keep this because plugin upload may fail but the manager
+        # will contain the uploaded plugin which is in some corrupted state.
+        plugins_ids_before_upload = [
+            x.id for x in manager.client.plugins.list()]
         try:
             manager.client.plugins.upload(plugin_wagon[0])
             self._cfy.plugins.list()
-        except CloudifyClientError as cce:
-            if cce.status_code == 500:
-                self._logger.error('%s when trying to upload OpenStack plugin to the manager', cce)  # noqa
-                self._logger.info('Getting rest service log..')
-                self._logger.info('=== START cloudify-rest-service.log ===')
-                with manager.ssh():
-                    fabric_api.run('tail -n 250 /var/log/cloudify/rest/cloudify-rest-service.log')  # noqa
-                self._logger.info('=== END cloudify-rest-service.log ===')
-                self._logger.info('Getting management worker log..')
-                self._logger.info('=== START cloudify.management_worker.log ===')  # noqa
-                with manager.ssh():
-                    fabric_api.run('tail -n 250 /var/log/cloudify/mgmtworker/cloudify.management_worker.log')  # noqa
-                self._logger.info('=== END cloudify.management_worker.log ===')
-
-            raise
-        except Exception as e:
-            self._logger.error(
-                    'Error uploading OpenStack plugin to manager: %s', e)
+        except Exception as cce:
+            self._logger.error('Error on plugin upload: %s', cce)
+            current_plugins_ids = [x.id for x in manager.client.plugins.list()]
+            new_plugin_id = list(set(current_plugins_ids).intersection(
+                    set(plugins_ids_before_upload)))
+            if new_plugin_id:
+                self._logger.info(
+                        'Removing plugin after upload plugin failure: %s',
+                        new_plugin_id[0])
+                manager.client.plugins.delete(new_plugin_id[0])
             raise
 
     def _upload_necessary_files_to_manager(self,
