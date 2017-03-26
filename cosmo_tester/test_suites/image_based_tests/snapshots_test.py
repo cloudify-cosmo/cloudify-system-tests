@@ -139,3 +139,11 @@ def test_create_and_restore_snapshot(cfy, cluster, hello_world, attributes,
     hello_world.manager = manager2
     hello_world.uninstall()
     hello_world.delete_deployment()
+
+
+def test_3_4_1_to_latest_snapshot_restore():
+    pytest.skip('Not implemented!')
+
+
+def test_3_4_2_to_latest_snapshot_restore():
+    pytest.skip('Not implemented!')
