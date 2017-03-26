@@ -26,7 +26,6 @@ from influxdb import InfluxDBClient
 import jinja2
 import retrying
 import sh
-from cloudify_rest_client.exceptions import CloudifyClientError
 
 from cosmo_tester.framework import util
 from cosmo_tester.framework import git_helper

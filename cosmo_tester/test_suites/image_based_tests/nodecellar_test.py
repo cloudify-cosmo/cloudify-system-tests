@@ -16,7 +16,9 @@
 import pytest
 
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
-from cosmo_tester.framework.fixtures import image_based_manager as manager
+from cosmo_tester.framework.fixtures import image_based_manager
+
+manager = image_based_manager
 
 
 @pytest.fixture(scope='function')
@@ -42,4 +44,3 @@ def nodecellar_singlehost(cfy, manager, attributes, ssh_key, tmpdir, logger):
 
 def test_nodecellar_singlehost_example(nodecellar_singlehost):
     nodecellar_singlehost.verify_all()
-

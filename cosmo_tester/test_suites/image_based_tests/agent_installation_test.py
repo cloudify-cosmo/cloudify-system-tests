@@ -25,7 +25,9 @@ from cloudify_agent.api import defaults
 from cloudify_agent.installer import script
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.fixtures import image_based_manager as manager  # noqa
+from cosmo_tester.framework.fixtures import image_based_manager
+
+manager = image_based_manager
 
 
 EXPECTED_FILE_CONTENT = 'CONTENT'

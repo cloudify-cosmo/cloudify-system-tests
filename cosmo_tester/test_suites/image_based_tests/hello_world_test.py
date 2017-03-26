@@ -16,7 +16,9 @@
 import pytest
 
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
-from cosmo_tester.framework.fixtures import image_based_manager as manager
+from cosmo_tester.framework.fixtures import image_based_manager
+
+manager = image_based_manager
 
 
 @pytest.fixture(scope='function')
