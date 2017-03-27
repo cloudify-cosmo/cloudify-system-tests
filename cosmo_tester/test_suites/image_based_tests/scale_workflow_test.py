@@ -30,7 +30,6 @@ def nodecellar(cfy, manager, attributes, ssh_key, tmpdir, logger):
     nc = NodeCellarExample(
             cfy, manager, attributes, ssh_key, logger, tmpdir)
     nc.blueprint_file = 'openstack-haproxy-blueprint.yaml'
-    nc.branch = 'CFY-6569-adjust-haproxy-example-for-simple-mgr'
     nc.inputs['number_of_instances'] = 1
     yield nc
     nc.cleanup()

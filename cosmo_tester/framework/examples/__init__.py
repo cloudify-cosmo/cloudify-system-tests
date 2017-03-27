@@ -96,7 +96,7 @@ class AbstractExample(testtools.TestCase):
         self._cleanup_required = False
 
     def upload_blueprint(self):
-        self._clone_example()
+        self.clone_example()
         blueprint_file = self._cloned_to / self.blueprint_file
         self.logger.info('Uploading blueprint: %s [id=%s]',
                          blueprint_file,
@@ -127,7 +127,7 @@ class AbstractExample(testtools.TestCase):
                 self.cfy.executions.list(['--include-system-workflows'])
             raise
 
-    def _clone_example(self):
+    def clone_example(self):
         if not self._cloned_to:
             self._cloned_to = git_helper.clone(self.REPOSITORY_URL,
                                                str(self.tmpdir),
