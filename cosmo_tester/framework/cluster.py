@@ -106,6 +106,15 @@ class _CloudifyManager(object):
         assert len(servers) == 0
         self._logger.info('Server terminated!')
 
+    @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
+    def verify_services_are_running(self):
+        self._logger.info('Verifying all services are running on manager%d..',
+                          self.index)
+        status = self.client.manager.get_status()
+        for service in status['services']:
+            for instance in service['instances']:
+                assert instance['SubState'] == 'running'
+
 
 class CloudifyCluster(object):
 
@@ -223,6 +232,9 @@ class CloudifyCluster(object):
             self._create_managers_list(outputs)
 
             self._bootstrap_managers()
+
+            for manager in self.managers:
+                manager.verify_services_are_running()
 
             for manager in self._managers:
                 manager.use()

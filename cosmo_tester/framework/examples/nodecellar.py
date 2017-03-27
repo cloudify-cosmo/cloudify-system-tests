@@ -28,7 +28,7 @@ class NodeCellarExample(AbstractExample):
     @property
     def inputs(self):
         if not self._inputs:
-            if self._blueprint_file == 'openstack-blueprint.yaml':
+            if 'openstack' in self._blueprint_file:
                 self._inputs = {
                     'floating_network_id': self.attributes.floating_network_id,
                     'key_pair_name': self.attributes.keypair_name,
