@@ -296,7 +296,7 @@ def _test_userdata_agent(cfy, manager, inputs):
         assert {
             'MY_ENV_VAR': 'MY_ENV_VAR_VALUE',
             'file_content': EXPECTED_FILE_CONTENT
-        } == manager.client.deployment.outputs(deployment_id).outputs
+        } == manager.client.deployments.outputs.get(deployment_id).outputs
     finally:
         cfy.executions.start.uninstall(['-d', deployment_id])
 

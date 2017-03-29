@@ -38,6 +38,7 @@ import cosmo_tester
 from cosmo_tester import resources
 
 MANAGER_PACKAGE_URL_FILE = 'cloudify-premium/packages-urls/manager-single-tar.yaml'  # noqa
+CLI_PACKAGE_URLS_FILE = 'cloudify-premium/packages-urls/cli-premium-packages.yaml'  # noqa
 
 
 class AttributesDict(dict):
@@ -243,6 +244,19 @@ def get_plugin_wagon_urls():
         )
     )
     return yaml.load(requests.get(plugin_urls_location).text)['plugins']
+
+
+def get_cli_package_urls():
+    package_url_file = Path(
+            os.path.abspath(os.path.join(
+                    os.path.dirname(cosmo_tester.__file__),
+                    '../..',
+                    CLI_PACKAGE_URLS_FILE)))
+    if not package_url_file.exists():
+        raise IOError('File containing CLI premium package URLs not '
+                      'found: {}'.format(package_url_file))
+
+    return yaml.load(open(package_url_file, 'r'))
 
 
 def get_manager_resources_package_url():

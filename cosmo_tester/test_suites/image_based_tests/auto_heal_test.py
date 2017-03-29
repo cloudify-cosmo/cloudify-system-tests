@@ -37,7 +37,7 @@ def nodecellar(cfy, manager, attributes, ssh_key, tmpdir, logger):
     nc.cleanup()
 
 
-def test_nodecellar_example(cfy, manager, nodecellar, logger):
+def test_nodecellar_auto_healing(cfy, manager, nodecellar, logger):
     nodecellar.clone_example()
 
     logger.info('Patching nodecellar example with auto healing policy..')
