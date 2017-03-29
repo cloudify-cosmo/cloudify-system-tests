@@ -15,12 +15,15 @@
 
 import uuid
 
+import pytest
+
 from cosmo_tester.framework import util
 from cosmo_tester.framework.fixtures import image_based_manager
 
 manager = image_based_manager
 
 
+@pytest.mark.skip(reason='Ongoing implementation..')
 def test_openstack_types_functionality(cfy, manager, attributes, tmpdir):
     blueprint_path = util.get_resource_path(
             'blueprints/neutron-galore/blueprint.yaml')
