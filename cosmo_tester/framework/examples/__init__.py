@@ -45,6 +45,7 @@ class AbstractExample(testtools.TestCase):
         self._cloned_to = None
         self.blueprint_id = 'hello-{0}'.format(str(uuid.uuid4()))
         self.deployment_id = self.blueprint_id
+        self.verify_metrics = True
 
     @property
     def blueprint_file(self):
@@ -84,7 +85,8 @@ class AbstractExample(testtools.TestCase):
 
     def verify_installation(self):
         self.assert_deployment_events_exist()
-        self.assert_deployment_metrics_exist()
+        if self.verify_metrics:
+            self.assert_deployment_metrics_exist()
 
     def delete_deployment(self):
         self.logger.info('Deleting deployment...')

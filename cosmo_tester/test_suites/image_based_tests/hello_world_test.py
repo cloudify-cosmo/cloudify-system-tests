@@ -63,13 +63,15 @@ def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
     hello_world.verify_all()
 
 
-@pytest.fixture(scope='function')
-def hello_world_singlehost(cfy, manager, attributes, ssh_key, tmpdir, logger):
-    hw = HelloWorldExample(
-            cfy, manager, attributes, ssh_key, logger, tmpdir)
-    hw.blueprint_file = 'singlehost-blueprint.yaml'
-    return hw
+def test_hello_world_on_windows_2012_server(hello_world, attributes):
+    hello_world.blueprint_file = 'openstack-windows-blueprint.yaml'
+    hello_world.inputs.update({
+        'image': attributes.windows_server_2012_image_name,
+        'flavor': attributes.medium_flavor_name
+    })
+    hello_world.verify_all()
 
 
-def test_hello_world_single_host(hello_world_singlehost):
-    hello_world_singlehost.verify_all()
+def test_hello_world_single_host(hello_world):
+    hello_world.blueprint_file = 'singlehost-blueprint.yaml'
+    hello_world.verify_all()

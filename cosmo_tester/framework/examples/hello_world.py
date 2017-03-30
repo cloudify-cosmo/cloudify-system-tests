@@ -35,12 +35,12 @@ class HelloWorldExample(AbstractExample):
     @property
     def inputs(self):
         if not self._inputs:
-            if self._blueprint_file == 'openstack-blueprint.yaml':
+            if 'openstack' in self._blueprint_file:
                 self._inputs = {
                     'floating_network_id': self.attributes.floating_network_id,
                     'key_pair_name': self.attributes.keypair_name,
                     'private_key_path': self.manager.remote_private_key_path,
-                    'flavor': self.attributes.medium_flavor_name,
+                    'flavor': self.attributes.small_flavor_name,
                     'network_name': self.attributes.network_name
                 }
             elif self._blueprint_file == 'singlehost-blueprint.yaml':
