@@ -216,7 +216,7 @@ class CloudifyCluster(object):
             'resource_suffix': str(uuid.uuid4()),
             'public_key_path': self._ssh_key.public_key_path,
             'private_key_path': self._ssh_key.private_key_path,
-            'flavor': self._attributes.large_flavor_name,
+            'flavor': self._attributes.medium_flavor_name,
             'image': image_name,
         }, indent=2))
 
