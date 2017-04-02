@@ -23,7 +23,6 @@ from cloudify.mocks import MockCloudifyContext
 from cloudify.state import current_ctx
 from cloudify_agent.api import defaults
 from cloudify_agent.installer import script
-
 from cosmo_tester.framework import util
 from cosmo_tester.framework.fixtures import image_based_manager
 
@@ -191,13 +190,20 @@ def test_ubuntu_trusty_userdata_agent(cfy, manager, attributes):
             install_method='init_script')
 
 
-def test_ubuntu_trusty_provided_userdata_agent(cfy, manager, attributes):
+def test_ubuntu_trusty_provided_userdata_agent(cfy,
+                                               manager,
+                                               attributes,
+                                               tmpdir,
+                                               logger):
     name = 'cloudify_agent'
     user = attributes.ubuntu_username
     install_userdata = install_script(name=name,
                                       windows=False,
                                       user=user,
-                                      manager_host=manager.private_ip_address)
+                                      manager=manager,
+                                      attributes=attributes,
+                                      tmpdir=tmpdir,
+                                      logger=logger)
     _test_linux_userdata_agent(
             cfy,
             manager,
@@ -239,13 +245,20 @@ def test_windows_userdata_agent(cfy,
     _test_userdata_agent(cfy, manager, inputs)
 
 
-def test_windows_provided_userdata_agent(cfy, manager, attributes):
+def test_windows_provided_userdata_agent(cfy,
+                                         manager,
+                                         attributes,
+                                         tmpdir,
+                                         logger):
     name = 'cloudify_agent'
     install_userdata = install_script(
             name=name,
             windows=True,
             user=attributes.windows_server_2012_username,
-            manager_host=manager.private_ip_address)
+            manager=manager,
+            attributes=attributes,
+            tmpdir=tmpdir,
+            logger=logger)
     test_windows_userdata_agent(
             cfy,
             manager,
@@ -301,14 +314,24 @@ def _test_userdata_agent(cfy, manager, inputs):
         cfy.executions.start.uninstall(['-d', deployment_id])
 
 
-def install_script(name, windows, user, manager_host):
-    env_vars = {}
-    env_vars[constants.REST_PORT_KEY] = str(defaults.INTERNAL_REST_PORT)
-    env_vars[constants.MANAGER_FILE_SERVER_URL_KEY] = \
-        'https://{0}:{1}/resources'.format(
-                manager_host,
-                defaults.INTERNAL_REST_PORT
-        )
+def install_script(name, windows, user, manager, attributes, tmpdir, logger):
+    # Download cert from manager in order to include its content
+    # in the init_script.
+    local_cert_path = str(tmpdir / 'cloudify_internal_cert.pem')
+    logger.info('Downloading internal cert from manager: %s -> %s',
+                attributes.LOCAL_REST_CERT_FILE,
+                local_cert_path)
+    with manager.ssh() as fabric:
+        fabric.get(attributes.LOCAL_REST_CERT_FILE, local_cert_path)
+
+    env_vars = {
+        constants.REST_PORT_KEY: str(defaults.INTERNAL_REST_PORT),
+        constants.BROKER_SSL_CERT_PATH: local_cert_path,
+        constants.LOCAL_REST_CERT_FILE_KEY: local_cert_path,
+        constants.MANAGER_FILE_SERVER_URL_KEY:
+            'https://{0}:{1}/resources'.format(manager.private_ip_address,
+                                               defaults.INTERNAL_REST_PORT)
+    }
 
     ctx = MockCloudifyContext(
             node_id='node',
@@ -316,10 +339,15 @@ def install_script(name, windows, user, manager_host):
                 'user': user,
                 'windows': windows,
                 'install_method': 'provided',
-                'rest_host': manager_host,
-                'broker_ip': manager_host,
+                'rest_host': manager.private_ip_address,
+                'broker_ip': manager.private_ip_address,
                 'name': name
             }})
+    internal_ctx_dict = getattr(ctx, '_context')
+    internal_ctx_dict.update({
+        'rest_token': manager.client.tokens.get().value,
+        'tenant_name': 'default_tenant'
+    })
     try:
         current_ctx.set(ctx)
         os.environ.update(env_vars)
