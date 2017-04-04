@@ -27,6 +27,7 @@ import tempfile
 import yaml
 import jinja2
 from openstack import connection as openstack_connection
+from novaclient.client import Client as NovaClient
 from path import path
 from path import Path
 import requests
@@ -69,6 +70,13 @@ def create_openstack_client():
             username=os.environ['OS_USERNAME'],
             password=os.environ['OS_PASSWORD'])
     return conn
+
+
+def create_openstack_nova_client():
+    return NovaClient(2, auth_url=os.environ['OS_AUTH_URL'],
+                      project_name=os.environ['OS_PROJECT_NAME'],
+                      username=os.environ['OS_USERNAME'],
+                      password=os.environ['OS_PASSWORD'])
 
 
 def process_variables(suites_yaml, unprocessed_dict):

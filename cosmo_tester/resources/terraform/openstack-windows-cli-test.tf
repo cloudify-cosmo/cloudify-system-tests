@@ -4,11 +4,9 @@ variable "public_key_path" {}
 variable "private_key_path" {}
 variable "cli_image" {}
 variable "cli_flavor" {}
-variable "cli_user" {}
 variable "manager_image" {}
 variable "manager_flavor" {}
 variable "manager_user" {}
-variable "cli_package_url" {}
 
 output "router_name" { value = "${openstack_networking_router_v2.router.name}" }
 output "router_id" { value = "${openstack_networking_router_v2.router.id}" }
@@ -99,7 +97,6 @@ resource "openstack_compute_instance_v2" "cli_server" {
   flavor_name = "${var.cli_flavor}"
   key_pair = "${openstack_compute_keypair_v2.keypair.name}"
   security_groups = ["${openstack_compute_secgroup_v2.security_group.name}"]
-  admin_pass = "AbCdEfG123456"
   user_data = "${file("scripts/windows-userdata.ps1")}"
 
   network {
@@ -108,28 +105,6 @@ resource "openstack_compute_instance_v2" "cli_server" {
 
   floating_ip = "${openstack_networking_floatingip_v2.cli_floatingip.address}"
 
-  connection {
-    type = "winrm"
-    user = "${ var.cli_user }"
-    password = "${openstack_compute_instance_v2.cli_server.admin_pass}"
-    timeout = "10m"
-  }
-
-  provisioner "file" {
-    source = "scripts/windows-cli-test.ps1"
-    destination = "C:\\windows-cli-test.ps1"
-  }
-
-  provisioner "file" {
-    source = "${var.private_key_path}"
-    destination = "C:\\key.pem"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "powershell.exe -sta -ExecutionPolicy Unrestricted -file C:\\windows-cli-test.ps1 ${var.cli_package_url} C:\\key.pem ${openstack_networking_floatingip_v2.manager_floatingip.address} ${openstack_compute_instance_v2.manager_server.network.0.fixed_ip_v4} ${var.manager_user}"
-    ]
-  }
 }
 
 # MANAGER

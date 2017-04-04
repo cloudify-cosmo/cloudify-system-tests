@@ -16,14 +16,20 @@
 
 import json
 import os
+
+import jinja2
 import sh
 import shutil
 import uuid
 
 from path import Path
 import pytest
+import retrying
+import winrm
 
 from cosmo_tester.framework import util
+
+WINRM_PORT = 5985
 
 
 def _get_cli_package_url(name):
@@ -33,40 +39,32 @@ def _get_cli_package_url(name):
 
 class _CliPackageTester(object):
 
-    def __init__(self, tmpdir, inputs, logger):
+    def __init__(self, tmpdir, inputs, ssh_key, logger):
         self.terraform = util.sh_bake(sh.terraform)
         self.tmpdir = tmpdir
         self.inputs = inputs
+        self.ssh_key = ssh_key
         self.logger = logger
         self.inputs_file = self.tmpdir / 'inputs.json'
-        self.windows = False
+        os.mkdir(self.tmpdir / 'scripts')
 
     def _copy_terraform_files(self):
-        os.mkdir(self.tmpdir / 'scripts')
-        if self.windows:
-            shutil.copy(util.get_resource_path(
-                    'terraform/openstack-windows-cli-test.tf'),
-                    self.tmpdir / 'openstack-windows-cli-test.tf')
-            shutil.copy(util.get_resource_path(
-                    'terraform/scripts/windows-cli-test.ps1'),
-                    self.tmpdir / 'scripts/windows-cli-test.ps1')
-            shutil.copy(util.get_resource_path(
-                    'terraform/scripts/windows-userdata.ps1'),
-                    self.tmpdir / 'scripts/windows-userdata.ps1')
-        else:
-            shutil.copy(util.get_resource_path(
-                    'terraform/openstack-linux-cli-test.tf'),
-                    self.tmpdir / 'openstack-linux-cli-test.tf')
-            shutil.copy(util.get_resource_path(
-                    'terraform/scripts/linux-cli-test.sh'),
-                    self.tmpdir / 'scripts/linux-cli-test.sh')
+        shutil.copy(util.get_resource_path(
+                'terraform/openstack-linux-cli-test.tf'),
+                self.tmpdir / 'openstack-linux-cli-test.tf')
+        shutil.copy(util.get_resource_path(
+                'terraform/scripts/linux-cli-test.sh'),
+                self.tmpdir / 'scripts/linux-cli-test.sh')
 
     def run_test(self):
         self._copy_terraform_files()
-        self.inputs_file.write_text(json.dumps(self.inputs, indent=2))
+        self.write_inputs_file()
         self.logger.info('Testing CLI package..')
         with self.tmpdir:
             self.terraform.apply(['-var-file', self.inputs_file])
+
+    def write_inputs_file(self):
+        self.inputs_file.write_text(json.dumps(self.inputs, indent=2))
 
     def perform_cleanup(self):
         self.logger.info('Performing cleanup..')
@@ -74,11 +72,130 @@ class _CliPackageTester(object):
             self.terraform.destroy(['-var-file', self.inputs_file, '-force'])
 
 
-@pytest.fixture(scope='function')
-def cli_package_tester(ssh_key, attributes, tmpdir, logger):
-    logger.info('Using temp dir: %s', tmpdir)
-    tmpdir = Path(tmpdir)
+class _WindowsCliPackageTester(_CliPackageTester):
+    """A separate class for testing Windows CLI package bootstrap.
 
+    Since it is impossible to retrieve a Windows VM password from OpenStack
+    using terraform, we first run terraform for creating two VMs: Linux for
+    the manager and Windows for CLI.
+
+    Once the Windows machine is up, an OpenStack client is used in order
+    to retrieve the VMs password. Then the terraform template is updated
+    with the extra resources needed for performing bootstrap (including
+    the retrieved password).
+    """
+    def _copy_terraform_files(self):
+        shutil.copy(util.get_resource_path(
+                'terraform/openstack-windows-cli-test.tf'),
+                self.tmpdir / 'openstack-windows-cli-test.tf')
+        shutil.copy(util.get_resource_path(
+                'terraform/scripts/windows-cli-test.ps1'),
+                self.tmpdir / 'scripts/windows-cli-test.ps1')
+        shutil.copy(util.get_resource_path(
+                'terraform/scripts/windows-userdata.ps1'),
+                    self.tmpdir / 'scripts/windows-userdata.ps1')
+
+    @retrying.retry(stop_max_attempt_number=30, wait_fixed=10000)
+    def get_password(self, nova_client, server_id):
+        self.logger.info(
+                'Waiting for VM password retrieval.. [server_id=%s]', server_id)
+        password = nova_client.servers.get_password(
+                server=server_id,
+                private_key=self.ssh_key.private_key_path)
+        assert password is not None and len(password) > 0
+        return password
+
+    def run_test(self):
+        super(_WindowsCliPackageTester, self).run_test()
+        # At this stage, there are two VMs (Windows & Linux).
+        # Retrieve password from OpenStack
+        with self.tmpdir:
+            outputs = util.AttributesDict(
+                    {k: v['value'] for k, v in json.loads(
+                            self.terraform.output(
+                                    ['-json']).stdout).items()})
+        self.logger.info('CLI server id is: %s', outputs.cli_server_id)
+        nova_client = util.create_openstack_nova_client()
+        password = self.get_password(nova_client, outputs.cli_server_id)
+        self.logger.info('VM password: %s', password)
+        self.inputs['password'] = password
+
+        url = 'http://{0}:{1}/wsman'.format(outputs.cli_public_ip_address,
+                                            WINRM_PORT)
+        user = self.inputs['cli_user']
+        session = winrm.Session(url, auth=(user, password))
+
+        with open(self.ssh_key.private_key_path, 'r') as f:
+            private_key = f.read()
+
+        self.logger.info('Uploading private key to Windows VM..')
+        r = session.run_ps('''
+Set-Content "{0}" "{1}"
+'''.format('C:\\Users\\Admin\\key.pem', private_key))
+        self.logger.info('* stdout: %s', r.std_out)
+        self.logger.info('* stderr: %s', r.std_err)
+        self.logger.info('* status_code: %d', r.status_code)
+        assert r.status_code == 0
+
+        self.logger.info('Downloading CLI package..')
+        r = session.run_ps("""
+$client = New-Object System.Net.WebClient
+$url = "{0}"
+$file = "{1}"
+$client.DownloadFile($url, $file)""".format(_get_cli_package_url('windows_cli_package_url'),
+                                            "C:\\Users\\Admin\\cloudify-cli.exe"))
+        self.logger.info('* stdout: %s', r.std_out)
+        self.logger.info('* stderr: %s', r.std_err)
+        self.logger.info('* status_code: %d', r.status_code)
+        assert r.status_code == 0
+
+        self.logger.info('Installing CLI..')
+        r = session.run_ps('''
+cd \\Users\\Admin
+dir
+& .\cloudify-cli.exe /SILENT /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\cloudify-cli"''')
+        self.logger.info('* stdout: %s', r.std_out)
+        self.logger.info('* stderr: %s', r.std_err)
+        self.logger.info('* status_code: %d', r.status_code)
+        assert r.status_code == 0
+
+        self.logger.info('Creating bootstrap inputs file..')
+        bootstrap_inputs = json.dumps({
+            'public_ip': outputs.manager_public_ip_address,
+            'private_ip': outputs.manager_private_ip_address,
+            'ssh_user': self.inputs['manager_user'],
+            'ssh_key_filename': 'C:\\Users\\Admin\\key.pem',
+            'admin_username': 'admin',
+            'admin_password': 'admin'
+        })
+        r = session.run_ps('''
+Set-Content "{0}" '{1}'
+'''.format('C:\\Users\\Admin\\inputs.json', bootstrap_inputs))
+        self.logger.info('* stdout: %s', r.std_out)
+        self.logger.info('* stderr: %s', r.std_err)
+        self.logger.info('* status_code: %d', r.status_code)
+        assert r.status_code == 0
+
+        session.run_ps("""
+cd \\Users\\Admin
+dir""")
+        self.logger.info('* stdout: %s', r.std_out)
+        self.logger.info('* stderr: %s', r.std_err)
+        self.logger.info('* status_code: %d', r.status_code)
+        assert r.status_code == 0
+
+        self.logger.info('Bootstrapping manager..')
+        bootstrap_cmd = 'C:\\cloudify-cli\\embedded\\Scripts\\cfy.exe bootstrap C:\\cloudify-cli\\cloudify-manager-blueprints\\simple-manager-blueprint.yaml -i "C:\\Users\\Admin\\inputs.json" -v --keep-up-on-failure'.format(
+            json.dumps(bootstrap_inputs))
+        self.logger.info('Bootstrap cmd: %s', bootstrap_cmd)
+        r = session.run_cmd(bootstrap_cmd)
+        self.logger.info('* stdout: %s', r.std_out)
+        self.logger.info('* stderr: %s', r.std_err)
+        self.logger.info('* status_code: %d', r.status_code)
+        assert r.status_code == 0
+
+
+def get_terraform_inputs(attributes, ssh_key):
     tf_inputs = {
         'resource_suffix': str(uuid.uuid4()),
         'public_key_path': ssh_key.public_key_path,
@@ -86,8 +203,29 @@ def cli_package_tester(ssh_key, attributes, tmpdir, logger):
         'cli_flavor': attributes.small_flavor_name,
         'manager_flavor': attributes.large_flavor_name,
     }
+    return tf_inputs
 
-    tester = _CliPackageTester(tmpdir, tf_inputs, logger)
+
+@pytest.fixture(scope='function')
+def cli_package_tester(ssh_key, attributes, tmpdir, logger):
+    logger.info('Using temp dir: %s', tmpdir)
+    tmpdir = Path(tmpdir)
+
+    tf_inputs = get_terraform_inputs(attributes, ssh_key)
+    tester = _CliPackageTester(tmpdir, tf_inputs, ssh_key, logger)
+
+    yield tester
+
+    tester.perform_cleanup()
+
+
+@pytest.fixture(scope='function')
+def windows_cli_package_tester(ssh_key, attributes, tmpdir, logger):
+    logger.info('Using temp dir: %s', tmpdir)
+    tmpdir = Path(tmpdir)
+
+    tf_inputs = get_terraform_inputs(attributes, ssh_key)
+    tester = _WindowsCliPackageTester(tmpdir, tf_inputs, ssh_key, logger)
 
     yield tester
 
@@ -118,15 +256,13 @@ def test_cli_on_centos_6(cli_package_tester, attributes):
     cli_package_tester.run_test()
 
 
-@pytest.mark.skip(reason='Currently skipped due to OpenStack env limitation')
-def test_cli_on_windows_2012(cli_package_tester, attributes):
-    cli_package_tester.windows = True
-    cli_package_tester.inputs.update({
+# @pytest.mark.skip(reason='Currently skipped due to OpenStack env limitation')
+def test_cli_on_windows_2012(windows_cli_package_tester, attributes):
+    windows_cli_package_tester.inputs.update({
         'cli_image': attributes.windows_server_2012_image_name,
         'cli_user': attributes.windows_server_2012_username,
         'manager_image': attributes.centos7_image_name,
         'manager_user': attributes.centos7_username,
         'cli_flavor': attributes.medium_flavor_name,
-        'cli_package_url': _get_cli_package_url('rhel_centos_cli_package_url')
     })
-    cli_package_tester.run_test()
+    windows_cli_package_tester.run_test()
