@@ -25,21 +25,20 @@ setup(
     description='Cosmo system tests framework',
     zip_safe=False,
     install_requires=[
-        'fabric',
-        'PyYAML==3.10',
-        'requests>=2.7.0,<3.0.0',
-        'sh==1.11',
-        'path.py==8.1.2',
         'nose',
-        'retrying==1.3.3',
+        'fabric',
+        'sh==1.11',
+        'PyYAML==3.10',
+        'wagon==0.6.0',
         'elasticsearch',
         'Jinja2==2.7.2',
-        'influxdb==0.1.13',
+        'path.py==8.1.2',
         'pywinrm==0.0.3',
+        'requests==2.7.0',
+        'retrying==1.3.3',
+        'influxdb==0.1.13',
         'fasteners==0.13.0',
-        # Wagon version has been left out since it better reflects the user
-        # use-case
-        'wagon==0.3.2'
+        'requests>=2.7.0,<3.0.0',
     ],
     entry_points={
         'nose.plugins.0.10': [
