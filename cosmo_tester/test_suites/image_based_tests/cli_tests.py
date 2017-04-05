@@ -256,7 +256,7 @@ def test_cli_on_centos_6(cli_package_tester, attributes):
     cli_package_tester.run_test()
 
 
-# @pytest.mark.skip(reason='Currently skipped due to OpenStack env limitation')
+@pytest.mark.skip(reason='Currently skipped due to OpenStack env limitation')
 def test_cli_on_windows_2012(windows_cli_package_tester, attributes):
     windows_cli_package_tester.inputs.update({
         'cli_image': attributes.windows_server_2012_image_name,
