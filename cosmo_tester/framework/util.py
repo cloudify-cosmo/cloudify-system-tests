@@ -297,7 +297,7 @@ def get_cli_package_urls():
     if 'GITHUB_USERNAME' in os.environ:
         auth = (os.environ['GITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
     if auth:
-        url = 'https://github.com/cloudify-cosmo/cloudify-premium/raw/{0}/packages-urls/cli-premium-packages.yaml'.format(branch)  # noqa
+        url = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-premium/{0}/packages-urls/cli-premium-packages.yaml'.format(branch)  # noqa
         r = requests.get(url, auth=auth)
         if r.status_code != 200:
             raise RuntimeError(
