@@ -12,7 +12,7 @@
 #    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
-
+import base64
 import os
 import re
 import sh
@@ -24,6 +24,7 @@ import shutil
 import urllib
 import tempfile
 
+import subprocess
 import yaml
 import jinja2
 from openstack import connection as openstack_connection
@@ -62,6 +63,47 @@ def download_file(url, destination=''):
     return destination
 
 
+def get_openstack_server_password(server_id, private_key_path=None):
+    """Since openstacksdk does not contain this functionality and adding
+    python-novaclient as a dependency creates a dependencies hell, it is
+    easier to just call the relevant OpenStack REST API call for retrieving
+    the server's password."""
+
+    conn = create_openstack_client()
+    compute_endpoint = conn.session.get_endpoint(service_type='compute')
+    url = '{}/servers/{}/os-server-password'.format(
+            compute_endpoint, server_id)
+    headers = conn.session.get_auth_headers()
+    headers['Content-Type'] = 'application/json'
+    r = requests.get(url, headers=headers)
+    if r.status_code != 200:
+        raise RuntimeError(
+                'OpenStack get password response status (%d) != 200: {}'
+                .format(r.status_code, r.text))
+    password = r.json()['password']
+    if private_key_path:
+        return _decrypt_password(password, private_key_path)
+    else:
+        return password
+
+
+def _decrypt_password(password, private_key_path):
+    """Base64 decodes password and unencrypts it with private key.
+
+    Requires openssl binary available in the path.
+    """
+    unencoded = base64.b64decode(password)
+    cmd = ['openssl', 'rsautl', '-decrypt', '-inkey', private_key_path]
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    out, err = proc.communicate(unencoded)
+    proc.stdin.close()
+    if proc.returncode:
+        raise RuntimeError(err)
+    return out
+
+
 def create_openstack_client():
     conn = openstack_connection.Connection(
             auth_url=os.environ['OS_AUTH_URL'],
@@ -69,17 +111,6 @@ def create_openstack_client():
             username=os.environ['OS_USERNAME'],
             password=os.environ['OS_PASSWORD'])
     return conn
-
-
-def create_openstack_nova_client():
-    # currently imported here as python-novaclient
-    # is not yet a dependency of system tests.
-    from novaclient.client import Client as NovaClient
-    return NovaClient(2, auth_url=os.environ['OS_AUTH_URL'],
-                      project_name=os.environ['OS_PROJECT_NAME'],
-                      username=os.environ['OS_USERNAME'],
-                      password=os.environ['OS_PASSWORD'])
-
 
 def process_variables(suites_yaml, unprocessed_dict):
     template_variables = suites_yaml.get('variables', {})
@@ -257,16 +288,34 @@ def get_plugin_wagon_urls():
 
 
 def get_cli_package_urls():
-    package_url_file = Path(
-            os.path.abspath(os.path.join(
-                    os.path.dirname(cosmo_tester.__file__),
-                    '../..',
-                    CLI_PACKAGE_URLS_FILE)))
-    if not package_url_file.exists():
-        raise IOError('File containing CLI premium package URLs not '
-                      'found: {}'.format(package_url_file))
+    """Gets the CLI package URLs from either GitHub (if GITHUB_USERNAME
+    and GITHUB_PASSWORD exists in env) or locally if the cloudify-premium
+    repository is checked out under the same folder the cloudify-system-tests
+    repo is checked out."""
+    branch = os.environ.get('BRANCH_NANE_CORE', 'master')
+    auth = None
+    if 'GITHUB_USERNAME' in os.environ:
+        auth = (os.environ['GITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
+    if auth:
+        url = 'https://github.com/cloudify-cosmo/cloudify-premium/raw/{0}/packages-urls/cli-premium-packages.yaml'.format(branch)  # noqa
+        r = requests.get(url, auth=auth)
+        if r.status_code != 200:
+            raise RuntimeError(
+                    'Error getting CLI package URLs from {0} '
+                    '[status_code={1}]: {2}'.format(
+                            url, r.status_code, r.text))
+        return yaml.load(r.text)
+    else:
+        package_url_file = Path(
+                os.path.abspath(os.path.join(
+                        os.path.dirname(cosmo_tester.__file__),
+                        '../..',
+                        CLI_PACKAGE_URLS_FILE)))
+        if not package_url_file.exists():
+            raise IOError('File containing CLI premium package URLs not '
+                          'found: {}'.format(package_url_file))
 
-    return yaml.load(open(package_url_file, 'r'))
+        return yaml.load(open(package_url_file, 'r'))
 
 
 def get_manager_resources_package_url():
