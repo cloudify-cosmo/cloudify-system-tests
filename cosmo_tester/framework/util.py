@@ -167,13 +167,15 @@ def get_cfy():
 
 
 def pass_stdout(line, input_queue, process):
-    process._stdout.append(line.encode(process.call_args['encoding']))
-    sys.stdout.write(line)
+    output = line.encode(process.call_args['encoding'])
+    process._stdout.append(output)
+    sys.stdout.write(output)
 
 
 def pass_stderr(line, input_queue, process):
-    process._stderr.append(line.encode(process.call_args['encoding']))
-    sys.stderr.write(line)
+    output = line.encode(process.call_args['encoding'])
+    process._stderr.append(output)
+    sys.stderr.write(output)
 
 
 def get_blueprint_path(blueprint_name, blueprints_dir=None):
