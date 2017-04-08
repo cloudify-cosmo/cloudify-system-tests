@@ -295,7 +295,7 @@ def get_cli_package_urls():
     branch = os.environ.get('BRANCH_NANE_CORE', 'master')
     auth = None
     if 'GITHUB_USERNAME' in os.environ:
-        auth = (os.environ['Gcli_ITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
+        auth = (os.environ['GITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
     if auth:
         url = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-premium/{0}/packages-urls/cli-premium-packages.yaml'.format(branch)  # noqa
         r = requests.get(url, auth=auth)
