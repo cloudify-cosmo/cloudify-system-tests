@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 MANAGER_BLUEPRINTS_PATH="/opt/cfy/cloudify-manager-blueprints"
 MANAGER_BLUEPRINT_PATH="${MANAGER_BLUEPRINTS_PATH}/simple-manager-blueprint.yaml"
 INPUTS_FILE_PATH="/tmp/bootstrap_inputs.yaml"
@@ -13,7 +11,17 @@ PRIVATE_IP=$4
 MANAGER_USER=$5
 
 echo "Installing Cloudify's CLI..."
-sudo rpm -i ${CLI_PACKAGE_URL}
+
+which rpm
+
+if [ "$?" -eq "0" ]; then
+    sudo rpm -i ${CLI_PACKAGE_URL}
+else
+    wget ${CLI_PACKAGE_URL} -O cloudify-cli.deb
+    sudo dpkg -i cloudify-cli.deb
+fi
+
+set -e
 
 echo "Creating inputs file.."
 echo "public_ip: ${PUBLIC_IP}
