@@ -27,7 +27,9 @@ Before running a test, make sure that:
 2. Source your OpenStack openrc file.
 
 Make sure your openrc file is set to use the OpenStack v2 API.
-```
+
+Run:
+```python
 pytest -s hello_world_test.py::test_hello_world_on_centos_7
 ```
 
@@ -35,7 +37,7 @@ pytest -s hello_world_test.py::test_hello_world_on_centos_7
 
 ## Test based on Cloudify manager started using an image
 
-```
+```python
 from cosmo_tester.framework.fixtures import image_based_manager
 
 manager = image_based_manager
@@ -74,7 +76,7 @@ In a similar manner it is possible to implement a fixture for starting several m
 
 The system tests framework exposes a command line utility for creating and destroying a Cloudify manager.
 
-```
+```bash
 # Bootstraps an image based manager
 cfy-systests bootstrap
 
