@@ -18,9 +18,6 @@ import json
 from requests.exceptions import ConnectionError
 from influxdb import InfluxDBClient
 
-from nose.tools import nottest
-
-from cloudify_rest_client.exceptions import CloudifyClientError
 from cosmo_tester.framework.git_helper import clone
 from cosmo_tester.framework.test_cases import MonitoringTestCase
 from cosmo_tester.framework.testenv import DEFAULT_EXECUTE_TIMEOUT

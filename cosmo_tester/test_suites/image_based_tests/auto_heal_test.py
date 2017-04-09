@@ -88,8 +88,9 @@ def _get_heal_workflow_events(cfy, client, deployment_id, logger):
 @retrying.retry(stop_max_attempt_number=40, wait_fixed=15000)
 def _wait_for_autoheal(client, deployment_id, logger):
     logger.info('Waiting for heal workflow to start/complete..')
-    executions = [e for e in client.executions.list(deployment_id=deployment_id)
-                  if e.workflow_id == 'heal']
+    executions = [
+        e for e in client.executions.list(deployment_id=deployment_id)
+        if e.workflow_id == 'heal']
     logger.info('Found heal executions:%s%s',
                 os.linesep,
                 json.dumps(executions, indent=2))

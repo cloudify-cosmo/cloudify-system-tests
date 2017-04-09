@@ -112,6 +112,7 @@ def create_openstack_client():
             password=os.environ['OS_PASSWORD'])
     return conn
 
+
 def process_variables(suites_yaml, unprocessed_dict):
     template_variables = suites_yaml.get('variables', {})
     result = {}

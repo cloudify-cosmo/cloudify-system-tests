@@ -256,8 +256,8 @@ Set-Content "{0}" '{1}'
 '''.format(bootstrap_inputs_file, bootstrap_inputs))
 
         self.logger.info('Bootstrapping manager..')
-        bootstrap_cmd = '{0} bootstrap {1} -i "{2}" -v --keep-up-on-failure'.format(
-            cfy_exe, manager_blueprint_path, bootstrap_inputs_file)
+        bootstrap_cmd = '{0} bootstrap {1} -i "{2}" -v --keep-up-on-failure'\
+            .format(cfy_exe, manager_blueprint_path, bootstrap_inputs_file)
         self._run_cmd(session, bootstrap_cmd, powershell=False)
 
 
