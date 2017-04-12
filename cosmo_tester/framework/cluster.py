@@ -175,6 +175,9 @@ class CloudifyCluster(object):
         cluster.create()
         return cluster
 
+    def _get_server_flavor(self):
+        return self._attributes.medium_flavor_name
+
     @property
     def managers(self):
         """Returns a list containing the managers in the cluster."""
@@ -216,7 +219,7 @@ class CloudifyCluster(object):
             'resource_suffix': str(uuid.uuid4()),
             'public_key_path': self._ssh_key.public_key_path,
             'private_key_path': self._ssh_key.private_key_path,
-            'flavor': self._attributes.medium_flavor_name,
+            'flavor': self._get_server_flavor(),
             'image': image_name,
         }, indent=2))
 
@@ -359,6 +362,9 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         self._manager_blueprints_path = None
         self._inputs_file = None
 
+    def _get_server_flavor(self):
+        return self._attributes.large_flavor_name
+
     def _get_manager_image_name(self):
         return self._attributes.centos7_image_name
 
@@ -372,10 +378,10 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
     def _clone_manager_blueprints(self):
         self._manager_blueprints_path = git_helper.clone(
                 MANAGER_BLUEPRINTS_REPO_URL,
-                str(self.tmpdir))
+                str(self._tmpdir))
 
     def _create_inputs_file(self):
-        self._inputs_file = self.tmpdir / 'inputs.json'
+        self._inputs_file = self._tmpdir / 'inputs.json'
         bootstrap_inputs = json.dumps({
             'public_ip': self.managers[0].ip_address,
             'private_ip': self.managers[0].private_ip_address,

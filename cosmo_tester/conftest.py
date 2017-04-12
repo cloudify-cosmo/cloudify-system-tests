@@ -57,8 +57,8 @@ def module_tmpdir(request, logger):
 class SSHKey(object):
 
     def __init__(self, tmpdir, logger):
-        self.private_key_path = tmpdir / 'key.pem'
-        self.public_key_path = tmpdir / 'key.pem.pub'
+        self.private_key_path = tmpdir / 'ssh_key.pem'
+        self.public_key_path = tmpdir / 'ssh_key.pem.pub'
         self.logger = logger
         self.tmpdir = tmpdir
 

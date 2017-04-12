@@ -15,35 +15,24 @@
 
 import pytest
 
-from cosmo_tester.framework.cloudify_manager import CloudifyManager
-from cosmo_tester.framework import examples
+from cosmo_tester.framework.fixtures import bootstrap_based_manager
+from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 
 
-@pytest.fixture(scope='module')
-def bootstrap_based_manager(
-        request, cfy, ssh_key, module_tmpdir, attributes, logger):
-    """Creates a cloudify manager from an image in rackspace OpenStack."""
-    manager = CloudifyManager.create_bootstrap_based(
-            cfy, ssh_key, module_tmpdir, attributes, logger)
-
-    yield manager
-
-    manager.destroy()
+manager = bootstrap_based_manager
 
 
 @pytest.fixture(scope='function')
-def hello_world(cfy, bootstrap_based_manager, attributes, ssh_key, tmpdir,
+def hello_world(cfy, manager, attributes, ssh_key, tmpdir,
                 logger):
-    hw = examples.HelloWorldExample(
-            cfy, bootstrap_based_manager, attributes, ssh_key, logger, tmpdir)
+    hw = HelloWorldExample(
+            cfy, manager, attributes, ssh_key, logger, tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     yield hw
-    if hw.cleanup_required:
-        logger.info('Hello world cleanup required..')
-        hw.cleanup()
+    hw.cleanup()
 
 
-def test_hello_world_on_boostrapped_manager(hello_world, attributes):
+def test_manager_bootstrap_and_deployment(hello_world, attributes):
     hello_world.inputs.update({
         'agent_user': attributes.centos7_username,
         'image': attributes.centos7_image_name,
