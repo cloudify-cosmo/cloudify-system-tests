@@ -51,6 +51,7 @@ class _CloudifyManager(object):
         self.ip_address = public_ip_address
         self.private_ip_address = private_ip_address
         self.client = rest_client
+        self.deleted = False
         self._ssh_key = ssh_key
         self._cfy = cfy
         self._attributes = attributes
@@ -95,6 +96,7 @@ class _CloudifyManager(object):
         self._logger.info('Deleting server.. [id=%s]', self.server_id)
         self._openstack.compute.delete_server(self.server_id)
         self._wait_for_server_to_be_deleted()
+        self.deleted = True
 
     @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
     def _wait_for_server_to_be_deleted(self):
