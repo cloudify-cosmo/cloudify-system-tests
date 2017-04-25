@@ -46,7 +46,7 @@ def cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
     # manager2 - Cloudify latest - don't install plugins
     cluster.managers_config[1].upload_plugins = False
 
-    cluster.create()
+    cluster.create(force_4_0_0=True)
 
     yield cluster
 

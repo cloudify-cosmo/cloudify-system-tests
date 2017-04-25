@@ -31,7 +31,6 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework import git_helper
 
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
-REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 
 MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
 
@@ -218,7 +217,7 @@ class CloudifyCluster(object):
          to be created."""
         return self._managers_config
 
-    def create(self):
+    def create(self, force_4_0_0=False):
         """Creates the OpenStack infrastructure for a Cloudify manager.
 
         The openstack credentials file and private key file for SSHing
@@ -277,7 +276,8 @@ class CloudifyCluster(object):
             for i, manager in enumerate(self._managers):
                 manager.use()
                 self._upload_necessary_files_to_manager(manager,
-                                                        openstack_config_file)
+                                                        openstack_config_file,
+                                                        force_4_0_0)
                 if self.managers_config[i].upload_plugins:
                     self._upload_plugin_to_manager(
                             manager, 'openstack_centos_core')
@@ -332,8 +332,15 @@ class CloudifyCluster(object):
 
     def _upload_necessary_files_to_manager(self,
                                            manager,
-                                           openstack_config_file):
+                                           openstack_config_file,
+                                           force_4_0_0=False):
         self._logger.info('Uploading necessary files to %s', manager)
+        if util.get_cli_version_tuple() >= (4, 0, 1) and not force_4_0_0:
+            REMOTE_OPENSTACK_CONFIG_PATH = (
+                '/etc/cloudify/openstack_config.json'
+            )
+        else:
+            REMOTE_OPENSTACK_CONFIG_PATH = '/root/openstack_config.json'
         with manager.ssh() as fabric_ssh:
             fabric_ssh.put(openstack_config_file,
                            REMOTE_OPENSTACK_CONFIG_PATH,
@@ -341,9 +348,10 @@ class CloudifyCluster(object):
             fabric_ssh.put(self._ssh_key.private_key_path,
                            REMOTE_PRIVATE_KEY_PATH,
                            use_sudo=True)
-            fabric_ssh.sudo('chown root.mgmtworker {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
+            if util.get_cli_version_tuple() >= (4, 0, 1) and not force_4_0_0:
+                fabric_ssh.sudo('chown root.mgmtworker {key_file}'.format(
+                    key_file=REMOTE_PRIVATE_KEY_PATH,
+                ))
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))

@@ -50,6 +50,24 @@ def get_cli_version():
     return cli_env.get_version_data()['version']
 
 
+def get_cli_version_tuple():
+    cli_version = get_cli_version()
+    # Get rid of milestone/alpha tags
+    # Do this by getting three lots of numbers separated by dots and dropping
+    # anything else.
+    version_finder = re.compile('[0-9]+\.[0-9]+\.[0-9]+')
+
+    version = version_finder.findall(cli_version)
+    if len(version) == 1:
+        version = version[0]
+        version = tuple(int(v) for v in version.split('.'))
+    else:
+        raise RuntimeError('Could not find CLI version in: {ver}'.format(
+            ver=cli_version,
+        ))
+    return version
+
+
 def download_file(url, destination=''):
 
     if not destination:
