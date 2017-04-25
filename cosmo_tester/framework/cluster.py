@@ -31,7 +31,10 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework import git_helper
 
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
-REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
+if util.get_cli_version_tuple() >= (4, 0, 1):
+    REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
+else:
+    REMOTE_OPENSTACK_CONFIG_PATH = '/root/openstack_config.json'
 
 MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
 
@@ -341,9 +344,10 @@ class CloudifyCluster(object):
             fabric_ssh.put(self._ssh_key.private_key_path,
                            REMOTE_PRIVATE_KEY_PATH,
                            use_sudo=True)
-            fabric_ssh.sudo('chown root.mgmtworker {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
+            if util.get_cli_version_tuple() >= (4, 0, 1):
+                fabric_ssh.sudo('chown root.mgmtworker {key_file}'.format(
+                    key_file=REMOTE_PRIVATE_KEY_PATH,
+                ))
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
