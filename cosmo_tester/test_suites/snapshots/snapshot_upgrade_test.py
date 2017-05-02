@@ -28,8 +28,10 @@ from cosmo_tester.framework.cluster import CloudifyCluster
 HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/4.0.zip'  # noqa
 
 
-@pytest.fixture(scope='module')
-def cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
+@pytest.fixture(
+        scope='module',
+        params=['4_0', '3_4'])
+def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     cluster = CloudifyCluster.create_image_based(
             cfy,
             ssh_key,
@@ -39,9 +41,10 @@ def cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
             number_of_managers=2,
             create=False)
 
-    # manager1 - Cloudify 4.0
-    cluster.managers_config[0].image_name = \
-        attributes.cloudify_manager_4_0_image_name
+    previous_version_name = 'cloudify_manager_{version}_image_name'.format(
+        version=request.param)
+    # manager1 - previous version
+    cluster.managers_config[0].image_name = attributes[previous_version_name]
 
     # manager2 - Cloudify latest - don't install plugins
     cluster.managers_config[1].upload_plugins = False
@@ -72,7 +75,7 @@ def _hello_world_example(cluster, attributes, logger, tmpdir):
 blueprint_id = deployment_id = str(uuid.uuid4())
 
 
-def test_restore_snapshot_and_agents_upgrade_from_4_0(
+def test_restore_snapshot_and_agents_upgrade(
         cfy, cluster, attributes, logger, tmpdir):
     manager1 = cluster.managers[0]
     manager2 = cluster.managers[1]
@@ -88,7 +91,7 @@ def test_restore_snapshot_and_agents_upgrade_from_4_0(
     remote_snapshot_path = '/tmp/{0}.zip'.format(snapshot_id)
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
-    logger.info('Downloading snapshot from 4.0 manager..')
+    logger.info('Downloading snapshot from old manager..')
     with manager1.ssh() as fabric:
         fabric.run('cfy snapshots list')
         fabric.run('cfy snapshots download {0} -o {1}'.format(
