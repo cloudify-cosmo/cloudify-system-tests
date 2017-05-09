@@ -46,7 +46,7 @@ def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger):
             module_tmpdir,
             attributes,
             logger,
-            managers,
+            managers=managers,
             )
 
     yield cluster
