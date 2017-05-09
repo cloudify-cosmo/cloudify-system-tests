@@ -271,6 +271,7 @@ class CloudifyCluster(object):
                 number_of_managers=number_of_managers,
                 managers=managers,
                 )
+        cluster.create()
         return cluster
 
     @staticmethod
