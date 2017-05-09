@@ -251,8 +251,10 @@ class CloudifyCluster(object):
 
     @staticmethod
     def create_image_based(
-            cfy, ssh_key, tmpdir, attributes, logger, number_of_managers=1,
-            create=True):
+            cfy, ssh_key, tmpdir, attributes, logger,
+            number_of_managers=1,
+            managers=None,
+            ):
         """Creates an image based Cloudify manager.
         :param create: Determines whether to actually create the environment
          in this invocation. If set to False, create() should be invoked in
@@ -266,9 +268,9 @@ class CloudifyCluster(object):
                 tmpdir,
                 attributes,
                 logger,
-                number_of_managers=number_of_managers)
-        if create:
-            cluster.create()
+                number_of_managers=number_of_managers,
+                managers=managers,
+                )
         return cluster
 
     @staticmethod
