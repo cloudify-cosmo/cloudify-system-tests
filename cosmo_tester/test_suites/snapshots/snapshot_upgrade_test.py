@@ -22,7 +22,10 @@ import requests
 import retrying
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.cluster import CloudifyCluster
+from cosmo_tester.framework.cluster import (
+    CloudifyCluster,
+    MANAGERS,
+)
 
 
 HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/4.0.zip'  # noqa
@@ -30,26 +33,21 @@ HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-exampl
 
 @pytest.fixture(
         scope='module',
-        params=['4_0', '3_4'])
+        params=['4.0', '3.4'])
 def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+    managers = (
+        MANAGERS[request.param](),
+        MANAGERS['master'](upload_plugins=False),
+    )
+
     cluster = CloudifyCluster.create_image_based(
             cfy,
             ssh_key,
             module_tmpdir,
             attributes,
             logger,
-            number_of_managers=2,
-            create=False)
-
-    previous_version_name = 'cloudify_manager_{version}_image_name'.format(
-        version=request.param)
-    # manager1 - previous version
-    cluster.managers_config[0].image_name = attributes[previous_version_name]
-
-    # manager2 - Cloudify latest - don't install plugins
-    cluster.managers_config[1].upload_plugins = False
-
-    cluster.create()
+            managers,
+            )
 
     yield cluster
 
