@@ -161,6 +161,10 @@ class CloudifyMasterManager(_CloudifyManager):
     branch_name = 'master'
     image_name_attribute = 'cloudify_manager_image_name_prefix'
 
+    image_name = '{}-{}'.format(
+            ATTRIBUTES.cloudify_manager_image_name_prefix,
+            util.get_cli_version().replace('-', '').replace('0.0', '0'))
+
 
 class Cloudify4_0Manager(_CloudifyManager):
     branch_name = '4.0'
@@ -451,16 +455,6 @@ class ImageBasedCloudifyCluster(CloudifyCluster):
     """
     Starts a manager from an image on OpenStack.
     """
-
-    def _get_latest_manager_image_name(self):
-        """
-        Returns the manager image name based on installed CLI version.
-        For CLI version "4.0.0-m15"
-        Returns: "cloudify-manager-premium-4.0m15"
-        """
-        version = util.get_cli_version().replace('-', '').replace('0.0', '0')
-        return '{}-{}'.format(
-                self._attributes.cloudify_manager_image_name_prefix, version)
 
 
 class BootstrapBasedCloudifyCluster(CloudifyCluster):
