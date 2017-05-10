@@ -23,7 +23,6 @@ import tempfile
 from path import Path
 import pytest
 import sh
-import yaml
 
 from cosmo_tester.framework import util
 
