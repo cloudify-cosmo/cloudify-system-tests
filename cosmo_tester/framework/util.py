@@ -12,25 +12,27 @@
 #    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
+
 import base64
+import json
+import logging
 import os
 import re
-import sh
-import sys
-import time
-import json
-import socket
 import shutil
-import urllib
+import socket
+import sys
 import tempfile
-
+import time
+import urllib
 import subprocess
-import yaml
+
 import jinja2
-from openstack import connection as openstack_connection
-from path import path
-from path import Path
 import requests
+import sh
+import yaml
+
+from openstack import connection as openstack_connection
+from path import path, Path
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
@@ -41,6 +43,14 @@ from cosmo_tester import resources
 
 class AttributesDict(dict):
     __getattr__ = dict.__getitem__
+
+
+def get_attributes(logger=logging):
+    attributes_file = get_resource_path('attributes.yaml')
+    logger.info('Loading attributes from: %s', attributes_file)
+    with open(attributes_file, 'r') as f:
+        attrs = AttributesDict(yaml.load(f))
+        return attrs
 
 
 def get_cli_version():

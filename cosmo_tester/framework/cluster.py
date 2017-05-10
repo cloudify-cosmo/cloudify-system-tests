@@ -36,6 +36,9 @@ REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
 
 
+ATTRIBUTES = util.get_attributes()
+
+
 class _CloudifyManager(object):
 
     __metaclass__ = ABCMeta
@@ -149,9 +152,9 @@ class _CloudifyManager(object):
         raise NotImplementedError()
 
     @property
-    def image_name_attribute(self):
-        return 'cloudify_manager_{}_image_name'.format(
-                self.branch_name.replace('.', '_'))
+    def image_name(self):
+        return ATTRIBUTES['cloudify_manager_{}_image_name'.format(
+                self.branch_name.replace('.', '_'))]
 
 
 class CloudifyMasterManager(_CloudifyManager):
