@@ -350,13 +350,11 @@ class CloudifyCluster(object):
                                 self._terraform.output(
                                         ['-json']).stdout).items()})
             self._attributes.update(outputs)
-            self._create_managers_list(outputs)
 
             if self.preconfigure_callback:
                 self.preconfigure_callback(self.managers)
 
-            for manager in self.managers:
-                manager.create()
+            self._update_managers_list(outputs)
 
             self._bootstrap_managers()
 
@@ -424,9 +422,8 @@ class CloudifyCluster(object):
             self._terraform.destroy(
                     ['-var-file', self._terraform_inputs_file, '-force'])
 
-    def _create_managers_list(self, outputs):
-        self._managers = []
-        for i, manager in enumerate(self._manager_types):
+    def _update_managers_list(self, outputs):
+        for i, manager in enumerate(self.managers):
             public_ip_address = outputs['public_ip_address_{}'.format(i)]
             private_ip_address = outputs['private_ip_address_{}'.format(i)]
             rest_client = util.create_rest_client(
@@ -434,7 +431,7 @@ class CloudifyCluster(object):
                     username=self._attributes.cloudify_username,
                     password=self._attributes.cloudify_password,
                     tenant=self._attributes.cloudify_tenant)
-            self._managers.append(manager(
+            manager.create(
                     i,
                     public_ip_address,
                     private_ip_address,
@@ -443,7 +440,7 @@ class CloudifyCluster(object):
                     self._cfy,
                     self._attributes,
                     self._logger,
-                    ))
+                    )
 
 
 class ImageBasedCloudifyCluster(CloudifyCluster):
