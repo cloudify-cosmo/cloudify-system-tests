@@ -56,7 +56,7 @@ class _CloudifyManager(object):
             cfy,
             attributes,
             logger,
-            config):
+            ):
         self.index = index
         self.ip_address = public_ip_address
         self.private_ip_address = private_ip_address
@@ -69,7 +69,6 @@ class _CloudifyManager(object):
         self._openstack = util.create_openstack_client()
         self.influxdb_client = InfluxDBClient(public_ip_address, 8086,
                                               'root', 'root', 'cloudify')
-        self.config = config
 
     def _upload_necessary_files(self, openstack_config_file):
         self._logger.info('Uploading necessary files to %s', self)
