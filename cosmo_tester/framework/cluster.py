@@ -251,11 +251,6 @@ class CloudifyCluster(object):
     def _bootstrap_managers(self):
         pass
 
-    @abstractmethod
-    def _get_latest_manager_image_name(self):
-        """Returns the image name for the manager's VM."""
-        pass
-
     @staticmethod
     def create_image_based(
             cfy, ssh_key, tmpdir, attributes, logger,
