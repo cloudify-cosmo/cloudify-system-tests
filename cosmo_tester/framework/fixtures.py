@@ -2,6 +2,7 @@
 import pytest
 
 from .cluster import CloudifyCluster
+from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 
 
 @pytest.fixture(scope='module')
@@ -28,3 +29,12 @@ def bootstrap_based_manager(
     yield cluster.managers[0]
 
     cluster.destroy()
+
+
+@pytest.fixture(scope='function')
+def hello_world(cfy, manager, attributes, ssh_key, tmpdir, logger):
+    hw = HelloWorldExample(
+            cfy, manager, attributes, ssh_key, logger, tmpdir)
+    hw.blueprint_file = 'openstack-blueprint.yaml'
+    yield hw
+    hw.cleanup()

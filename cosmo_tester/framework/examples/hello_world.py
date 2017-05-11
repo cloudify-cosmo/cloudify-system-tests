@@ -31,6 +31,7 @@ class HelloWorldExample(AbstractExample):
     def __init__(self, *args, **kwargs):
         super(HelloWorldExample, self).__init__(*args, **kwargs)
         self.disable_iptables = False
+        self.resource_name = 'hello_world'
 
     @property
     def inputs(self):
