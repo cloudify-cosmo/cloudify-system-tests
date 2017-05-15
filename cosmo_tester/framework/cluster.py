@@ -259,7 +259,7 @@ class CloudifyCluster(object):
             self._managers = managers
         else:
             self._managers = [
-                CURRENT_MANAGER
+                CURRENT_MANAGER()
                 for _ in range(number_of_managers)]
 
     def _bootstrap_managers(self):
