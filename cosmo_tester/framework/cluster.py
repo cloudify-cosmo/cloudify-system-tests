@@ -156,13 +156,28 @@ class _CloudifyManager(object):
                 self.branch_name.replace('.', '_'))]
 
 
+def _get_latest_manager_image_name(self):
+    """
+    Returns the manager image name based on installed CLI version.
+    For CLI version "4.0.0-m15"
+    Returns: "cloudify-manager-premium-4.0m15"
+    """
+    version = util.get_cli_version()
+    version_num, _, version_milestone = version.partition('-')
+
+    if version_num.endswith('.0') and version_num.count('.') > 1:
+        version_num = version_num[:-2]
+
+    version = version_num + version_milestone
+    return '{}-{}'.format(
+            self._attributes.cloudify_manager_image_name_prefix, version)
+
+
 class CloudifyMasterManager(_CloudifyManager):
     branch_name = 'master'
     image_name_attribute = 'cloudify_manager_image_name_prefix'
 
-    image_name = '{}-{}'.format(
-            ATTRIBUTES.cloudify_manager_image_name_prefix,
-            util.get_cli_version().replace('-', '').replace('0.0', '0'))
+    image_name = _get_latest_manager_image_name()
 
 
 class Cloudify4_0Manager(_CloudifyManager):
