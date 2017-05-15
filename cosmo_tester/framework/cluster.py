@@ -156,7 +156,7 @@ class _CloudifyManager(object):
                 self.branch_name.replace('.', '_'))]
 
 
-def _get_latest_manager_image_name(self):
+def _get_latest_manager_image_name():
     """
     Returns the manager image name based on installed CLI version.
     For CLI version "4.0.0-m15"
@@ -170,7 +170,7 @@ def _get_latest_manager_image_name(self):
 
     version = version_num + version_milestone
     return '{}-{}'.format(
-            self._attributes.cloudify_manager_image_name_prefix, version)
+            ATTRIBUTES.cloudify_manager_image_name_prefix, version)
 
 
 class CloudifyMasterManager(_CloudifyManager):
