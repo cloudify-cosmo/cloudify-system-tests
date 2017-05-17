@@ -37,7 +37,7 @@ REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
 
 MANAGER_API_VERSIONS = {
-    'master': 'v3.1',
+    'master': 'v3',
     '4.0.1': 'v3',
     '4.0': 'v3',
     '3.4': 'v2',
