@@ -13,7 +13,7 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractproperty
 
 from contextlib import contextmanager
 import json
@@ -82,6 +82,7 @@ class _CloudifyManager(object):
         self._logger.info('Uploading necessary files to %s', self)
         with self.ssh() as fabric_ssh:
             openstack_json_path = REMOTE_OPENSTACK_CONFIG_PATH
+            fabric_ssh.sudo('mkdir -p {}'.format(REMOTE_PRIVATE_KEY_PATH))
             fabric_ssh.put(openstack_config_file,
                            openstack_json_path,
                            use_sudo=True)
