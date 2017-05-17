@@ -30,10 +30,18 @@ import sh
 from cosmo_tester.framework import util
 from cosmo_tester.framework import git_helper
 
+
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 
 MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
+
+MANAGER_API_VERSIONS = {
+    'master': 'v3.1',
+    '4.0.1': 'v3',
+    '4.0': 'v3',
+    '3.4': 'v2',
+}
 
 
 ATTRIBUTES = util.get_attributes()
@@ -154,6 +162,10 @@ class _CloudifyManager(object):
     def image_name(self):
         return ATTRIBUTES['cloudify_manager_{}_image_name'.format(
                 self.branch_name.replace('.', '_'))]
+
+    @property
+    def api_version(self):
+        return MANAGER_API_VERSIONS[self.branch_name]
 
 
 def _get_latest_manager_image_name():
@@ -444,7 +456,9 @@ class CloudifyCluster(object):
                     public_ip_address,
                     username=self._attributes.cloudify_username,
                     password=self._attributes.cloudify_password,
-                    tenant=self._attributes.cloudify_tenant)
+                    tenant=self._attributes.cloudify_tenant,
+                    api_version=manager.api_version,
+                    )
             manager.create(
                     i,
                     public_ip_address,

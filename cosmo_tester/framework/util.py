@@ -274,16 +274,18 @@ def check_port(ip, port):
     return result == 0
 
 
-def create_rest_client(manager_ip,
-                       username=None,
-                       password=None,
-                       tenant=None):
+def create_rest_client(
+        manager_ip,
+        username=None,
+        password=None,
+        tenant=None,
+        **kwargs):
     return CloudifyClient(
         host=manager_ip,
         username=username or cli_env.get_username(),
         password=password or cli_env.get_password(),
-        tenant=tenant or cli_env.get_tenant_name()
-    )
+        tenant=tenant or cli_env.get_tenant_name(),
+        **kwargs)
 
 
 def get_plugin_wagon_urls():
