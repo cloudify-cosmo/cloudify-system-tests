@@ -387,7 +387,6 @@ class CloudifyCluster(object):
             for manager in self.managers:
                 manager.verify_services_are_running()
 
-                manager.use()
                 manager._upload_necessary_files(openstack_config_file)
                 if manager.upload_plugins:
                     self._upload_plugin_to_manager(
@@ -428,7 +427,7 @@ class CloudifyCluster(object):
             x.id for x in manager.client.plugins.list()]
         try:
             manager.client.plugins.upload(plugin_wagon[0])
-            self._cfy.plugins.list()
+            manager.client.plugins.list()
         except Exception as cce:
             self._logger.error('Error on plugin upload: %s', cce)
             current_plugins_ids = [x.id for x in manager.client.plugins.list()]
