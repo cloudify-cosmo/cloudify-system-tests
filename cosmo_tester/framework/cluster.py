@@ -264,14 +264,15 @@ class CloudifyCluster(object):
         self._tmpdir = tmpdir
         self._ssh_key = ssh_key
         self._cfy = cfy
-        self._number_of_managers = number_of_managers
         self._terraform = util.sh_bake(sh.terraform)
         self._terraform_inputs_file = self._tmpdir / 'terraform-vars.json'
         self._managers = None
         self.preconfigure_callback = None
         if managers is not None:
+            self._number_of_managers = len(managers)
             self._managers = managers
         else:
+            self._number_of_managers = number_of_managers
             self._managers = [
                 CURRENT_MANAGER()
                 for _ in range(number_of_managers)]
