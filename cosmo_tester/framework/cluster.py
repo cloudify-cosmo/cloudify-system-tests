@@ -82,7 +82,8 @@ class _CloudifyManager(object):
         self._logger.info('Uploading necessary files to %s', self)
         with self.ssh() as fabric_ssh:
             openstack_json_path = REMOTE_OPENSTACK_CONFIG_PATH
-            fabric_ssh.sudo('mkdir -p {}'.format(REMOTE_PRIVATE_KEY_PATH))
+            fabric_ssh.sudo('mkdir -p "{}"'.format(
+                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
             fabric_ssh.put(openstack_config_file,
                            openstack_json_path,
                            use_sudo=True)
