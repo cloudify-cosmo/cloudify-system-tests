@@ -224,11 +224,11 @@ class Cloudify3_4Manager(_CloudifyManager):
             fabric_ssh.put(openstack_config_file,
                            openstack_json_path,
                            use_sudo=True)
+            fabric_ssh.sudo('mkdir -p "{}"'.format(
+                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
             fabric_ssh.put(self._ssh_key.private_key_path,
                            REMOTE_PRIVATE_KEY_PATH,
                            use_sudo=True)
-            fabric_ssh.sudo('mkdir -p "{}"'.format(
-                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
