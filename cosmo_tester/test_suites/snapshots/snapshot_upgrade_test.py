@@ -29,7 +29,6 @@ from cosmo_tester.framework.cluster import (
 from cloudify_cli.commands.executions import (
     _get_deployment_environment_creation_execution,
     )
-from cloudify_cli.execution_events_fetcher import wait_for_execution
 
 
 HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/4.0.zip'  # noqa
@@ -133,6 +132,37 @@ def test_restore_snapshot_and_agents_upgrade(
     cfy.deployments.delete(deployment_id)
 
 
+class ExecutionWaiting(Exception):
+    """
+    raised by `wait_for_execution` if it should be retried
+    """
+    pass
+
+
+class ExecutionFailed(Exception):
+    """
+    raised by `wait_for_execution` if a bad state is reached
+    """
+    pass
+
+
+def retry_if_not_failed(exception):
+    return not isinstance(exception, ExecutionFailed)
+
+
+@retrying.retry(
+    stop_max_attempt_number=6,
+    wait_fixed=5000,
+    retry_on_exception=retry_if_not_failed,
+)
+def wait_for_execution(client, execution_id):
+    execution = client.executions.get(execution_id)
+    if execution.status not in execution.END_STATES:
+        raise ExecutionWaiting(execution.status)
+    if execution.status != execution.TERMINATED:
+        raise ExecutionFailed(execution.status)
+
+
 def _deploy_helloworld(attributes, logger, manager1, tmpdir):
     logger.info('Uploading helloworld blueprint to 4.0 manager..')
     inputs = {
@@ -157,12 +187,11 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         inputs,
         )
 
-    creation_workflow_id = _get_deployment_environment_creation_execution(
+    creation_execution_id = _get_deployment_environment_creation_execution(
         manager1.client, deployment_id)
     wait_for_execution(
         manager1.client,
-        creation_workflow_id,
-        timeout=900,
+        creation_execution_id,
         )
 
     manager1.client.deployments.list()
