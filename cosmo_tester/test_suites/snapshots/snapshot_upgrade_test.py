@@ -155,8 +155,8 @@ def retry_if_not_failed(exception):
     wait_fixed=5000,
     retry_on_exception=retry_if_not_failed,
 )
-def wait_for_execution(client, execution_id):
-    execution = client.executions.get(execution_id)
+def wait_for_execution(client, execution):
+    execution = client.executions.get(execution['id'])
     if execution.status not in execution.END_STATES:
         raise ExecutionWaiting(execution.status)
     if execution.status != execution.TERMINATED:
@@ -187,11 +187,11 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         inputs,
         )
 
-    creation_execution_id = _get_deployment_environment_creation_execution(
+    creation_execution = _get_deployment_environment_creation_execution(
         manager1.client, deployment_id)
     wait_for_execution(
         manager1.client,
-        creation_execution_id,
+        creation_execution,
         )
 
     manager1.client.deployments.list()
