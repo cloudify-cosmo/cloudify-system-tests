@@ -266,14 +266,11 @@ class CloudifyCluster(object):
         self._cfy = cfy
         self._terraform = util.sh_bake(sh.terraform)
         self._terraform_inputs_file = self._tmpdir / 'terraform-vars.json'
-        self._managers = None
         self.preconfigure_callback = None
         if managers is not None:
-            self._number_of_managers = len(managers)
-            self._managers = managers
+            self.managers = managers
         else:
-            self._number_of_managers = number_of_managers
-            self._managers = [
+            self.managers = [
                 CURRENT_MANAGER()
                 for _ in range(number_of_managers)]
 
@@ -326,20 +323,13 @@ class CloudifyCluster(object):
     def _get_server_flavor(self):
         return self._attributes.medium_flavor_name
 
-    @property
-    def managers(self):
-        """Returns a list containing the managers in the cluster."""
-        if not self._managers:
-            raise RuntimeError('_managers is not set')
-        return self._managers
-
     def create(self):
         """Creates the OpenStack infrastructure for a Cloudify manager.
 
         The openstack credentials file and private key file for SSHing
         to provisioned VMs are uploaded to the server."""
         self._logger.info('Creating an image based cloudify cluster '
-                          '[number_of_managers=%d]', self._number_of_managers)
+                          '[number_of_managers=%d]', len(self.managers))
 
         openstack_config_file = self._tmpdir / 'openstack_config.json'
         openstack_config_file.write_text(json.dumps({
