@@ -18,10 +18,8 @@ import os
 import uuid
 
 import pytest
-import requests
 import retrying
 
-from cosmo_tester.framework import util
 from cosmo_tester.framework.cluster import (
     CloudifyCluster,
     MANAGERS,
@@ -143,19 +141,23 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
     inputs_file = str(tmpdir / '{0}.json'.format(deployment_id))
     with open(inputs_file, 'w') as f:
         f.write(json.dumps(inputs))
-    destination_inputs_file = '/tmp/{0}.json'.format(deployment_id)
     logger.info('Deploying helloworld on 4.0 manager..')
-    with manager1.ssh() as fabric:
-        fabric.run(
-            'cfy blueprints upload {0} -b {1} -n openstack-blueprint.yaml'
-            .format(HELLO_WORLD_URL, blueprint_id))
-        fabric.put(inputs_file, destination_inputs_file)
-        fabric.run('cfy deployments create {0} -b {1} -i {2}'.format(
-                deployment_id,
-                blueprint_id,
-                destination_inputs_file))
-        fabric.run('cfy deployments list')
-        fabric.run('cfy executions start install -d {0}'.format(deployment_id))
+
+    manager1.client.blueprints.publis_archive(
+        HELLO_WORLD_URL,
+        blueprint_id,
+        'openstack-blueprint.yaml',
+        )
+    manager1.client.deployments.create(
+        blueprint_id,
+        deployment_id,
+        inputs_file,
+        )
+    manager1.client.deployments.list()
+    manager1.client.executions.start(
+        deployment_id,
+        'install',
+        )
 
 
 @retrying.retry(stop_max_attempt_number=6, wait_fixed=5000)
