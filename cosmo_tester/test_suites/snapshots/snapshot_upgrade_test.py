@@ -81,20 +81,14 @@ def test_restore_snapshot_and_agents_upgrade(
     snapshot_id = str(uuid.uuid4())
 
     logger.info('Creating snapshot on manager1..')
-    with manager1.ssh() as fabric:
-        fabric.run('cfy snapshots create {0}'.format(snapshot_id))
+    manager1.client.snapshots.create(snapshot_id, False, False, False)
+    manager1.assert_snapshot_created(snapshot_id, attributes)
 
-    _assert_snapshot_created(snapshot_id, manager1.ip_address, attributes)
-
-    remote_snapshot_path = '/tmp/{0}.zip'.format(snapshot_id)
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     logger.info('Downloading snapshot from old manager..')
-    with manager1.ssh() as fabric:
-        fabric.run('cfy snapshots list')
-        fabric.run('cfy snapshots download {0} -o {1}'.format(
-                snapshot_id, remote_snapshot_path))
-        fabric.get(remote_snapshot_path, local_snapshot_path)
+    manager1.client.snapshots.list()
+    manager1.client.snapshots.download(snapshot_id, local_snapshot_path)
 
     manager2.use()
     logger.info('Uploading snapshot to latest manager..')
@@ -162,17 +156,6 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
                 destination_inputs_file))
         fabric.run('cfy deployments list')
         fabric.run('cfy executions start install -d {0}'.format(deployment_id))
-
-
-@retrying.retry(stop_max_attempt_number=10, wait_fixed=5000)
-def _assert_snapshot_created(snapshot_id, manager_ip, attributes):
-    url = 'http://{0}/api/v3/snapshots/{1}'.format(manager_ip, snapshot_id)
-    headers = {'tenant': attributes.cloudify_tenant}
-    auth = (attributes.cloudify_username, attributes.cloudify_password)
-    r = requests.get(url, auth=auth, headers=headers)
-    assert r.status_code == 200
-    snapshot = util.AttributesDict(r.json())
-    assert snapshot.status == 'created', 'Snapshot not in created status'
 
 
 @retrying.retry(stop_max_attempt_number=6, wait_fixed=5000)

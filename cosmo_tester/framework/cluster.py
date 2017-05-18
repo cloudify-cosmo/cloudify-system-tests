@@ -15,17 +15,18 @@
 
 from abc import ABCMeta, abstractproperty
 
-from contextlib import contextmanager
 import json
 import os
 import uuid
+from contextlib import contextmanager
 
+import jinja2
+import retrying
+import requests
+import sh
 from fabric import api as fabric_api
 from fabric import context_managers as fabric_context_managers
 from influxdb import InfluxDBClient
-import jinja2
-import retrying
-import sh
 
 from cosmo_tester.framework import util
 from cosmo_tester.framework import git_helper
@@ -168,6 +169,19 @@ class _CloudifyManager(object):
     @property
     def api_version(self):
         return MANAGER_API_VERSIONS[self.branch_name]
+
+    @retrying.retry(stop_max_attempt_number=10, wait_fixed=5000)
+    def assert_snapshot_created(self, snapshot_id, attributes):
+        url = 'http://{ip}/api/{version}/snapshots/{id}'.format(
+            ip=self.ip_address,
+            version=self.api_version,
+            id=snapshot_id)
+        headers = {'tenant': attributes.cloudify_tenant}
+        auth = (attributes.cloudify_username, attributes.cloudify_password)
+        r = requests.get(url, auth=auth, headers=headers)
+        assert r.status_code == 200
+        snapshot = util.AttributesDict(r.json())
+        assert snapshot.status == 'created', 'Snapshot not in created status'
 
 
 def _get_latest_manager_image_name():
