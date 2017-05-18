@@ -143,7 +143,7 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         f.write(json.dumps(inputs))
     logger.info('Deploying helloworld on 4.0 manager..')
 
-    manager1.client.blueprints.publis_archive(
+    manager1.client.blueprints.publish_archive(
         HELLO_WORLD_URL,
         blueprint_id,
         'openstack-blueprint.yaml',
