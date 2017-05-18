@@ -195,9 +195,14 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         )
 
     manager1.client.deployments.list()
-    manager1.client.executions.start(
+
+    execution = manager1.client.executions.start(
         deployment_id,
         'install',
+        )
+    wait_for_execution(
+        manager1.client,
+        execution,
         )
 
 
