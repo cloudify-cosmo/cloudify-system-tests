@@ -25,6 +25,12 @@ from cosmo_tester.framework.cluster import (
     MANAGERS,
 )
 
+# CFY-6912
+from cloudify_cli.commands.executions import (
+    _get_deployment_environment_creation_execution,
+    )
+from cloudify_cli.execution_events_fetcher import wait_for_execution
+
 
 HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/4.0.zip'  # noqa
 
@@ -150,6 +156,15 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         deployment_id,
         inputs,
         )
+
+    creation_workflow_id = _get_deployment_environment_creation_execution(
+        manager1.client, deployment_id)
+    wait_for_execution(
+        manager1.client,
+        creation_workflow_id,
+        timeout=900,
+        )
+
     manager1.client.deployments.list()
     manager1.client.executions.start(
         deployment_id,
