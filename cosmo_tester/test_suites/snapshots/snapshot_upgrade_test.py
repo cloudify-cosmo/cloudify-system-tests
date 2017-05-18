@@ -65,10 +65,15 @@ def _hello_world_example(cluster, attributes, logger, tmpdir):
 
     if not cluster.managers[0].deleted:
         try:
-            logger.info('Performing test cleanup..')
-            with cluster.managers[0].ssh() as fabric:
-                fabric.run('cfy executions start uninstall -d {0} '
-                           '-p ignore_failure=true'.format(deployment_id))
+            logger.info('Cleaning up hello_world_example deployment...')
+            execution = cluster.managers[0].client.executions.start(
+                deployment_id,
+                'install',
+                )
+            wait_for_execution(
+                cluster.managers[0].client,
+                execution,
+                )
         except Exception as e:
             logger.error('Error on test cleanup: %s', e)
 
