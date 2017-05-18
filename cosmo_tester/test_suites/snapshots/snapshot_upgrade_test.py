@@ -138,9 +138,6 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         'agent_user': attributes.centos7_username,
         'image': attributes.centos7_image_name
     }
-    inputs_file = str(tmpdir / '{0}.json'.format(deployment_id))
-    with open(inputs_file, 'w') as f:
-        f.write(json.dumps(inputs))
     logger.info('Deploying helloworld on 4.0 manager..')
 
     manager1.client.blueprints.publish_archive(
@@ -151,7 +148,7 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
     manager1.client.deployments.create(
         blueprint_id,
         deployment_id,
-        inputs_file,
+        inputs,
         )
     manager1.client.deployments.list()
     manager1.client.executions.start(
