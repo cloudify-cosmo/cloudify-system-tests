@@ -185,7 +185,7 @@ def retry_if_not_failed(exception):
 
 
 @retrying.retry(
-    stop_max_delay=180000,
+    stop_max_delay=5 * 60 * 1000,
     wait_fixed=10000,
     retry_on_exception=retry_if_not_failed,
 )
