@@ -132,9 +132,11 @@ def test_restore_snapshot_and_agents_upgrade(
 
     cfy.executions.list(['--include-system-workflows'])
 
-    _assert_restore_workflow_terminated(restore_execution.id,
-                                        manager2.client,
-                                        logger)
+    wait_for_execution(
+        manager2.client,
+        restore_execution,
+        logger)
+    assert restore_execution.status == 'terminated'
 
     cfy.executions.list(['--include-system-workflows'])
 
@@ -182,16 +184,19 @@ def retry_if_not_failed(exception):
 
 
 @retrying.retry(
-    stop_max_delay=120000,
+    stop_max_delay=180000,
     wait_fixed=5000,
     retry_on_exception=retry_if_not_failed,
 )
-def wait_for_execution(client, execution):
+def wait_for_execution(client, execution, logger):
+    logger.info('Getting workflow execution.. [id=%s]', execution['id'])
     execution = client.executions.get(execution['id'])
+    logger.info('- execution.status = %s', execution.status)
     if execution.status not in execution.END_STATES:
         raise ExecutionWaiting(execution.status)
     if execution.status != execution.TERMINATED:
         raise ExecutionFailed(execution.status)
+    return execution
 
 
 def _deploy_helloworld(attributes, logger, manager1, tmpdir):
@@ -237,11 +242,3 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         manager1.client,
         execution,
         )
-
-
-@retrying.retry(stop_max_attempt_number=6, wait_fixed=5000)
-def _assert_restore_workflow_terminated(execution_id, client, logger):
-    logger.info('Getting restore workflow execution.. [id=%s]', execution_id)
-    execution = client.executions.get(execution_id)
-    logger.info('- execution.status = %s', execution.status)
-    assert execution.status == 'terminated'
