@@ -109,7 +109,10 @@ def test_restore_snapshot_and_agents_upgrade(
     cfy.snapshots.list()
 
     logger.info('Restoring snapshot on latest manager..')
-    restore_execution = manager2.client.snapshots.restore(snapshot_id)
+    restore_execution = manager2.client.snapshots.restore(
+        snapshot_id,
+        tenant_name=manager1.restore_tenant_name,
+        )
     logger.info('Snapshot restore execution:%s%s',
                 os.linesep,
                 json.dumps(restore_execution, indent=2))
@@ -122,6 +125,8 @@ def test_restore_snapshot_and_agents_upgrade(
 
     cfy.executions.list(['--include-system-workflows'])
 
+    manager2.use(tenant=manager1.restore_tenant_name)
+
     cfy.deployments.list()
     deployments = manager2.client.deployments.list()
     assert 1 == len(deployments)
@@ -129,7 +134,8 @@ def test_restore_snapshot_and_agents_upgrade(
     logger.info('Upgrading agents..')
     cfy.agents.install()
 
-    logger.info('Deleting 4.0 manager..')
+    logger.info('Deleting original {version} manager..'.format(
+        manager1.branch_name))
     manager1.delete()
 
     logger.info('Uninstalling deployment from latest manager..')
