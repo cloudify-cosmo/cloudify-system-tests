@@ -142,7 +142,7 @@ def test_restore_snapshot_and_agents_upgrade(
         manager2.ip_address,
         username=cluster._attributes.cloudify_username,
         password=cluster._attributes.cloudify_password,
-        tenant=manager1.tenant,
+        tenant=manager1.tenant_name,
         api_version=manager2.api_version,
         )
 
