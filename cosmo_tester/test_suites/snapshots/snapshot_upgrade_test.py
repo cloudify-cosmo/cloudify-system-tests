@@ -24,6 +24,7 @@ from cosmo_tester.framework.cluster import (
     CloudifyCluster,
     MANAGERS,
 )
+from cosmo_tester.framework.util import create_rest_client
 
 # CFY-6912
 from cloudify_cli.commands.executions import (
@@ -131,9 +132,16 @@ def test_restore_snapshot_and_agents_upgrade(
     cfy.executions.list(['--include-system-workflows'])
 
     manager2.use(tenant=manager1.restore_tenant_name)
+    client = create_rest_client(
+        manager2.ip_address,
+        username=cluster._attributes.cloudify_username,
+        password=cluster._attributes.cloudify_password,
+        tenant=manager1.tenant,
+        api_version=manager2.api_version,
+        )
 
     cfy.deployments.list()
-    deployments = manager2.client.deployments.list()
+    deployments = client.deployments.list()
     assert 1 == len(deployments)
 
     logger.info('Upgrading agents..')
