@@ -79,7 +79,7 @@ def _hello_world_example(cluster, attributes, logger, tmpdir):
                 parameters=(
                     None
                     if manager1.branch_name.startswith('3')
-                    else {'ignore_failures': True}
+                    else {'ignore_failure': True}
                 ),
                 )
             wait_for_execution(
