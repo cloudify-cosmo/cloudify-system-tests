@@ -206,11 +206,25 @@ def _get_latest_manager_image_name():
             ATTRIBUTES.cloudify_manager_image_name_prefix, version)
 
 
-class CloudifyMasterManager(_CloudifyManager):
-    branch_name = 'master'
-    image_name_attribute = 'cloudify_manager_image_name_prefix'
+class Cloudify3_4Manager(_CloudifyManager):
+    branch_name = '3.4'
+    tenant_name = restore_tenant_name = 'restore_tenant'
 
-    image_name = _get_latest_manager_image_name()
+    def _upload_necessary_files(self, openstack_config_file):
+        self._logger.info('Uploading necessary files to %s', self)
+        with self.ssh() as fabric_ssh:
+            openstack_json_path = '/root/openstack_config.json'
+            fabric_ssh.put(openstack_config_file,
+                           openstack_json_path,
+                           use_sudo=True)
+            fabric_ssh.sudo('mkdir -p "{}"'.format(
+                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
+            fabric_ssh.put(self._ssh_key.private_key_path,
+                           REMOTE_PRIVATE_KEY_PATH,
+                           use_sudo=True)
+            fabric_ssh.sudo('chmod 440 {key_file}'.format(
+                key_file=REMOTE_PRIVATE_KEY_PATH,
+            ))
 
 
 class Cloudify4_0Manager(_CloudifyManager):
@@ -233,31 +247,22 @@ class Cloudify4_0Manager(_CloudifyManager):
             ))
 
 
-class Cloudify3_4Manager(_CloudifyManager):
-    branch_name = '3.4'
-    tenant_name = restore_tenant_name = 'restore_tenant'
+class Cloudify4_0_1Manager(_CloudifyManager):
+    branch_name = '4.0.1'
 
-    def _upload_necessary_files(self, openstack_config_file):
-        self._logger.info('Uploading necessary files to %s', self)
-        with self.ssh() as fabric_ssh:
-            openstack_json_path = '/root/openstack_config.json'
-            fabric_ssh.put(openstack_config_file,
-                           openstack_json_path,
-                           use_sudo=True)
-            fabric_ssh.sudo('mkdir -p "{}"'.format(
-                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
-            fabric_ssh.put(self._ssh_key.private_key_path,
-                           REMOTE_PRIVATE_KEY_PATH,
-                           use_sudo=True)
-            fabric_ssh.sudo('chmod 440 {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
+
+class CloudifyMasterManager(_CloudifyManager):
+    branch_name = 'master'
+    image_name_attribute = 'cloudify_manager_image_name_prefix'
+
+    image_name = _get_latest_manager_image_name()
 
 
 MANAGERS = {
-    'master': CloudifyMasterManager,
-    '4.0': Cloudify4_0Manager,
     '3.4': Cloudify3_4Manager,
+    '4.0': Cloudify4_0Manager,
+    '4.0.1': Cloudify4_0_1Manager,
+    'master': CloudifyMasterManager,
 }
 
 CURRENT_MANAGER = MANAGERS['master']
