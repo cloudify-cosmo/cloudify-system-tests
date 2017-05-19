@@ -69,15 +69,21 @@ def _hello_world_example(cluster, attributes, logger, tmpdir):
 
     yield
 
-    if not cluster.managers[0].deleted:
+    manager1 = cluster.managers[0]
+    if not manager1.deleted:
         try:
             logger.info('Cleaning up hello_world_example deployment...')
-            execution = cluster.managers[0].client.executions.start(
+            execution = manager1.client.executions.start(
                 deployment_id,
-                'install',
+                'uninstall',
+                parameters=(
+                    None
+                    if manager1.branch_name.startswith('3')
+                    else {'ignore_failures': True}
+                ),
                 )
             wait_for_execution(
-                cluster.managers[0].client,
+                manager1.client,
                 execution,
                 )
         except Exception as e:
