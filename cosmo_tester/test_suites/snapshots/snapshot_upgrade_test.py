@@ -194,7 +194,8 @@ def wait_for_execution(client, execution):
 
 
 def _deploy_helloworld(attributes, logger, manager1, tmpdir):
-    logger.info('Uploading helloworld blueprint to 4.0 manager..')
+    logger.info('Uploading helloworld blueprint to {version} manager..'.format(
+        version=manager1.branch_name))
     inputs = {
         'floating_network_id': attributes.floating_network_id,
         'key_pair_name': attributes.keypair_name,
@@ -204,13 +205,14 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         'agent_user': attributes.centos7_username,
         'image': attributes.centos7_image_name
     }
-    logger.info('Deploying helloworld on 4.0 manager..')
-
     manager1.client.blueprints.publish_archive(
         HELLO_WORLD_URL,
         blueprint_id,
         'openstack-blueprint.yaml',
         )
+
+    logger.info('Deploying helloworld on {version} manager..'.format(
+        version=manager1.branch_name))
     manager1.client.deployments.create(
         blueprint_id,
         deployment_id,
