@@ -135,7 +135,7 @@ def test_restore_snapshot_and_agents_upgrade(
     cfy.agents.install()
 
     logger.info('Deleting original {version} manager..'.format(
-        manager1.branch_name))
+        version=manager1.branch_name))
     manager1.delete()
 
     logger.info('Uninstalling deployment from latest manager..')
