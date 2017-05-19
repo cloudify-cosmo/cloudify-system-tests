@@ -38,9 +38,14 @@ HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-exampl
         scope='module',
         params=['4.0', '3.4'])
 def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+    if request.param.startswith('3'):
+        upload_plugins = True
+    else:
+        upload_plugins = False
+
     managers = (
         MANAGERS[request.param](),
-        MANAGERS['master'](upload_plugins=False),
+        MANAGERS['master'](upload_plugins=upload_plugins),
     )
 
     cluster = CloudifyCluster.create_image_based(
