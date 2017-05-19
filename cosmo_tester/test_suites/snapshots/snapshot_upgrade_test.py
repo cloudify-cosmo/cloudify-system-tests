@@ -86,6 +86,7 @@ def _hello_world_example(cluster, attributes, logger, tmpdir):
             wait_for_execution(
                 manager1.client,
                 execution,
+                logger,
                 )
         except Exception as e:
             logger.error('Error on test cleanup: %s', e)
@@ -230,6 +231,7 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
     wait_for_execution(
         manager1.client,
         creation_execution,
+        logger,
         )
 
     manager1.client.deployments.list()
@@ -241,4 +243,5 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
     wait_for_execution(
         manager1.client,
         execution,
+        logger,
         )
