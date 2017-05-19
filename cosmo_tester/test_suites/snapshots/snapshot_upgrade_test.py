@@ -228,6 +228,7 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
 
     creation_execution = _get_deployment_environment_creation_execution(
         manager1.client, deployment_id)
+    logger.info('waiting for execution environment')
     wait_for_execution(
         manager1.client,
         creation_execution,
@@ -240,6 +241,7 @@ def _deploy_helloworld(attributes, logger, manager1, tmpdir):
         deployment_id,
         'install',
         )
+    logger.info('waiting for installation to finish')
     wait_for_execution(
         manager1.client,
         execution,
