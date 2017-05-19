@@ -56,7 +56,7 @@ def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     if request.param.startswith('3'):
         # Install dev tools & python headers
         with cluster.managers[1].ssh() as fabric_ssh:
-            fabric_ssh.sudo('yum -y groupinstall "Development Tools')
+            fabric_ssh.sudo('yum -y groupinstall "Development Tools"')
             fabric_ssh.sudo('yum -y install python-devel')
 
     yield cluster
