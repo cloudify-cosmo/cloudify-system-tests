@@ -133,7 +133,7 @@ def test_restore_snapshot_and_agents_upgrade(
 
     cfy.executions.list(['--include-system-workflows'])
 
-    wait_for_execution(
+    restore_execution = wait_for_execution(
         manager2.client,
         restore_execution,
         logger)
