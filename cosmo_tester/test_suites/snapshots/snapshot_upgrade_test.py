@@ -125,7 +125,10 @@ def test_restore_snapshot_and_agents_upgrade(
     logger.info('Restoring snapshot on latest manager..')
     restore_execution = manager2.client.snapshots.restore(
         snapshot_id,
-        tenant_name=manager1.restore_tenant_name,
+        tenant_name=(
+            'default_tenant'
+            if manager1.branch_name.startswith('3')
+            else None),
         )
     logger.info('Snapshot restore execution:%s%s',
                 os.linesep,
@@ -141,17 +144,8 @@ def test_restore_snapshot_and_agents_upgrade(
 
     cfy.executions.list(['--include-system-workflows'])
 
-    manager2.use(tenant=manager1.restore_tenant_name)
-    client = create_rest_client(
-        manager2.ip_address,
-        username=cluster._attributes.cloudify_username,
-        password=cluster._attributes.cloudify_password,
-        tenant=manager1.tenant_name,
-        api_version=manager2.api_version,
-        )
-
     cfy.deployments.list()
-    deployments = client.deployments.list()
+    deployments = manager2.client.deployments.list()
     assert 1 == len(deployments)
 
     logger.info('Upgrading agents..')

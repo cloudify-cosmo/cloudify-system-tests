@@ -184,10 +184,6 @@ class _CloudifyManager(object):
     def api_version(self):
         return MANAGER_API_VERSIONS[self.branch_name]
 
-    # passed to cfy. To be overridden in pre-4.0 versions
-    restore_tenant_name = None
-    tenant_name = 'default_tenant'
-
 
 def _get_latest_manager_image_name():
     """
@@ -208,7 +204,6 @@ def _get_latest_manager_image_name():
 
 class Cloudify3_4Manager(_CloudifyManager):
     branch_name = '3.4'
-    tenant_name = restore_tenant_name = 'restore_tenant'
 
     def _upload_necessary_files(self, openstack_config_file):
         self._logger.info('Uploading necessary files to %s', self)
