@@ -253,7 +253,7 @@ class Cloudify4_0_1Manager(_CloudifyManager):
 
 class CloudifyMasterManager(_CloudifyManager):
     branch_name = 'master'
-    image_name_attribute = 'cloudify_manager_master_image_name'
+    image_name_attribute = 'cloudify_manager_image_name_prefix'
 
     image_name = _get_latest_manager_image_name()
 
