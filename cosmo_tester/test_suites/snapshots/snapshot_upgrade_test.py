@@ -37,7 +37,7 @@ HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-exampl
 
 @pytest.fixture(
         scope='module',
-        params=['4.0', '3.4'])
+        params=['4.0.1', '4.0', '3.4'])
 def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     managers = (
         MANAGERS[request.param](),
