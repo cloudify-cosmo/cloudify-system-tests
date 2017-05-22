@@ -22,7 +22,6 @@ from contextlib import contextmanager
 
 import jinja2
 import retrying
-import requests
 import sh
 from fabric import api as fabric_api
 from fabric import context_managers as fabric_context_managers
@@ -98,6 +97,25 @@ class _CloudifyManager(object):
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
 
+    def _upload_plugin(self, plugin_name):
+        plugins_list = util.get_plugin_wagon_urls()
+        plugin_wagon = [
+            x['wgn_url'] for x in plugins_list
+            if x['name'] == plugin_name]
+        if len(plugin_wagon) != 1:
+            self._logger.error(
+                    '%s plugin wagon not found in:%s%s',
+                    plugin_name,
+                    os.linesep,
+                    json.dumps(plugins_list, indent=2))
+            raise RuntimeError(
+                    '{} plugin not found in wagons list'.format(plugin_name))
+        self._logger.info('Uploading %s plugin [%s] to %s..',
+                          plugin_name,
+                          plugin_wagon[0],
+                          self)
+        self.client.plugins.upload(plugin_wagon[0])
+
     @property
     def remote_private_key_path(self):
         """Returns the private key path on the manager."""
@@ -147,8 +165,15 @@ class _CloudifyManager(object):
         assert len(servers) == 0
         self._logger.info('Server terminated!')
 
-    @retrying.retry(stop_max_attempt_number=24, wait_fixed=5000)
-    def verify_services_are_running(self):
+    @retrying.retry(stop_max_attempt_number=6*10, wait_fixed=10000)
+    def verify_services_are_running(self, _skip_ip_setter=False):
+        self._logger.info('Verify image configuration is done..')
+        # the manager-ip-setter script creates the `touched` file when it
+        # is done.
+        if not _skip_ip_setter:
+            with self.ssh() as fabric_ssh:
+                fabric_ssh.run('cat /opt/cloudify/manager-ip-setter/touched')
+
         self._logger.info('Verifying all services are running on manager%d..',
                           self.index)
         status = self.client.manager.get_status()
@@ -212,6 +237,12 @@ class Cloudify3_4Manager(_CloudifyManager):
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
+
+    def verify_services_are_running(self, *args, **kwargs):
+        return super(Cloudify3_4Manager, self).verify_services_are_running(
+            *args,
+            _skip_ip_setter=True,
+            **kwargs)
 
 
 class Cloudify4_0Manager(_CloudifyManager):
@@ -398,10 +429,8 @@ class CloudifyCluster(object):
 
                 manager._upload_necessary_files(openstack_config_file)
                 if manager.upload_plugins:
-                    self._upload_plugin_to_manager(
-                            manager, 'openstack_centos_core')
-                    self._upload_plugin_to_manager(
-                            manager, 'diamond_centos_core')
+                    manager._upload_plugin('openstack_centos_core')
+                    manager._upload_plugin('diamond_centos_core')
 
             self._logger.info('Cloudify cluster successfully created!')
 
@@ -412,43 +441,6 @@ class CloudifyCluster(object):
                 self.destroy()
             except sh.ErrorReturnCode as ex:
                 self._logger.error('Error on terraform destroy: %s', ex)
-            raise
-
-    @retrying.retry(stop_max_attempt_number=3, wait_fixed=3000)
-    def _upload_plugin_to_manager(self, manager, plugin_name):
-        plugins_list = util.get_plugin_wagon_urls()
-        plugin_wagon = [
-            x['wgn_url'] for x in plugins_list
-            if x['name'] == plugin_name]
-        if len(plugin_wagon) != 1:
-            self._logger.error(
-                    '%s plugin wagon not found in:%s%s',
-                    plugin_name,
-                    os.linesep,
-                    json.dumps(plugins_list, indent=2))
-            raise RuntimeError(
-                    '{} plugin not found in wagons list'.format(plugin_name))
-        self._logger.info('Uploading %s plugin [%s] to %s..',
-                          plugin_name,
-                          plugin_wagon[0],
-                          manager)
-        # we keep this because plugin upload may fail but the manager
-        # will contain the uploaded plugin which is in some corrupted state.
-        plugins_ids_before_upload = [
-            x.id for x in manager.client.plugins.list()]
-        try:
-            manager.client.plugins.upload(plugin_wagon[0])
-            manager.client.plugins.list()
-        except Exception as cce:
-            self._logger.error('Error on plugin upload: %s', cce)
-            current_plugins_ids = [x.id for x in manager.client.plugins.list()]
-            new_plugin_id = list(set(current_plugins_ids).intersection(
-                    set(plugins_ids_before_upload)))
-            if new_plugin_id:
-                self._logger.info(
-                        'Removing plugin after upload plugin failure: %s',
-                        new_plugin_id[0])
-                manager.client.plugins.delete(new_plugin_id[0])
             raise
 
     def destroy(self):
