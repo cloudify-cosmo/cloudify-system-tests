@@ -143,7 +143,3 @@ def test_restore_snapshot_and_agents_upgrade(
 
 def test_3_4_1_to_latest_snapshot_restore():
     pytest.skip('Not implemented!')
-
-
-def test_3_4_2_to_latest_snapshot_restore():
-    pytest.skip('Not implemented!')
