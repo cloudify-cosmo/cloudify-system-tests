@@ -40,7 +40,7 @@ MANAGER_API_VERSIONS = {
     'master': 'v3',
     '4.0.1': 'v3',
     '4.0': 'v3',
-    '3.4': 'v2',
+    '3.4.2': 'v2',
 }
 
 
@@ -277,7 +277,7 @@ class CloudifyMasterManager(_CloudifyManager):
 
 
 MANAGERS = {
-    '3.4': Cloudify3_4Manager,
+    '3.4.2': Cloudify3_4Manager,
     '4.0': Cloudify4_0Manager,
     '4.0.1': Cloudify4_0_1Manager,
     'master': CloudifyMasterManager,
