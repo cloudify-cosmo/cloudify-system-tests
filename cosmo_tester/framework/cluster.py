@@ -207,7 +207,7 @@ def _get_latest_manager_image_name():
 
 
 class Cloudify3_4Manager(_CloudifyManager):
-    branch_name = '3.4'
+    branch_name = '3.4.2'
     tenant_name = restore_tenant_name = 'restore_tenant'
 
     def _upload_necessary_files(self, openstack_config_file):
