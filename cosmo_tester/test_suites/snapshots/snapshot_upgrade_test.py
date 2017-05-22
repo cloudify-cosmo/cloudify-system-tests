@@ -24,7 +24,10 @@ from cosmo_tester.framework.cluster import (
     CloudifyCluster,
     MANAGERS,
 )
-from cosmo_tester.framework.util import create_rest_client
+from cosmo_tester.framework.util import (
+    create_rest_client,
+    assert_snapshot_created,
+)
 
 # CFY-6912
 from cloudify_cli.commands.executions import (
@@ -98,7 +101,7 @@ def test_restore_snapshot_and_agents_upgrade(
 
     logger.info('Creating snapshot on manager1..')
     manager1.client.snapshots.create(snapshot_id, False, False, False)
-    manager1.assert_snapshot_created(snapshot_id, attributes)
+    assert_snapshot_created(manager1, snapshot_id, attributes)
 
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
