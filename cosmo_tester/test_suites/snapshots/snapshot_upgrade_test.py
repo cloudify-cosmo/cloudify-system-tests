@@ -167,7 +167,7 @@ def test_restore_snapshot_and_agents_upgrade(
     if manager1.branch_name.startswith('3'):
         # horrible hack to work around CFY-6913
         plugin_dir = '/opt/mgmtworker/env/plugins'
-        with manager1.ssh() as fabric_ssh:
+        with manager2.ssh() as fabric_ssh:
             fabric_ssh.sudo(
                 'mv {source} {dest}'.format(
                     source=os.path.join(plugin_dir, 'default_tenant'),
