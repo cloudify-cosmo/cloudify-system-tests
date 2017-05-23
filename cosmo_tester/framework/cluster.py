@@ -364,6 +364,7 @@ class CloudifyCluster(object):
                     'manager blueprint..')
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
+        cluster.managers[0].image_name = ATTRIBUTES['centos7_image_name']
         cluster.create()
         return cluster
 
