@@ -166,12 +166,17 @@ class _CloudifyManager(object):
         self._logger.info('Server terminated!')
 
     @retrying.retry(stop_max_attempt_number=6*10, wait_fixed=10000)
-    def verify_services_are_running(self, _skip_ip_setter=False):
-        self._logger.info('Verify image configuration is done..')
-        # the manager-ip-setter script creates the `touched` file when it
-        # is done.
-        if not _skip_ip_setter:
-            with self.ssh() as fabric_ssh:
+    def verify_services_are_running(self):
+        with self.ssh() as fabric_ssh:
+            # the manager-ip-setter script creates the `touched` file when it
+            # is done.
+            try:
+                # will fail on bootstrap based managers
+                fabric_ssh.run('systemctl | grep manager-ip-setter')
+            except Exception:
+                pass
+            else:
+                self._logger.info('Verify manager-ip-setter is done..')
                 fabric_ssh.run('cat /opt/cloudify/manager-ip-setter/touched')
 
         self._logger.info('Verifying all services are running on manager%d..',
@@ -237,12 +242,6 @@ class Cloudify3_4Manager(_CloudifyManager):
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
-
-    def verify_services_are_running(self, *args, **kwargs):
-        return super(Cloudify3_4Manager, self).verify_services_are_running(
-            *args,
-            _skip_ip_setter=True,
-            **kwargs)
 
 
 class Cloudify4_0Manager(_CloudifyManager):
