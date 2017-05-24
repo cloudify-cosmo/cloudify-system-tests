@@ -27,8 +27,8 @@ import urllib
 import subprocess
 
 import jinja2
-import retrying
 import requests
+import retrying
 import sh
 import yaml
 
