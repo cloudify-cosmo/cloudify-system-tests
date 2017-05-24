@@ -127,6 +127,7 @@ class _CloudifyManager(object):
                 host_string=self.ip_address,
                 user=self._attributes.centos7_username,
                 key_filename=self._ssh_key.private_key_path,
+                abort_exception=Exception,
                 **kwargs):
             yield fabric_api
 
@@ -173,7 +174,7 @@ class _CloudifyManager(object):
             try:
                 # will fail on bootstrap based managers
                 fabric_ssh.run('systemctl | grep manager-ip-setter')
-            except SystemExit:
+            except Exception:
                 pass
             else:
                 self._logger.info('Verify manager-ip-setter is done..')
