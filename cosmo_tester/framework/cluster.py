@@ -430,7 +430,6 @@ class CloudifyCluster(object):
                 manager._upload_necessary_files(openstack_config_file)
                 if manager.upload_plugins:
                     manager._upload_plugin('openstack_centos_core')
-                    manager._upload_plugin('diamond_centos_core')
 
             self._logger.info('Cloudify cluster successfully created!')
 
