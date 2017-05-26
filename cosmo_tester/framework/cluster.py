@@ -114,7 +114,21 @@ class _CloudifyManager(object):
                           plugin_name,
                           plugin_wagon[0],
                           self)
-        self.client.plugins.upload(plugin_wagon[0])
+
+        try:
+            with self.ssh() as fabric_ssh:
+                # This will only work for images as cfy is pre-installed there.
+                # from some reason this method is usually less error prone.
+                fabric_ssh.run(
+                    'cfy plugins upload {0}'.format(plugin_wagon[0]))
+        except Exception:
+            try:
+                self._cfy.plugins.upload(plugin_wagon[0])
+            except Exception:
+                # This is needed for 3.4 managers. local cfy isn't
+                # compatible and cfy isn't installed in the image
+                self.client.plugins.upload(plugin_wagon[0])
+
 
     @property
     def remote_private_key_path(self):
