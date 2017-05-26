@@ -123,6 +123,7 @@ class _CloudifyManager(object):
                     'cfy plugins upload {0}'.format(plugin_wagon[0]))
         except Exception:
             try:
+                self.use()
                 self._cfy.plugins.upload(plugin_wagon[0])
             except Exception:
                 # This is needed for 3.4 managers. local cfy isn't
