@@ -129,7 +129,6 @@ class _CloudifyManager(object):
                 # compatible and cfy isn't installed in the image
                 self.client.plugins.upload(plugin_wagon[0])
 
-
     @property
     def remote_private_key_path(self):
         """Returns the private key path on the manager."""
