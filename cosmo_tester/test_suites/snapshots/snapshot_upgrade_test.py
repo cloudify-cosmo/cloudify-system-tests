@@ -164,20 +164,6 @@ def test_restore_snapshot_and_agents_upgrade(
         version=manager1.branch_name))
     manager1.delete()
 
-    if manager1.branch_name.startswith('3'):
-        # horrible hack to work around CFY-6913
-        plugin_dir = '/opt/mgmtworker/env/plugins'
-        with manager2.ssh() as fabric_ssh:
-            fabric_ssh.sudo(
-                'mv {source} {dest}'.format(
-                    source=os.path.join(plugin_dir, 'default_tenant'),
-                    dest=os.path.join(
-                        plugin_dir,
-                        manager1.restore_tenant_name),
-                    ),
-                user='cfyuser',
-                )
-
     logger.info('Uninstalling deployment from latest manager..')
     cfy.executions.start.uninstall(['-d', deployment_id])
     cfy.deployments.delete(deployment_id)
