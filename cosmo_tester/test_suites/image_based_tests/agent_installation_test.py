@@ -271,6 +271,12 @@ def test_windows_provided_userdata_agent(cfy,
             install_userdata=install_userdata)
 
 
+def test_multinetwork_agent(cfy, manager, attributes, tmpdir, logger):
+    import pudb; pu.db
+    print manager
+    print tmpdir
+
+
 def _test_linux_userdata_agent(cfy, manager, attributes, image, flavor, user,
                                install_method, install_userdata=None,
                                name=None):

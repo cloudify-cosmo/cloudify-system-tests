@@ -1,0 +1,54 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/4.1m2/types.yaml
+  - http://www.getcloudify.org/spec/openstack-plugin/2.0.1/plugin.yaml
+
+inputs:
+  subnet_cidr:
+    default: 172.16.0.0/16
+  network_name:
+    type: string
+  subnet_name:
+    type: string
+  server_name:
+    type: string
+  port_name:
+    type: string
+
+node_templates:
+  network:
+    type: cloudify.openstack.nodes.Network
+    properties:
+      resource_id: { get_input: network_name }
+      openstack_config: *openstack_configuration
+
+  subnet:
+    type: cloudify.openstack.nodes.Subnet
+    properties:
+      resource_id: { get_input: subnet_name }
+      subnet:
+        ip_version: 4
+        cidr: {get_input: subnet_cidr}
+    relationships:
+      - target: network
+        type: cloudify.relationships.contained_in
+
+  port:
+    type: cloudify.openstack.nodes.Port
+    properties:
+      resource_id: { get_input: port_name }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: network
+      - type: cloudify.relationships.depends_on
+        target: subnet
+
+  server:
+    type: cloudify.openstack.nodes.Server
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: server_name }
+    relationships:
+      - target: port
+        type: cloudify.openstack.server_connected_to_port
