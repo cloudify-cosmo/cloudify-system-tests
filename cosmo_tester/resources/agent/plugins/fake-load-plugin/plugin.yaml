@@ -1,0 +1,31 @@
+plugins:
+  fake_load_plugin:
+    executor: central_deployment_agent
+    source: git+https://github.com/cloudify-cosmo/cloudify-system-tests#egg=fake-load-plugin&subdirectory=cosmo_tester/framework/resources/agent/plugins/fake-load-plugin
+    package_name: fake-load-plugin
+
+
+dsl_definitions:
+  - &fakeload_inputs
+    host:
+      default: localhost
+    port:
+      default: 5566
+
+
+node_types:
+  cloudify.fakeload.nodes.Instance:
+    derived_from: cloudify.nodes.Compute
+
+    properties:
+      agent_config:
+        install_method: provided
+
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: fake_load_plugin.cloudify_fake_load.create
+          inputs: *fakeload_inputs
+        delete:
+          implementation: fake_load_plugin.cloudify_fake_load.delete
+          inputs: *fakeload_inputs
