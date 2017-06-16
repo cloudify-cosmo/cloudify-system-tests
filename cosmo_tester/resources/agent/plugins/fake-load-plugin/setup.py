@@ -5,7 +5,7 @@ from setuptools import setup
 version = "4.1m2"
 
 
-install_requires=[
+install_requires = [
     "cloudify-plugins-common=={version}",
     ]
 
