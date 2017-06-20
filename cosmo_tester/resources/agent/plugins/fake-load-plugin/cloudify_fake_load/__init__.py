@@ -21,28 +21,30 @@ from cloudify import ctx
 
 
 @operation
-def start():
+def start(host, port, **kwargs):
     ""
+    ctx.logger.info(kwargs)
     send_message(
+        host,
+        port,
         'start',
         ctx.instance,
         )
 
 
 @operation
-def stop():
+def stop(host, port, **kwargs):
     ""
+    ctx.logger.info(kwargs)
     send_message(
+        host,
+        port,
         'stop',
         ctx.instance,
         )
 
 
-def send_message(action, instance):
-    r_props = ctx.instance.runtime_properties
-    host = r_props['host']
-    port = r_props['port']
-
+def send_message(host, port, action, instance):
     tenant_info = ctx._context['tenant']
     connection_info = {
         'user': tenant_info['broker_username'],
