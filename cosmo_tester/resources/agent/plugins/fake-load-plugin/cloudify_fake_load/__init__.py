@@ -49,7 +49,7 @@ def send_message(host, port, action, instance):
         'user': tenant_info['rabbitmq_username'],
         'password': tenant_info['rabbitmq_password'],
         'vhost': tenant_info['rabbitmq_vhost'],
-        'host': ctx.bootstrap_context.broker_config['broker_ip'],
+        'host': ctx.bootstrap_context.broker_config()['broker_ip'],
         }
 
     sock = socket((host, port))
