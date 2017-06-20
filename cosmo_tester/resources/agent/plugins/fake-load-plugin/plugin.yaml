@@ -24,9 +24,9 @@ node_types:
 
     interfaces:
       cloudify.interfaces.lifecycle:
-        create:
-          implementation: fake_load_plugin.cloudify_fake_load.create
+        start:
+          implementation: fake_load_plugin.cloudify_fake_load.start
           inputs: *fakeload_inputs
-        delete:
-          implementation: fake_load_plugin.cloudify_fake_load.delete
+        stop:
+          implementation: fake_load_plugin.cloudify_fake_load.stop
           inputs: *fakeload_inputs
