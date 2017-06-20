@@ -17,11 +17,11 @@ import json
 from socket import socket
 
 from cloudify.decorators import operation
-from cloudify.state import ctx
+from cloudify import ctx
 
 
 @operation
-def create():
+def start():
     ""
     send_message(
         'start',
@@ -30,7 +30,7 @@ def create():
 
 
 @operation
-def delete():
+def stop():
     ""
     send_message(
         'stop',
@@ -43,12 +43,21 @@ def send_message(action, instance):
     host = r_props['host']
     port = r_props['port']
 
+    tenant_info = ctx._context['tenant']
+    connection_info = {
+        'user': tenant_info['broker_username'],
+        'password': tenant_info['broker_password'],
+        'vhost': tenant_info['rabbitmq_vhost'],
+        'host': ctx.bootstrap_context.broker_config['broker_ip'],
+        }
+
     sock = socket((host, port))
 
     try:
         sock.sendall(json.dumps({
             'action': action,
             'instance': instance,
+            'connection_info': connection_info,
             }))
     finally:
         sock.close()
