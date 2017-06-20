@@ -19,19 +19,29 @@ import time
 from multiprocessing import Manager, Process
 from SocketServer import StreamRequestHandler, TCPServer
 
+from kombu import Connection, Producer
+
 
 class FakeAgent(Process):
 
-    def __init__(self, instance, agents, *args, **kwargs):
+    def __init__(self, instance, connection_info, agents, *args, **kwargs):
         super(FakeAgent, self).__init__(*args, **kwargs)
         self.instance = instance
         self.agents = agents
+        self.connection_info = connection_info
 
     def run(self):
         "The work that the fake agent shall do"
-        while self.agents[self.instance['id']]["run"]:
-            time.sleep(1)
-            print(self.agents)
+        with Connection(
+            'amqp://{user}:{password}@{host}:{port}/{vhost}/'.format(
+                **self.connection_info
+                )) as amqp:
+            with amqp.channel() as channel:
+                producer = Producer(channel)
+
+                while self.agents[self.instance['id']]["run"]:
+                    time.sleep(1)
+                    print(self.agents)
 
 
 class FakeAgentPool(object):
@@ -45,21 +55,21 @@ class FakeAgentPool(object):
                 {
                     'start': self.start_agent,
                     'stop': self.stop_agent,
-                }[data['action']](data["instance"])
+                }[data['action']](data["instance"], data["connection_info"])
 
         self.handler = FakeAgentHandler
 
         self.manager = Manager()
         self.agents = self.manager.dict()
 
-    def start_agent(self, instance):
-        process = FakeAgent(instance, self.agents)
+    def start_agent(self, instance, connection_info):
+        process = FakeAgent(instance, connection_info, self.agents)
         self.agents[instance["id"]] = {
             'run': True,
             }
         process.start()
 
-    def stop_agent(self, instance):
+    def stop_agent(self, instance, *_):
         agent = self.agents[instance['id']]
         agent['run'] = False
         self.agents[instance['id']] = agent
