@@ -35,7 +35,6 @@ def start(host, port, **kwargs):
 @operation
 def stop(host, port, **kwargs):
     ""
-    ctx.logger.info(kwargs)
     send_message(
         host,
         port,
@@ -47,8 +46,8 @@ def stop(host, port, **kwargs):
 def send_message(host, port, action, instance):
     tenant_info = ctx._context['tenant']
     connection_info = {
-        'user': tenant_info['broker_username'],
-        'password': tenant_info['broker_password'],
+        'user': tenant_info['rabbitmq_username'],
+        'password': tenant_info['rabbitmq_password'],
         'vhost': tenant_info['rabbitmq_vhost'],
         'host': ctx.bootstrap_context.broker_config['broker_ip'],
         }
