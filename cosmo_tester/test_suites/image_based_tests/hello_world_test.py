@@ -13,24 +13,12 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import pytest
-
-from cosmo_tester.framework.examples.hello_world import HelloWorldExample
-from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.fixtures import image_based_manager, hello_world  # noqa
 
 manager = image_based_manager
 
 
-@pytest.fixture(scope='function')
-def hello_world(cfy, manager, attributes, ssh_key, tmpdir, logger):
-    hw = HelloWorldExample(
-            cfy, manager, attributes, ssh_key, logger, tmpdir)
-    hw.blueprint_file = 'openstack-blueprint.yaml'
-    yield hw
-    hw.cleanup()
-
-
-def test_hello_world_on_centos_7(hello_world, attributes):
+def test_hello_world_on_centos_7(hello_world, attributes):  # noqa
     hello_world.inputs.update({
         'agent_user': attributes.centos7_username,
         'image': attributes.centos7_image_name,
@@ -38,7 +26,7 @@ def test_hello_world_on_centos_7(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_hello_world_on_centos_6(hello_world, attributes):
+def test_hello_world_on_centos_6(hello_world, attributes):  # noqa
     hello_world.inputs.update({
         'agent_user': attributes.centos6_username,
         'image': attributes.centos6_image_name,
@@ -47,7 +35,7 @@ def test_hello_world_on_centos_6(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_hello_world_on_ubuntu_14_04(hello_world, attributes):
+def test_hello_world_on_ubuntu_14_04(hello_world, attributes):  # noqa
     hello_world.inputs.update({
         'agent_user': attributes.ubuntu_username,
         'image': attributes.ubuntu_14_04_image_name,
@@ -55,7 +43,7 @@ def test_hello_world_on_ubuntu_14_04(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
+def test_hello_world_on_ubuntu_16_04(hello_world, attributes):  # noqa
     hello_world.inputs.update({
         'agent_user': attributes.ubuntu_username,
         'image': attributes.ubuntu_16_04_image_name,
@@ -63,7 +51,7 @@ def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_hello_world_on_rhel_7_3(hello_world, attributes):
+def test_hello_world_on_rhel_7_3(hello_world, attributes):  # noqa
     hello_world.inputs.update({
         'agent_user': attributes.rhel_7_3_username,
         'image': attributes.rhel_7_3_image_name,
@@ -71,7 +59,7 @@ def test_hello_world_on_rhel_7_3(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_hello_world_on_rhel_6_9(hello_world, attributes):
+def test_hello_world_on_rhel_6_9(hello_world, attributes):  # noqa
     hello_world.inputs.update({
         'agent_user': attributes.rhel_6_9_username,
         'image': attributes.rhel_6_9_image_name,
@@ -79,7 +67,7 @@ def test_hello_world_on_rhel_6_9(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_hello_world_on_windows_2012_server(hello_world, attributes):
+def test_hello_world_on_windows_2012_server(hello_world, attributes):  # noqa
     hello_world.blueprint_file = 'openstack-windows-blueprint.yaml'
     hello_world.inputs.update({
         'image': attributes.windows_server_2012_image_name,
@@ -88,6 +76,6 @@ def test_hello_world_on_windows_2012_server(hello_world, attributes):
     hello_world.verify_all()
 
 
-def test_hello_world_single_host(hello_world):
+def test_hello_world_single_host(hello_world):  # noqa
     hello_world.blueprint_file = 'singlehost-blueprint.yaml'
     hello_world.verify_all()

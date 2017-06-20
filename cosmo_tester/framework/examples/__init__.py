@@ -47,6 +47,7 @@ class AbstractExample(testtools.TestCase):
         self.deployment_id = self.blueprint_id
         self.verify_metrics = True
         self.skip_plugins_validation = False
+        self.resource_name = str(uuid.uuid4())
 
     @property
     def blueprint_file(self):

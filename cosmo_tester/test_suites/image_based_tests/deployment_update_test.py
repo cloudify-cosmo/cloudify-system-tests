@@ -22,8 +22,7 @@ import requests
 from retrying import retry
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.examples.hello_world import HelloWorldExample
-from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.fixtures import image_based_manager, hello_world  # noqa
 
 manager = image_based_manager
 
@@ -31,16 +30,7 @@ manager = image_based_manager
 update_counter = 0
 
 
-@pytest.fixture(scope='function')
-def hello_world(cfy, manager, attributes, ssh_key, tmpdir, logger):
-    hw = HelloWorldExample(
-            cfy, manager, attributes, ssh_key, logger, tmpdir)
-    hw.blueprint_file = 'openstack-blueprint.yaml'
-    yield hw
-    hw.cleanup()
-
-
-def test_hello_world_deployment_update(
+def test_hello_world_deployment_update(                          # noqa
         cfy, manager, hello_world, attributes, tmpdir, logger):
 
     hello_world.inputs.update({
