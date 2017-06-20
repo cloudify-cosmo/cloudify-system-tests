@@ -19,7 +19,8 @@ node_types:
 
     properties:
       agent_config:
-        install_method: provided
+        default:
+          install_method: provided
 
     interfaces:
       cloudify.interfaces.lifecycle:
