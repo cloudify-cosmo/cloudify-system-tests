@@ -14,10 +14,10 @@
 #    * limitations under the License.
 
 import json
-from socket import socket
+from socket import socket, AF_INET, SOCK_STREAM
 
-from cloudify.decorators import operation
 from cloudify import ctx
+from cloudify.decorators import operation
 
 
 @operation
@@ -28,7 +28,6 @@ def start(host, port, **kwargs):
         host,
         port,
         'start',
-        ctx.instance,
         )
 
 
@@ -39,11 +38,10 @@ def stop(host, port, **kwargs):
         host,
         port,
         'stop',
-        ctx.instance,
         )
 
 
-def send_message(host, port, action, instance):
+def send_message(host, port, action):
     tenant_info = ctx._context['tenant']
     connection_info = {
         'user': tenant_info['rabbitmq_username'],
@@ -52,12 +50,15 @@ def send_message(host, port, action, instance):
         'host': ctx.bootstrap_context.broker_config()['broker_ip'],
         }
 
-    sock = socket((host, port))
+    init_script = ctx.agent.init_script()
+    ctx.logger.info(('init_script', init_script))
+
+    sock = socket(AF_INET, SOCK_STREAM)
+    sock.connect((host, port))
 
     try:
         sock.sendall(json.dumps({
             'action': action,
-            'instance': instance,
             'connection_info': connection_info,
             }))
     finally:
