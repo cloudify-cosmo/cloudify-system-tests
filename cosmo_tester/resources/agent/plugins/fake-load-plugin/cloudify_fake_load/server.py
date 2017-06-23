@@ -13,20 +13,20 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import json
-import sys
 import time
 from multiprocessing import Manager, Process
-from SocketServer import StreamRequestHandler, TCPServer
 
+from flask import Flask, jsonify, request
 from kombu import Connection, Producer
+
+
+REQUIRED_INFO = ('host', 'port', 'user', 'password', 'vhost', 'queue')
 
 
 class FakeAgent(Process):
 
-    def __init__(self, instance, connection_info, agents, *args, **kwargs):
+    def __init__(self, connection_info, agents, *args, **kwargs):
         super(FakeAgent, self).__init__(*args, **kwargs)
-        self.instance = instance
         self.agents = agents
         self.connection_info = connection_info
 
@@ -39,49 +39,53 @@ class FakeAgent(Process):
             with amqp.channel() as channel:
                 producer = Producer(channel)
 
-                while self.agents[self.instance['id']]["run"]:
+                while self.agents[self.connection_info['queue']]["run"]:
                     time.sleep(1)
                     print(self.agents)
 
 
-class FakeAgentPool(object):
+manager = Manager()
+agents = manager.dict()
 
-    def __init__(self):
-
-        class FakeAgentHandler(StreamRequestHandler):
-            def handle(inner_self):
-                data = json.loads(inner_self.rfile.read().strip())
-
-                {
-                    'start': self.start_agent,
-                    'stop': self.stop_agent,
-                }[data['action']](data["instance"], data["connection_info"])
-
-        self.handler = FakeAgentHandler
-
-        self.manager = Manager()
-        self.agents = self.manager.dict()
-
-    def start_agent(self, instance, connection_info):
-        process = FakeAgent(instance, connection_info, self.agents)
-        self.agents[instance["id"]] = {
-            'run': True,
-            }
-        process.start()
-
-    def stop_agent(self, instance, *_):
-        agent = self.agents[instance['id']]
-        agent['run'] = False
-        self.agents[instance['id']] = agent
+app = Flask(__name__)
 
 
-class FakeAgentServer(TCPServer):
-    allow_reuse_address = True
+def start_agent(agent_name, connection_info):
+    process = FakeAgent(connection_info, agents)
+    agents[agent_name] = {
+        'run': True,
+        }
+    process.start()
 
 
-if __name__ == '__main__':
-    pool = FakeAgentPool()
+def stop_agent(agent_name, connection_info):
+    agent = agents[agent_name]
+    agent['run'] = False
+    agents[agent_name] = agent
 
-    server = FakeAgentServer((sys.argv[1], 5566), pool.handler)
 
-    server.serve_forever()
+@app.route("/<queue>", methods=['POST', 'DELETE'])
+def action(queue):
+    connection_info = {
+        k: v
+        for (k, v) in request.form.items()
+        if k in REQUIRED_INFO
+        }
+
+    if len(connection_info) != len(REQUIRED_INFO):
+        response = jsonify({'message': 'invalid parameters'})
+        response.status_code = 418
+        return response
+
+    agent_name = (
+        connection_info['host'],
+        connection_info['vhost'],
+        connection_info['queue'],
+        )
+
+    {
+        'POST': start_agent,
+        'DELETE': stop_agent,
+    }[request.method](agent_name, connection_info)
+
+    return jsonify({'started': True})

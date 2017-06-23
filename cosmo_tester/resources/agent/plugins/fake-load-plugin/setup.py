@@ -7,8 +7,10 @@ version = "4.1"
 
 install_requires = [
     "cloudify-plugins-common=={version}",
+    "flask",
     "kombu",
     "librabbitmq",
+    "requests",
     ]
 
 install_requires = [s.format(version=version) for s in install_requires]

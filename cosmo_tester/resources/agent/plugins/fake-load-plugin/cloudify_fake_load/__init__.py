@@ -14,10 +14,16 @@
 #    * limitations under the License.
 
 import json
-from socket import socket, AF_INET, SOCK_STREAM
+
+import requests
 
 from cloudify import ctx
 from cloudify.decorators import operation
+from cloudify_agent.installer import AgentInstaller
+from cloudify_agent.installer.operations import init_agent_installer
+
+
+URL_TEMPLATE = 'http://{host}:{port}/{queue}'
 
 
 @operation
@@ -41,25 +47,30 @@ def stop(host, port, **kwargs):
         )
 
 
-def send_message(host, port, action):
-    tenant_info = ctx._context['tenant']
-    connection_info = {
-        'user': tenant_info['rabbitmq_username'],
-        'password': tenant_info['rabbitmq_password'],
-        'vhost': tenant_info['rabbitmq_vhost'],
-        'host': ctx.bootstrap_context.broker_config()['broker_ip'],
+@init_agent_installer
+def get_connection_info(cloudify_agent):
+    installer = AgentInstaller(cloudify_agent)
+    env = installer._create_agent_env()
+    return {
+        'host': env.CLOUDIFY_BROKER_IP,
+        'port': env.CLOUDIFY_REST_PORT,
+        'user': env.CLOUDIFY_BROKER_USER,
+        'password': env.CLOUDIFY_BROKER_PASS,
+        'vhost': env.CLOUDIFY_BROKER_VHOST,
+        'queue': env.CLOUDIFY_DAEMON_QUEUE,
+        'name': env.CLOUDIFY_DAEMON_NAME,
         }
 
-    init_script = ctx.agent.init_script()
-    ctx.logger.info(('init_script', init_script))
 
-    sock = socket(AF_INET, SOCK_STREAM)
-    sock.connect((host, port))
+def send_message(host, port, action):
+    connection_info = get_connection_info()
 
-    try:
-        sock.sendall(json.dumps({
-            'action': action,
-            'connection_info': connection_info,
-            }))
-    finally:
-        sock.close()
+    {
+        'start': requests.post,
+        'stop': requests.delete,
+    }[action](URL_TEMPLATE.format(
+        host=host,
+        port=port,
+        queue=connection_info['name']
+        ),
+        params=connection_info)
