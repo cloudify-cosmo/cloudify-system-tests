@@ -17,7 +17,7 @@ import requests
 
 from cloudify import ctx
 from cloudify.decorators import operation
-from cloudify_agent.installer import AgentInstaller
+from cloudify.exceptions import NonRecoverableError
 from cloudify_agent.installer.operations import init_agent_installer
 
 
@@ -46,24 +46,31 @@ def stop(host, port, **kwargs):
 
 
 @init_agent_installer
-def get_connection_info(cloudify_agent):
-    installer = AgentInstaller(cloudify_agent)
-    env = installer._create_agent_env()
+def get_connection_info(cloudify_agent, **kwargs):
+    init_script = ctx.agent.init_script()
+
+    env = {}
+    for line in init_script.splitlines():
+        _, _, export = line.strip().partition('export ')
+        k, e, v = export.partition('=')
+        if e:
+            env[k] = v
+
     return {
-        'host': env.CLOUDIFY_BROKER_IP,
-        'port': env.CLOUDIFY_REST_PORT,
-        'user': env.CLOUDIFY_BROKER_USER,
-        'password': env.CLOUDIFY_BROKER_PASS,
-        'vhost': env.CLOUDIFY_BROKER_VHOST,
-        'queue': env.CLOUDIFY_DAEMON_QUEUE,
-        'name': env.CLOUDIFY_DAEMON_NAME,
+        'host': env['CLOUDIFY_BROKER_IP'],
+        'port': env['REST_PORT'],
+        'user': env['CLOUDIFY_BROKER_USER'],
+        'password': env['CLOUDIFY_BROKER_PASS'],
+        'vhost': env['CLOUDIFY_BROKER_VHOST'],
+        'queue': env['CLOUDIFY_DAEMON_QUEUE'],
+        'name': env['CLOUDIFY_DAEMON_NAME'],
         }
 
 
 def send_message(host, port, action):
     connection_info = get_connection_info()
 
-    {
+    response = {
         'start': requests.post,
         'stop': requests.delete,
     }[action](URL_TEMPLATE.format(
@@ -75,3 +82,8 @@ def send_message(host, port, action):
         name=connection_info.pop('name'),
         ),
         params=connection_info)
+
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError:
+        raise NonRecoverableError(response)
