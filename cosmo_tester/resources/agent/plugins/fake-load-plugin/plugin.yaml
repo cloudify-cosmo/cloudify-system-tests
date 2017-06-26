@@ -1,8 +1,8 @@
 plugins:
   fake_load_plugin:
     executor: central_deployment_agent
-    source: git+https://github.com/cloudify-cosmo/cloudify-system-tests#egg=fake-load-plugin&subdirectory=cosmo_tester/framework/resources/agent/plugins/fake-load-plugin
-    package_name: fake-load-plugin
+    package_name: cloudify-fake-agent-plugin
+    package_version: "4.0"
 
 
 dsl_definitions:
