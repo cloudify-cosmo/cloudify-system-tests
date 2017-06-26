@@ -20,28 +20,40 @@ from flask import Flask, jsonify, request
 from kombu import Connection, Producer
 
 
-REQUIRED_INFO = ('host', 'port', 'user', 'password', 'vhost', 'queue')
+QUEUE_INFO = ('host', 'vhost', 'queue', 'name')
+EXTRA_INFO = ('port', 'user', 'password')
 
 
 class FakeAgent(Process):
 
-    def __init__(self, connection_info, agents, *args, **kwargs):
+    def __init__(self, agent_name, connection_info, agents, *args, **kwargs):
         super(FakeAgent, self).__init__(*args, **kwargs)
         self.agents = agents
+        self.agent_name = agent_name
         self.connection_info = connection_info
 
     def run(self):
         "The work that the fake agent shall do"
-        with Connection(
-            'amqp://{user}:{password}@{host}:{port}/{vhost}/'.format(
-                **self.connection_info
-                )) as amqp:
-            with amqp.channel() as channel:
-                producer = Producer(channel)
+        try:
+            with Connection(
+                'amqp://{user}:{password}@{host}:{port}/{vhost}/'.format(
+                    **self.connection_info
+                    )) as amqp:
+                with amqp.channel() as channel:
+                    producer = Producer(channel)
 
-                while self.agents[self.connection_info['queue']]["run"]:
-                    time.sleep(1)
-                    print(self.agents)
+                    entry = self.agents[self.queue_name]
+                    entry['started'] = True
+                    self.agents[self.queue_name] = entry
+
+                    while self.agents[self.connection_info['queue']]["run"]:
+                        time.sleep(1)
+                        print(self.agents)
+        except Exception as e:
+            entry = self.agents[self.agent_name]
+            entry['exception'] = e
+            self.agents[self.agent_name] = entry
+            raise
 
 
 manager = Manager()
@@ -51,11 +63,16 @@ app = Flask(__name__)
 
 
 def start_agent(agent_name, connection_info):
-    process = FakeAgent(connection_info, agents)
+    process = FakeAgent(agent_name, connection_info, agents)
     agents[agent_name] = {
         'run': True,
+        'started': False,
         }
     process.start()
+    while not agents[agent_name]['started']:
+        time.sleep(1)
+        if not process.is_alive():
+            raise RuntimeError(agents[agent_name]['exception'])
 
 
 def stop_agent(agent_name, connection_info):
@@ -64,24 +81,24 @@ def stop_agent(agent_name, connection_info):
     agents[agent_name] = agent
 
 
-@app.route("/<queue>", methods=['POST', 'DELETE'])
-def action(queue):
+@app.route(
+        "".join("/<{i}>".format(i=i) for i in QUEUE_INFO),
+        methods=['POST', 'DELETE'])
+def action(**kwargs):
     connection_info = {
         k: v
         for (k, v) in request.form.items()
-        if k in REQUIRED_INFO
+        if k in EXTRA_INFO
         }
 
-    if len(connection_info) != len(REQUIRED_INFO):
+    if len(connection_info) != len(EXTRA_INFO):
         response = jsonify({'message': 'invalid parameters'})
         response.status_code = 418
         return response
 
-    agent_name = (
-        connection_info['host'],
-        connection_info['vhost'],
-        connection_info['queue'],
-        )
+    connection_info.update(kwargs)
+
+    agent_name = tuple(connection_info[i] for i in QUEUE_INFO)
 
     {
         'POST': start_agent,
