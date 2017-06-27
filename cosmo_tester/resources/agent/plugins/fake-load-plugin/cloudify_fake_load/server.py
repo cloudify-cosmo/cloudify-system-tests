@@ -41,13 +41,17 @@ class FakeAgent(Process):
                 if self.connection_info['ssl_enabled'] else
                 BROKER_PORT_NO_SSL
                 )
+        connect_string = (
+            'amqp://{user}:{password}@{host}:{port}/{vhost}/'.format(
+                port=port,
+                **self.connection_info
+            ))
 
         try:
             with Connection(
-                'amqp://{user}:{password}@{host}:{port}/{vhost}/'.format(
-                    port=port,
-                    **self.connection_info
-                    )) as amqp:
+                    connect_string,
+                    ssl=self.connection_info['ssl_enabled'],
+                    ) as amqp:
                 with amqp.channel() as channel:
                     producer = Producer(channel)
 
