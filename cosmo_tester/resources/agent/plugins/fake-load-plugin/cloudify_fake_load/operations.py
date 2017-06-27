@@ -57,7 +57,7 @@ def get_connection_info(cloudify_agent, **kwargs):
 
     return {
         'host': env['CLOUDIFY_BROKER_IP'],
-        'port': env['REST_PORT'],
+        'ssl_enabled': env['CLOUDIFY_BROKER_SSL_ENABLED'],
         'user': env['CLOUDIFY_BROKER_USER'],
         'password': env['CLOUDIFY_BROKER_PASS'],
         'vhost': env['CLOUDIFY_BROKER_VHOST'],
@@ -80,9 +80,9 @@ def send_message(host, port, action):
         queue=connection_info.pop('queue'),
         name=connection_info.pop('name'),
         ),
-        params=connection_info)
+        data=connection_info)
 
     try:
         response.raise_for_status()
     except requests.exceptions.HTTPError:
-        raise NonRecoverableError(response)
+        raise NonRecoverableError(response, response.text)

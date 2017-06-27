@@ -19,9 +19,11 @@ from multiprocessing import Manager, Process
 from flask import Flask, jsonify, request
 from kombu import Connection, Producer
 
+from cloudify.constants import BROKER_PORT_SSL, BROKER_PORT_NO_SSL
+
 
 QUEUE_INFO = ('host', 'vhost', 'queue', 'name')
-EXTRA_INFO = ('port', 'user', 'password')
+EXTRA_INFO = ('ssl_enabled', 'user', 'password')
 
 
 class FakeAgent(Process):
@@ -34,9 +36,16 @@ class FakeAgent(Process):
 
     def run(self):
         "The work that the fake agent shall do"
+        port = (
+                BROKER_PORT_SSL
+                if self.connection_info['ssl_enabled'] else
+                BROKER_PORT_NO_SSL
+                )
+
         try:
             with Connection(
                 'amqp://{user}:{password}@{host}:{port}/{vhost}/'.format(
+                    port=port,
                     **self.connection_info
                     )) as amqp:
                 with amqp.channel() as channel:
