@@ -27,7 +27,6 @@ URL_TEMPLATE = 'http://{fake_agent_host}:{port}/{host}/{vhost}/{queue}/{name}'
 @operation
 def start(host, port, **kwargs):
     ""
-    ctx.logger.info(kwargs)
     send_message(
         host,
         port,
