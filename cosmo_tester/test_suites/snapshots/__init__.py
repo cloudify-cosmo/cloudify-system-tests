@@ -53,7 +53,7 @@ TENANT_DEPLOYMENTS_PATH = (
     '/opt/mgmtworker/work/deployments/{tenant}'
 )
 DEPLOYMENT_ENVIRONMENT_PATH = (
-    TENANT_DEPLOYMENTS_PATH + '/{name}'
+    '/opt/mgmtworker/work/deployments/{tenant}/{name}'
 )
 
 # These manager versions only support single tenant snapshot restores in
