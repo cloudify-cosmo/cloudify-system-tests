@@ -55,11 +55,11 @@ class FakeAgent(Process):
                 with amqp.channel() as channel:
                     producer = Producer(channel)
 
-                    entry = self.agents[self.queue_name]
+                    entry = self.agents[self.agent_name]
                     entry['started'] = True
-                    self.agents[self.queue_name] = entry
+                    self.agents[self.agent_name] = entry
 
-                    while self.agents[self.connection_info['queue']]["run"]:
+                    while self.agents[self.agent_name]["run"]:
                         time.sleep(1)
                         print(self.agents)
         except Exception as e:
