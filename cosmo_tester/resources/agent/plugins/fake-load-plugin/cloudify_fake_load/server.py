@@ -42,7 +42,7 @@ class FakeAgent(Process):
                 BROKER_PORT_NO_SSL
                 )
         connect_string = (
-            'amqp://{user}:{password}@{host}:{port}/{vhost}/'.format(
+            'amqp://{user}:{password}@{host}:{port}/{vhost}'.format(
                 port=port,
                 **self.connection_info
             ))
