@@ -99,8 +99,6 @@ def deploy_helloworld(attributes, logger, manager):
     creation_execution = _get_deployment_environment_creation_execution(
         manager.client, deployment_id)
     logger.info('waiting for execution environment')
-    logger.error('#' * 80)
-    raw_input('ssh centos@{0} -i {1}'.format(manager.ip_address, manager._ssh_key.private_key_path))
     wait_for_execution(
         manager.client,
         creation_execution,
