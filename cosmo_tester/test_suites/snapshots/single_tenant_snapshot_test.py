@@ -64,9 +64,7 @@ def test_restore_snapshot_and_agents_upgrade_singletenant(
 
     assert_hello_worlds([hello_vm], installed=True, logger=logger)
 
-    if old_manager.branch_name.startswith('3'):
-        # We should convert SSH keys from 3.x managers
-        check_secrets_converted(new_manager, logger)
+    check_secrets_converted(new_manager, logger)
     check_plugins(new_manager, old_plugins, logger)
     check_deployments(new_manager, old_deployments, logger)
     check_from_source_plugin(
