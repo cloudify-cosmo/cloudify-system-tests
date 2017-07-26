@@ -24,6 +24,7 @@ from cosmo_tester.framework.cluster import (
 )
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
+    is_community,
 )
 # CFY-6912
 from cloudify_cli.commands.executions import (
@@ -52,6 +53,26 @@ DEPLOYMENT_ENVIRONMENT_PATH = (
     '/opt/mgmtworker/work/deployments/{tenant}/{name}'
 )
 
+MANAGER_VERSIONS_LIST = (
+    '3.4.2',
+    '4.0',
+    '4.0.1',
+    '4.1',
+)
+
+
+def get_single_tenant_versions_list():
+    if is_community():
+        return MANAGER_VERSIONS_LIST
+    else:
+        return MANAGER_VERSIONS_LIST[:2]
+
+
+def get_multi_tenant_versions_list():
+    if is_community():
+        return ()
+    else:
+        return MANAGER_VERSIONS_LIST[2:]
 
 def upgrade_agents(cfy, manager, logger, tenants=('default_tenant',)):
     manager.use()
@@ -496,7 +517,6 @@ def get_nodes(manager, tenant=None):
 
 def _cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
              hello_count, install_dev_tools=True):
-
     manager_types = [request.param, 'master']
     hello_vms = ['notamanager' for i in range(hello_count)]
     managers = [

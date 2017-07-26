@@ -17,6 +17,7 @@ import pytest
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.cluster import CloudifyCluster
 from .ha_helper import HighAvailabilityHelper as ha_helper
+from . import community_skip
 
 
 @pytest.fixture(scope='function', params=[2, 3])
@@ -79,6 +80,7 @@ def hello_world(cfy, cluster, attributes, ssh_key, tmpdir, logger):
         hw.cleanup()
 
 
+@community_skip
 def test_data_replication(cfy, cluster, hello_world,
                           logger):
     manager1 = cluster.managers[0]
@@ -110,6 +112,7 @@ def test_data_replication(cfy, cluster, hello_world,
     manager1.use()
 
 
+@community_skip
 def test_set_active(cfy, cluster,
                     logger):
     manager1 = cluster.managers[0]
@@ -124,6 +127,7 @@ def test_set_active(cfy, cluster,
         ha_helper.verify_nodes_status(manager, cfy, logger)
 
 
+@community_skip
 def test_delete_manager_node(cfy, cluster, hello_world,
                              logger):
     ha_helper.set_active(cluster.managers[1], cfy, logger)
@@ -139,6 +143,7 @@ def test_delete_manager_node(cfy, cluster, hello_world,
     hello_world.upload_blueprint()
 
 
+@community_skip
 def test_failover(cfy, cluster, hello_world,
                   logger):
     for manager in cluster.managers[:-1]:
@@ -174,6 +179,7 @@ def test_failover(cfy, cluster, hello_world,
     hello_world.upload_blueprint()
 
 
+@community_skip
 def test_remove_manager_from_cluster(cfy, cluster, hello_world,
                                      logger):
     ha_helper.set_active(cluster.managers[1], cfy, logger)

@@ -4,6 +4,8 @@ cloudify_username: admin
 cloudify_password: admin
 cloudify_tenant: default_tenant
 
+image_is_community: false
+
 # If the latest image name is not set, the latest image name will be generated
 # based on the image name prefix and the currently installed CLI version
 # e.g. cloudify-manager-premium-4.2.dev1

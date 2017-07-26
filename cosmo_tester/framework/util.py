@@ -441,3 +441,7 @@ def assert_snapshot_created(manager, snapshot_id, attributes):
     assert r.status_code == 200
     snapshot = AttributesDict(r.json())
     assert snapshot.status == 'created', 'Snapshot not in created status'
+
+
+def is_community():
+    return get_attributes().image_is_community

@@ -27,6 +27,7 @@ from . import (
     delete_manager,
     download_snapshot,
     get_deployments_list,
+    get_multi_tenant_versions_list,
     get_secrets_list,
     NOINSTALL_DEPLOYMENT_ID,
     remove_and_check_deployments,
@@ -111,7 +112,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
 @pytest.fixture(
         scope='module',
-        params=['master', '4.1', '4.0.1'])
+        params=get_multi_tenant_versions_list())
 def cluster_multitenant(request, cfy, ssh_key, module_tmpdir, attributes,
                         logger, install_dev_tools=True):
     cluster = _cluster(request, cfy, ssh_key, module_tmpdir, attributes,
