@@ -363,8 +363,8 @@ def install_script(name, windows, user, manager, attributes, tmpdir, logger):
 
         init_script = script.init_script(cloudify_agent={})
     finally:
-        for var_name in env_vars.iterkeys():
-            os.environ.pop(var_name)
+        for var_name in list(env_vars):
+            os.environ.pop(var_name, None)
 
         current_ctx.clear()
     result = '\n'.join(init_script.split('\n')[:-1])
