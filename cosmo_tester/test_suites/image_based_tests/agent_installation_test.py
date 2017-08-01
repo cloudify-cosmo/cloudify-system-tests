@@ -331,6 +331,7 @@ def install_script(name, windows, user, manager, attributes, tmpdir, logger):
         fabric.get(attributes.LOCAL_REST_CERT_FILE, local_cert_path)
 
     env_vars = {
+        constants.REST_HOST_KEY: manager.private_ip_address,
         constants.REST_PORT_KEY: str(defaults.INTERNAL_REST_PORT),
         constants.BROKER_SSL_CERT_PATH: local_cert_path,
         constants.LOCAL_REST_CERT_FILE_KEY: local_cert_path,
