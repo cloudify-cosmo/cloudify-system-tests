@@ -337,7 +337,8 @@ def install_script(name, windows, user, manager, attributes, tmpdir, logger):
         constants.LOCAL_REST_CERT_FILE_KEY: local_cert_path,
         constants.MANAGER_FILE_SERVER_URL_KEY:
             'https://{0}:{1}/resources'.format(manager.private_ip_address,
-                                               defaults.INTERNAL_REST_PORT)
+                                               defaults.INTERNAL_REST_PORT),
+        constants.MANAGER_FILE_SERVER_ROOT_KEY: str(tmpdir)
     }
 
     ctx = MockCloudifyContext(
