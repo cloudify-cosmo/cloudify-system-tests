@@ -340,6 +340,7 @@ def install_script(name, windows, user, manager, attributes, tmpdir, logger):
                                                defaults.INTERNAL_REST_PORT),
         constants.MANAGER_FILE_SERVER_ROOT_KEY: str(tmpdir)
     }
+    (tmpdir / 'cloudify_agent').mkdir()
 
     ctx = MockCloudifyContext(
             node_id='node',
