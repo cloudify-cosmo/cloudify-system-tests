@@ -217,7 +217,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     deployment_id = prefix + DEPLOYMENT_ID
     inputs = {
         'server_ip': target_vm.ip_address,
-        'agent_user': attributes.centos7_username,
+        'agent_user': attributes.centos_7_username,
         'agent_private_key_path': manager.remote_private_key_path,
     }
     upload_helloworld(

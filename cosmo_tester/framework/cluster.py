@@ -150,7 +150,7 @@ class _CloudifyManager(object):
     def ssh(self, **kwargs):
         with fabric_context_managers.settings(
                 host_string=self.ip_address,
-                user=self._attributes.centos7_username,
+                user=self._attributes.centos_7_username,
                 key_filename=self._ssh_key.private_key_path,
                 abort_exception=Exception,
                 **kwargs):
@@ -210,9 +210,13 @@ class _CloudifyManager(object):
         status = self.client.manager.get_status()
         for service in status['services']:
             for instance in service['instances']:
-                assert instance['SubState'] == 'running', \
-                    'service {0} is in {1} state'.format(
-                            service['display_name'], instance['SubState'])
+                if (
+                    service['display_name'] == 'Cloudify Stage'
+                    and not util.is_community()
+                ):
+                    assert instance['SubState'] == 'running', \
+                        'service {0} is in {1} state'.format(
+                                service['display_name'], instance['SubState'])
 
     @abstractproperty
     def branch_name(Self):
@@ -248,7 +252,7 @@ class _CloudifyManager(object):
         self._logger.info('#' * 80)
         self._logger.info(
             '\nssh -o StrictHostKeyChecking=no {user}@{ip} -i {key}'.format(
-                user=self._attributes.centos7_username,
+                user=self._attributes.centos_7_username,
                 ip=self.ip_address,
                 key=self._ssh_key.private_key_path)
         )
@@ -259,7 +263,7 @@ class _CloudifyManager(object):
         cmd = ' '.join([
             self.rsync_path,
             self.ip_address,
-            self._attributes.centos7_username,
+            self._attributes.centos_7_username,
             self._ssh_key.private_key_path
         ])
         self._logger.info('Running command:\n{0}'.format(cmd))
@@ -479,7 +483,7 @@ class CloudifyCluster(object):
                     'manager blueprint..')
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
-        cluster.managers[0].image_name = ATTRIBUTES['centos7_image_name']
+        cluster.managers[0].image_name = ATTRIBUTES['centos_7_image_name']
         cluster.create()
         return cluster
 
@@ -615,7 +619,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         return self._attributes.large_flavor_name
 
     def _get_latest_manager_image_name(self):
-        return self._attributes.centos7_image_name
+        return self._attributes.centos_7_image_name
 
     def _bootstrap_managers(self):
         super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()
@@ -634,7 +638,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         bootstrap_inputs = json.dumps({
             'public_ip': self.managers[0].ip_address,
             'private_ip': self.managers[0].private_ip_address,
-            'ssh_user': self._attributes.centos7_username,
+            'ssh_user': self._attributes.centos_7_username,
             'ssh_key_filename': self._ssh_key.private_key_path,
             'admin_username': self._attributes.cloudify_username,
             'admin_password': self._attributes.cloudify_password,
