@@ -14,6 +14,7 @@
 #    * limitations under the License.
 
 import base64
+from contextlib import contextmanager
 import json
 import logging
 import os
@@ -37,6 +38,7 @@ from path import path, Path
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
+from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 
 import cosmo_tester
 from cosmo_tester import resources
@@ -465,3 +467,19 @@ def assert_snapshot_created(manager, snapshot_id, attributes):
 
 def is_community():
     return get_attributes()['image_is_community']
+
+
+@contextmanager
+def set_client_tenant(manager, tenant):
+    if tenant:
+        original = manager.client._client.headers[CLOUDIFY_TENANT_HEADER]
+
+        manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = tenant
+
+    try:
+        yield
+    except:
+        raise
+    finally:
+        if tenant:
+            manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
