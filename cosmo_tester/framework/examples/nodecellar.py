@@ -41,7 +41,7 @@ class NodeCellarExample(AbstractExample):
             elif self._blueprint_file == 'simple-blueprint.yaml':
                 self._inputs = {
                     'host_ip': self.manager.ip_address,
-                    'agent_user': self.attributes.centos7_username,
+                    'agent_user': self.attributes.centos_7_username,
                     'agent_private_key_path':
                         self.manager.remote_private_key_path
                 }

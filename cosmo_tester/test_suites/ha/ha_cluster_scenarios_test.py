@@ -69,7 +69,7 @@ def hello_world(cfy, cluster, attributes, ssh_key, tmpdir, logger):
         cfy, cluster.managers[0], attributes, ssh_key, logger, tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     hw.inputs.update({
-        'agent_user': attributes.centos7_username,
+        'agent_user': attributes.centos_7_username,
         'image': attributes.centos7_image_name,
     })
 

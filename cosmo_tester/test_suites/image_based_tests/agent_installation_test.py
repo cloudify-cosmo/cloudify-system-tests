@@ -42,7 +42,7 @@ def test_3_2_agent(cfy, manager, attributes):
     manager.client.deployments.create(
             deployment_id, blueprint_id, inputs={
                 'ip_address': manager.ip_address,
-                'user': attributes.centos7_username,
+                'user': attributes.centos_7_username,
                 'private_key_path': manager.remote_private_key_path
             }, skip_plugins_validation=True)
     try:
@@ -61,7 +61,7 @@ def test_ssh_agent(cfy, manager, attributes):
     manager.client.deployments.create(
             deployment_id, blueprint_id, inputs={
                 'ip_address': manager.ip_address,
-                'user': attributes.centos7_username,
+                'user': attributes.centos_7_username,
                 'private_key_path': manager.remote_private_key_path
             }, skip_plugins_validation=True)
     try:
@@ -124,7 +124,7 @@ def test_centos_agent_alive_after_reboot(cfy, manager, attributes):
             inputs={
                 'image': attributes.centos7_image_name,
                 'flavor': attributes.small_flavor_name,
-                'user': attributes.centos7_username,
+                'user': attributes.centos_7_username,
                 'network_name': attributes.network_name,
                 'private_key_path': manager.remote_private_key_path,
                 'keypair_name': attributes.keypair_name
@@ -178,7 +178,7 @@ def test_centos_core_userdata_agent(cfy, manager, attributes):
             attributes,
             image=attributes.centos7_image_name,
             flavor=attributes.small_flavor_name,
-            user=attributes.centos7_username,
+            user=attributes.centos_7_username,
             install_method='init_script')
 
 
