@@ -17,77 +17,55 @@ import pytest
 
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.util import is_community
 
 manager = image_based_manager
 
 
-@pytest.fixture(scope='function')
-def hello_world(cfy, manager, attributes, ssh_key, tmpdir, logger):
+@pytest.fixture(
+    scope='function',
+    params=[
+        'centos_6',
+        'centos_7',
+        'rhel_6',
+        'rhel_7',
+        'ubuntu_14_04',
+        'ubuntu_16_04',
+        'windows_2012',
+    ],
+)
+def hello_world(request, cfy, manager, attributes, ssh_key, tmpdir, logger):
+    if is_community():
+        tenant = 'default_tenant'
+        # It is expected that the plugin is already uploaded for the
+        # default tenant
+    else:
+        tenant = request.param
+        cfy.tenants.create(tenant)
+        manager.upload_plugin('openstack_centos_core',
+                              tenant_name=tenant)
     hw = HelloWorldExample(
-            cfy, manager, attributes, ssh_key, logger, tmpdir)
-    hw.blueprint_file = 'openstack-blueprint.yaml'
+            cfy, manager, attributes, ssh_key, logger, tmpdir,
+            tenant=tenant, suffix=request.param)
+    if 'windows' in request.param:
+        hw.blueprint_file = 'openstack-windows-blueprint.yaml'
+        hw.inputs.update({
+            'flavor': attributes['medium_flavor_name'],
+        })
+    else:
+        hw.blueprint_file = 'openstack-blueprint.yaml'
+        hw.inputs.update({
+            'agent_user': attributes['{os}_username'.format(os=request.param)],
+        })
+    hw.inputs.update({
+        'image': attributes['{os}_image_name'.format(os=request.param)],
+    })
+
+    if request.param == 'centos_6':
+        hw.disable_iptables = True
     yield hw
     hw.cleanup()
 
 
-def test_hello_world_on_centos_7(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.centos7_username,
-        'image': attributes.centos7_image_name,
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_on_centos_6(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.centos6_username,
-        'image': attributes.centos6_image_name,
-    })
-    hello_world.disable_iptables = True
-    hello_world.verify_all()
-
-
-def test_hello_world_on_ubuntu_14_04(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.ubuntu_username,
-        'image': attributes.ubuntu_14_04_image_name,
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_on_ubuntu_16_04(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.ubuntu_username,
-        'image': attributes.ubuntu_16_04_image_name,
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_on_rhel_7_3(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.rhel_7_3_username,
-        'image': attributes.rhel_7_3_image_name,
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_on_rhel_6_9(hello_world, attributes):
-    hello_world.inputs.update({
-        'agent_user': attributes.rhel_6_9_username,
-        'image': attributes.rhel_6_9_image_name,
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_on_windows_2012_server(hello_world, attributes):
-    hello_world.blueprint_file = 'openstack-windows-blueprint.yaml'
-    hello_world.inputs.update({
-        'image': attributes.windows_server_2012_image_name,
-        'flavor': attributes.medium_flavor_name
-    })
-    hello_world.verify_all()
-
-
-def test_hello_world_single_host(hello_world):
-    hello_world.blueprint_file = 'singlehost-blueprint.yaml'
+def test_hello_world(hello_world, attributes, logger):
     hello_world.verify_all()

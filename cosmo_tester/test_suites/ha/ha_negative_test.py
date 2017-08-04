@@ -17,6 +17,7 @@ import pytest
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.cluster import CloudifyCluster
 from .ha_helper import HighAvailabilityHelper as ha_helper
+from . import community_skip
 
 
 @pytest.fixture(scope='function')
@@ -61,6 +62,7 @@ def cluster(
         cluster.destroy()
 
 
+@community_skip
 def test_nonempty_manager_join_cluster_negative(cfy,
                                                 attributes, ssh_key,
                                                 logger, tmpdir, module_tmpdir):
@@ -114,6 +116,7 @@ def test_nonempty_manager_join_cluster_negative(cfy,
         cluster.destroy()
 
 
+@community_skip
 def test_remove_from_cluster_and_use_negative(cfy,
                                               cluster, logger):
     manager1 = cluster.managers[0]
@@ -134,6 +137,7 @@ def test_remove_from_cluster_and_use_negative(cfy,
         cfy('--version')
 
 
+@community_skip
 def test_remove_from_cluster_and_rejoin_negative(cfy,
                                                  cluster, logger):
     manager1 = cluster.managers[0]
@@ -157,6 +161,7 @@ def test_remove_from_cluster_and_rejoin_negative(cfy,
            not in str(exinfo.value)
 
 
+@community_skip
 def test_manager_already_in_cluster_join_cluster_negative(cfy,
                                                           cluster, logger):
     manager1 = cluster.managers[0]

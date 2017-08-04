@@ -42,6 +42,7 @@ RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-de
 
 MANAGER_API_VERSIONS = {
     'master': 'v3',
+    '4.1': 'v3',
     '4.0.1': 'v3',
     '4.0': 'v3',
     '3.4.2': 'v2',
@@ -149,7 +150,7 @@ class _CloudifyManager(object):
     def ssh(self, **kwargs):
         with fabric_context_managers.settings(
                 host_string=self.ip_address,
-                user=self._attributes.centos7_username,
+                user=self._attributes.centos_7_username,
                 key_filename=self._ssh_key.private_key_path,
                 abort_exception=Exception,
                 **kwargs):
@@ -247,7 +248,7 @@ class _CloudifyManager(object):
         self._logger.info('#' * 80)
         self._logger.info(
             '\nssh -o StrictHostKeyChecking=no {user}@{ip} -i {key}'.format(
-                user=self._attributes.centos7_username,
+                user=self._attributes.centos_7_username,
                 ip=self.ip_address,
                 key=self._ssh_key.private_key_path)
         )
@@ -258,7 +259,7 @@ class _CloudifyManager(object):
         cmd = ' '.join([
             self.rsync_path,
             self.ip_address,
-            self._attributes.centos7_username,
+            self._attributes.centos_7_username,
             self._ssh_key.private_key_path
         ])
         self._logger.info('Running command:\n{0}'.format(cmd))
@@ -271,15 +272,24 @@ def _get_latest_manager_image_name():
     For CLI version "4.0.0-m15"
     Returns: "cloudify-manager-premium-4.0m15"
     """
-    version = util.get_cli_version()
-    version_num, _, version_milestone = version.partition('-')
+    specific_manager_name = ATTRIBUTES.cloudify_manager_latest_image.strip()
 
-    if version_num.endswith('.0') and version_num.count('.') > 1:
-        version_num = version_num[:-2]
+    if specific_manager_name:
+        image_name = specific_manager_name
+    else:
+        version = util.get_cli_version()
+        version_num, _, version_milestone = version.partition('-')
 
-    version = version_num + version_milestone
-    return '{}-{}'.format(
-            ATTRIBUTES.cloudify_manager_image_name_prefix, version)
+        if version_num.endswith('.0') and version_num.count('.') > 1:
+            version_num = version_num[:-2]
+
+        version = version_num + version_milestone
+        image_name = '{prefix}-{suffix}'.format(
+            prefix=ATTRIBUTES.cloudify_manager_image_name_prefix,
+            suffix=version,
+        )
+
+    return image_name
 
 
 class Cloudify3_4Manager(_CloudifyManager):
@@ -327,6 +337,10 @@ class Cloudify4_0_1Manager(_CloudifyManager):
     branch_name = '4.0.1'
 
 
+class Cloudify4_1Manager(_CloudifyManager):
+    branch_name = '4.1'
+
+
 class CloudifyMasterManager(_CloudifyManager):
     branch_name = 'master'
     image_name_attribute = 'cloudify_manager_image_name_prefix'
@@ -334,11 +348,54 @@ class CloudifyMasterManager(_CloudifyManager):
     image_name = _get_latest_manager_image_name()
 
 
+class NotAManager(_CloudifyManager):
+    def create(
+            self,
+            index,
+            public_ip_address,
+            private_ip_address,
+            rest_client,
+            ssh_key,
+            cfy,
+            attributes,
+            logger,
+            tmpdir,
+            ):
+        self.index = index
+        self.ip_address = public_ip_address
+        self.private_ip_address = private_ip_address
+        self.client = rest_client
+        self.deleted = False
+        self._ssh_key = ssh_key
+        self._cfy = cfy
+        self._attributes = attributes
+        self._logger = logger
+        self._openstack = util.create_openstack_client()
+        self._tmpdir = os.path.join(tmpdir, str(index))
+
+    def verify_services_are_running(self):
+        return True
+
+    def use(self, tenant=None):
+        return True
+
+    def _upload_plugin(self, plugin_name):
+        return True
+
+    def _upload_necessary_files(self, openstack_config_file):
+        return True
+
+    image_name = ATTRIBUTES['notmanager_image_name']
+    branch_name = 'master'
+
+
 MANAGERS = {
     '3.4.2': Cloudify3_4Manager,
     '4.0': Cloudify4_0Manager,
     '4.0.1': Cloudify4_0_1Manager,
+    '4.1': Cloudify4_1Manager,
     'master': CloudifyMasterManager,
+    'notamanager': NotAManager,
 }
 
 CURRENT_MANAGER = MANAGERS['master']
@@ -422,7 +479,7 @@ class CloudifyCluster(object):
                     'manager blueprint..')
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
-        cluster.managers[0].image_name = ATTRIBUTES['centos7_image_name']
+        cluster.managers[0].image_name = ATTRIBUTES['centos_7_image_name']
         cluster.create()
         return cluster
 
@@ -558,7 +615,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         return self._attributes.large_flavor_name
 
     def _get_latest_manager_image_name(self):
-        return self._attributes.centos7_image_name
+        return self._attributes.centos_7_image_name
 
     def _bootstrap_managers(self):
         super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()
@@ -577,7 +634,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         bootstrap_inputs = json.dumps({
             'public_ip': self.managers[0].ip_address,
             'private_ip': self.managers[0].private_ip_address,
-            'ssh_user': self._attributes.centos7_username,
+            'ssh_user': self._attributes.centos_7_username,
             'ssh_key_filename': self._ssh_key.private_key_path,
             'admin_username': self._attributes.cloudify_username,
             'admin_password': self._attributes.cloudify_password,
