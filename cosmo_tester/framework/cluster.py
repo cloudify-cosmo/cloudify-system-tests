@@ -439,6 +439,7 @@ class Ubuntu16_04(_NotAManager):
 
 class Windows2012(_NotAManager):
     image_name = ATTRIBUTES['windows_2012_image_name']
+    username = ATTRIBUTES['windows_2012_username']
     # TODO: username logic for this- might need to add logic to the
     # creation to enable SSH
 

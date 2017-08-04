@@ -30,12 +30,13 @@ from cosmo_tester.framework.hello_world import upload_and_install_helloworld, re
 #    yield hw
 #    hw.cleanup()
 OS_LIST = [
-    'centos_6',  # TODO: MAKE UNBROKEN
+    #'centos_6',
     #'centos_7',
     #'rhel_6',
     #'rhel_7',
     #'ubuntu_14_04',
     #'ubuntu_16_04',
+    'windows_2012',
 ]
 
 

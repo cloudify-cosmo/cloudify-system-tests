@@ -112,7 +112,8 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
 @pytest.fixture(
         scope='module',
-        params=get_multi_tenant_versions_list())
+        #params=get_multi_tenant_versions_list())
+        params=['master'])
 def cluster_multitenant(request, cfy, ssh_key, module_tmpdir, attributes,
                         logger, install_dev_tools=True):
     cluster = _cluster(request, cfy, ssh_key, module_tmpdir, attributes,
