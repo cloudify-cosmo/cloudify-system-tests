@@ -55,7 +55,6 @@ ATTRIBUTES = util.get_attributes()
 class _CloudifyManager(object):
 
     __metaclass__ = ABCMeta
-    username = ATTRIBUTES['centos_7_username']
 
     def __init__(self, upload_plugins=True):
         self.upload_plugins = upload_plugins
@@ -349,7 +348,7 @@ class CloudifyMasterManager(_CloudifyManager):
     image_name = _get_latest_manager_image_name()
 
 
-class _NotAManager(_CloudifyManager):
+class NotAManager(_CloudifyManager):
     def create(
             self,
             index,
@@ -386,62 +385,8 @@ class _NotAManager(_CloudifyManager):
     def _upload_necessary_files(self, openstack_config_file):
         return True
 
-    @contextmanager
-    def ssh(self, **kwargs):
-        with fabric_context_managers.settings(
-                host_string=self.ip_address,
-                user=self.username,
-                key_filename=self._ssh_key.private_key_path,
-                abort_exception=Exception,
-                **kwargs):
-            yield fabric_api
-
+    image_name = ATTRIBUTES['notmanager_image_name']
     branch_name = 'master'
-
-
-class Centos6(_NotAManager):
-    image_name = ATTRIBUTES['centos_6_image_name']
-    username = ATTRIBUTES['centos_6_username']
-
-    def verify_services_are_running(self):
-        """
-            Overloaded for disabling iptables for non-manager centos6.
-        """
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.sudo('chkconfig iptables off')
-            fabric_ssh.sudo('service iptables stop')
-
-
-class Centos7(_NotAManager):
-    image_name = ATTRIBUTES['centos_7_image_name']
-    username = ATTRIBUTES['centos_7_username']
-
-
-class RHEL6(_NotAManager):
-    image_name = ATTRIBUTES['rhel_6_image_name']
-    username = ATTRIBUTES['rhel_6_username']
-
-
-class RHEL7(_NotAManager):
-    image_name = ATTRIBUTES['rhel_7_image_name']
-    username = ATTRIBUTES['rhel_7_username']
-
-
-class Ubuntu14_04(_NotAManager):
-    image_name = ATTRIBUTES['ubuntu_14_04_image_name']
-    username = ATTRIBUTES['ubuntu_14_04_username']
-
-
-class Ubuntu16_04(_NotAManager):
-    image_name = ATTRIBUTES['ubuntu_16_04_image_name']
-    username = ATTRIBUTES['ubuntu_16_04_username']
-
-
-class Windows2012(_NotAManager):
-    image_name = ATTRIBUTES['windows_2012_image_name']
-    username = ATTRIBUTES['windows_2012_username']
-    # TODO: username logic for this- might need to add logic to the
-    # creation to enable SSH
 
 
 MANAGERS = {
@@ -450,15 +395,7 @@ MANAGERS = {
     '4.0.1': Cloudify4_0_1Manager,
     '4.1': Cloudify4_1Manager,
     'master': CloudifyMasterManager,
-    'notamanager': {
-        'centos_6': Centos6,
-        'centos_7': Centos7,
-        'rhel_6': RHEL6,
-        'rhel_7': RHEL7,
-        'ubuntu_14_04': Ubuntu14_04,
-        'ubuntu_16_04': Ubuntu16_04,
-        'windows_2012': Windows2012,
-    },
+    'notamanager': NotAManager,
 }
 
 CURRENT_MANAGER = MANAGERS['master']
@@ -578,7 +515,7 @@ class CloudifyCluster(object):
             terraform_template = f.read()
 
         output = jinja2.Template(terraform_template).render({
-            'servers': self.managers,
+            'servers': self.managers
         })
 
         terraform_template_file.write_text(output)
@@ -697,7 +634,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         bootstrap_inputs = json.dumps({
             'public_ip': self.managers[0].ip_address,
             'private_ip': self.managers[0].private_ip_address,
-            'ssh_user': ATTRIBUTES['centos_7_username'],
+            'ssh_user': self._attributes.centos_7_username,
             'ssh_key_filename': self._ssh_key.private_key_path,
             'admin_username': self._attributes.cloudify_username,
             'admin_password': self._attributes.cloudify_password,

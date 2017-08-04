@@ -100,18 +100,18 @@ resource "openstack_compute_instance_v2" "server{{ loop.index0 }}" {
   }
   floating_ip = "${openstack_networking_floatingip_v2.floatingip{{ loop.index0 }}.address}"
 
-  #provisioner "remote-exec" {
-  #  inline = [
-  #    "echo hello world"
-  #  ]
-  #  connection {
-  #    type = "ssh"
-  #    user = "{{ server.username }}"
-  #    private_key = "${file("${var.private_key_path}")}"
-  #    timeout = "10m"
-  #    agent = "false"
-  #  }
-  #}
+  provisioner "remote-exec" {
+    inline = [
+      "echo hello world"
+    ]
+    connection {
+      type = "ssh"
+      user = "centos"
+      private_key = "${file("${var.private_key_path}")}"
+      timeout = "10m"
+      agent = "false"
+    }
+  }
 }
 
 {% endfor %}

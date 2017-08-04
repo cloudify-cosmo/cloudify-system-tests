@@ -37,8 +37,8 @@ from openstack import connection as openstack_connection
 from path import path, Path
 
 from cloudify_cli import env as cli_env
-from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 from cloudify_rest_client import CloudifyClient
+from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 
 import cosmo_tester
 from cosmo_tester import resources
@@ -449,29 +449,6 @@ def is_community():
     return get_attributes().image_is_community
 
 
-def get_test_tenants():
-    """
-        Get list of tenant names for testing.
-    """
-    if is_community():
-        tenants = ['default_tenant']
-    else:
-        tenants = [
-            'default_tenant',
-            'tenant1',
-        ]
-    return tenants
-
-
-def create_test_tenants(cfy):
-    """
-        Create tenants for testing.
-    """
-    tenants = get_test_tenants()
-    for tenant in tenants[1:]:
-        cfy.tenants.create(tenant)
-
-
 @contextmanager
 def set_client_tenant(manager, tenant):
     if tenant:
@@ -486,10 +463,3 @@ def set_client_tenant(manager, tenant):
     finally:
         if tenant:
             manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
-
-
-def get_deployments_list(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
-        return [
-            item['id'] for item in manager.client.deployments.list()
-        ]

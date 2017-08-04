@@ -217,7 +217,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     deployment_id = prefix + DEPLOYMENT_ID
     inputs = {
         'server_ip': target_vm.ip_address,
-        'agent_user': attributes.centos_7_username,
+        'agent_user': attributes.centos7_username,
         'agent_private_key_path': manager.remote_private_key_path,
     }
     upload_helloworld(
@@ -517,15 +517,12 @@ def get_nodes(manager, tenant=None):
 
 def _cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
              hello_count, install_dev_tools=True):
-    manager = [
-        MANAGERS[request.param](upload_plugins=False),
-        MANAGERS['master'](upload_plugins=False),
+    manager_types = [request.param, 'master']
+    hello_vms = ['notamanager' for i in range(hello_count)]
+    managers = [
+        MANAGERS[mgr_type](upload_plugins=False)
+        for mgr_type in manager_types + hello_vms
     ]
-    target_vms = [
-        MANAGERS['notamanager']['centos_7'](upload_plugins=False)
-        for i in range(hello_count)
-    ]
-    managers = manager + target_vms
 
     cluster = CloudifyCluster.create_image_based(
             cfy,
