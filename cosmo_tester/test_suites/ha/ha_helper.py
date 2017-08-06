@@ -17,6 +17,8 @@
 import time
 import os
 
+from cloudify_rest_client.exceptions import CloudifyClientError
+
 
 class HighAvailabilityHelper(object):
     @staticmethod
@@ -31,9 +33,33 @@ class HighAvailabilityHelper(object):
             time.sleep(120)
 
     @staticmethod
-    def wait_leader_election(logger):
+    def wait_leader_election(managers, logger, timeout=120, poll_interval=1):
+        """Wait until one of managers is elected the leader
+
+        :param managers: a list of managers that will be polled for status
+        :type managers: list of _CloudifyManager
+        :param logger: The logger to use
+        :param timeout: How long to wait for leader election
+        :param poll_interval: Interval to wait between requests
+        """
         logger.info('Waiting for a leader election...')
-        time.sleep(120)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            for manager in managers:
+                try:
+                    nodes = manager.client.cluster.nodes.list()
+                except CloudifyClientError:
+                    logger.debug('wait_leader_election: manager {0} did not '
+                                 'respond'.format(manager))
+                    nodes = []
+
+                if any(node['master'] for node in nodes):
+                    return nodes
+
+            logger.debug('None of the nodes are the leader')
+            time.sleep(poll_interval)
+
+        raise RuntimeError('Timeout when waiting for leader election')
 
     @staticmethod
     def verify_nodes_status(manager, cfy, logger):
