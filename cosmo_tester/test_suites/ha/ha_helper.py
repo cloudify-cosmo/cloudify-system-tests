@@ -30,7 +30,7 @@ class HighAvailabilityHelper(object):
         except Exception as e:
             logger.info('Setting active manager error message: %s', e.message)
         finally:
-            HighAvailabilityHelper.wait_leader_election([manager], logger)
+            HighAvailabilityHelper.wait_nodes_online([manager], logger)
 
     @staticmethod
     def wait_leader_election(managers, logger):
