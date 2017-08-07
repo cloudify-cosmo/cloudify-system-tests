@@ -132,7 +132,7 @@ def test_delete_manager_node(cfy, cluster, hello_world,
     for manager in cluster.managers[1:]:
         logger.info('Deleting manager %s', manager.ip_address)
         manager.delete()
-        ha_helper.wait_leader_election([expected_master], logger)
+        ha_helper.wait_nodes_online([expected_master], logger)
 
     logger.info('Expected leader %s', expected_master)
     ha_helper.verify_nodes_status(expected_master, cfy, logger)

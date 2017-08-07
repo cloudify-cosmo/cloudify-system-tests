@@ -41,6 +41,14 @@ class HighAvailabilityHelper(object):
                                                     managers, logger)
 
     @staticmethod
+    def wait_nodes_online(managers, logger):
+        """Wait until all of the cluster nodes are online"""
+        def _all_nodes_online(nodes):
+            return all(node['online'] for node in nodes)
+        HighAvailabilityHelper._wait_cluster_status(_all_nodes_online,
+                                                    managers, logger)
+
+    @staticmethod
     def _wait_cluster_status(predicate, managers, logger, timeout=120,
                              poll_interval=1):
         """Wait until the cluster is in a state decided by predicate
