@@ -37,6 +37,7 @@ class HighAvailabilityHelper(object):
         """Wait until there is a leader in the cluster"""
         def _is_there_a_leader(nodes):
             return any(node['master'] for node in nodes)
+        logger.info('Waiting for a leader election...')
         HighAvailabilityHelper._wait_cluster_status(_is_there_a_leader,
                                                     managers, logger)
 
@@ -45,6 +46,7 @@ class HighAvailabilityHelper(object):
         """Wait until all of the cluster nodes are online"""
         def _all_nodes_online(nodes):
             return all(node['online'] for node in nodes)
+        logger.info('Waiting for all nodes to be online...')
         HighAvailabilityHelper._wait_cluster_status(_all_nodes_online,
                                                     managers, logger)
 
@@ -61,7 +63,6 @@ class HighAvailabilityHelper(object):
         :param timeout: How long to wait for leader election
         :param poll_interval: Interval to wait between requests
         """
-        logger.info('Waiting for a leader election...')
         deadline = time.time() + timeout
         while time.time() < deadline:
             for manager in managers:
@@ -70,13 +71,13 @@ class HighAvailabilityHelper(object):
                     if predicate(nodes):
                         return
                 except CloudifyClientError:
-                    logger.debug('wait_leader_election: manager {0} did not '
+                    logger.debug('_wait_cluster_status: manager {0} did not '
                                  'respond'.format(manager))
 
-            logger.debug('None of the nodes are the leader')
+            logger.debug('_wait_cluster_status: none of the nodes responded')
             time.sleep(poll_interval)
 
-        raise RuntimeError('Timeout when waiting for leader election')
+        raise RuntimeError('Timeout when waiting for cluster status')
 
     @staticmethod
     def verify_nodes_status(manager, cfy, logger):
