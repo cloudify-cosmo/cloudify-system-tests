@@ -13,17 +13,45 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import os
 import time
 from multiprocessing import Manager, Process
 
+from celery import Celery, bootsteps
 from flask import Flask, jsonify, request
-from kombu import Connection, Producer
+from kombu import Consumer, Exchange, Queue
 
 from cloudify.constants import BROKER_PORT_SSL, BROKER_PORT_NO_SSL
 
 
 QUEUE_INFO = ('host', 'vhost', 'queue', 'name')
 EXTRA_INFO = ('ssl_enabled', 'user', 'password')
+
+
+WORKER_CONFIG = {
+    'mim_workers': 0,
+    'max_workers': 5,
+    }
+
+
+class PretendItsDone(bootsteps.ConsumerStep):
+
+    @property
+    def queue(self):
+        raise NotImplementedError(
+            'the queue must be provided before using this bootstep')
+
+    def get_consumers(self, channel):
+        return [Consumer(
+            channel,
+            queues=[type(self).queue],
+            callbacks=[self.handle_message],
+            accept=['json'],
+            )]
+
+    def handle_message(self, body, message):
+        print('Received: {0!r}'.format(body))
+        message.ack()
 
 
 class FakeAgent(Process):
@@ -47,21 +75,56 @@ class FakeAgent(Process):
                 **self.connection_info
             ))
 
+        worker_args = [
+            "--events",
+            "-Q", self.connection_info['queue'],
+            "--hostname", self.connection_info['name'],
+            "--autoscale={{ max_workers }},{{ min_workers }}".format(
+                WORKER_CONFIG),
+            "--maxtasksperchild=10",
+            "-Ofair",
+            "--without-gossip",
+            "--without-mingle",
+            "--config=cloudify.broker_config",
+            "--include=cloudify.dispatch",
+            "--with-gate-keeper",
+            "--gate-keeper-bucket-size={max_workers}".format(
+                WORKER_CONFIG),
+            "--with-logging-server",
+            "--logging-server-logdir={workdir}".format(os.path.join(
+                os.path.expanduser('~'), 'agent_logs', *self.agent_name)),
+            "--heartbeat-interval=2",
+            ]
+
         try:
-            with Connection(
-                    connect_string,
-                    ssl=self.connection_info['ssl_enabled'],
-                    ) as amqp:
-                with amqp.channel() as channel:
-                    producer = Producer(channel)
+            queue = Queue(
+                self.connection_info['queue'],
+                Exchange('cloudify-events'),
+                )
+            # Adding the queue as a class attribute because celery's bootsteps
+            # API wants to be given a class, not an instance.
+            PretendItsDone.queue = queue
 
-                    entry = self.agents[self.agent_name]
-                    entry['started'] = True
-                    self.agents[self.agent_name] = entry
+            with Celery('', broker=connect_string) as app:
 
-                    while self.agents[self.agent_name]["run"]:
-                        time.sleep(1)
-                        print(self.agents)
+                app.steps['consumer'].add(PretendItsDone)
+
+                try:
+                    worker = app.worker_main(argv=worker_args)
+
+                    with amqp.channel() as channel:
+                        producer = Producer(channel)
+
+                        entry = self.agents[self.agent_name]
+                        entry['started'] = True
+                        self.agents[self.agent_name] = entry
+
+                        while self.agents[self.agent_name]["run"]:
+                            time.sleep(1)
+                            print(self.agents)
+                finally:
+                    worker.close()
+
         except Exception as e:
             entry = self.agents[self.agent_name]
             entry['exception'] = e
