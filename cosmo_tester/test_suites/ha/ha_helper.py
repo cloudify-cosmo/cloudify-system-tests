@@ -17,6 +17,7 @@
 import time
 import os
 
+from requests.exceptions import ConnectionError
 from cloudify_rest_client.exceptions import CloudifyClientError
 
 
@@ -70,7 +71,7 @@ class HighAvailabilityHelper(object):
                     nodes = manager.client.cluster.nodes.list()
                     if predicate(nodes):
                         return
-                except CloudifyClientError:
+                except (ConnectionError, CloudifyClientError):
                     logger.debug('_wait_cluster_status: manager {0} did not '
                                  'respond'.format(manager))
 
