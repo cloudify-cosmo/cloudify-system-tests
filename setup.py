@@ -17,7 +17,7 @@ from setuptools import setup
 
 setup(
     name='cloudify-system-tests',
-    version='4.1a2',
+    version='4.2.dev1',
     author='Gigaspaces',
     author_email='cosmo-admin@gigaspaces.com',
     packages=['cosmo_tester'],
@@ -25,7 +25,8 @@ setup(
     description='Cosmo system tests framework',
     zip_safe=False,
     install_requires=[
-        'fabric==1.8.3',
+        'paramiko==1.18.3',
+        'fabric==1.13.1',
         'PyYAML==3.10',
         'requests>=2.7.0,<3.0.0',
         'sh==1.11',
