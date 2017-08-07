@@ -33,9 +33,20 @@ class HighAvailabilityHelper(object):
             HighAvailabilityHelper.wait_leader_election([manager], logger)
 
     @staticmethod
-    def wait_leader_election(managers, logger, timeout=120, poll_interval=1):
-        """Wait until one of managers is elected the leader
+    def wait_leader_election(managers, logger):
+        """Wait until there is a leader in the cluster"""
+        def _is_there_a_leader(nodes):
+            return any(node['master'] for node in nodes)
+        HighAvailabilityHelper._wait_cluster_status(_is_there_a_leader,
+                                                    managers, logger)
 
+    @staticmethod
+    def _wait_cluster_status(predicate, managers, logger, timeout=120,
+                             poll_interval=1):
+        """Wait until the cluster is in a state decided by predicate
+
+        :param predicate: a function deciding if the cluster is in the desired
+                          state, when passed in the list of nodes
         :param managers: a list of managers that will be polled for status
         :type managers: list of _CloudifyManager
         :param logger: The logger to use
@@ -48,13 +59,11 @@ class HighAvailabilityHelper(object):
             for manager in managers:
                 try:
                     nodes = manager.client.cluster.nodes.list()
+                    if predicate(nodes):
+                        return
                 except CloudifyClientError:
                     logger.debug('wait_leader_election: manager {0} did not '
                                  'respond'.format(manager))
-                    nodes = []
-
-                if any(node['master'] for node in nodes):
-                    return nodes
 
             logger.debug('None of the nodes are the leader')
             time.sleep(poll_interval)
