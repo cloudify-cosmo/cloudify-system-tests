@@ -127,6 +127,9 @@ def _test_agent_alive_after_reboot(cfy, manager, attributes, os_name):
         'ubuntu_14_04': (
             'agent/reboot-vm-blueprint/reboot-unix-vm-blueprint.yaml'
         ),
+        'windows_2012': (
+            'agent/reboot-vm-blueprint/reboot-winrm-vm-blueprint.yaml'
+        ),
     }
     blueprint_name = os_blueprints[os_name]
 
@@ -174,23 +177,14 @@ def _test_agent_alive_after_reboot(cfy, manager, attributes, os_name):
     assert os_name == app.runtime_properties['value']
 
 
-# TODO: INCLUDE THIS ONE, WHEN THE MANAGER IS UPDATED SO IT WORKS
-def ftest_winrm_agent_alive_after_reboot(cfy, manager, attributes):
+def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
 
     _test_agent_alive_after_reboot(
             cfy,
             manager,
-            blueprint_name='agent/reboot-vm-blueprint/'
-                           'reboot-winrm-vm-blueprint.yaml',
-            inputs={
-                'image': attributes.windows_2012_image_name,
-                #'flavor': attributes.small_flavor_name,
-                'flavor': attributes.medium_flavor_name,
-                'user': attributes.windows_2012_username,
-                'network_name': attributes.network_name,
-                'private_key_path': manager.remote_private_key_path,
-                'keypair_name': attributes.keypair_name
-            })
+            attributes,
+            'windows_2012',
+    )
 
 
 # TODO: This looks like it can use one of the others... does it test anything not covered by the previous one?
