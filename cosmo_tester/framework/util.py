@@ -463,3 +463,16 @@ def set_client_tenant(manager, tenant):
     finally:
         if tenant:
             manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
+
+
+def get_test_tenant(test_param, manager, cfy):
+    if is_community():
+        tenant = 'default_tenant'
+        # It is expected that the plugin is already uploaded for the
+        # default tenant
+    else:
+        tenant = test_param
+        cfy.tenants.create(tenant)
+        manager.upload_plugin('openstack_centos_core',
+                              tenant_name=tenant)
+    return tenant
