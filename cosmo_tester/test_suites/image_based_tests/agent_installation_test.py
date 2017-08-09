@@ -25,148 +25,29 @@ from cloudify_agent.api import defaults
 from cloudify_agent.installer import script
 from cosmo_tester.framework import util
 from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.util import set_client_tenant, get_test_tenant
 
 manager = image_based_manager
 
 
 EXPECTED_FILE_CONTENT = 'CONTENT'
 
-
+"""
 def test_3_2_agent(cfy, manager, attributes):
-    blueprint_path = util.get_resource_path(
-            'agent/3-2-agent-blueprint/3-2-agent-mispelled-blprint.yaml')
-
-    blueprint_id = deployment_id = str(uuid.uuid4())
-
-    manager.client.blueprints.upload(blueprint_path, blueprint_id)
-    manager.client.deployments.create(
-            deployment_id, blueprint_id, inputs={
-                'ip_address': manager.ip_address,
-                'user': attributes.centos7_username,
-                'private_key_path': manager.remote_private_key_path
-            }, skip_plugins_validation=True)
-    try:
-        cfy.executions.start.install(['-d', deployment_id])
-    finally:
-        cfy.executions.start.uninstall(['-d', deployment_id])
+    _test_agent('3_2', cfy, manager, attributes)
 
 
 def test_ssh_agent(cfy, manager, attributes):
-    blueprint_path = util.get_resource_path(
-            'agent/ssh-agent-blueprint/ssh-agent-blueprint.yaml')
-
-    blueprint_id = deployment_id = str(uuid.uuid4())
-
-    manager.client.blueprints.upload(blueprint_path, blueprint_id)
-    manager.client.deployments.create(
-            deployment_id, blueprint_id, inputs={
-                'ip_address': manager.ip_address,
-                'user': attributes.centos7_username,
-                'private_key_path': manager.remote_private_key_path
-            }, skip_plugins_validation=True)
-    try:
-        cfy.executions.start.install(['-d', deployment_id])
-    finally:
-        cfy.executions.start.uninstall(['-d', deployment_id])
+    _test_agent('ssh', cfy, manager, attributes)
 
 
-def _test_agent_alive_after_reboot(cfy, manager, blueprint_name, inputs):
-
-    blueprint_path = util.get_resource_path(blueprint_name)
-    value = str(uuid.uuid4())
-    inputs['value'] = value
-    blueprint_id = deployment_id = str(uuid.uuid4())
-
-    manager.client.blueprints.upload(blueprint_path, blueprint_id)
-    manager.client.deployments.create(
-            deployment_id,
-            blueprint_id,
-            inputs=inputs,
-            skip_plugins_validation=True)
-
-    cfy.executions.start.install(['-d', deployment_id])
-    cfy.executions.start.execute_operation(
-            deployment_id=deployment_id,
-            parameters={
-                'operation': 'cloudify.interfaces.reboot_test.reboot',
-                'node_ids': ['host']
-            })
-    cfy.executions.start.uninstall(['-d', deployment_id])
-    app = manager.client.node_instances.list(node_id='application',
-                                             deployment_id=deployment_id)[0]
-    assert value == app.runtime_properties['value']
+def test_ubuntu_14_04_agent_reboot(cfy, manager, attributes):
+    _test_agent_alive_after_reboot(cfy, manager, attributes, 'ubuntu_14_04')
 
 
-def test_ubuntu_agent_alive_after_reboot(cfy, manager, attributes):
-
-    _test_agent_alive_after_reboot(
-            cfy,
-            manager,
-            blueprint_name='agent/reboot-vm-blueprint/'
-                           'reboot-unix-vm-blueprint.yaml',
-            inputs={
-                'image': attributes.ubuntu_14_04_image_name,
-                'flavor': attributes.medium_flavor_name,
-                'user': attributes.ubuntu_username,
-                'network_name': attributes.network_name,
-                'private_key_path': manager.remote_private_key_path,
-                'keypair_name': attributes.keypair_name
-            })
-
-
-def test_centos_agent_alive_after_reboot(cfy, manager, attributes):
-
-    _test_agent_alive_after_reboot(
-            cfy,
-            manager,
-            blueprint_name='agent/reboot-vm-blueprint/'
-                           'reboot-unix-vm-blueprint.yaml',
-            inputs={
-                'image': attributes.centos7_image_name,
-                'flavor': attributes.small_flavor_name,
-                'user': attributes.centos7_username,
-                'network_name': attributes.network_name,
-                'private_key_path': manager.remote_private_key_path,
-                'keypair_name': attributes.keypair_name
-            })
-
-
-def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
-
-    _test_agent_alive_after_reboot(
-            cfy,
-            manager,
-            blueprint_name='agent/reboot-vm-blueprint/'
-                           'reboot-winrm-vm-blueprint.yaml',
-            inputs={
-                'image': attributes.windows_server_2012_image_name,
-                'flavor': attributes.medium_flavor_name,
-                'user': attributes.windows_server_2012_username,
-                'network_name': attributes.network_name,
-                'private_key_path': manager.remote_private_key_path,
-                'keypair_name': attributes.keypair_name
-            })
-
-
-def test_winrm_agent(cfy, manager, attributes, logger):
-    blueprint_path = util.get_resource_path(
-            'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
-    blueprint_id = deployment_id = str(uuid.uuid4())
-
-    manager.client.blueprints.upload(blueprint_path, blueprint_id)
-    manager.client.deployments.create(
-            deployment_id, blueprint_id, inputs={
-                'image': attributes.windows_server_2012_image_name,
-                'flavor': attributes.medium_flavor_name,
-                'user': attributes.windows_server_2012_username,
-                'network_name': attributes.network_name,
-                'private_key_path': manager.remote_private_key_path,
-                'keypair_name': attributes.keypair_name
-            }, skip_plugins_validation=True)
-    try:
-        cfy.executions.start.install(['-d', deployment_id])
-    finally:
-        cfy.executions.start.uninstall(['-d', deployment_id])
+def test_centos_7_agent_reboot(cfy, manager, attributes):
+    _test_agent_alive_after_reboot(cfy, manager, attributes, 'centos_7')
+"""
 
 
 # Two different tests for ubuntu/centos
@@ -176,10 +57,8 @@ def test_centos_core_userdata_agent(cfy, manager, attributes):
             cfy,
             manager,
             attributes,
-            image=attributes.centos7_image_name,
-            flavor=attributes.small_flavor_name,
-            user=attributes.centos7_username,
-            install_method='init_script')
+            os_name='centos_7',
+    )
 
 
 def test_ubuntu_trusty_userdata_agent(cfy, manager, attributes):
@@ -187,19 +66,138 @@ def test_ubuntu_trusty_userdata_agent(cfy, manager, attributes):
             cfy,
             manager,
             attributes,
-            image=attributes.ubuntu_14_04_image_name,
-            flavor=attributes.small_flavor_name,
-            user=attributes.ubuntu_username,
-            install_method='init_script')
+            os_name='ubuntu_14_04',
+    )
 
 
-def test_ubuntu_trusty_provided_userdata_agent(cfy,
+def _test_agent(agent_type, cfy, manager, attributes):
+    agent_blueprints = {
+        '3_2': 'agent/3-2-agent-blueprint/3-2-agent-mispelled-blprint.yaml',
+        'ssh': 'agent/ssh-agent-blueprint/ssh-agent-blueprint.yaml',
+    }
+
+    blueprint_path = util.get_resource_path(agent_blueprints[agent_type])
+
+    tenant = get_test_tenant('agent_{}'.format(agent_type), manager, cfy)
+    blueprint_id = deployment_id = agent_type
+
+    with set_client_tenant(manager, tenant):
+        manager.client.blueprints.upload(blueprint_path, blueprint_id)
+        manager.client.deployments.create(
+                deployment_id, blueprint_id, inputs={
+                    'ip_address': manager.ip_address,
+                    'user': attributes.centos_7_username,
+                    'private_key_path': manager.remote_private_key_path
+                }, skip_plugins_validation=True)
+    try:
+        cfy.executions.start.install(['-d', deployment_id,
+                                      '--tenant-name', tenant])
+    finally:
+        cfy.executions.start.uninstall(['-d', deployment_id,
+                                        '--tenant-name', tenant])
+
+
+def _test_agent_alive_after_reboot(cfy, manager, attributes, os_name):
+    os_blueprints = {
+        'centos_7': 'agent/reboot-vm-blueprint/reboot-unix-vm-blueprint.yaml',
+        'ubuntu_14_04': (
+            'agent/reboot-vm-blueprint/reboot-unix-vm-blueprint.yaml'
+        ),
+    }
+    blueprint_name = os_blueprints[os_name]
+
+    tenant = get_test_tenant(os_name, manager, cfy)
+
+    inputs = {
+        'image': attributes['{os}_image_name'.format(os=os_name)],
+        'flavor': attributes['medium_flavor_name'],
+        'user': attributes['{os}_username'.format(os=os_name)],
+        'network_name': attributes['network_name'],
+        'private_key_path': manager.remote_private_key_path,
+        'keypair_name': attributes['keypair_name'],
+    }
+
+    blueprint_path = util.get_resource_path(blueprint_name)
+    inputs['value'] = os_name
+    blueprint_id = deployment_id = os_name
+
+    with set_client_tenant(manager, tenant):
+        manager.client.blueprints.upload(blueprint_path, blueprint_id)
+        manager.client.deployments.create(
+                deployment_id,
+                blueprint_id,
+                inputs=inputs,
+                skip_plugins_validation=True)
+
+    try:
+        cfy.executions.start.install(['-d', deployment_id,
+                                      '--tenant-name', tenant])
+        cfy.executions.start.execute_operation(
+                deployment_id=deployment_id,
+                parameters={
+                    'operation': 'cloudify.interfaces.reboot_test.reboot',
+                    'node_ids': ['host']
+                },
+                tenant_name=tenant)
+    finally:
+        cfy.executions.start.uninstall(['-d', deployment_id,
+                                        '--tenant-name', tenant])
+    with set_client_tenant(manager, tenant):
+        app = manager.client.node_instances.list(
+            node_id='application',
+            deployment_id=deployment_id,
+        )[0]
+    assert os_name == app.runtime_properties['value']
+
+
+# TODO: INCLUDE THIS ONE, WHEN THE MANAGER IS UPDATED SO IT WORKS
+def ftest_winrm_agent_alive_after_reboot(cfy, manager, attributes):
+
+    _test_agent_alive_after_reboot(
+            cfy,
+            manager,
+            blueprint_name='agent/reboot-vm-blueprint/'
+                           'reboot-winrm-vm-blueprint.yaml',
+            inputs={
+                'image': attributes.windows_2012_image_name,
+                #'flavor': attributes.small_flavor_name,
+                'flavor': attributes.medium_flavor_name,
+                'user': attributes.windows_2012_username,
+                'network_name': attributes.network_name,
+                'private_key_path': manager.remote_private_key_path,
+                'keypair_name': attributes.keypair_name
+            })
+
+
+def _test_winrm_agent(cfy, manager, attributes, logger):
+    blueprint_path = util.get_resource_path(
+            'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
+    blueprint_id = deployment_id = str(uuid.uuid4())
+
+    manager.client.blueprints.upload(blueprint_path, blueprint_id)
+    manager.client.deployments.create(
+            deployment_id, blueprint_id, inputs={
+                'image': attributes.windows_2012_image_name,
+                'flavor': attributes.medium_flavor_name,
+                'user': attributes.windows_2012_username,
+                'network_name': attributes.network_name,
+                'private_key_path': manager.remote_private_key_path,
+                'keypair_name': attributes.keypair_name
+            }, skip_plugins_validation=True)
+    try:
+        cfy.executions.start.install(['-d', deployment_id])
+    finally:
+        cfy.executions.start.uninstall(['-d', deployment_id])
+
+
+# TODO: Modify
+def _test_ubuntu_trusty_provided_userdata_agent(cfy,
                                                manager,
                                                attributes,
                                                tmpdir,
                                                logger):
     name = 'cloudify_agent'
-    user = attributes.ubuntu_username
+    user = attributes.ubuntu_14_04_username
     install_userdata = install_script(name=name,
                                       windows=False,
                                       user=user,
@@ -219,13 +217,14 @@ def test_ubuntu_trusty_provided_userdata_agent(cfy,
             install_userdata=install_userdata)
 
 
-def test_windows_userdata_agent(cfy,
+# TODO: Modify
+def _test_windows_userdata_agent(cfy,
                                 manager,
                                 attributes,
                                 install_method='init_script',
                                 name=None,
                                 install_userdata=None):
-    user = attributes.windows_server_2012_username
+    user = attributes.windows_2012_username
     file_path = 'C:\\Users\\{0}\\test_file'.format(user)
     userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
             EXPECTED_FILE_CONTENT, file_path)
@@ -233,7 +232,7 @@ def test_windows_userdata_agent(cfy,
         userdata = create_multi_mimetype_userdata([userdata,
                                                    install_userdata])
     inputs = {
-        'image': attributes.windows_server_2012_image_name,
+        'image': attributes.windows_2012_image_name,
         'user': user,
         'flavor': attributes.medium_flavor_name,
         'os_family': 'windows',
@@ -248,7 +247,8 @@ def test_windows_userdata_agent(cfy,
     _test_userdata_agent(cfy, manager, inputs)
 
 
-def test_windows_provided_userdata_agent(cfy,
+# TODO: Modify
+def _test_windows_provided_userdata_agent(cfy,
                                          manager,
                                          attributes,
                                          tmpdir,
@@ -257,7 +257,7 @@ def test_windows_provided_userdata_agent(cfy,
     install_userdata = install_script(
             name=name,
             windows=True,
-            user=attributes.windows_server_2012_username,
+            user=attributes.windows_2012_username,
             manager=manager,
             attributes=attributes,
             tmpdir=tmpdir,
@@ -271,19 +271,25 @@ def test_windows_provided_userdata_agent(cfy,
             install_userdata=install_userdata)
 
 
-def _test_linux_userdata_agent(cfy, manager, attributes, image, flavor, user,
-                               install_method, install_userdata=None,
-                               name=None):
+def _test_linux_userdata_agent(cfy, manager, attributes, os_name,
+                               install_userdata=None, name=None):
     file_path = '/tmp/test_file'
     userdata = '#! /bin/bash\necho {0} > {1}\nchmod 777 {1}'.format(
             EXPECTED_FILE_CONTENT, file_path)
     if install_userdata:
         userdata = create_multi_mimetype_userdata([userdata,
                                                    install_userdata])
+
+    tenant = get_test_tenant('userdata_{}'.format(os_name), manager, cfy)
+
+    # TODO: When other install method needed, change
+    if True:
+        install_method = 'init_script'
+
     inputs = {
-        'image': image,
-        'user': user,
-        'flavor': flavor,
+        'image': attributes['{os}_image_name'.format(os=os_name)],
+        'user': attributes['{os}_username'.format(os=os_name)],
+        'flavor': attributes['small_flavor_name'],
         'os_family': 'linux',
         'userdata': userdata,
         'file_path': file_path,
@@ -294,30 +300,34 @@ def _test_linux_userdata_agent(cfy, manager, attributes, image, flavor, user,
         'network_name': attributes.network_name
     }
 
-    _test_userdata_agent(cfy, manager, inputs)
+    _test_userdata_agent(cfy, manager, inputs, tenant)
 
 
-def _test_userdata_agent(cfy, manager, inputs):
+def _test_userdata_agent(cfy, manager, inputs, tenant):
     blueprint_id = deployment_id = 'userdata{0}'.format(time.time())
     blueprint_path = util.get_resource_path(
             'agent/userdata-agent-blueprint/userdata-agent-blueprint.yaml')
 
-    manager.client.blueprints.upload(blueprint_path, blueprint_id)
-    manager.client.deployments.create(
-            deployment_id,
-            blueprint_id,
-            inputs=inputs,
-            skip_plugins_validation=True)
+    with set_client_tenant(manager, tenant):
+        manager.client.blueprints.upload(blueprint_path, blueprint_id)
+        manager.client.deployments.create(
+                deployment_id,
+                blueprint_id,
+                inputs=inputs,
+                skip_plugins_validation=True)
 
-    cfy.executions.start.install(['-d', deployment_id])
+    cfy.executions.start.install(['-d', deployment_id,
+                                  '--tenant-name', tenant])
 
     try:
-        assert {
-            'MY_ENV_VAR': 'MY_ENV_VAR_VALUE',
-            'file_content': EXPECTED_FILE_CONTENT
-        } == manager.client.deployments.outputs.get(deployment_id).outputs
+        with set_client_tenant(manager, tenant):
+            assert {
+                'MY_ENV_VAR': 'MY_ENV_VAR_VALUE',
+                'file_content': EXPECTED_FILE_CONTENT
+            } == manager.client.deployments.outputs.get(deployment_id).outputs
     finally:
-        cfy.executions.start.uninstall(['-d', deployment_id])
+        cfy.executions.start.uninstall(['-d', deployment_id,
+                                        '--tenant-name', tenant])
 
 
 def install_script(name, windows, user, manager, attributes, tmpdir, logger):

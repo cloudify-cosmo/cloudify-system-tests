@@ -18,7 +18,7 @@ import yaml
 
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.fixtures import image_based_manager
-from cosmo_tester.framework.util import is_community
+from cosmo_tester.framework.util import get_test_tenant
 
 manager = image_based_manager
 
@@ -44,7 +44,7 @@ def test_hello_world_backwards(hello_world_backwards_compat):
     ],
 )
 def hello_world(request, cfy, manager, attributes, ssh_key, tmpdir, logger):
-    tenant = _get_tenant(request.param, manager, cfy)
+    tenant = get_test_tenant(request.param, manager, cfy)
     hw = HelloWorldExample(
             cfy, manager, attributes, ssh_key, logger, tmpdir,
             tenant=tenant, suffix=request.param)
@@ -77,7 +77,7 @@ def hello_world(request, cfy, manager, attributes, ssh_key, tmpdir, logger):
 def hello_world_backwards_compat(request, cfy, manager, attributes, ssh_key,
                                  tmpdir, logger):
     tenant_param = 'dsl_{ver}'.format(ver=request.param)
-    tenant = _get_tenant(tenant_param, manager, cfy)
+    tenant = get_test_tenant(tenant_param, manager, cfy)
 
     dsl_git_checkout_mappings = {
         # dsl versions 1.0 and 1.1 cannot be tested with this because they do
@@ -103,16 +103,3 @@ def hello_world_backwards_compat(request, cfy, manager, attributes, ssh_key,
 
     yield hw
     hw.cleanup()
-
-
-def _get_tenant(test_param, manager, cfy):
-    if is_community():
-        tenant = 'default_tenant'
-        # It is expected that the plugin is already uploaded for the
-        # default tenant
-    else:
-        tenant = test_param
-        cfy.tenants.create(tenant)
-        manager.upload_plugin('openstack_centos_core',
-                              tenant_name=tenant)
-    return tenant
