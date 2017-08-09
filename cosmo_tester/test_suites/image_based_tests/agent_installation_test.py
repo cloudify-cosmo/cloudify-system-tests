@@ -47,7 +47,6 @@ def test_ubuntu_14_04_agent_reboot(cfy, manager, attributes):
 
 def test_centos_7_agent_reboot(cfy, manager, attributes):
     _test_agent_alive_after_reboot(cfy, manager, attributes, 'centos_7')
-"""
 
 
 # Two different tests for ubuntu/centos
@@ -68,6 +67,31 @@ def test_ubuntu_trusty_userdata_agent(cfy, manager, attributes):
             attributes,
             os_name='ubuntu_14_04',
     )
+
+
+def test_ubuntu_trusty_provided_userdata_agent(cfy,
+                                               manager,
+                                               attributes,
+                                               tmpdir,
+                                               logger):
+    name = 'cloudify_agent'
+    os_name = 'ubuntu_14_04'
+    install_userdata = install_script(name=name,
+                                      windows=False,
+                                      user=attributes.ubuntu_14_04_username,
+                                      manager=manager,
+                                      attributes=attributes,
+                                      tmpdir=tmpdir,
+                                      logger=logger)
+    _test_linux_userdata_agent(
+            cfy,
+            manager,
+            attributes,
+            'ubuntu_14_04',
+            install_method='provided',
+            name=name,
+            install_userdata=install_userdata)
+"""
 
 
 def _test_agent(agent_type, cfy, manager, attributes):
@@ -169,6 +193,7 @@ def ftest_winrm_agent_alive_after_reboot(cfy, manager, attributes):
             })
 
 
+# TODO: This looks like it can use one of the others... does it test anything not covered by the previous one?
 def _test_winrm_agent(cfy, manager, attributes, logger):
     blueprint_path = util.get_resource_path(
             'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
@@ -188,34 +213,6 @@ def _test_winrm_agent(cfy, manager, attributes, logger):
         cfy.executions.start.install(['-d', deployment_id])
     finally:
         cfy.executions.start.uninstall(['-d', deployment_id])
-
-
-# TODO: Modify
-def _test_ubuntu_trusty_provided_userdata_agent(cfy,
-                                               manager,
-                                               attributes,
-                                               tmpdir,
-                                               logger):
-    name = 'cloudify_agent'
-    user = attributes.ubuntu_14_04_username
-    install_userdata = install_script(name=name,
-                                      windows=False,
-                                      user=user,
-                                      manager=manager,
-                                      attributes=attributes,
-                                      tmpdir=tmpdir,
-                                      logger=logger)
-    _test_linux_userdata_agent(
-            cfy,
-            manager,
-            attributes,
-            image=attributes.ubuntu_14_04_image_name,
-            flavor=attributes.small_flavor_name,
-            user=user,
-            install_method='provided',
-            name=name,
-            install_userdata=install_userdata)
-
 
 # TODO: Modify
 def _test_windows_userdata_agent(cfy,
@@ -272,7 +269,8 @@ def _test_windows_provided_userdata_agent(cfy,
 
 
 def _test_linux_userdata_agent(cfy, manager, attributes, os_name,
-                               install_userdata=None, name=None):
+                               install_userdata=None, name=None,
+                               install_method='init_script'):
     file_path = '/tmp/test_file'
     userdata = '#! /bin/bash\necho {0} > {1}\nchmod 777 {1}'.format(
             EXPECTED_FILE_CONTENT, file_path)
@@ -281,10 +279,6 @@ def _test_linux_userdata_agent(cfy, manager, attributes, os_name,
                                                    install_userdata])
 
     tenant = get_test_tenant('userdata_{}'.format(os_name), manager, cfy)
-
-    # TODO: When other install method needed, change
-    if True:
-        install_method = 'init_script'
 
     inputs = {
         'image': attributes['{os}_image_name'.format(os=os_name)],
