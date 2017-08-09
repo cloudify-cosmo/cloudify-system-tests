@@ -15,7 +15,6 @@
 
 import os
 import time
-import uuid
 
 from cloudify import constants
 from cloudify.compute import create_multi_mimetype_userdata
@@ -47,6 +46,10 @@ def test_ubuntu_14_04_agent_reboot(cfy, manager, attributes):
 
 def test_centos_7_agent_reboot(cfy, manager, attributes):
     _test_agent_alive_after_reboot(cfy, manager, attributes, 'centos_7')
+
+def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
+
+    _test_agent_alive_after_reboot(cfy, manager, attributes, 'windows_2012')
 
 
 # Two different tests for ubuntu/centos
@@ -92,6 +95,64 @@ def test_ubuntu_trusty_provided_userdata_agent(cfy,
             name=name,
             install_userdata=install_userdata)
 """
+
+
+def test_windows_provided_userdata_agent(cfy,
+                                         manager,
+                                         attributes,
+                                         tmpdir,
+                                         logger):
+    name = 'cloudify_agent'
+    install_userdata = install_script(
+            name=name,
+            windows=True,
+            user=attributes.windows_2012_username,
+            manager=manager,
+            attributes=attributes,
+            tmpdir=tmpdir,
+            logger=logger)
+    test_windows_userdata_agent(
+            cfy,
+            manager,
+            attributes,
+            install_method='provided',
+            name=name,
+            install_userdata=install_userdata)
+
+
+def test_windows_userdata_agent(cfy,
+                                manager,
+                                attributes,
+                                install_method='init_script',
+                                name=None,
+                                install_userdata=None,
+                                os_name='windows_2012'):
+    user = attributes.windows_2012_username
+    file_path = 'C:\\Users\\{0}\\test_file'.format(user)
+    userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
+            EXPECTED_FILE_CONTENT, file_path)
+    if install_userdata:
+        userdata = create_multi_mimetype_userdata([userdata,
+                                                   install_userdata])
+        tenant = get_test_tenant('inst_userdata_{}'.format(os_name),
+                                 manager, cfy)
+    else:
+        tenant = get_test_tenant('userdata_{}'.format(os_name), manager, cfy)
+
+    inputs = {
+        'image': attributes.windows_2012_image_name,
+        'user': user,
+        'flavor': attributes.medium_flavor_name,
+        'os_family': 'windows',
+        'userdata': userdata,
+        'file_path': file_path,
+        'install_method': install_method,
+        'name': name,
+        'keypair_name': attributes.keypair_name,
+        'private_key_path': manager.remote_private_key_path,
+        'network_name': attributes.network_name
+    }
+    _test_userdata_agent(cfy, manager, inputs, tenant)
 
 
 def _test_agent(agent_type, cfy, manager, attributes):
@@ -175,91 +236,6 @@ def _test_agent_alive_after_reboot(cfy, manager, attributes, os_name):
             deployment_id=deployment_id,
         )[0]
     assert os_name == app.runtime_properties['value']
-
-
-def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
-
-    _test_agent_alive_after_reboot(
-            cfy,
-            manager,
-            attributes,
-            'windows_2012',
-    )
-
-
-# TODO: This looks like it can use one of the others... does it test anything not covered by the previous one?
-def _test_winrm_agent(cfy, manager, attributes, logger):
-    blueprint_path = util.get_resource_path(
-            'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
-    blueprint_id = deployment_id = str(uuid.uuid4())
-
-    manager.client.blueprints.upload(blueprint_path, blueprint_id)
-    manager.client.deployments.create(
-            deployment_id, blueprint_id, inputs={
-                'image': attributes.windows_2012_image_name,
-                'flavor': attributes.medium_flavor_name,
-                'user': attributes.windows_2012_username,
-                'network_name': attributes.network_name,
-                'private_key_path': manager.remote_private_key_path,
-                'keypair_name': attributes.keypair_name
-            }, skip_plugins_validation=True)
-    try:
-        cfy.executions.start.install(['-d', deployment_id])
-    finally:
-        cfy.executions.start.uninstall(['-d', deployment_id])
-
-# TODO: Modify
-def _test_windows_userdata_agent(cfy,
-                                manager,
-                                attributes,
-                                install_method='init_script',
-                                name=None,
-                                install_userdata=None):
-    user = attributes.windows_2012_username
-    file_path = 'C:\\Users\\{0}\\test_file'.format(user)
-    userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
-            EXPECTED_FILE_CONTENT, file_path)
-    if install_userdata:
-        userdata = create_multi_mimetype_userdata([userdata,
-                                                   install_userdata])
-    inputs = {
-        'image': attributes.windows_2012_image_name,
-        'user': user,
-        'flavor': attributes.medium_flavor_name,
-        'os_family': 'windows',
-        'userdata': userdata,
-        'file_path': file_path,
-        'install_method': install_method,
-        'name': name,
-        'keypair_name': attributes.keypair_name,
-        'private_key_path': manager.remote_private_key_path,
-        'network_name': attributes.network_name
-    }
-    _test_userdata_agent(cfy, manager, inputs)
-
-
-# TODO: Modify
-def _test_windows_provided_userdata_agent(cfy,
-                                         manager,
-                                         attributes,
-                                         tmpdir,
-                                         logger):
-    name = 'cloudify_agent'
-    install_userdata = install_script(
-            name=name,
-            windows=True,
-            user=attributes.windows_2012_username,
-            manager=manager,
-            attributes=attributes,
-            tmpdir=tmpdir,
-            logger=logger)
-    test_windows_userdata_agent(
-            cfy,
-            manager,
-            attributes,
-            install_method='provided',
-            name=name,
-            install_userdata=install_userdata)
 
 
 def _test_linux_userdata_agent(cfy, manager, attributes, os_name,
