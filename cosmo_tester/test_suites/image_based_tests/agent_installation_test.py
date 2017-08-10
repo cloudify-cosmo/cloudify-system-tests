@@ -31,7 +31,7 @@ manager = image_based_manager
 
 EXPECTED_FILE_CONTENT = 'CONTENT'
 
-"""
+
 def test_3_2_agent(cfy, manager, attributes):
     _test_agent('3_2', cfy, manager, attributes)
 
@@ -47,6 +47,7 @@ def test_ubuntu_14_04_agent_reboot(cfy, manager, attributes):
 def test_centos_7_agent_reboot(cfy, manager, attributes):
     _test_agent_alive_after_reboot(cfy, manager, attributes, 'centos_7')
 
+
 def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
 
     _test_agent_alive_after_reboot(cfy, manager, attributes, 'windows_2012')
@@ -56,19 +57,19 @@ def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
 # because of different disable requiretty logic
 def test_centos_core_userdata_agent(cfy, manager, attributes):
     _test_linux_userdata_agent(
-            cfy,
-            manager,
-            attributes,
-            os_name='centos_7',
+        cfy,
+        manager,
+        attributes,
+        os_name='centos_7',
     )
 
 
 def test_ubuntu_trusty_userdata_agent(cfy, manager, attributes):
     _test_linux_userdata_agent(
-            cfy,
-            manager,
-            attributes,
-            os_name='ubuntu_14_04',
+        cfy,
+        manager,
+        attributes,
+        os_name='ubuntu_14_04',
     )
 
 
@@ -87,14 +88,13 @@ def test_ubuntu_trusty_provided_userdata_agent(cfy,
                                       tmpdir=tmpdir,
                                       logger=logger)
     _test_linux_userdata_agent(
-            cfy,
-            manager,
-            attributes,
-            'ubuntu_14_04',
-            install_method='provided',
-            name=name,
-            install_userdata=install_userdata)
-"""
+        cfy,
+        manager,
+        attributes,
+        os_name,
+        install_method='provided',
+        name=name,
+        install_userdata=install_userdata)
 
 
 def test_windows_provided_userdata_agent(cfy,
@@ -104,20 +104,20 @@ def test_windows_provided_userdata_agent(cfy,
                                          logger):
     name = 'cloudify_agent'
     install_userdata = install_script(
-            name=name,
-            windows=True,
-            user=attributes.windows_2012_username,
-            manager=manager,
-            attributes=attributes,
-            tmpdir=tmpdir,
-            logger=logger)
+        name=name,
+        windows=True,
+        user=attributes.windows_2012_username,
+        manager=manager,
+        attributes=attributes,
+        tmpdir=tmpdir,
+        logger=logger)
     test_windows_userdata_agent(
-            cfy,
-            manager,
-            attributes,
-            install_method='provided',
-            name=name,
-            install_userdata=install_userdata)
+        cfy,
+        manager,
+        attributes,
+        install_method='provided',
+        name=name,
+        install_userdata=install_userdata)
 
 
 def test_windows_userdata_agent(cfy,
@@ -130,7 +130,7 @@ def test_windows_userdata_agent(cfy,
     user = attributes.windows_2012_username
     file_path = 'C:\\Users\\{0}\\test_file'.format(user)
     userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
-            EXPECTED_FILE_CONTENT, file_path)
+        EXPECTED_FILE_CONTENT, file_path)
     if install_userdata:
         userdata = create_multi_mimetype_userdata([userdata,
                                                    install_userdata])
@@ -169,11 +169,11 @@ def _test_agent(agent_type, cfy, manager, attributes):
     with set_client_tenant(manager, tenant):
         manager.client.blueprints.upload(blueprint_path, blueprint_id)
         manager.client.deployments.create(
-                deployment_id, blueprint_id, inputs={
-                    'ip_address': manager.ip_address,
-                    'user': attributes.centos_7_username,
-                    'private_key_path': manager.remote_private_key_path
-                }, skip_plugins_validation=True)
+            deployment_id, blueprint_id, inputs={
+                'ip_address': manager.ip_address,
+                'user': attributes.centos_7_username,
+                'private_key_path': manager.remote_private_key_path
+            }, skip_plugins_validation=True)
     try:
         cfy.executions.start.install(['-d', deployment_id,
                                       '--tenant-name', tenant])
@@ -212,21 +212,21 @@ def _test_agent_alive_after_reboot(cfy, manager, attributes, os_name):
     with set_client_tenant(manager, tenant):
         manager.client.blueprints.upload(blueprint_path, blueprint_id)
         manager.client.deployments.create(
-                deployment_id,
-                blueprint_id,
-                inputs=inputs,
-                skip_plugins_validation=True)
+            deployment_id,
+            blueprint_id,
+            inputs=inputs,
+            skip_plugins_validation=True)
 
     try:
         cfy.executions.start.install(['-d', deployment_id,
                                       '--tenant-name', tenant])
         cfy.executions.start.execute_operation(
-                deployment_id=deployment_id,
-                parameters={
-                    'operation': 'cloudify.interfaces.reboot_test.reboot',
-                    'node_ids': ['host']
-                },
-                tenant_name=tenant)
+            deployment_id=deployment_id,
+            parameters={
+                'operation': 'cloudify.interfaces.reboot_test.reboot',
+                'node_ids': ['host']
+            },
+            tenant_name=tenant)
     finally:
         cfy.executions.start.uninstall(['-d', deployment_id,
                                         '--tenant-name', tenant])
@@ -243,7 +243,7 @@ def _test_linux_userdata_agent(cfy, manager, attributes, os_name,
                                install_method='init_script'):
     file_path = '/tmp/test_file'
     userdata = '#! /bin/bash\necho {0} > {1}\nchmod 777 {1}'.format(
-            EXPECTED_FILE_CONTENT, file_path)
+        EXPECTED_FILE_CONTENT, file_path)
     if install_userdata:
         userdata = create_multi_mimetype_userdata([userdata,
                                                    install_userdata])
@@ -270,15 +270,15 @@ def _test_linux_userdata_agent(cfy, manager, attributes, os_name,
 def _test_userdata_agent(cfy, manager, inputs, tenant):
     blueprint_id = deployment_id = 'userdata{0}'.format(time.time())
     blueprint_path = util.get_resource_path(
-            'agent/userdata-agent-blueprint/userdata-agent-blueprint.yaml')
+        'agent/userdata-agent-blueprint/userdata-agent-blueprint.yaml')
 
     with set_client_tenant(manager, tenant):
         manager.client.blueprints.upload(blueprint_path, blueprint_id)
         manager.client.deployments.create(
-                deployment_id,
-                blueprint_id,
-                inputs=inputs,
-                skip_plugins_validation=True)
+            deployment_id,
+            blueprint_id,
+            inputs=inputs,
+            skip_plugins_validation=True)
 
     cfy.executions.start.install(['-d', deployment_id,
                                   '--tenant-name', tenant])
@@ -309,23 +309,23 @@ def install_script(name, windows, user, manager, attributes, tmpdir, logger):
         constants.REST_PORT_KEY: str(defaults.INTERNAL_REST_PORT),
         constants.BROKER_SSL_CERT_PATH: local_cert_path,
         constants.LOCAL_REST_CERT_FILE_KEY: local_cert_path,
-        constants.MANAGER_FILE_SERVER_URL_KEY:
+        constants.MANAGER_FILE_SERVER_URL_KEY: (
             'https://{0}:{1}/resources'.format(manager.private_ip_address,
                                                defaults.INTERNAL_REST_PORT),
-        constants.MANAGER_FILE_SERVER_ROOT_KEY: str(tmpdir)
+        constants.MANAGER_FILE_SERVER_ROOT_KEY: str(tmpdir),
     }
     (tmpdir / 'cloudify_agent').mkdir()
 
     ctx = MockCloudifyContext(
-            node_id='node',
-            properties={'agent_config': {
-                'user': user,
-                'windows': windows,
-                'install_method': 'provided',
-                'rest_host': manager.private_ip_address,
-                'broker_ip': manager.private_ip_address,
-                'name': name
-            }})
+        node_id='node',
+        properties={'agent_config': {
+            'user': user,
+            'windows': windows,
+            'install_method': 'provided',
+            'rest_host': manager.private_ip_address,
+            'broker_ip': manager.private_ip_address,
+            'name': name
+        }})
     internal_ctx_dict = getattr(ctx, '_context')
     internal_ctx_dict.update({
         'rest_token': manager.client.tokens.get().value,
