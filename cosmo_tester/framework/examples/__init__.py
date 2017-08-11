@@ -48,6 +48,7 @@ class AbstractExample(testtools.TestCase):
         self.verify_metrics = True
         self.skip_plugins_validation = False
         self.tenant = tenant
+        self.suffix = suffix
 
     @property
     def blueprint_file(self):
@@ -144,7 +145,11 @@ class AbstractExample(testtools.TestCase):
     def clone_example(self):
         if not self._cloned_to:
             self._cloned_to = git_helper.clone(self.REPOSITORY_URL,
-                                               str(self.tmpdir),
+                                               os.path.join(
+                                                   str(self.tmpdir),
+                                                   'examples',
+                                                   self.suffix,
+                                               ),
                                                branch=self.branch)
 
     def cleanup(self):
