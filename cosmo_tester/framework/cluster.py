@@ -13,13 +13,14 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-from abc import ABCMeta, abstractproperty
-
-import os
 import json
+import os
+import subprocess
 import uuid
-from urllib import urlretrieve
+from abc import ABCMeta, abstractproperty
 from contextlib import contextmanager
+from tempfile import mkdtemp
+from urllib import urlretrieve
 
 import jinja2
 import retrying
@@ -105,18 +106,52 @@ class _CloudifyManager(object):
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
 
+    def build_plugin_wagon(self, plugin_path):
+        """
+        Build a wagon (on the manager, so the correct platform is used)
+        """
+        with self.ssh() as fabric_ssh:
+            plugin_dir = os.path.basename(plugin_path)
+            wagon_dir = fabric_ssh.run('mkdtemp')
+
+            fabric_ssh.put(
+                plugin_path,
+                plugin_dir,
+                )
+            fabric_ssh.run(
+                'wagon create'
+                ' -s "{plugin_dir}"'
+                ' -o "{wagon_dir}"'
+                ' -v'
+                .format(
+                    plugin_path=plugin_path,
+                    wagon_dir=wagon_dir,
+                    )
+            )
+            files = fabric_ssh.run(
+                'find "{wagon_dir}"'.format(wagon_dir=wagon_dir)
+                ).splitlines()
+            if len(files) != 1:
+                raise RuntimeError(
+                    "unexpected files in tmpdir: {files}".format(files=files))
+            return files[0]
+
     def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
         plugins_list = util.get_plugin_wagon_urls()
         plugin_wagon = [
             x['wgn_url'] for x in plugins_list
             if x['name'] == plugin_name]
         if len(plugin_wagon) != 1:
-            self._logger.error(
-                    '%s plugin wagon not found in:%s%s',
-                    plugin_name,
-                    os.linesep,
-                    json.dumps(plugins_list, indent=2))
-            raise RuntimeError(
+            plugin_path = os.path.join(__file__, '../resources', plugin_name)
+            if os.path.isdir(plugin_path):
+                plugin_wagon = [build_plugin_wagon(plugin_path)]
+            else:
+                self._logger.error(
+                        '%s plugin wagon not found in:%s%s',
+                        plugin_name,
+                        os.linesep,
+                        json.dumps(plugins_list, indent=2))
+                raise RuntimeError(
                     '{} plugin not found in wagons list'.format(plugin_name))
         self._logger.info('Uploading %s plugin [%s] to %s..',
                           plugin_name,
