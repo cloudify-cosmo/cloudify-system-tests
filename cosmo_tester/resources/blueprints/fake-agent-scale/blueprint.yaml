@@ -1,0 +1,9 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+import:
+  - fake-agent-plugin.yaml
+
+
+node_templates:
+  fake_node:
+    type: cloudify.fakeload.nodes.Instance

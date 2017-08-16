@@ -13,8 +13,19 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import os
+
 from cosmo_tester.framework.fixtures import image_based_manager as manager
 
 
 def test_manager_agent_scaling(manager):
     manager.upload_plugin('agent/plugins/fake-load-plugin')
+
+    manager.client.upload_blueprint(
+            os.path.join(
+                os.path.dirname(__file__),
+                '../../resources/blueprints/',
+                'fake-agent-scale',
+                'blueprint.yaml'),
+            'fake-agent-blueprint',
+            )
