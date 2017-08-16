@@ -4,10 +4,16 @@ cloudify_username: admin
 cloudify_password: admin
 cloudify_tenant: default_tenant
 
+# If the latest image name is not set, the latest image name will be generated
+# based on the image name prefix and the currently installed CLI version
+# e.g. cloudify-manager-premium-4.2.dev1
+cloudify_manager_latest_image: ''
 cloudify_manager_image_name_prefix: cloudify-manager-premium
+cloudify_manager_4_1_image_name: cloudify-manager-premium-4.1
 cloudify_manager_4_0_1_image_name: cloudify-manager-premium-4.0.1
 cloudify_manager_4_0_image_name: cloudify-manager-premium-4.0
 cloudify_manager_3_4_2_image_name: manager3.4.2-insecure-image
+notmanager_image_name: CentOS-7-x86_64-GenericCloud-1608
 
 centos7_username: centos
 centos7_image_name: CentOS-7-x86_64-GenericCloud-1608
@@ -33,5 +39,6 @@ external_gateway: GATEWAY_NET
 large_flavor_name: m1.large
 medium_flavor_name: m1.medium
 small_flavor_name: m1.small
+manager_server_flavor_name: m1.medium
 
 LOCAL_REST_CERT_FILE: '/etc/cloudify/ssl/cloudify_internal_cert.pem'

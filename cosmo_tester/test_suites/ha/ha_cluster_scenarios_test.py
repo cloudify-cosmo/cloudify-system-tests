@@ -14,6 +14,8 @@
 #    * limitations under the License.
 
 import pytest
+import time
+
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.cluster import CloudifyCluster
 from .ha_helper import HighAvailabilityHelper as ha_helper
@@ -128,11 +130,11 @@ def test_delete_manager_node(cfy, cluster, hello_world,
                              logger):
     ha_helper.set_active(cluster.managers[1], cfy, logger)
     expected_master = cluster.managers[0]
-
     for manager in cluster.managers[1:]:
         logger.info('Deleting manager %s', manager.ip_address)
         manager.delete()
-        ha_helper.wait_leader_election(logger)
+        ha_helper.wait_leader_election(
+            [m for m in cluster.managers if not m.deleted], logger)
 
     logger.info('Expected leader %s', expected_master)
     ha_helper.verify_nodes_status(expected_master, cfy, logger)
@@ -141,36 +143,48 @@ def test_delete_manager_node(cfy, cluster, hello_world,
 
 def test_failover(cfy, cluster, hello_world,
                   logger):
+    """Test that the cluster fails over in case of a service failure
+
+    - stop nginx on leader
+    - check that a new leader is elected
+    - stop mgmtworker on that new leader, and restart nginx on the former
+    - check that the original leader was elected
+    """
+    expected_master = cluster.managers[-1]
+    # stop nginx on all nodes except last - force choosing the last as the
+    # leader (because only the last one has services running)
     for manager in cluster.managers[:-1]:
         logger.info('Simulating manager %s failure by stopping'
                     ' nginx service', manager.ip_address)
         with manager.ssh() as fabric:
             fabric.run('sudo systemctl stop nginx')
-        ha_helper.wait_leader_election(logger)
+        # wait for checks to notice the service failure
+        time.sleep(20)
+        ha_helper.wait_leader_election(cluster.managers, logger)
         cfy.cluster.nodes.list()
 
-    expected_master = cluster.managers[-1]
-    ha_helper.delete_active_profile()
-    expected_master.use()
     ha_helper.verify_nodes_status(expected_master, cfy, logger)
+
+    new_expected_master = cluster.managers[0]
+    # force going back to the original leader - start nginx on it, and
+    # stop mgmtworker on the current leader (simulating failure)
+    with new_expected_master.ssh() as fabric:
+        logger.info('Starting nginx service on manager %s',
+                    new_expected_master.ip_address)
+        fabric.run('sudo systemctl start nginx')
 
     with expected_master.ssh() as fabric:
         logger.info('Simulating manager %s failure by stopping '
                     'cloudify-mgmtworker service',
                     expected_master.ip_address)
         fabric.run('sudo systemctl stop cloudify-mgmtworker')
-    ha_helper.wait_leader_election(logger)
+
+    # wait for checks to notice the service failure
+    time.sleep(20)
+    ha_helper.wait_leader_election(cluster.managers, logger)
     cfy.cluster.nodes.list()
 
-    expected_master = cluster.managers[0]
-    logger.info('Starting nginx service on manager %s',
-                expected_master.ip_address)
-    with expected_master.ssh() as fabric:
-        fabric.run('sudo systemctl start nginx')
-    ha_helper.wait_leader_election(logger)
-    ha_helper.delete_active_profile()
-    expected_master.use()
-    ha_helper.verify_nodes_status(expected_master, cfy, logger)
+    ha_helper.verify_nodes_status(new_expected_master, cfy, logger)
     hello_world.upload_blueprint()
 
 
@@ -179,14 +193,16 @@ def test_remove_manager_from_cluster(cfy, cluster, hello_world,
     ha_helper.set_active(cluster.managers[1], cfy, logger)
     ha_helper.delete_active_profile()
 
+    expected_master = cluster.managers[0]
+    nodes_to_check = list(cluster.managers)
     for manager in cluster.managers[1:]:
         manager.use()
         logger.info('Removing the manager %s from HA cluster',
                     manager.ip_address)
         cfy.cluster.nodes.remove(manager.ip_address)
-        ha_helper.wait_leader_election(logger)
+        nodes_to_check.remove(manager)
+        ha_helper.wait_leader_election(nodes_to_check, logger)
 
-    expected_master = cluster.managers[0]
     ha_helper.delete_active_profile()
     expected_master.use()
 
