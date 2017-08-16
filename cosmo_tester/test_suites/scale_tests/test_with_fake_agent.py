@@ -17,6 +17,4 @@ from cosmo_tester.framework.fixtures import image_based_manager as manager
 
 
 def test_manager_agent_scaling(manager):
-    manager = manager[0]
-
     manager.upload_plugin('agent/plugins/fake-load-plugin')

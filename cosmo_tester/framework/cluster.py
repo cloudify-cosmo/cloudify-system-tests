@@ -15,11 +15,9 @@
 
 import json
 import os
-import subprocess
 import uuid
 from abc import ABCMeta, abstractproperty
 from contextlib import contextmanager
-from tempfile import mkdtemp
 from urllib import urlretrieve
 
 import jinja2
@@ -37,6 +35,7 @@ from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
+REMOTE_WAGON_PATH = '/opt/mgmtworker/env/bin/wagon'
 
 MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
 RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-dev/master/scripts/rsync.sh'  # NOQA
@@ -113,24 +112,24 @@ class _CloudifyManager(object):
         """
         with self.ssh() as fabric_ssh:
             plugin_dir = os.path.basename(plugin_path)
-            wagon_dir = fabric_ssh.run('mkdtemp')
+            wagon_dir = fabric_ssh.run('mktemp -d')
 
             fabric_ssh.put(
                 plugin_path,
-                plugin_dir,
                 )
+            fabric_ssh.sudo('yum install -y gcc python-devel')
             fabric_ssh.run(
-                'wagon create'
-                ' -s "{plugin_dir}"'
+                REMOTE_WAGON_PATH + ' create'
+                ' -s "{plugin_dir}/"'
                 ' -o "{wagon_dir}"'
                 ' -v'
                 .format(
-                    plugin_path=plugin_path,
+                    plugin_dir=plugin_dir,
                     wagon_dir=wagon_dir,
                     )
             )
             files = fabric_ssh.run(
-                'find "{wagon_dir}"'.format(wagon_dir=wagon_dir)
+                'find "{wagon_dir}" -mindepth 1'.format(wagon_dir=wagon_dir)
                 ).splitlines()
             if len(files) != 1:
                 raise RuntimeError(
@@ -143,9 +142,12 @@ class _CloudifyManager(object):
             x['wgn_url'] for x in plugins_list
             if x['name'] == plugin_name]
         if len(plugin_wagon) != 1:
-            plugin_path = os.path.join(__file__, '../resources', plugin_name)
+            plugin_path = os.path.join(
+                    os.path.dirname(__file__),
+                    '../resources',
+                    plugin_name)
             if os.path.isdir(plugin_path):
-                plugin_wagon = [build_plugin_wagon(plugin_path)]
+                plugin_wagon = [self.build_plugin_wagon(plugin_path)]
             else:
                 self._logger.error(
                         '%s plugin wagon not found in:%s%s',
