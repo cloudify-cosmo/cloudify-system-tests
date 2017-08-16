@@ -131,7 +131,7 @@ def test_data_replication(cfy, cluster, hello_worlds,
     manager1.use()
 
 
-def _test_set_active(cfy, cluster,
+def test_set_active(cfy, cluster,
                     logger):
     manager1 = cluster.managers[0]
     ha_helper.delete_active_profile()
@@ -145,7 +145,7 @@ def _test_set_active(cfy, cluster,
         ha_helper.verify_nodes_status(manager, cfy, logger)
 
 
-def _test_delete_manager_node(cfy, cluster, hello_worlds,
+def test_delete_manager_node(cfy, cluster, hello_worlds,
                              logger):
     ha_helper.set_active(cluster.managers[1], cfy, logger)
     expected_master = cluster.managers[0]
@@ -160,7 +160,7 @@ def _test_delete_manager_node(cfy, cluster, hello_worlds,
     _test_hellos(hello_worlds)
 
 
-def _test_failover(cfy, cluster, hello_worlds,
+def test_failover(cfy, cluster, hello_worlds,
                   logger):
     """Test that the cluster fails over in case of a service failure
 
@@ -208,7 +208,7 @@ def _test_failover(cfy, cluster, hello_worlds,
     _test_hellos(hello_worlds)
 
 
-def _test_remove_manager_from_cluster(cfy, cluster, hello_worlds,
+def test_remove_manager_from_cluster(cfy, cluster, hello_worlds,
                                      logger):
     ha_helper.set_active(cluster.managers[1], cfy, logger)
     ha_helper.delete_active_profile()
@@ -230,18 +230,14 @@ def _test_remove_manager_from_cluster(cfy, cluster, hello_worlds,
     _test_hellos(hello_worlds)
 
 
-# TODO: Not tested yet
 @community_skip
-def _test_uninstall_dep(cfy, cluster, hello_worlds,
+def test_uninstall_dep(cfy, cluster, hello_worlds,
                        logger):
     manager1 = cluster.managers[0]
     ha_helper.delete_active_profile()
     manager1.use()
     ha_helper.verify_nodes_status(manager1, cfy, logger)
     _test_hellos(hello_worlds, install=True)
-    hello_world.upload_blueprint()
-    hello_world.create_deployment()
-    hello_world.install()
 
     manager2 = cluster.managers[-1]
     ha_helper.set_active(manager2, cfy, logger)
