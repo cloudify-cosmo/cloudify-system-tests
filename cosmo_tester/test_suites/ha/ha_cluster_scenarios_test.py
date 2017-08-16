@@ -18,6 +18,7 @@ import time
 
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.cluster import CloudifyCluster
+from cosmo_tester.framework.util import get_test_tenant
 from .ha_helper import HighAvailabilityHelper as ha_helper
 from . import skip_community
 
@@ -27,7 +28,9 @@ from . import skip_community
 pytestmark = skip_community
 
 
-@pytest.fixture(scope='function', params=[2, 3])
+@pytest.fixture(scope='function', #params=[2, 3])
+                params=[2])
+                #params=[3])
 def cluster(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a HA cluster from an image in rackspace OpenStack."""
@@ -71,31 +74,41 @@ def cluster(
 
 
 @pytest.fixture(scope='function')
-def hello_world(cfy, cluster, attributes, ssh_key, tmpdir, logger):
-    hw = HelloWorldExample(
-        cfy, cluster.managers[0], attributes, ssh_key, logger, tmpdir)
-    hw.blueprint_file = 'openstack-blueprint.yaml'
-    hw.inputs.update({
-        'agent_user': attributes.centos7_username,
-        'image': attributes.centos7_image_name,
-    })
+def hello_worlds(cfy, cluster, attributes, ssh_key, tmpdir, logger):
+    # Pick a manager to operate on, and trust the cluster to work with us
+    manager = cluster.managers[0]
 
-    yield hw
-    if hw.cleanup_required:
-        logger.info('Hello world cleanup required..')
-        cluster.managers[0].use()
-        hw.cleanup()
+    hws = []
+    for i in range(0, 2):
+        tenant = get_test_tenant('clusterhello{num}'.format(num=i),
+                                 manager, cfy)
+        hw = HelloWorldExample(
+            cfy, manager, attributes, ssh_key, logger, tmpdir,
+            tenant=tenant, suffix=str(i),
+        )
+        hw.blueprint_file = 'openstack-blueprint.yaml'
+        hw.inputs.update({
+            'agent_user': attributes.centos_7_username,
+            'image': attributes.centos_7_image_name,
+        })
+        hws.append(hw)
 
 
-def test_data_replication(cfy, cluster, hello_world,
+    yield hws
+    for hw in hws:
+        if hw.cleanup_required:
+            logger.info('Cleaning up hello world...')
+            manager.use()
+            hw.cleanup()
+
+
+def test_data_replication(cfy, cluster, hello_worlds,
                           logger):
     manager1 = cluster.managers[0]
     ha_helper.delete_active_profile()
     manager1.use()
     ha_helper.verify_nodes_status(manager1, cfy, logger)
-    hello_world.upload_blueprint()
-    hello_world.create_deployment()
-    hello_world.install()
+    _test_hellos(hello_worlds, install=True)
 
     logger.info('Manager %s resources', manager1.ip_address)
     m1_blueprints_list = cfy.blueprints.list()
@@ -118,7 +131,7 @@ def test_data_replication(cfy, cluster, hello_world,
     manager1.use()
 
 
-def test_set_active(cfy, cluster,
+def _test_set_active(cfy, cluster,
                     logger):
     manager1 = cluster.managers[0]
     ha_helper.delete_active_profile()
@@ -132,7 +145,7 @@ def test_set_active(cfy, cluster,
         ha_helper.verify_nodes_status(manager, cfy, logger)
 
 
-def test_delete_manager_node(cfy, cluster, hello_world,
+def _test_delete_manager_node(cfy, cluster, hello_worlds,
                              logger):
     ha_helper.set_active(cluster.managers[1], cfy, logger)
     expected_master = cluster.managers[0]
@@ -144,10 +157,10 @@ def test_delete_manager_node(cfy, cluster, hello_world,
 
     logger.info('Expected leader %s', expected_master)
     ha_helper.verify_nodes_status(expected_master, cfy, logger)
-    hello_world.upload_blueprint()
+    _test_hellos(hello_worlds)
 
 
-def test_failover(cfy, cluster, hello_world,
+def _test_failover(cfy, cluster, hello_worlds,
                   logger):
     """Test that the cluster fails over in case of a service failure
 
@@ -191,10 +204,11 @@ def test_failover(cfy, cluster, hello_world,
     cfy.cluster.nodes.list()
 
     ha_helper.verify_nodes_status(new_expected_master, cfy, logger)
-    hello_world.upload_blueprint()
+
+    _test_hellos(hello_worlds)
 
 
-def test_remove_manager_from_cluster(cfy, cluster, hello_world,
+def _test_remove_manager_from_cluster(cfy, cluster, hello_worlds,
                                      logger):
     ha_helper.set_active(cluster.managers[1], cfy, logger)
     ha_helper.delete_active_profile()
@@ -213,15 +227,18 @@ def test_remove_manager_from_cluster(cfy, cluster, hello_world,
     expected_master.use()
 
     ha_helper.verify_nodes_status(expected_master, cfy, logger)
-    hello_world.upload_blueprint()
+    _test_hellos(hello_worlds)
 
 
-def test_uninstall_dep(cfy, cluster, hello_world,
+# TODO: Not tested yet
+@community_skip
+def _test_uninstall_dep(cfy, cluster, hello_worlds,
                        logger):
     manager1 = cluster.managers[0]
     ha_helper.delete_active_profile()
     manager1.use()
     ha_helper.verify_nodes_status(manager1, cfy, logger)
+    _test_hellos(hello_worlds, install=True)
     hello_world.upload_blueprint()
     hello_world.create_deployment()
     hello_world.install()
@@ -230,4 +247,13 @@ def test_uninstall_dep(cfy, cluster, hello_world,
     ha_helper.set_active(manager2, cfy, logger)
     ha_helper.delete_active_profile()
     manager2.use()
-    hello_world.uninstall()
+    for hello_world in hello_worlds:
+        hello_world.uninstall()
+
+
+def _test_hellos(hello_worlds, install=False):
+    for hello_world in hello_worlds:
+        hello_world.upload_blueprint()
+        if install:
+            hello_world.create_deployment()
+            hello_world.install()
