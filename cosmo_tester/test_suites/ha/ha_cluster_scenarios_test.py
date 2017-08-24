@@ -20,6 +20,8 @@ from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.cluster import CloudifyCluster
 from .ha_helper import HighAvailabilityHelper as ha_helper
 
+from cloudify_rest_client.exceptions import NotClusterMaster
+
 
 @pytest.fixture(scope='function', params=[2, 3])
 def cluster(
@@ -225,3 +227,24 @@ def test_uninstall_dep(cfy, cluster, hello_world,
     ha_helper.delete_active_profile()
     manager2.use()
     hello_world.uninstall()
+
+
+def test_stress_nginx(cfy, cluster, hello_world, logger):
+    for _ in range(100):
+        master = _find_master(cluster.managers)
+        with master.ssh() as fabric:
+            fabric.sudo('systemctl stop nginx')
+            time.sleep(20)
+            ha_helper.wait_leader_election(cluster.managers, logger)
+            fabric.sudo('systemctl start nginx')
+        ha_helper.wait_nodes_online(cluster.managers, logger)
+
+
+def _find_master(managers):
+    for manager in managers:
+        try:
+            manager.client.cluster.nodes.list()
+        except NotClusterMaster:
+            continue
+        else:
+            return manager
