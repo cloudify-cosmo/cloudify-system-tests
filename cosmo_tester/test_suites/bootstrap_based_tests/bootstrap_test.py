@@ -15,12 +15,9 @@
 
 from cosmo_tester.framework.fixtures import bootstrap_based_manager
 
-from . import hello_worlds  # noqa (pytest fixture imported)
-
-
 manager = bootstrap_based_manager
 
 
-def test_manager_bootstrap_and_deployment(hello_worlds, attributes):  # noqa (pytest fixture, not redefinition of hello_worlds)
+def test_manager_bootstrap_and_deployment(hello_worlds, attributes):
     for hello in hello_worlds:
         hello.verify_all()

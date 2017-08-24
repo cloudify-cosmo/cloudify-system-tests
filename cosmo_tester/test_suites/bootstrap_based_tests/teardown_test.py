@@ -17,13 +17,11 @@ import pytest
 
 from cosmo_tester.framework.cluster import CloudifyCluster
 
-from . import hello_worlds  # noqa (pytest fixture imported)
-
 
 pre_bootstrap_state = None
 
 
-def test_teardown(cfy, manager, hello_worlds):  # noqa (pytest fixture, not redefinition of hello_worlds)
+def test_teardown(cfy, manager, hello_worlds):
     cfy.teardown('-f')
     current_state = _get_system_state(manager)
     diffs = {}
