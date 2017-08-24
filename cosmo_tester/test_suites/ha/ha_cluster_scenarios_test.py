@@ -28,9 +28,7 @@ from . import skip_community
 pytestmark = skip_community
 
 
-@pytest.fixture(scope='function', #params=[2, 3])
-                params=[2])
-                #params=[3])
+@pytest.fixture(scope='function', params=[2, 3])
 def cluster(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a HA cluster from an image in rackspace OpenStack."""
@@ -92,7 +90,6 @@ def hello_worlds(cfy, cluster, attributes, ssh_key, tmpdir, logger):
             'image': attributes.centos_7_image_name,
         })
         hws.append(hw)
-
 
     yield hws
     for hw in hws:
@@ -230,7 +227,6 @@ def test_remove_manager_from_cluster(cfy, cluster, hello_worlds,
     _test_hellos(hello_worlds)
 
 
-@community_skip
 def test_uninstall_dep(cfy, cluster, hello_worlds,
                        logger):
     manager1 = cluster.managers[0]
