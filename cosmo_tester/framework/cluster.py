@@ -641,7 +641,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         bootstrap_inputs = json.dumps({
                 'public_ip': self.managers[0].ip_address,
                 'private_ip': self.managers[0].private_ip_address,
-                'ssh_user': self._attributes.centos7_username,
+                'ssh_user': self._attributes.centos_7_username,
                 'ssh_key_filename': self._ssh_key.private_key_path,
                 'admin_username': self._attributes.cloudify_username,
                 'admin_password': self._attributes.cloudify_password,
