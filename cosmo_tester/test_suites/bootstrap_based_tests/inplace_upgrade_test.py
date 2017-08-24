@@ -19,7 +19,8 @@ from time import sleep
 from os.path import join
 
 from cosmo_tester.framework.cluster import CloudifyCluster
-from cosmo_tester.framework.util import get_hello_worlds
+
+from . import get_hello_worlds
 
 
 @pytest.fixture(scope='module')
