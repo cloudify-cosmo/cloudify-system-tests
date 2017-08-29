@@ -1,6 +1,7 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
-import:
+imports:
+  - http://www.getcloudify.org/spec/cloudify/4.2.dev1/types.yaml
   - fake-agent-plugin.yaml
 
 

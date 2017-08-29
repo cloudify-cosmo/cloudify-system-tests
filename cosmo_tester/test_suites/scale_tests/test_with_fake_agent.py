@@ -14,18 +14,24 @@
 #    * limitations under the License.
 
 import os
+import shutil
 
 from cosmo_tester.framework.fixtures import image_based_manager as manager
 
 
 def test_manager_agent_scaling(manager):
+    blueprint_dir = os.path.join(
+        os.path.dirname(__file__),
+        '../../resources/blueprints/',
+        'fake-agent-scale',
+        )
     manager.upload_plugin('agent/plugins/fake-load-plugin')
 
+    shutil.copy2(
+        "../../resources/agent/plugins/fake-load-plugin/plugin.yaml",
+        blueprint_dir,
+        )
     manager.client.blueprints.upload(
-            os.path.join(
-                os.path.dirname(__file__),
-                '../../resources/blueprints/',
-                'fake-agent-scale',
-                'blueprint.yaml'),
+            os.path.join(blueprint_dir, 'blueprint.yaml'),
             'fake-agent-blueprint',
             )
