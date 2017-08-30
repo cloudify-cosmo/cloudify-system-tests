@@ -28,8 +28,10 @@ def test_manager_agent_scaling(manager):
     manager.upload_plugin('agent/plugins/fake-load-plugin')
 
     shutil.copy2(
-        os.path.dirname(__file__),
-        "../../resources/agent/plugins/fake-load-plugin/plugin.yaml",
+        os.path.join(
+            os.path.dirname(__file__),
+            "../../resources/agent/plugins/fake-load-plugin/plugin.yaml",
+        ),
         blueprint_dir,
         )
     manager.client.blueprints.upload(
