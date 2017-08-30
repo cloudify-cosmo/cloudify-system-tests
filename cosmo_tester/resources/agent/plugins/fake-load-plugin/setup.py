@@ -2,7 +2,7 @@
 from setuptools import setup
 
 
-version = "0.1"
+version = "4.1"
 
 
 install_requires = [
