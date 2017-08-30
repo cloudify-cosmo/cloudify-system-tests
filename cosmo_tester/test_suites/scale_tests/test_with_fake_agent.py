@@ -19,7 +19,11 @@ import shutil
 from cosmo_tester.framework.fixtures import image_based_manager as manager
 
 
-def test_manager_agent_scaling(manager):
+BLUEPRINT = 'fake-agent-blueprint'
+DEPLOYMENT = 'fake-agent-deployment'
+
+
+def test_manager_agent_scaling(cfy, manager):
     blueprint_dir = os.path.join(
         os.path.dirname(__file__),
         '../../resources/blueprints/',
@@ -38,3 +42,10 @@ def test_manager_agent_scaling(manager):
             os.path.join(blueprint_dir, 'blueprint.yaml'),
             'fake-agent-blueprint',
             )
+
+    manager.client.deployments.create(
+            BLUEPRINT,
+            DEPLOYMENT,
+            )
+
+    cfy.executions.start.install(['-d', DEPLOYMENT])
