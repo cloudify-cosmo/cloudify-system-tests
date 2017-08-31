@@ -117,7 +117,7 @@ class _CloudifyManager(object):
             fabric_ssh.put(
                 plugin_path,
                 )
-            fabric_ssh.sudo('yum install -y gcc python-devel')
+            fabric_ssh.sudo('yum install -y gcc python-devel git')
             fabric_ssh.run(
                 REMOTE_WAGON_PATH + ' create'
                 ' -s "{plugin_dir}/"'
