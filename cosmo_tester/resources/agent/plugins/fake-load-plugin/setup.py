@@ -6,6 +6,7 @@ version = "4.1"
 
 
 install_requires = [
+    "cloudify-agent=={version}",
     "cloudify-plugins-common=={version}",
     "flask",
     "kombu",
