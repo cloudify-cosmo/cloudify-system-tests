@@ -122,7 +122,8 @@ class _CloudifyManager(object):
                 REMOTE_WAGON_PATH + ' create'
                 ' -s "{plugin_dir}/"'
                 ' -o "{wagon_dir}"'
-                ' -v'
+                ' --with-requirements'
+                ' --verbose'
                 .format(
                     plugin_dir=plugin_dir,
                     wagon_dir=wagon_dir,
