@@ -33,6 +33,7 @@ import retrying
 import sh
 import yaml
 
+import boto3
 from openstack import connection as openstack_connection
 from path import path, Path
 
@@ -557,3 +558,150 @@ def prepare_and_get_test_tenant(test_param, manager, cfy):
         manager.upload_plugin('openstack_centos_core',
                               tenant_name=tenant)
     return tenant
+
+
+def get_platform_details():
+    platform = get_attributes()['platform']
+
+    platform_details = {
+        'aws': {
+            'image_name_suffix': 'ami',
+            'terraform_template_path': get_resource_path(
+                'terraform/aws-vm.tf.template',
+            ),
+            'required_envvars': [
+                'AWS_ACCESS_KEY_ID',
+                'AWS_SECRET_ACCESS_KEY',
+                'AWS_DEFAULT_REGION',
+            ],
+            'size': {
+                'manager': get_attributes()['aws_manager_server_flavor_name'],
+            },
+            'manager_image_key': 'aws_cloudify_manager_{version}_image_name',
+        },
+        'openstack': {
+            'image_name_suffix': 'image_name',
+            'terraform_template_path': get_resource_path(
+                'terraform/openstack-vm.tf.template',
+            ),
+            'required_envvars': [
+                # Because of the variety of ways to auth, we can't simply
+                # require username+password since userid can be used in place
+                # of username, and token can replace both. So we just check
+                # for the auth URL.
+                'OS_AUTH_URL',
+            ],
+            'size': {
+                'manager': get_attributes()['manager_server_flavor_name'],
+            },
+            'manager_image_key': 'cloudify_manager_{version}_image_name',
+        },
+    }
+
+    if platform not in platform_details:
+        raise ValueError(
+            '{platform} is not a valid platform. '
+            'Valid platforms are {platform_list}'.format(
+                platform=platform,
+                platform_list=', '.join(platform_details.keys()),
+            )
+        )
+
+    # Because we need to supply a specific arg we declare this here so that a
+    # test run for one platform doesn't try to also create the client for a
+    # different platform (and probably fail noisily).
+    if platform == 'aws':
+        client = boto3.client('ec2')
+    elif platform == 'openstack':
+        client = create_openstack_client()
+    # This will fail noisily for new platforms if a client isn't created.
+    # This is better than getting 10 minutes into testing and failing noisily
+    # there instead.
+    platform_details[platform]['client'] = client
+
+    return platform_details[platform]
+
+
+def get_manager_image_name(version):
+    key = get_platform_details()['manager_image_key'].format(version=version)
+    return get_attributes()[key]
+
+
+def get_image_name_suffix():
+    return get_platform_details()['image_name_suffix']
+
+
+def get_image_name(os_name):
+    image_key = '{os}_{suffix}'.format(
+        os=os_name,
+        suffix=get_image_name_suffix(),
+    )
+    return get_attributes()[image_key]
+
+
+def validate_platform_envvars():
+    expected = set(get_platform_details()['required_envvars'])
+    existing_env_vars = set(os.environ.keys())
+
+    missing = expected.difference(existing_env_vars)
+
+    if missing:
+        raise KeyError(
+            'Running tests on {platform} requires at least these missing env '
+            'vars to be set: {missing}'.format(
+                platform=get_attributes()['platform'],
+                missing=', '.join(missing)
+            )
+        )
+
+
+def delete_server(server_id, logger=logging):
+    platform = get_attributes()['platform']
+    client = get_platform_details()['client']
+
+    logger.info('Deleting server {id}'.format(id=server_id))
+    if platform == 'aws':
+        client.terminate_instances(InstanceIds=[server_id])
+    elif platform == 'openstack':
+        client.compute.delete_server(server_id)
+
+    wait_for_server_to_be_deleted(server_id)
+
+
+@retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
+def wait_for_server_to_be_deleted(server_id, logger=logging):
+    platform = get_attributes()['platform']
+    client = get_platform_details()['client']
+
+    logger.info(
+        'Waiting for server {id} to terminate...'.format(id=server_id)
+    )
+
+    server_status = None
+    terminated = False
+
+    if platform == 'aws':
+        result = client.describe_instances(InstanceIds=[server_id])
+        # As AWS keeps servers around for about an hour after termination, we
+        # should always get results here unless someone does something silly
+        # with pdb or sleeps
+        servers = result['Reservations'][0]['Instances']
+        server_status = servers[0]['State']['Name']
+        if server_status == 'terminated':
+            terminated = True
+    elif platform == 'openstack':
+        servers = [
+            server for server in client.compute.servers()
+            if server.id == server_id
+        ]
+        if servers:
+            server_status = servers[0].status
+        else:
+            terminated = True
+
+    if server_status:
+        logger.info(
+            'Server status: {status}'.format(status=server_status)
+        )
+    assert terminated
+    logger.info('Server {id} terminated'.format(id=server_id))

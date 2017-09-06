@@ -21,7 +21,11 @@ cloudify_manager_4_1_image_name: cloudify-manager-premium-4.1
 cloudify_manager_4_0_1_image_name: cloudify-manager-premium-4.0.1
 cloudify_manager_4_0_image_name: cloudify-manager-premium-4.0
 cloudify_manager_3_4_2_image_name: manager3.4.2-insecure-image
-notmanager_image_name: CentOS-7-x86_64-GenericCloud-1608
+aws_cloudify_manager_image_name_prefix: cloudify-manager-premium
+aws_cloudify_manager_4_1_image_name: "Cloudify-Enterprise-4.1"
+aws_cloudify_manager_4_0_1_image_name: "Cloudify-Enterprise-4.0.1"
+aws_cloudify_manager_4_0_image_name: "cloudify-manager-premium-4.0"
+aws_cloudify_manager_3_4_2_image_name: "Cloudify 3.4.2 Release"
 
 # Set URLs for each of the keys here to override the package URL for that OS
 cli_urls_override:
@@ -30,26 +34,42 @@ cli_urls_override:
   debian_cli_package_url: null
   osx_cli_package_url: null
 
+# This can be set to "openstack" or "aws" at the moment.
+# If set to openstack, you must source your openstack rc file (e.g. by running '. openstackrc')
+platform: "openstack"
+
 centos_7_username: centos
 centos_7_image_name: CentOS-7-x86_64-GenericCloud-1608
+# From: https://wiki.centos.org/Cloud/AWS
+centos_7_ami: "ami-0d063c6b"
 
 centos_6_username: centos
 centos_6_image_name: centos_6.6
+# From: https://wiki.centos.org/Cloud/AWS
+centos_6_ami: "eu-west-1"
 
 rhel_7_username: cloud-user
 rhel_7_image_name: rhel-guest-image-7.3-35.x86_64.qcow2
+# TODO: AMI
 
 rhel_6_username: cloud-user
 rhel_6_image_name: rhel-guest-image-6.9-120.x86_64.qcow2
+# TODO: AMI
 
 ubuntu_14_04_username: ubuntu
 ubuntu_14_04_image_name: 'Ubuntu 14.04.1 LTS Trusty Tahr (cloudimg)'
+# From: https://cloud-images.ubuntu.com/locator/ec2/
+ubuntu_14_04_ami: "ami-856b9bfc"
 
 ubuntu_16_04_username: ubuntu
 ubuntu_16_04_image_name: ubuntu_16.04_xenial_with_python
+# From: https://cloud-images.ubuntu.com/locator/ec2/
+ubuntu_16_04_ami: "ami-7cbb4805"
 
 windows_2012_username: Admin
 windows_2012_image_name: windows_server_2012_r2_standard_eval
+# From: https://aws.amazon.com/windows/resources/amis/
+windows_2012_ami: 
 
 floating_network_id: dda079ce-12cf-4309-879a-8e67aec94de4
 external_gateway: GATEWAY_NET
@@ -57,5 +77,7 @@ large_flavor_name: m1.large
 medium_flavor_name: m1.medium
 small_flavor_name: m1.small
 manager_server_flavor_name: m1.medium
+
+aws_manager_server_flavor_name: t2.medium
 
 LOCAL_REST_CERT_FILE: '/etc/cloudify/ssl/cloudify_internal_cert.pem'

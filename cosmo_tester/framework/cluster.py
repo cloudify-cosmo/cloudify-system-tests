@@ -83,7 +83,6 @@ class _CloudifyManager(object):
         self._rsync_path = None
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
-        self._openstack = util.create_openstack_client()
         self.influxdb_client = InfluxDBClient(public_ip_address, 8086,
                                               'root', 'root', 'cloudify')
 
@@ -179,20 +178,8 @@ class _CloudifyManager(object):
 
     def delete(self):
         """Deletes this manager's VM from the OpenStack envrionment."""
-        self._logger.info('Deleting server.. [id=%s]', self.server_id)
-        self._openstack.compute.delete_server(self.server_id)
-        self._wait_for_server_to_be_deleted()
+        util.delete_server(self.server_id)
         self.deleted = True
-
-    @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
-    def _wait_for_server_to_be_deleted(self):
-        self._logger.info('Waiting for server to terminate..')
-        servers = [x for x in self._openstack.compute.servers()
-                   if x.id == self.server_id]
-        if servers:
-            self._logger.info('- server.status = %s', servers[0].status)
-        assert len(servers) == 0
-        self._logger.info('Server terminated!')
 
     @retrying.retry(stop_max_attempt_number=6*10, wait_fixed=10000)
     def verify_services_are_running(self):
@@ -227,8 +214,7 @@ class _CloudifyManager(object):
 
     @property
     def image_name(self):
-        return ATTRIBUTES['cloudify_manager_{}_image_name'.format(
-                self.branch_name.replace('.', '_'))]
+        return util.get_manager_image_name(self.branch_name.replace('.', '_'))
 
     @property
     def api_version(self):
@@ -377,7 +363,6 @@ class NotAManager(_CloudifyManager):
         self._cfy = cfy
         self._attributes = attributes
         self._logger = logger
-        self._openstack = util.create_openstack_client()
         self._tmpdir = os.path.join(tmpdir, str(index))
 
     def verify_services_are_running(self):
@@ -392,7 +377,7 @@ class NotAManager(_CloudifyManager):
     def _upload_necessary_files(self, openstack_config_file):
         return True
 
-    image_name = ATTRIBUTES['notmanager_image_name']
+    image_name = util.get_image_name('centos_7')
     branch_name = 'master'
 
 
@@ -486,7 +471,7 @@ class CloudifyCluster(object):
                     'manager blueprint..')
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
-        cluster.managers[0].image_name = ATTRIBUTES['centos_7_image_name']
+        cluster.managers[0].image_name = util.get_image_name('centos_7')
         cluster.create()
         return cluster
 
@@ -502,13 +487,15 @@ class CloudifyCluster(object):
         return openstack_config_file
 
     def _get_server_flavor(self):
-        return self._attributes.manager_server_flavor_name
+        return util.get_platform_details()['size']['manager']
 
     def create(self):
         """Creates the OpenStack infrastructure for a Cloudify manager.
 
         The openstack credentials file and private key file for SSHing
         to provisioned VMs are uploaded to the server."""
+        util.validate_platform_envvars()
+
         self._logger.info('Creating an image based cloudify cluster '
                           '[number_of_managers=%d]', len(self.managers))
 
@@ -516,8 +503,7 @@ class CloudifyCluster(object):
 
         terraform_template_file = self._tmpdir / 'openstack-vm.tf'
 
-        input_file = util.get_resource_path(
-                'terraform/openstack-vm.tf.template')
+        input_file = util.get_platform_details()['terraform_template_path']
         with open(input_file, 'r') as f:
             terraform_template = f.read()
 
@@ -622,7 +608,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         return self._attributes.large_flavor_name
 
     def _get_latest_manager_image_name(self):
-        return self._attributes.centos_7_image_name
+        return util.get_image_name('centos_7')
 
     def _bootstrap_managers(self):
         super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()

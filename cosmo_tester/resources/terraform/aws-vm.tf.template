@@ -1,0 +1,168 @@
+
+variable "resource_suffix" {}
+variable "public_key_path" {}
+variable "private_key_path" {}
+variable "flavor" {}
+
+output "vpc_name" { value = "${aws_vpc.vpc.name}" }
+output "vpc_id" { value = "${aws_vpc.vpc.id}" }
+output "subnet_name" { value = "${aws_subnet.subnet.name}" }
+output "subnet_id" { value = "${aws_subnet.subnet.id}" }
+output "security_group_name" { value = "${aws_security_group.security_group.name}" }
+output "security_group_id" { value = "${aws_security_group.security_group.id}" }
+output "keypair_name" { value = "${aws_key_pair.keypair.key_name}" }
+{% for server in servers %}
+output "public_ip_address_{{ loop.index0 }}" { value = "${aws_instance.server{{ loop.index0 }}.public_ip}" }
+output "private_ip_address_{{ loop.index0 }}" { value = "${aws_instance.server{{ loop.index0 }}.private_ip}" }
+output "server_id_{{ loop.index0 }}" { value = "${aws_instance.server{{ loop.index0 }}.id}" }
+{% endfor %}
+
+resource "aws_vpc" "vpc" {
+  cidr_block = "172.31.0.0/16"
+  tags {
+    Name = "system-tests-vpc"
+  }
+}
+
+resource "aws_subnet" "subnet" {
+  vpc_id = "${aws_vpc.vpc.id}"
+  cidr_block = "172.31.220.0/24"
+  tags {
+    Name = "system-tests-subnet"
+  }
+}
+
+resource "aws_internet_gateway" "default_gateway" {
+  vpc_id = "${aws_vpc.vpc.id}"
+}
+
+resource "aws_route_table" "route_table" {
+  vpc_id = "${aws_vpc.vpc.id}"
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_internet_gateway.default_gateway.id}"
+  }
+}
+
+resource "aws_route_table_association" "route_table_association" {
+  subnet_id = "${aws_subnet.subnet.id}"
+  route_table_id = "${aws_route_table.route_table.id}"
+}
+
+resource "aws_security_group" "security_group" {
+  name = "system-tests-security-group"
+  description = "System tests security group"
+  vpc_id = "${aws_vpc.vpc.id}"
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 8086
+    to_port = 8086
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 8080
+    to_port = 8080
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 1 
+    to_port = 65535
+    protocol = "tcp"
+    cidr_blocks = ["${aws_subnet.subnet.cidr_block}"]
+  }
+  ingress {
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    # Allow all outbound- this is for tests and we don't currently specify anything for locking down outbound access
+    from_port = 0
+    to_port = 0
+    protocol = -1
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_key_pair" "keypair" {
+  key_name = "system-tests-keypair"
+  public_key = "${file("${var.public_key_path}")}"
+}
+
+{% for server in servers %}
+
+resource "aws_eip" "serverip{{ loop.index0 }}" {
+  network_interface = "${aws_network_interface.interface{{ loop.index0 }}.id}"
+  vpc = true
+}
+
+resource "aws_network_interface" "interface{{ loop.index0 }}" {
+  subnet_id =  "${aws_subnet.subnet.id}"
+  security_groups = ["${aws_security_group.security_group.id}"]
+}
+
+{% if not server.image_name.startswith('ami-') %}
+data "aws_ami" "image{{ loop.index0 }}" {
+  most_recent = true
+  owners = ["self"]
+  filter {
+    name = "name"
+    values = ["{{ server.image_name }}"]
+  }
+}
+{% endif %}
+
+resource "aws_instance" "server{{ loop.index0 }}" {
+  {% if server.image_name.startswith('ami-') %}
+  ami = "{{ server.image_name }}"
+  {% else %}
+  ami = "${data.aws_ami.image{{ loop.index0 }}.id}"
+  {% endif %}
+  instance_type = "${var.flavor}"
+
+  # This doesn't seem to support reference by ID
+  key_name = "system-tests-keypair"
+
+  #vpc_security_group_ids = ["${aws_security_group.security_group.id}"]
+
+  #subnet_id = "${aws_subnet.subnet.id}"
+
+  network_interface {
+    network_interface_id = "${aws_network_interface.interface{{ loop.index0 }}.id}"
+    device_index=0
+  }
+
+  tags {
+    Name = "server-{{ loop.index0 }}-${var.resource_suffix}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "echo hello world"
+    ]
+    connection {
+      type = "ssh"
+      user = "centos"
+      private_key = "${file("${var.private_key_path}")}"
+      timeout = "10m"
+      agent = "false"
+    }
+  }
+  depends_on = ["aws_internet_gateway.default_gateway", "aws_eip.serverip{{ loop.index0 }}"]
+}
+
+{% endfor %}
