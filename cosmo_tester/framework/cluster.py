@@ -35,7 +35,7 @@ from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
-REMOTE_WAGON_PATH = '/opt/mgmtworker/env/bin/wagon'
+REMOTE_ENV_PATH = '/opt/mgmtworker/env/bin/'
 
 MANAGER_BLUEPRINTS_REPO_URL = 'https://github.com/cloudify-cosmo/cloudify-manager-blueprints.git'  # noqa
 RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-dev/master/scripts/rsync.sh'  # NOQA
@@ -117,9 +117,13 @@ class _CloudifyManager(object):
             fabric_ssh.put(
                 plugin_path,
                 )
-            fabric_ssh.sudo('yum install -y gcc gcc-c++ python-devel git')
+            fabric_ssh.sudo('yum install -y -d1 gcc gcc-c++ python-devel libffi-devel openssl-devel git')
+            fabric_ssh.sudo(
+                REMOTE_ENV_PATH + 'pip install no-manylinux1',
+                user='cfyuser',
+                )
             fabric_ssh.run(
-                REMOTE_WAGON_PATH + ' create'
+                REMOTE_ENV_PATH + 'wagon create'
                 ' -s "{plugin_dir}/"'
                 ' -o "{wagon_dir}"'
                 ' --with-requirements'
