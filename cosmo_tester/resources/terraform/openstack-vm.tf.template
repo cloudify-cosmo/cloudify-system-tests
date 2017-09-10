@@ -4,12 +4,12 @@ variable "public_key_path" {}
 variable "private_key_path" {}
 variable "flavor" {}
 
-output "router_name" { value = "${openstack_networking_router_v2.router.name}" }
-output "router_id" { value = "${openstack_networking_router_v2.router.id}" }
-output "network_name" { value = "${openstack_networking_network_v2.network.name}" }
-output "network_id" { value = "${openstack_networking_network_v2.network.id}" }
-output "subnet_name" { value = "${openstack_networking_subnet_v2.subnet.name}" }
-output "subnet_id" { value = "${openstack_networking_subnet_v2.subnet.id}" }
+output "router_name" { value = "${openstack_networking_router_v2.router1.name}" }
+output "router_id" { value = "${openstack_networking_router_v2.router1.id}" }
+output "network_name" { value = "${openstack_networking_network_v2.network1.name}" }
+output "network_id" { value = "${openstack_networking_network_v2.network1.id}" }
+output "subnet_name" { value = "${openstack_networking_subnet_v2.subnet1.name}" }
+output "subnet_id" { value = "${openstack_networking_subnet_v2.subnet1.id}" }
 output "security_group_name" { value = "${openstack_compute_secgroup_v2.security_group.name}" }
 output "security_group_id" { value = "${openstack_compute_secgroup_v2.security_group.id}" }
 output "keypair_name" { value = "${openstack_compute_keypair_v2.keypair.name}" }
@@ -21,25 +21,49 @@ output "server_id_{{ loop.index0 }}" { value = "${openstack_compute_instance_v2.
 {% endfor %}
 
 
-resource "openstack_networking_router_v2" "router" {
-  name = "router-${var.resource_suffix}"
+resource "openstack_networking_router_v2" "router1" {
+  name = "router1-${var.resource_suffix}"
   external_gateway = "dda079ce-12cf-4309-879a-8e67aec94de4"
 }
 
-resource "openstack_networking_network_v2" "network" {
-  name = "network-${var.resource_suffix}"
+resource "openstack_networking_router_v2" "router2" {
+  name = "router2-${var.resource_suffix}"
+  external_gateway = "dda079ce-12cf-4309-879a-8e67aec94de4"
 }
 
-resource "openstack_networking_subnet_v2" "subnet" {
-  name = "subnet-${var.resource_suffix}"
-  network_id = "${openstack_networking_network_v2.network.id}"
+
+resource "openstack_networking_network_v2" "network1" {
+  name = "network1-${var.resource_suffix}"
+}
+
+resource "openstack_networking_network_v2" "network2" {
+  name = "network2-${var.resource_suffix}"
+}
+
+resource "openstack_networking_subnet_v2" "subnet1" {
+  name = "subnet1-${var.resource_suffix}"
+  network_id = "${openstack_networking_network_v2.network1.id}"
   cidr = "10.0.0.0/24"
   dns_nameservers = ["8.8.8.8", "8.8.4.4"]
 }
 
-resource "openstack_networking_router_interface_v2" "router_interface" {
-  router_id = "${openstack_networking_router_v2.router.id}"
-  subnet_id = "${openstack_networking_subnet_v2.subnet.id}"
+
+resource "openstack_networking_subnet_v2" "subnet2" {
+  name = "subnet2-${var.resource_suffix}"
+  network_id = "${openstack_networking_network_v2.network2.id}"
+  cidr = "11.0.0.0/24"
+  dns_nameservers = ["8.8.8.8", "8.8.4.4"]
+}
+
+resource "openstack_networking_router_interface_v2" "router_interface1" {
+  router_id = "${openstack_networking_router_v2.router1.id}"
+  subnet_id = "${openstack_networking_subnet_v2.subnet1.id}"
+}
+
+
+resource "openstack_networking_router_interface_v2" "router_interface2" {
+  router_id = "${openstack_networking_router_v2.router2.id}"
+  subnet_id = "${openstack_networking_subnet_v2.subnet2.id}"
 }
 
 resource "openstack_compute_secgroup_v2" "security_group" {
@@ -73,7 +97,13 @@ resource "openstack_compute_secgroup_v2" "security_group" {
     from_port = 1 
     to_port = 65535
     ip_protocol = "tcp"
-    cidr = "${openstack_networking_subnet_v2.subnet.cidr}"
+    cidr = "${openstack_networking_subnet_v2.subnet1.cidr}"
+  }
+  rule {
+    from_port = 1 
+    to_port = 65535
+    ip_protocol = "tcp"
+    cidr = "${openstack_networking_subnet_v2.subnet2.cidr}"
   }
   rule {
       from_port = 443
@@ -102,7 +132,10 @@ resource "openstack_compute_instance_v2" "server{{ loop.index0 }}" {
   key_pair = "${openstack_compute_keypair_v2.keypair.name}"
   security_groups = ["${openstack_compute_secgroup_v2.security_group.name}"]
   network {
-    uuid = "${openstack_networking_network_v2.network.id}"
+    uuid = "${openstack_networking_network_v2.network1.id}"
+  }
+  network {
+    uuid = "${openstack_networking_network_v2.network2.id}"
   }
   floating_ip = "${openstack_networking_floatingip_v2.floatingip{{ loop.index0 }}.address}"
 
