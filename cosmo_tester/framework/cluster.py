@@ -117,7 +117,9 @@ class _CloudifyManager(object):
             fabric_ssh.put(
                 plugin_path,
                 )
-            fabric_ssh.sudo('yum install -y -d1 gcc gcc-c++ python-devel libffi-devel openssl-devel git')
+            fabric_ssh.sudo(
+                    'yum install -y -d1 '
+                    'gcc gcc-c++ python-devel libffi-devel openssl-devel git')
             fabric_ssh.sudo(
                 REMOTE_ENV_PATH + 'pip install no-manylinux1',
                 user='cfyuser',
