@@ -5,6 +5,14 @@ variable "private_key_path" {}
 variable "flavor" {}
 
 output "public_ip_address_0" { value = "${openstack_networking_floatingip_v2.floatingip.address}" }
+output "router_name" { value = "${openstack_networking_router_v2.router_0.name}" }
+output "router_id" { value = "${openstack_networking_router_v2.router_0.id}" }
+output "network_name" { value = "${openstack_networking_network_v2.network_0.name}" }
+output "network_id" { value = "${openstack_networking_network_v2.network_0.id}" }
+output "subnet_name" { value = "${openstack_networking_subnet_v2.subnet_0.name}" }
+output "subnet_id" { value = "${openstack_networking_subnet_v2.subnet_0.id}" }
+output "security_group_name" { value = "${openstack_compute_secgroup_v2.security_group.name}" }
+output "security_group_id" { value = "${openstack_compute_secgroup_v2.security_group.id}" }
 output "keypair_name" { value = "${openstack_compute_keypair_v2.keypair.name}" }
 output "networks" {
   value = {
