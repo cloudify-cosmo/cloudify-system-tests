@@ -21,6 +21,13 @@ output "networks" {
     {% endfor %}
   }
 }
+output "network_names" {
+   value = {
+    {% for n in range(num_of_networks) %}
+    "network_{{ n }}" = "${openstack_compute_instance_v2.server.network.{{ n }}.name}",
+    {% endfor %}
+  }
+}
 {% for n in range(num_of_networks) %}
 output "private_ip_address_{{ n }}" { value = "${openstack_compute_instance_v2.server.network.{{ n }}.fixed_ip_v4}" }
 {% endfor %}
