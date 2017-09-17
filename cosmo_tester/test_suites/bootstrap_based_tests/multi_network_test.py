@@ -99,6 +99,8 @@ def multi_network_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir,
 
 def get_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir, logger):
     hellos = []
+
+    # Add a MultiNetworkHelloWorld per network we add
     for network_name in attributes.networks:
         if is_community():
             tenant = 'default_tenant'
@@ -118,6 +120,16 @@ def get_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir, logger):
             'network_name': attributes.network_names[network_name]
         })
         hellos.append(hello)
+
+    # Add one more hello world, that will run on the `default` network
+    hw = HelloWorldExample(cfy, manager, attributes, ssh_key, logger, tmpdir)
+    hw.blueprint_file = 'openstack-blueprint.yaml'
+    hw.inputs.update({
+        'agent_user': attributes.centos_7_username,
+        'image': attributes.centos_7_image_name
+    })
+    hellos.append(hw)
+
     return hellos
 
 
