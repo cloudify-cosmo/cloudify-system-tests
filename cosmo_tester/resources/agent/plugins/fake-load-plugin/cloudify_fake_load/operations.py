@@ -15,10 +15,11 @@
 
 import requests
 
-from cloudify import ctx
 from cloudify.decorators import operation
 from cloudify.exceptions import NonRecoverableError
-from cloudify_agent.installer.operations import init_agent_installer
+from cloudify_agent.installer.config.agent_config import (
+    create_agent_config_and_installer,
+    )
 
 
 URL_TEMPLATE = 'http://{fake_agent_host}:{port}/{host}/{vhost}/{queue}/{name}'
@@ -44,30 +45,9 @@ def stop(host, port, **kwargs):
         )
 
 
-@init_agent_installer
-def get_connection_info(cloudify_agent, **kwargs):
-    init_script = ctx.agent.init_script()
-
-    env = {}
-    for line in init_script.splitlines():
-        _, _, export = line.strip().partition('export ')
-        k, e, v = export.partition('=')
-        if e:
-            env[k] = v
-
-    return {
-        'host': env['CLOUDIFY_BROKER_IP'],
-        'ssl_enabled': env['CLOUDIFY_BROKER_SSL_ENABLED'],
-        'user': env['CLOUDIFY_BROKER_USER'],
-        'password': env['CLOUDIFY_BROKER_PASS'],
-        'vhost': env['CLOUDIFY_BROKER_VHOST'],
-        'queue': env['CLOUDIFY_DAEMON_QUEUE'],
-        'name': env['CLOUDIFY_DAEMON_NAME'],
-        }
-
-
-def send_message(host, port, action):
-    connection_info = get_connection_info()
+@create_agent_config_and_installer(validate_connection=False)
+def send_message(host, port, action, **kwargs):
+    agent_config = kwargs['cloudify_agent']
 
     response = {
         'start': requests.post,
@@ -75,12 +55,12 @@ def send_message(host, port, action):
     }[action](URL_TEMPLATE.format(
         fake_agent_host=host,
         port=port,
-        host=connection_info.pop('host'),
-        vhost=connection_info.pop('vhost'),
-        queue=connection_info.pop('queue'),
-        name=connection_info.pop('name'),
+        host=agent_config['broker_ip'],
+        vhost=agent_config['broker_vhost'],
+        queue=agent_config['queue'],
+        name=agent_config['name'],
         ),
-        data=connection_info)
+        data=agent_config)
 
     try:
         response.raise_for_status()
