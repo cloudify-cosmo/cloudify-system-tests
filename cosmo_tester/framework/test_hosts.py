@@ -593,7 +593,7 @@ class TestHosts(object):
                     ['-var-file', self._terraform_inputs_file, '-force'])
 
     def _update_instances_list(self, outputs):
-        for i, instance in enumerate(self.instance):
+        for i, instance in enumerate(self.instances):
             public_ip_address = outputs['public_ip_address_{}'.format(i)]
             private_ip_address = outputs['private_ip_address_{}'.format(i)]
             rest_client = util.create_rest_client(
