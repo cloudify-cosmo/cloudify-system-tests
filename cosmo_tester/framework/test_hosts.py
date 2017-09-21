@@ -92,7 +92,7 @@ class VM(object):
     def _upload_necessary_files(self, openstack_config_file):
         return True
 
-    image_name = ATTRIBUTES['centos7_image_name']
+    image_name = ATTRIBUTES['centos_7_image_name']
     branch_name = 'master'
 
 
