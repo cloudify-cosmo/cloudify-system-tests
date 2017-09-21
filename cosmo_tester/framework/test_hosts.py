@@ -596,13 +596,16 @@ class TestHosts(object):
         for i, instance in enumerate(self.instances):
             public_ip_address = outputs['public_ip_address_{}'.format(i)]
             private_ip_address = outputs['private_ip_address_{}'.format(i)]
-            rest_client = util.create_rest_client(
-                    public_ip_address,
-                    username=self._attributes.cloudify_username,
-                    password=self._attributes.cloudify_password,
-                    tenant=self._attributes.cloudify_tenant,
-                    api_version=instance.api_version,
-                    )
+            if hasattr(instance, 'api_version'):
+                rest_client = util.create_rest_client(
+                        public_ip_address,
+                        username=self._attributes.cloudify_username,
+                        password=self._attributes.cloudify_password,
+                        tenant=self._attributes.cloudify_tenant,
+                        api_version=instance.api_version,
+                        )
+            else:
+                rest_client = None
             instance.create(
                     i,
                     public_ip_address,
