@@ -52,13 +52,13 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     # not have the install workflow run on them
     noinstall_tenants = new_tenants
 
-    old_manager = cluster_multitenant.managers[0]
-    new_manager = cluster_multitenant.managers[1]
-    hello_vms = cluster_multitenant.managers[2:]
+    old_manager = cluster_multitenant.instances[0]
+    new_manager = cluster_multitenant.instances[1]
+    hello_vms = cluster_multitenant.instances[2:]
 
     hello_vm_mappings = {
-        hello_tenants[0]: cluster_multitenant.managers[2],
-        hello_tenants[1]: cluster_multitenant.managers[3],
+        hello_tenants[0]: cluster_multitenant.instances[2],
+        hello_tenants[1]: cluster_multitenant.instances[3],
     }
 
     confirm_manager_empty(new_manager)
