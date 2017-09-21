@@ -20,7 +20,7 @@ import os
 import retrying
 from cosmo_tester.framework.test_hosts import (
     TestHosts,
-    MANAGERS,
+    IMAGES,
 )
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
@@ -557,7 +557,7 @@ def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
     manager_types = [request.param, 'master']
     hello_vms = ['notamanager' for i in range(hello_count)]
     managers = [
-        MANAGERS[mgr_type](upload_plugins=False)
+        IMAGES[mgr_type](upload_plugins=False)
         for mgr_type in manager_types + hello_vms
     ]
 
