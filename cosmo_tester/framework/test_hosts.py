@@ -56,6 +56,10 @@ class VM(object):
 
     __metaclass__ = ABCMeta
 
+    def __init__(self, upload_plugins=False):
+        """Mainly here for compatibility with other VM types"""
+        self.upload_plugins = upload_plugins
+
     def create(
             self,
             index,
