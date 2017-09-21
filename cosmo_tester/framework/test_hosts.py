@@ -560,7 +560,7 @@ class TestHosts(object):
                                         ['-json']).stdout).items()})
             self._attributes.update(outputs)
 
-            self._update_managers_list(outputs)
+            self._update_instances_list(outputs)
 
             if self.preconfigure_callback:
                 self.preconfigure_callback(self.instances)
