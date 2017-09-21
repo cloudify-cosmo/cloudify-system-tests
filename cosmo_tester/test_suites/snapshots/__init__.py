@@ -555,7 +555,7 @@ def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
             hello_count, install_dev_tools=True):
 
     manager_types = [request.param, 'master']
-    hello_vms = ['notamanager' for i in range(hello_count)]
+    hello_vms = ['centos' for i in range(hello_count)]
     managers = [
         IMAGES[mgr_type](upload_plugins=False)
         for mgr_type in manager_types + hello_vms
