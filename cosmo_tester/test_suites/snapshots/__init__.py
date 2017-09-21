@@ -18,8 +18,8 @@ import json
 import os
 
 import retrying
-from cosmo_tester.framework.cluster import (
-    CloudifyCluster,
+from cosmo_tester.framework.test_hosts import (
+    TestHosts,
     MANAGERS,
 )
 from cosmo_tester.framework.util import (
@@ -561,13 +561,13 @@ def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
         for mgr_type in manager_types + hello_vms
     ]
 
-    cluster = CloudifyCluster.create_image_based(
+    cluster = TestHosts.create_image_based(
             cfy,
             ssh_key,
             module_tmpdir,
             attributes,
             logger,
-            managers=managers,
+            instances=managers,
             )
 
     if request.param == '4.0.1':

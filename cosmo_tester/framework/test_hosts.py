@@ -15,11 +15,11 @@
 
 from abc import ABCMeta, abstractproperty
 
-import os
 import json
+import os
 import uuid
-from urllib import urlretrieve
 from contextlib import contextmanager
+from urllib import urlretrieve
 
 import jinja2
 import retrying
@@ -52,9 +52,51 @@ MANAGER_API_VERSIONS = {
 ATTRIBUTES = util.get_attributes()
 
 
-class _CloudifyManager(object):
+class VM(object):
 
     __metaclass__ = ABCMeta
+
+    def create(
+            self,
+            index,
+            public_ip_address,
+            private_ip_address,
+            rest_client,
+            ssh_key,
+            cfy,
+            attributes,
+            logger,
+            tmpdir,
+            ):
+        self.index = index
+        self.ip_address = public_ip_address
+        self.private_ip_address = private_ip_address
+        self.client = rest_client
+        self.deleted = False
+        self._ssh_key = ssh_key
+        self._cfy = cfy
+        self._attributes = attributes
+        self._logger = logger
+        self._openstack = util.create_openstack_client()
+        self._tmpdir = os.path.join(tmpdir, str(index))
+
+    def verify_services_are_running(self):
+        return True
+
+    def use(self, tenant=None):
+        return True
+
+    def _upload_plugin(self, plugin_name):
+        return True
+
+    def _upload_necessary_files(self, openstack_config_file):
+        return True
+
+    image_name = ATTRIBUTES['centos7_image_name']
+    branch_name = 'master'
+
+
+class _CloudifyManager(VM):
 
     def __init__(self, upload_plugins=True):
         self.upload_plugins = upload_plugins
@@ -240,7 +282,7 @@ class _CloudifyManager(object):
         if not self._rsync_path:
             self._rsync_path = os.path.join(self._tmpdir, 'rsync.sh')
             urlretrieve(RSYNC_SCRIPT_URL, self._rsync_path)
-            os.chmod(self._rsync_path, 0755)  # Make the script executable
+            os.chmod(self._rsync_path, 0o755)  # Make the script executable
 
         return self._rsync_path
 
@@ -356,60 +398,19 @@ class CloudifyMasterManager(_CloudifyManager):
     image_name = _get_latest_manager_image_name()
 
 
-class NotAManager(_CloudifyManager):
-    def create(
-            self,
-            index,
-            public_ip_address,
-            private_ip_address,
-            rest_client,
-            ssh_key,
-            cfy,
-            attributes,
-            logger,
-            tmpdir,
-            ):
-        self.index = index
-        self.ip_address = public_ip_address
-        self.private_ip_address = private_ip_address
-        self.client = rest_client
-        self.deleted = False
-        self._ssh_key = ssh_key
-        self._cfy = cfy
-        self._attributes = attributes
-        self._logger = logger
-        self._openstack = util.create_openstack_client()
-        self._tmpdir = os.path.join(tmpdir, str(index))
-
-    def verify_services_are_running(self):
-        return True
-
-    def use(self, tenant=None):
-        return True
-
-    def _upload_plugin(self, plugin_name):
-        return True
-
-    def _upload_necessary_files(self, openstack_config_file):
-        return True
-
-    image_name = ATTRIBUTES['notmanager_image_name']
-    branch_name = 'master'
-
-
-MANAGERS = {
+IMAGES = {
     '3.4.2': Cloudify3_4Manager,
     '4.0': Cloudify4_0Manager,
     '4.0.1': Cloudify4_0_1Manager,
     '4.1': Cloudify4_1Manager,
     'master': CloudifyMasterManager,
-    'notamanager': NotAManager,
+    'centos': VM,
 }
 
-CURRENT_MANAGER = MANAGERS['master']
+CURRENT_MANAGER = IMAGES['master']
 
 
-class CloudifyCluster(object):
+class TestHosts(object):
 
     __metaclass__ = ABCMeta
 
@@ -419,18 +420,19 @@ class CloudifyCluster(object):
                  tmpdir,
                  attributes,
                  logger,
-                 number_of_managers=1,
-                 managers=None,
+                 number_of_instances=1,
+                 instances=None,
                  tf_template=None,
                  template_inputs=None
                  ):
         """
-        managers: supply a list of _CloudifyManager instances.
+        instances: supply a list of VM instances.
         This allows pre-configuration to happen before starting the cluster, or
-        for a list of managers of different versions to be created at once.
-        if managers is provided, number_of_managers will be ignored
+        for a list of instances of different versions to be created at once.
+        if instances is provided, number_of_instances will be ignored
         """
-        super(CloudifyCluster, self).__init__()
+
+        super(TestHosts, self).__init__()
         self._logger = logger
         self._attributes = attributes
         self._tmpdir = tmpdir
@@ -440,13 +442,13 @@ class CloudifyCluster(object):
         self._terraform_inputs_file = self._tmpdir / 'terraform-vars.json'
         self._tf_template = tf_template or 'openstack-vm.tf.template'
         self.preconfigure_callback = None
-        if managers is not None:
-            self.managers = managers
+        if instances is not None:
+            self.instances = instances
         else:
-            self.managers = [
+            self.instances = [
                 CURRENT_MANAGER()
-                for _ in range(number_of_managers)]
-        self._template_inputs = template_inputs or {'servers': self.managers}
+                for _ in range(number_of_instances)]
+        self._template_inputs = template_inputs or {'servers': self.instances}
 
     def _bootstrap_managers(self):
         pass
@@ -454,8 +456,8 @@ class CloudifyCluster(object):
     @staticmethod
     def create_image_based(
             cfy, ssh_key, tmpdir, attributes, logger,
-            number_of_managers=1,
-            managers=None,
+            number_of_instances=1,
+            instances=None,
             create=True,
             ):
         """Creates an image based Cloudify manager.
@@ -465,14 +467,14 @@ class CloudifyCluster(object):
          change the servers configuration using the servers_config property
          before calling create().
         """
-        cluster = ImageBasedCloudifyCluster(
+        cluster = TestHosts(
                 cfy,
                 ssh_key,
                 tmpdir,
                 attributes,
                 logger,
-                number_of_managers=number_of_managers,
-                managers=managers,
+                number_of_instances=number_of_instances,
+                instances=instances,
                 )
         if create:
             cluster.create()
@@ -497,7 +499,7 @@ class CloudifyCluster(object):
                     'manager blueprint..')
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
-        cluster.managers[0].image_name = ATTRIBUTES['centos_7_image_name']
+        cluster.instances[0].image_name = ATTRIBUTES['centos_7_image_name']
         cluster.create()
         return cluster
 
@@ -520,8 +522,8 @@ class CloudifyCluster(object):
 
         The openstack credentials file and private key file for SSHing
         to provisioned VMs are uploaded to the server."""
-        self._logger.info('Creating an image based cloudify cluster '
-                          '[number_of_managers=%d]', len(self.managers))
+        self._logger.info('Creating image based cloudify instances: '
+                          '[number_of_instances=%d]', len(self.instances))
 
         openstack_config_file = self.create_openstack_config_file()
 
@@ -557,16 +559,16 @@ class CloudifyCluster(object):
             self._update_managers_list(outputs)
 
             if self.preconfigure_callback:
-                self.preconfigure_callback(self.managers)
+                self.preconfigure_callback(self.instances)
 
             self._bootstrap_managers()
 
-            for manager in self.managers:
-                manager.verify_services_are_running()
+            for instance in self.instances:
+                instance.verify_services_are_running()
 
-                manager._upload_necessary_files(openstack_config_file)
-                if manager.upload_plugins:
-                    manager.upload_plugin('openstack_centos_core')
+                instance._upload_necessary_files(openstack_config_file)
+                if instance.upload_plugins:
+                    instance._upload_plugin('openstack_centos_core')
 
             self._logger.info('Cloudify cluster successfully created!')
 
@@ -586,8 +588,8 @@ class CloudifyCluster(object):
             self._terraform.destroy(
                     ['-var-file', self._terraform_inputs_file, '-force'])
 
-    def _update_managers_list(self, outputs):
-        for i, manager in enumerate(self.managers):
+    def _update_instances_list(self, outputs):
+        for i, instance in enumerate(self.instance):
             public_ip_address = outputs['public_ip_address_{}'.format(i)]
             private_ip_address = outputs['private_ip_address_{}'.format(i)]
             rest_client = util.create_rest_client(
@@ -595,9 +597,9 @@ class CloudifyCluster(object):
                     username=self._attributes.cloudify_username,
                     password=self._attributes.cloudify_password,
                     tenant=self._attributes.cloudify_tenant,
-                    api_version=manager.api_version,
+                    api_version=instance.api_version,
                     )
-            manager.create(
+            instance.create(
                     i,
                     public_ip_address,
                     private_ip_address,
@@ -610,13 +612,7 @@ class CloudifyCluster(object):
                     )
 
 
-class ImageBasedCloudifyCluster(CloudifyCluster):
-    """
-    Starts a manager from an image on OpenStack.
-    """
-
-
-class BootstrapBasedCloudifyCluster(CloudifyCluster):
+class BootstrapBasedCloudifyCluster(TestHosts):
     """
     Bootstraps a Cloudify manager using simple manager blueprint.
     """
@@ -648,7 +644,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
 
     def _create_inputs_file(self):
         self._inputs_file = self._tmpdir / 'inputs.json'
-        manager = self.managers[0]
+        manager = self.instances[0]
         bootstrap_inputs = {
             'public_ip': manager.ip_address,
             'private_ip': manager.private_ip_address,

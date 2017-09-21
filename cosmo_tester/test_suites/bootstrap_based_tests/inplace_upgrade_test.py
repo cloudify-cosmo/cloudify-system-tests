@@ -18,16 +18,15 @@ import pytest
 from time import sleep
 from os.path import join
 
-from cosmo_tester.framework.cluster import CloudifyCluster
-
 from . import get_hello_worlds
+from cosmo_tester.framework.test_hosts import TestHosts
 
 
 @pytest.fixture(scope='module')
 def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
     # need to keep the cluster to use its inputs in the second bootstrap
-    cluster = CloudifyCluster.create_bootstrap_based(
+    cluster = TestHosts.create_bootstrap_based(
             cfy, ssh_key, module_tmpdir, attributes, logger)
 
     yield cluster
@@ -41,7 +40,7 @@ def test_inplace_upgrade(cfy,
                          ssh_key,
                          module_tmpdir,
                          logger):
-    manager = cluster.managers[0]
+    manager = cluster.instances[0]
     snapshot_name = 'inplace_upgrade_snapshot'
     snapshot_path = join(str(module_tmpdir), snapshot_name) + '.zip'
 

@@ -17,7 +17,7 @@ import pytest
 import time
 
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
-from cosmo_tester.framework.cluster import CloudifyCluster
+from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
 from .ha_helper import HighAvailabilityHelper as ha_helper
 from . import skip_community
@@ -33,22 +33,22 @@ def cluster(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a HA cluster from an image in rackspace OpenStack."""
     logger.info('Creating HA cluster of %s managers', request.param)
-    cluster = CloudifyCluster.create_image_based(
+    hosts = TestHosts.create_image_based(
         cfy,
         ssh_key,
         module_tmpdir,
         attributes,
         logger,
-        number_of_managers=request.param,
+        number_of_instances=request.param,
         create=False)
 
-    for manager in cluster.managers[1:]:
+    for manager in hosts.instances[1:]:
         manager.upload_plugins = False
 
-    cluster.create()
+    hosts.create()
 
     try:
-        manager1 = cluster.managers[0]
+        manager1 = hosts.instances[0]
         ha_helper.delete_active_profile()
         manager1.use()
 
@@ -56,7 +56,7 @@ def cluster(
                           cluster_host_ip=manager1.private_ip_address,
                           cluster_node_name=manager1.ip_address)
 
-        for manager in cluster.managers[1:]:
+        for manager in hosts.instances[1:]:
             manager.use()
             cfy.cluster.join(manager1.ip_address,
                              timeout=600,
@@ -65,16 +65,16 @@ def cluster(
 
         cfy.cluster.nodes.list()
 
-        yield cluster
+        yield hosts
 
     finally:
-        cluster.destroy()
+        hosts.destroy()
 
 
 @pytest.fixture(scope='function')
 def ha_hello_worlds(cfy, cluster, attributes, ssh_key, tmpdir, logger):
     # Pick a manager to operate on, and trust the cluster to work with us
-    manager = cluster.managers[0]
+    manager = cluster.instances[0]
 
     hws = []
     for i in range(0, 2):
@@ -104,7 +104,7 @@ def ha_hello_worlds(cfy, cluster, attributes, ssh_key, tmpdir, logger):
 
 def test_data_replication(cfy, cluster, ha_hello_worlds,
                           logger):
-    manager1 = cluster.managers[0]
+    manager1 = cluster.instances[0]
     ha_helper.delete_active_profile()
     manager1.use()
     ha_helper.verify_nodes_status(manager1, cfy, logger)
@@ -115,7 +115,7 @@ def test_data_replication(cfy, cluster, ha_hello_worlds,
     m1_deployments_list = cfy.deployments.list()
     m1_plugins_list = cfy.plugins.list()
 
-    for manager in cluster.managers[1:]:
+    for manager in cluster.instances[1:]:
         ha_helper.set_active(manager, cfy, logger)
         ha_helper.delete_active_profile()
         manager.use()
@@ -133,12 +133,12 @@ def test_data_replication(cfy, cluster, ha_hello_worlds,
 
 def test_set_active(cfy, cluster,
                     logger):
-    manager1 = cluster.managers[0]
+    manager1 = cluster.instances[0]
     ha_helper.delete_active_profile()
     manager1.use()
     ha_helper.verify_nodes_status(manager1, cfy, logger)
 
-    for manager in cluster.managers[1:]:
+    for manager in cluster.instances[1:]:
         ha_helper.set_active(manager, cfy, logger)
         ha_helper.delete_active_profile()
         manager.use()
@@ -147,13 +147,13 @@ def test_set_active(cfy, cluster,
 
 def test_delete_manager_node(cfy, cluster, ha_hello_worlds,
                              logger):
-    ha_helper.set_active(cluster.managers[1], cfy, logger)
-    expected_master = cluster.managers[0]
-    for manager in cluster.managers[1:]:
+    ha_helper.set_active(cluster.instances[1], cfy, logger)
+    expected_master = cluster.instances[0]
+    for manager in cluster.instances[1:]:
         logger.info('Deleting manager %s', manager.ip_address)
         manager.delete()
         ha_helper.wait_leader_election(
-            [m for m in cluster.managers if not m.deleted], logger)
+            [m for m in cluster.instances if not m.deleted], logger)
 
     logger.info('Expected leader %s', expected_master)
     ha_helper.verify_nodes_status(expected_master, cfy, logger)
@@ -169,22 +169,22 @@ def test_failover(cfy, cluster, ha_hello_worlds,
     - stop mgmtworker on that new leader, and restart nginx on the former
     - check that the original leader was elected
     """
-    expected_master = cluster.managers[-1]
+    expected_master = cluster.instances[-1]
     # stop nginx on all nodes except last - force choosing the last as the
     # leader (because only the last one has services running)
-    for manager in cluster.managers[:-1]:
+    for manager in cluster.instances[:-1]:
         logger.info('Simulating manager %s failure by stopping'
                     ' nginx service', manager.ip_address)
         with manager.ssh() as fabric:
             fabric.run('sudo systemctl stop nginx')
         # wait for checks to notice the service failure
         time.sleep(20)
-        ha_helper.wait_leader_election(cluster.managers, logger)
+        ha_helper.wait_leader_election(cluster.instances, logger)
         cfy.cluster.nodes.list()
 
     ha_helper.verify_nodes_status(expected_master, cfy, logger)
 
-    new_expected_master = cluster.managers[0]
+    new_expected_master = cluster.instances[0]
     # force going back to the original leader - start nginx on it, and
     # stop mgmtworker on the current leader (simulating failure)
     with new_expected_master.ssh() as fabric:
@@ -200,7 +200,7 @@ def test_failover(cfy, cluster, ha_hello_worlds,
 
     # wait for checks to notice the service failure
     time.sleep(20)
-    ha_helper.wait_leader_election(cluster.managers, logger)
+    ha_helper.wait_leader_election(cluster.instances, logger)
     cfy.cluster.nodes.list()
 
     ha_helper.verify_nodes_status(new_expected_master, cfy, logger)
@@ -210,12 +210,12 @@ def test_failover(cfy, cluster, ha_hello_worlds,
 
 def test_remove_manager_from_cluster(cfy, cluster, ha_hello_worlds,
                                      logger):
-    ha_helper.set_active(cluster.managers[1], cfy, logger)
+    ha_helper.set_active(cluster.instances[1], cfy, logger)
     ha_helper.delete_active_profile()
 
-    expected_master = cluster.managers[0]
-    nodes_to_check = list(cluster.managers)
-    for manager in cluster.managers[1:]:
+    expected_master = cluster.instances[0]
+    nodes_to_check = list(cluster.instances)
+    for manager in cluster.instances[1:]:
         manager.use()
         logger.info('Removing the manager %s from HA cluster',
                     manager.ip_address)
@@ -232,13 +232,13 @@ def test_remove_manager_from_cluster(cfy, cluster, ha_hello_worlds,
 
 def test_uninstall_dep(cfy, cluster, ha_hello_worlds,
                        logger):
-    manager1 = cluster.managers[0]
+    manager1 = cluster.instances[0]
     ha_helper.delete_active_profile()
     manager1.use()
     ha_helper.verify_nodes_status(manager1, cfy, logger)
     _test_hellos(ha_hello_worlds, install=True)
 
-    manager2 = cluster.managers[-1]
+    manager2 = cluster.instances[-1]
     ha_helper.set_active(manager2, cfy, logger)
     ha_helper.delete_active_profile()
     manager2.use()
