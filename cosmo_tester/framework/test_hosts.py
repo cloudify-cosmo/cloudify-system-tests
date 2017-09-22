@@ -84,6 +84,46 @@ class VM(object):
         self._openstack = util.create_openstack_client()
         self._tmpdir = os.path.join(tmpdir, str(index))
 
+    @contextmanager
+    def ssh(self, **kwargs):
+        with fabric_context_managers.settings(
+                host_string=self.ip_address,
+                user=self._attributes.centos_7_username,
+                key_filename=self._ssh_key.private_key_path,
+                abort_exception=Exception,
+                **kwargs):
+            yield fabric_api
+
+    def __str__(self):
+        return 'Cloudify Test VM ({image}) [{index}:{ip}]'.format(
+                image=self.image_name,
+                index=self.index,
+                ip=self.ip_address,
+                )
+
+    @property
+    def server_id(self):
+        """Returns this server's Id from the terraform outputs."""
+        key = 'server_id_{}'.format(self.index)
+        return self._attributes[key]
+
+    def delete(self):
+        """Deletes this instance from the OpenStack envrionment."""
+        self._logger.info('Deleting server.. [id=%s]', self.server_id)
+        self._openstack.compute.delete_server(self.server_id)
+        self._wait_for_server_to_be_deleted()
+        self.deleted = True
+
+    @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
+    def _wait_for_server_to_be_deleted(self):
+        self._logger.info('Waiting for server to terminate..')
+        servers = [x for x in self._openstack.compute.servers()
+                   if x.id == self.server_id]
+        if servers:
+            self._logger.info('- server.status = %s', servers[0].status)
+        assert len(servers) == 0
+        self._logger.info('Server terminated!')
+
     def verify_services_are_running(self):
         return True
 
@@ -217,29 +257,6 @@ class _CloudifyManager(VM):
             '-p', self._attributes.cloudify_password,
             '-t', tenant or self._attributes.cloudify_tenant,
             ], **kwargs)
-
-    @property
-    def server_id(self):
-        """Returns this server's Id from the terraform outputs."""
-        key = 'server_id_{}'.format(self.index)
-        return self._attributes[key]
-
-    def delete(self):
-        """Deletes this manager's VM from the OpenStack envrionment."""
-        self._logger.info('Deleting server.. [id=%s]', self.server_id)
-        self._openstack.compute.delete_server(self.server_id)
-        self._wait_for_server_to_be_deleted()
-        self.deleted = True
-
-    @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
-    def _wait_for_server_to_be_deleted(self):
-        self._logger.info('Waiting for server to terminate..')
-        servers = [x for x in self._openstack.compute.servers()
-                   if x.id == self.server_id]
-        if servers:
-            self._logger.info('- server.status = %s', servers[0].status)
-        assert len(servers) == 0
-        self._logger.info('Server terminated!')
 
     @retrying.retry(stop_max_attempt_number=6*10, wait_fixed=10000)
     def verify_services_are_running(self):
