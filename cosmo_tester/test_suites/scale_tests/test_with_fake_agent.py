@@ -16,14 +16,18 @@
 import os
 import shutil
 
-from cosmo_tester.framework.fixtures import image_based_manager as manager
+import pytest
+
+from cosmo_tester.framework.test_hosts import TestHosts, IMAGES
 
 
 BLUEPRINT = 'fake-agent-blueprint'
 DEPLOYMENT = 'fake-agent-deployment'
 
 
-def test_manager_agent_scaling(cfy, manager):
+def test_manager_agent_scaling(cfy, hosts):
+    manager, agent_host = hosts.instances
+
     blueprint_dir = os.path.join(
         os.path.dirname(__file__),
         '../../resources/blueprints/',
@@ -46,6 +50,27 @@ def test_manager_agent_scaling(cfy, manager):
     manager.client.deployments.create(
             BLUEPRINT,
             DEPLOYMENT,
+            inputs={
+                'host_ip': agent_host.ip,
+                'host_user': agent_host.user,
+                'key_file': agent_host.ssh_key,
+                },
             )
 
     cfy.executions.start.install(['-d', DEPLOYMENT])
+
+
+@pytest.fixture
+def hosts(cfy, ssh_key, module_tmpdir, attributes, logger):
+
+    instances = [IMAGES['master'], IMAGES['centos']]
+
+    hosts = TestHosts(
+            cfy, ssh_key, module_tmpdir, attributes, logger,
+            instances=instances)
+
+    instances[0].use()
+
+    yield instances
+
+    hosts.destroy()

@@ -5,6 +5,40 @@ imports:
   - ./plugin.yaml
 
 
+inputs:
+  host_ip:
+  host_user:
+  key_file:
+
+
 node_templates:
+
+  fake_node_host:
+    type: cloudify.nodes.Compute
+
+    properties:
+      ip_address: {get_input: host_ip}
+      agent_config:
+        key: {get_input: key_file}
+        user: {get_input: host_user}
+
+
+  fake_node_server:
+    type: cloudify.nodes.Application
+
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          implementation: fake_load_plugin.cloudify_fake_load.server_operations.start_server
+
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: fake_node_host
+
+
   fake_node:
     type: cloudify.fakeload.nodes.Instance
+
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: fake_node_host
