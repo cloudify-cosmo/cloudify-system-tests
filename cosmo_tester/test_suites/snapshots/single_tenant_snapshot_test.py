@@ -45,9 +45,9 @@ from . import (
 def test_restore_snapshot_and_agents_upgrade_singletenant(
         cfy, cluster_singletenant, attributes, logger, tmpdir):
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
-    old_manager = cluster_singletenant.managers[0]
-    new_manager = cluster_singletenant.managers[1]
-    hello_vm = cluster_singletenant.managers[2]
+    old_manager = cluster_singletenant.instances[0]
+    new_manager = cluster_singletenant.instances[1]
+    hello_vm = cluster_singletenant.instances[2]
 
     confirm_manager_empty(new_manager)
 

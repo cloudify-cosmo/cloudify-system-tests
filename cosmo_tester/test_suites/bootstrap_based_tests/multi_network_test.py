@@ -50,7 +50,7 @@ def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
         preconfigure_callback=_preconfigure_callback
     )
 
-    yield cluster.managers[0]
+    yield cluster.instances[0]
 
     cluster.destroy()
 

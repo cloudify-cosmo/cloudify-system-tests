@@ -18,9 +18,9 @@ import json
 import os
 
 import retrying
-from cosmo_tester.framework.cluster import (
-    CloudifyCluster,
-    MANAGERS,
+from cosmo_tester.framework.test_hosts import (
+    TestHosts,
+    IMAGES,
 )
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
@@ -555,19 +555,19 @@ def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
             hello_count, install_dev_tools=True):
 
     manager_types = [request.param, 'master']
-    hello_vms = ['notamanager' for i in range(hello_count)]
+    hello_vms = ['centos' for i in range(hello_count)]
     managers = [
-        MANAGERS[mgr_type](upload_plugins=False)
+        IMAGES[mgr_type](upload_plugins=False)
         for mgr_type in manager_types + hello_vms
     ]
 
-    cluster = CloudifyCluster.create_image_based(
+    cluster = TestHosts.create_image_based(
             cfy,
             ssh_key,
             module_tmpdir,
             attributes,
             logger,
-            managers=managers,
+            instances=managers,
             )
 
     if request.param == '4.0.1':

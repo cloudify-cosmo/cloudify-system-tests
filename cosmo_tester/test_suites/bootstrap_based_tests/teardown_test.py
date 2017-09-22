@@ -15,7 +15,7 @@
 
 import pytest
 
-from cosmo_tester.framework.cluster import CloudifyCluster
+from cosmo_tester.framework.test_hosts import TestHosts
 
 from . import hello_worlds  # noqa (pytest fixture imported)
 
@@ -47,13 +47,13 @@ def test_teardown(cfy, manager, hello_worlds):  # noqa (pytest fixture, not rede
 def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
     # The preconfigure callback populates the files structure prior to the BS
-    cluster = CloudifyCluster.create_bootstrap_based(
+    hosts = TestHosts.create_bootstrap_based(
             cfy, ssh_key, module_tmpdir, attributes, logger,
             preconfigure_callback=_preconfigure_callback)
 
-    yield cluster.managers[0]
+    yield hosts.instances[0]
 
-    cluster.destroy()
+    hosts.destroy()
 
 
 def _preconfigure_callback(managers):
