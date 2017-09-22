@@ -26,7 +26,13 @@ import pytest
 import retrying
 import winrm
 
-from cosmo_tester.framework import util
+from cosmo_tester.framework.util import (
+    AttributesDict,
+    get_cli_package_url,
+    get_openstack_server_password,
+    get_resource_path,
+    sh_bake,
+)
 
 WINRM_PORT = 5985
 
@@ -57,24 +63,37 @@ def windows_cli_package_tester(ssh_key, attributes, tmpdir, logger):
     tester.perform_cleanup()
 
 
+@pytest.fixture(scope='function')
+def osx_cli_package_tester(ssh_key, attributes, tmpdir, logger):
+    logger.info('Using temp dir: %s', tmpdir)
+    tmpdir = Path(tmpdir)
+
+    tf_inputs = get_terraform_inputs(attributes, ssh_key)
+    tester = _OSXCliPackageTester(tmpdir, tf_inputs, ssh_key, logger)
+
+    yield tester
+
+    tester.perform_cleanup()
+
+
 def test_cli_on_centos_7(cli_package_tester, attributes):
     cli_package_tester.inputs.update({
-        'cli_image': attributes.centos7_image_name,
-        'cli_user': attributes.centos7_username,
-        'manager_image': attributes.centos7_image_name,
-        'manager_user': attributes.centos7_username,
-        'cli_package_url': _get_cli_package_url('rhel_centos_cli_package_url')
+        'cli_image': attributes.centos_7_image_name,
+        'cli_user': attributes.centos_7_username,
+        'manager_image': attributes.centos_7_image_name,
+        'manager_user': attributes.centos_7_username,
+        'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
     cli_package_tester.run_test()
 
 
 def test_cli_on_centos_6(cli_package_tester, attributes):
     cli_package_tester.inputs.update({
-        'cli_image': attributes.centos6_image_name,
-        'cli_user': attributes.centos6_username,
-        'manager_image': attributes.centos7_image_name,
-        'manager_user': attributes.centos7_username,
-        'cli_package_url': _get_cli_package_url('rhel_centos_cli_package_url')
+        'cli_image': attributes.centos_6_image_name,
+        'cli_user': attributes.centos_6_username,
+        'manager_image': attributes.centos_7_image_name,
+        'manager_user': attributes.centos_7_username,
+        'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
     cli_package_tester.run_test()
 
@@ -82,60 +101,65 @@ def test_cli_on_centos_6(cli_package_tester, attributes):
 def test_cli_on_ubuntu_14_04(cli_package_tester, attributes):
     cli_package_tester.inputs.update({
         'cli_image': attributes.ubuntu_14_04_image_name,
-        'cli_user': attributes.ubuntu_username,
-        'manager_image': attributes.centos7_image_name,
-        'manager_user': attributes.centos7_username,
-        'cli_package_url': _get_cli_package_url('debian_cli_package_url')
+        'cli_user': attributes.ubuntu_14_04_username,
+        'manager_image': attributes.centos_7_image_name,
+        'manager_user': attributes.centos_7_username,
+        'cli_package_url': get_cli_package_url('debian_cli_package_url')
     })
     cli_package_tester.run_test()
 
 
 def test_cli_on_windows_2012(windows_cli_package_tester, attributes):
     windows_cli_package_tester.inputs.update({
-        'cli_image': attributes.windows_server_2012_image_name,
-        'cli_user': attributes.windows_server_2012_username,
-        'manager_image': attributes.centos7_image_name,
-        'manager_user': attributes.centos7_username,
+        'cli_image': attributes.windows_2012_image_name,
+        'cli_user': attributes.windows_2012_username,
+        'manager_image': attributes.centos_7_image_name,
+        'manager_user': attributes.centos_7_username,
         'cli_flavor': attributes.medium_flavor_name,
     })
     windows_cli_package_tester.run_test()
 
 
-def test_cli_on_rhel_7_3(cli_package_tester, attributes):
+def test_cli_on_rhel_7(cli_package_tester, attributes):
     cli_package_tester.inputs.update({
-        'cli_image': attributes.rhel_7_3_image_name,
-        'cli_user': attributes.rhel_7_3_username,
-        'manager_image': attributes.centos7_image_name,
-        'manager_user': attributes.centos7_username,
-        'cli_package_url': _get_cli_package_url('rhel_centos_cli_package_url')
+        'cli_image': attributes.rhel_7_image_name,
+        'cli_user': attributes.rhel_7_username,
+        'manager_image': attributes.centos_7_image_name,
+        'manager_user': attributes.centos_7_username,
+        'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
     cli_package_tester.run_test()
 
 
-def test_cli_on_rhel_6_9(cli_package_tester, attributes):
+def test_cli_on_rhel_6(cli_package_tester, attributes):
     cli_package_tester.inputs.update({
-        'cli_image': attributes.rhel_6_9_image_name,
-        'cli_user': attributes.rhel_6_9_username,
-        'manager_image': attributes.centos7_image_name,
-        'manager_user': attributes.centos7_username,
-        'cli_package_url': _get_cli_package_url('rhel_centos_cli_package_url')
+        'cli_image': attributes.rhel_6_image_name,
+        'cli_user': attributes.rhel_6_username,
+        'manager_image': attributes.centos_7_image_name,
+        'manager_user': attributes.centos_7_username,
+        'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
     cli_package_tester.run_test()
 
 
-def _get_cli_package_url(name):
-    urls = util.get_cli_package_urls()
-    if util.is_community():
-        key = 'cli_packages_urls'
-    else:
-        key = 'cli_premium_packages_urls'
-    return urls[key][name]
+def test_cli_on_osx(osx_cli_package_tester, attributes):
+    osx_cli_package_tester.inputs.update({
+        'manager_image': attributes.centos_7_AMI,
+        'manager_flavor': attributes.large_AWS_type,
+        'manager_user': attributes.centos_7_username,
+        'osx_public_ip': os.environ["MACINCLOUD_HOST"],
+        'osx_user': os.environ["MACINCLOUD_USERNAME"],
+        'osx_password': os.environ["MACINCLOUD_PASSWORD"],
+        'osx_ssh_key': os.environ["MACINCLOUD_SSH_KEY"],
+        'cli_package_url': get_cli_package_url('osx_cli_package_url'),
+    })
+    osx_cli_package_tester.run_test()
 
 
 class _CliPackageTester(object):
 
     def __init__(self, tmpdir, inputs, ssh_key, logger):
-        self.terraform = util.sh_bake(sh.terraform)
+        self.terraform = sh_bake(sh.terraform)
         self.tmpdir = tmpdir
         self.inputs = inputs
         self.ssh_key = ssh_key
@@ -144,10 +168,10 @@ class _CliPackageTester(object):
         os.mkdir(self.tmpdir / 'scripts')
 
     def _copy_terraform_files(self):
-        shutil.copy(util.get_resource_path(
+        shutil.copy(get_resource_path(
                 'terraform/openstack-linux-cli-test.tf'),
                 self.tmpdir / 'openstack-linux-cli-test.tf')
-        shutil.copy(util.get_resource_path(
+        shutil.copy(get_resource_path(
                 'terraform/scripts/linux-cli-test.sh'),
                 self.tmpdir / 'scripts/linux-cli-test.sh')
 
@@ -180,13 +204,13 @@ class _WindowsCliPackageTester(_CliPackageTester):
     the retrieved password).
     """
     def _copy_terraform_files(self):
-        shutil.copy(util.get_resource_path(
+        shutil.copy(get_resource_path(
                 'terraform/openstack-windows-cli-test.tf'),
                 self.tmpdir / 'openstack-windows-cli-test.tf')
-        shutil.copy(util.get_resource_path(
+        shutil.copy(get_resource_path(
                 'terraform/scripts/windows-cli-test.ps1'),
                 self.tmpdir / 'scripts/windows-cli-test.ps1')
-        shutil.copy(util.get_resource_path(
+        shutil.copy(get_resource_path(
                 'terraform/scripts/windows-userdata.ps1'),
                     self.tmpdir / 'scripts/windows-userdata.ps1')
 
@@ -195,7 +219,7 @@ class _WindowsCliPackageTester(_CliPackageTester):
         self.logger.info(
                 'Waiting for VM password retrieval.. [server_id=%s]',
                 server_id)
-        password = util.get_openstack_server_password(
+        password = get_openstack_server_password(
                 server_id, self.ssh_key.private_key_path)
         assert password is not None and len(password) > 0
         return password
@@ -216,7 +240,7 @@ class _WindowsCliPackageTester(_CliPackageTester):
         # At this stage, there are two VMs (Windows & Linux).
         # Retrieve password from OpenStack
         with self.tmpdir:
-            outputs = util.AttributesDict(
+            outputs = AttributesDict(
                     {k: v['value'] for k, v in json.loads(
                             self.terraform.output(
                                     ['-json']).stdout).items()})
@@ -248,15 +272,19 @@ Set-Content "{0}" "{1}"
 '''.format(remote_private_key_path, private_key))
 
         self.logger.info('Downloading CLI package..')
+        cli_package_url = get_cli_package_url('windows_cli_package_url')
         self._run_cmd(session, """
 $client = New-Object System.Net.WebClient
 $url = "{0}"
 $file = "{1}"
 $client.DownloadFile($url, $file)""".format(
-                _get_cli_package_url('windows_cli_package_url'),
+                cli_package_url,
                 cli_installer_exe_path))
 
-        self.logger.info('Installing CLI..')
+        self.logger.info('Installing CLI...')
+        self.logger.info('Using CLI package: {url}'.format(
+            url=cli_package_url,
+        ))
         self._run_cmd(session, '''
 cd {0}
 & .\{1} /SILENT /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\cloudify-cli"'''
@@ -277,6 +305,20 @@ Set-Content "{0}" '{1}'
         bootstrap_cmd = '{0} bootstrap {1} -i "{2}" -v --keep-up-on-failure'\
             .format(cfy_exe, manager_blueprint_path, bootstrap_inputs_file)
         self._run_cmd(session, bootstrap_cmd, powershell=False)
+
+
+class _OSXCliPackageTester(_CliPackageTester):
+
+    def _copy_terraform_files(self):
+        shutil.copy(get_resource_path(
+            'terraform/aws-osx-cli-test.tf'),
+            self.tmpdir / 'aws-osx-cli-test.tf')
+        shutil.copy(get_resource_path(
+            'terraform/scripts/osx-cli-test.sh'),
+            self.tmpdir / 'scripts/osx-cli-test.sh')
+
+    def run_test(self):
+        super(_OSXCliPackageTester, self).run_test()
 
 
 def get_terraform_inputs(attributes, ssh_key):

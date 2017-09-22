@@ -14,6 +14,7 @@
 #    * limitations under the License.
 
 import base64
+from contextlib import contextmanager
 import json
 import logging
 import os
@@ -37,6 +38,7 @@ from path import path, Path
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
+from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 
 import cosmo_tester
 from cosmo_tester import resources
@@ -300,12 +302,48 @@ def get_plugin_wagon_urls():
     return yaml.load(requests.get(plugin_urls_location).text)['plugins']
 
 
-def get_cli_package_urls():
-    if is_community():
-        filename = 'cli-packages.yaml'
+def test_cli_package_url(url):
+    error_base = (
+        # Trailing space for better readability when cause of error
+        # is appended if there are problems.
+        '{url} does not appear to be a valid package URL. '
+    ).format(url=url)
+    try:
+        verification = requests.head(url, allow_redirects=True)
+    except requests.exceptions.RequestException as err:
+        raise RuntimeError(
+            error_base +
+            'Attempting to retrieve URL caused error: {exc}'.format(
+                exc=str(err),
+            )
+        )
+    if verification.status_code != 200:
+        raise RuntimeError(
+            error_base +
+            'Response to HEAD request was {status}'.format(
+                status=verification.status_code,
+            )
+        )
+
+
+def get_cli_package_url(platform):
+    # Override URLs if they are provided in the config
+    config_cli_urls = get_attributes()['cli_urls_override']
+
+    if config_cli_urls.get(platform):
+        url = config_cli_urls[platform]
     else:
-        filename = 'cli-premium-packages.yaml'
-    return yaml.load(_get_package_url(filename))
+        if is_community():
+            filename = 'cli-packages.yaml'
+            packages_key = 'cli_packages_urls'
+        else:
+            filename = 'cli-premium-packages.yaml'
+            packages_key = 'cli_premium_packages_urls'
+        url = yaml.load(_get_package_url(filename))[packages_key][platform]
+
+    test_cli_package_url(url)
+
+    return url
 
 
 def get_manager_resources_package_url():
@@ -485,3 +523,37 @@ def is_community():
         )
 
     return image_type in community_image_types
+
+
+@contextmanager
+def set_client_tenant(manager, tenant):
+    if tenant:
+        original = manager.client._client.headers[CLOUDIFY_TENANT_HEADER]
+
+        manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = tenant
+
+    try:
+        yield
+    except:
+        raise
+    finally:
+        if tenant:
+            manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
+
+
+def prepare_and_get_test_tenant(test_param, manager, cfy):
+    """
+        Prepares a tenant for testing based on the test name (or other
+        identifier passed in as 'test_param'), and returns the name of the
+        tenant that should be used for this test.
+    """
+    if is_community():
+        tenant = 'default_tenant'
+        # It is expected that the plugin is already uploaded for the
+        # default tenant
+    else:
+        tenant = test_param
+        cfy.tenants.create(tenant)
+        manager.upload_plugin('openstack_centos_core',
+                              tenant_name=tenant)
+    return tenant

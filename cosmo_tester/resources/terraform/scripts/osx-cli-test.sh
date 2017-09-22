@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MANAGER_BLUEPRINTS_PATH="/opt/cfy/cloudify-manager-blueprints"
+MANAGER_BLUEPRINTS_PATH="/usr/local/opt/cfy/cloudify-manager-blueprints"
 MANAGER_BLUEPRINT_PATH="${MANAGER_BLUEPRINTS_PATH}/simple-manager-blueprint.yaml"
 INPUTS_FILE_PATH="/tmp/bootstrap_inputs.yaml"
 
@@ -10,17 +10,11 @@ PUBLIC_IP=$3
 PRIVATE_IP=$4
 MANAGER_USER=$5
 
-echo "Installing Cloudify's CLI..."
 echo "Using CLI package: ${CLI_PACKAGE_URL}"
 
-which rpm
 
-if [ "$?" -eq "0" ]; then
-    sudo rpm -i ${CLI_PACKAGE_URL}
-else
-    wget ${CLI_PACKAGE_URL} -O cloudify-cli.deb
-    sudo dpkg -i cloudify-cli.deb
-fi
+curl ${CLI_PACKAGE_URL} -o /tmp/package.pkg
+echo $MACINCLOUD_PASSWORD | sudo -S installer -pkg /tmp/package.pkg -target /
 
 set -e
 
@@ -37,7 +31,7 @@ echo "Setting permissions for private key file: ${PRIVATE_KEY_PATH}"
 chmod 400 ${PRIVATE_KEY_PATH}
 
 echo "Bootstrapping cloudify manager.."
-cfy bootstrap ${MANAGER_BLUEPRINT_PATH} -i ${INPUTS_FILE_PATH} -v --keep-up-on-failure
-cfy status
+/usr/local/opt/cfy/bin/cfy bootstrap ${MANAGER_BLUEPRINT_PATH} -i ${INPUTS_FILE_PATH} -v --keep-up-on-failure
+/usr/local/opt/cfy/bin/cfy status
 
 echo "Bootstrap completed successfully!"

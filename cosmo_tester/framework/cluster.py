@@ -86,6 +86,7 @@ class _CloudifyManager(object):
         self._openstack = util.create_openstack_client()
         self.influxdb_client = InfluxDBClient(public_ip_address, 8086,
                                               'root', 'root', 'cloudify')
+        self.bs_inputs = {}
 
     def _upload_necessary_files(self, openstack_config_file):
         self._logger.info('Uploading necessary files to %s', self)
@@ -194,7 +195,7 @@ class _CloudifyManager(object):
     def ssh(self, **kwargs):
         with fabric_context_managers.settings(
                 host_string=self.ip_address,
-                user=self._attributes.centos7_username,
+                user=self._attributes.centos_7_username,
                 key_filename=self._ssh_key.private_key_path,
                 abort_exception=Exception,
                 **kwargs):
@@ -299,7 +300,7 @@ class _CloudifyManager(object):
         self._logger.info('#' * 80)
         self._logger.info(
             '\nssh -o StrictHostKeyChecking=no {user}@{ip} -i {key}'.format(
-                user=self._attributes.centos7_username,
+                user=self._attributes.centos_7_username,
                 ip=self.ip_address,
                 key=self._ssh_key.private_key_path)
         )
@@ -310,7 +311,7 @@ class _CloudifyManager(object):
         cmd = ' '.join([
             self.rsync_path,
             self.ip_address,
-            self._attributes.centos7_username,
+            self._attributes.centos_7_username,
             self._ssh_key.private_key_path
         ])
         self._logger.info('Running command:\n{0}'.format(cmd))
@@ -464,6 +465,8 @@ class CloudifyCluster(object):
                  logger,
                  number_of_managers=1,
                  managers=None,
+                 tf_template=None,
+                 template_inputs=None
                  ):
         """
         managers: supply a list of _CloudifyManager instances.
@@ -479,6 +482,7 @@ class CloudifyCluster(object):
         self._cfy = cfy
         self._terraform = util.sh_bake(sh.terraform)
         self._terraform_inputs_file = self._tmpdir / 'terraform-vars.json'
+        self._tf_template = tf_template or 'openstack-vm.tf.template'
         self.preconfigure_callback = None
         if managers is not None:
             self.managers = managers
@@ -486,6 +490,7 @@ class CloudifyCluster(object):
             self.managers = [
                 CURRENT_MANAGER()
                 for _ in range(number_of_managers)]
+        self._template_inputs = template_inputs or {'servers': self.managers}
 
     def _bootstrap_managers(self):
         pass
@@ -519,18 +524,24 @@ class CloudifyCluster(object):
 
     @staticmethod
     def create_bootstrap_based(cfy, ssh_key, tmpdir, attributes, logger,
+                               tf_template=None,
+                               template_inputs=None,
                                preconfigure_callback=None):
         """Bootstraps a Cloudify manager using simple manager blueprint."""
-        cluster = BootstrapBasedCloudifyCluster(cfy,
-                                                ssh_key,
-                                                tmpdir,
-                                                attributes,
-                                                logger)
+        cluster = BootstrapBasedCloudifyCluster(
+            cfy,
+            ssh_key,
+            tmpdir,
+            attributes,
+            logger,
+            tf_template=tf_template,
+            template_inputs=template_inputs
+        )
         logger.info('Bootstrapping cloudify manager using simple '
                     'manager blueprint..')
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
-        cluster.managers[0].image_name = ATTRIBUTES['centos7_image_name']
+        cluster.managers[0].image_name = ATTRIBUTES['centos_7_image_name']
         cluster.create()
         return cluster
 
@@ -561,13 +572,12 @@ class CloudifyCluster(object):
         terraform_template_file = self._tmpdir / 'openstack-vm.tf'
 
         input_file = util.get_resource_path(
-                'terraform/openstack-vm.tf.template')
+            'terraform/{0}'.format(self._tf_template)
+        )
         with open(input_file, 'r') as f:
-            terraform_template = f.read()
+            tf_template = f.read()
 
-        output = jinja2.Template(terraform_template).render({
-            'servers': self.managers
-        })
+        output = jinja2.Template(tf_template).render(self._template_inputs)
 
         terraform_template_file.write_text(output)
 
@@ -666,7 +676,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         return self._attributes.large_flavor_name
 
     def _get_latest_manager_image_name(self):
-        return self._attributes.centos7_image_name
+        return self._attributes.centos_7_image_name
 
     def _bootstrap_managers(self):
         super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()
@@ -682,20 +692,24 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
 
     def _create_inputs_file(self):
         self._inputs_file = self._tmpdir / 'inputs.json'
-        bootstrap_inputs = json.dumps({
-                'public_ip': self.managers[0].ip_address,
-                'private_ip': self.managers[0].private_ip_address,
-                'ssh_user': self._attributes.centos7_username,
-                'ssh_key_filename': self._ssh_key.private_key_path,
-                'admin_username': self._attributes.cloudify_username,
-                'admin_password': self._attributes.cloudify_password,
-                'manager_resources_package': self._manager_resources_package,
-            },
-            indent=2,
-        )
+        manager = self.managers[0]
+        bootstrap_inputs = {
+            'public_ip': manager.ip_address,
+            'private_ip': manager.private_ip_address,
+            'ssh_user': self._attributes.centos_7_username,
+            'ssh_key_filename': self._ssh_key.private_key_path,
+            'admin_username': self._attributes.cloudify_username,
+            'admin_password': self._attributes.cloudify_password,
+            'manager_resources_package': self._manager_resources_package,
+        }
+
+        # Add any additional bootstrap inputs passed from the test
+        bootstrap_inputs.update(manager.bs_inputs)
+        bootstrap_inputs_str = json.dumps(bootstrap_inputs, indent=2)
+
         self._logger.info(
-                'Bootstrap inputs:%s%s', os.linesep, bootstrap_inputs)
-        self._inputs_file.write_text(bootstrap_inputs)
+                'Bootstrap inputs:%s%s', os.linesep, bootstrap_inputs_str)
+        self._inputs_file.write_text(bootstrap_inputs_str)
 
     def _bootstrap_manager(self):
         manager_blueprint_path = \

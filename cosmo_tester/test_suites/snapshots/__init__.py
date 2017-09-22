@@ -53,7 +53,7 @@ TENANT_DEPLOYMENTS_PATH = (
     '/opt/mgmtworker/work/deployments/{tenant}'
 )
 DEPLOYMENT_ENVIRONMENT_PATH = (
-    TENANT_DEPLOYMENTS_PATH + '/{name}'
+    '/opt/mgmtworker/work/deployments/{tenant}/{name}'
 )
 
 # These manager versions only support single tenant snapshot restores in
@@ -74,8 +74,11 @@ MULTI_TENANT_MANAGERS = (
 
 def get_single_tenant_versions_list():
     if is_community():
-        # Community only works single tenanted
-        return SINGLE_TENANT_MANAGERS + MULTI_TENANT_MANAGERS
+        # Community only works single tenanted so should eventually be testing
+        # SINGLE_TENANT_MANAGERS + MULTI_TENANT_MANAGERS here...
+        # Unfortunately, at the moment there are resource constraints in the
+        # test environment so it will only be testing current.
+        return ['master']
     else:
         return SINGLE_TENANT_MANAGERS
 
@@ -234,7 +237,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     deployment_id = prefix + DEPLOYMENT_ID
     inputs = {
         'server_ip': target_vm.ip_address,
-        'agent_user': attributes.centos7_username,
+        'agent_user': attributes.centos_7_username,
         'agent_private_key_path': manager.remote_private_key_path,
     }
     upload_helloworld(

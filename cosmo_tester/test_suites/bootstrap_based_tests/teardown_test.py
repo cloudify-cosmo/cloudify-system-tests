@@ -17,24 +17,16 @@ import pytest
 
 from cosmo_tester.framework.cluster import CloudifyCluster
 
+from . import hello_worlds  # noqa (pytest fixture imported)
+
 
 pre_bootstrap_state = None
 
 
-@pytest.fixture(scope='module')
-def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
-    """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
-    # The preconfigure callback populates the files structure prior to the BS
-    cluster = CloudifyCluster.create_bootstrap_based(
-            cfy, ssh_key, module_tmpdir, attributes, logger,
-            preconfigure_callback=_preconfigure_callback)
+def test_teardown(cfy, manager, hello_worlds):  # noqa (pytest fixture, not redefinition of hello_worlds)
+    for hello in hello_worlds:
+        hello.verify_all()
 
-    yield cluster.managers[0]
-
-    cluster.destroy()
-
-
-def test_teardown(cfy, manager):
     cfy.teardown('-f')
     current_state = _get_system_state(manager)
     diffs = {}
@@ -49,6 +41,19 @@ def test_teardown(cfy, manager):
 
     assert not diffs, 'The following entities were not removed: ' \
                       '{0}'.format(diffs)
+
+
+@pytest.fixture(scope='module')
+def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+    """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
+    # The preconfigure callback populates the files structure prior to the BS
+    cluster = CloudifyCluster.create_bootstrap_based(
+            cfy, ssh_key, module_tmpdir, attributes, logger,
+            preconfigure_callback=_preconfigure_callback)
+
+    yield cluster.managers[0]
+
+    cluster.destroy()
 
 
 def _preconfigure_callback(managers):
