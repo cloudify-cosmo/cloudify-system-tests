@@ -16,7 +16,7 @@
 import yaml
 import pytest
 
-from cosmo_tester.framework.cluster import CloudifyCluster
+from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.util import (
     is_community,
@@ -40,7 +40,7 @@ DEFROUTE="no"
 @pytest.fixture(scope='module', params=[3])
 def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
-    cluster = CloudifyCluster.create_bootstrap_based(
+    cluster = TestHosts.create_bootstrap_based(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         tf_template='openstack-multi-network-test.tf.template',
         template_inputs={
