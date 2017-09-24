@@ -480,6 +480,7 @@ class CloudifyCluster(object):
 
     @staticmethod
     def create_bootstrap_based(cfy, ssh_key, tmpdir, attributes, logger,
+                               number_of_managers=1,
                                tf_template=None,
                                template_inputs=None,
                                preconfigure_callback=None):
@@ -490,6 +491,7 @@ class CloudifyCluster(object):
             tmpdir,
             attributes,
             logger,
+            number_of_managers=number_of_managers,
             tf_template=tf_template,
             template_inputs=template_inputs
         )
@@ -497,7 +499,8 @@ class CloudifyCluster(object):
                     'manager blueprint..')
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
-        cluster.managers[0].image_name = ATTRIBUTES['centos_7_image_name']
+        for manager in cluster.managers:
+            manager.image_name = ATTRIBUTES['centos_7_image_name']
         cluster.create()
         return cluster
 
@@ -638,17 +641,17 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()
 
         self._clone_manager_blueprints()
-        self._create_inputs_file()
-        self._bootstrap_manager()
+        for manager in self.managers:
+            self._create_inputs_file(manager)
+            self._bootstrap_manager()
 
     def _clone_manager_blueprints(self):
         self._manager_blueprints_path = git_helper.clone(
                 MANAGER_BLUEPRINTS_REPO_URL,
                 str(self._tmpdir))
 
-    def _create_inputs_file(self):
+    def _create_inputs_file(self, manager):
         self._inputs_file = self._tmpdir / 'inputs.json'
-        manager = self.managers[0]
         bootstrap_inputs = {
             'public_ip': manager.ip_address,
             'private_ip': manager.private_ip_address,
