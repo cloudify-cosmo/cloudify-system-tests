@@ -45,7 +45,7 @@ def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
         tf_template='openstack-multi-network-test.tf.template',
         template_inputs={
             'num_of_networks': request.param,
-            'image_name': attributes['centos_7_image_name']
+            'image_name': attributes.centos_7_image_name
         },
         preconfigure_callback=_preconfigure_callback
     )
@@ -90,17 +90,9 @@ class MultiNetworkHelloWorld(HelloWorldExample):
 @pytest.fixture(scope='function')
 def multi_network_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir,
                                logger):
-    hellos = get_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir,
-                              logger)
-    yield hellos
-    for hello in hellos:
-        hello.cleanup()
-
-
-def get_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir, logger):
     hellos = []
 
-    # Add a MultiNetworkHelloWorld per network we add
+    # Add a MultiNetworkHelloWorld per management network
     for network_name in attributes.networks:
         if is_community():
             tenant = 'default_tenant'
@@ -122,6 +114,7 @@ def get_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir, logger):
         hellos.append(hello)
 
     # Add one more hello world, that will run on the `default` network
+    # implicitly
     hw = HelloWorldExample(cfy, manager, attributes, ssh_key, logger, tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     hw.inputs.update({
@@ -130,7 +123,9 @@ def get_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir, logger):
     })
     hellos.append(hw)
 
-    return hellos
+    yield hellos
+    for hello in hellos:
+        hello.cleanup()
 
 
 def _enable_nics(manager, networks, tmpdir, logger):
