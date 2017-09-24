@@ -38,10 +38,12 @@ DEFROUTE="no"
 
 
 @pytest.fixture(scope='module', params=[3])
-def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
-    """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
+def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+    """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack."""
+
     cluster = CloudifyCluster.create_bootstrap_based(
         cfy, ssh_key, module_tmpdir, attributes, logger,
+        number_of_managers=2,
         tf_template='openstack-multi-network-test.tf.template',
         template_inputs={
             'num_of_networks': request.param,
@@ -50,22 +52,24 @@ def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
         preconfigure_callback=_preconfigure_callback
     )
 
-    yield cluster.managers[0]
+    yield cluster.managers
 
     cluster.destroy()
 
 
-def _preconfigure_callback(managers):
+def _preconfigure_callback(_managers):
+    # Calling the param `_managers` to avoid confusion with fixture
+
     # The preconfigure callback populates the networks config prior to the BS
-    mgr = managers[0]
-    networks = mgr._attributes.networks
-    mgr.bs_inputs = {'manager_networks': networks}
+    for mgr in _managers:
+        networks = mgr._attributes.networks
+        mgr.bs_inputs = {'manager_networks': networks}
 
-    # Configure NICs in order for networking to work properly
-    _enable_nics(mgr, networks, mgr._tmpdir, mgr._logger)
+        # Configure NICs in order for networking to work properly
+        _enable_nics(mgr, networks, mgr._tmpdir, mgr._logger)
 
 
-def test_multiple_networks(multi_network_hello_worlds, logger):
+def test_multiple_networks(managers, multi_network_hello_worlds, logger):
     logger.info('Testing manager with multiple networks')
     for hello in multi_network_hello_worlds:
         hello.verify_all()
@@ -88,8 +92,10 @@ class MultiNetworkHelloWorld(HelloWorldExample):
 
 
 @pytest.fixture(scope='function')
-def multi_network_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir,
+def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
                                logger):
+    # The first manager is the initial one
+    manager = managers[0]
     hellos = []
 
     # Add a MultiNetworkHelloWorld per management network
