@@ -64,6 +64,7 @@ class _CloudifyManager(object):
             index,
             public_ip_address,
             private_ip_address,
+            networks,
             rest_client,
             ssh_key,
             cfy,
@@ -76,6 +77,7 @@ class _CloudifyManager(object):
         self.private_ip_address = private_ip_address
         self.client = rest_client
         self.deleted = False
+        self.networks = networks
         self._ssh_key = ssh_key
         self._cfy = cfy
         self._attributes = attributes
@@ -593,6 +595,7 @@ class CloudifyCluster(object):
         for i, manager in enumerate(self.managers):
             public_ip_address = outputs['public_ip_address_{}'.format(i)]
             private_ip_address = outputs['private_ip_address_{}'.format(i)]
+            networks = outputs['networks_{}'.format(i)]
             rest_client = util.create_rest_client(
                     public_ip_address,
                     username=self._attributes.cloudify_username,
@@ -604,6 +607,7 @@ class CloudifyCluster(object):
                     i,
                     public_ip_address,
                     private_ip_address,
+                    networks,
                     rest_client,
                     self._ssh_key,
                     self._cfy,
