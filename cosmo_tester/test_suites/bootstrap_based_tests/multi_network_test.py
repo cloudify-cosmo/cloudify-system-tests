@@ -18,10 +18,7 @@ import pytest
 
 from cosmo_tester.framework.cluster import CloudifyCluster
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
-from cosmo_tester.framework.util import (
-    is_community,
-    prepare_and_get_test_tenant,
-)
+from cosmo_tester.framework.util import prepare_and_get_test_tenant
 
 NETWORK_CONFIG_TEMPLATE = """DEVICE="eth{0}"
 BOOTPROTO="static"
@@ -31,7 +28,7 @@ USERCTL="yes"
 PEERDNS="yes"
 IPV6INIT="no"
 PERSISTENT_DHCLIENT="1"
-IPADDR="1{0}.0.0.5"
+IPADDR="{1}"
 NETMASK="255.255.255.128"
 DEFROUTE="no"
 """
@@ -47,6 +44,7 @@ def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
         tf_template='openstack-multi-network-test.tf.template',
         template_inputs={
             'num_of_networks': request.param,
+            'num_of_managers': 2,
             'image_name': attributes.centos_7_image_name
         },
         preconfigure_callback=_preconfigure_callback
@@ -62,11 +60,10 @@ def _preconfigure_callback(_managers):
 
     # The preconfigure callback populates the networks config prior to the BS
     for mgr in _managers:
-        networks = mgr._attributes.networks
-        mgr.bs_inputs = {'manager_networks': networks}
+        mgr.bs_inputs = {'manager_networks': mgr.networks}
 
         # Configure NICs in order for networking to work properly
-        _enable_nics(mgr, networks, mgr._tmpdir, mgr._logger)
+        _enable_nics(mgr)
 
 
 def test_multiple_networks(managers, multi_network_hello_worlds, logger):
@@ -96,17 +93,14 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
                                logger):
     # The first manager is the initial one
     manager = managers[0]
+    manager.use()
     hellos = []
 
     # Add a MultiNetworkHelloWorld per management network
-    for network_name in attributes.networks:
-        if is_community():
-            tenant = 'default_tenant'
-        else:
-            tenant = '{0}_tenant'.format(network_name)
-            prepare_and_get_test_tenant(
-                '{0}_tenant'.format(network_name), manager, cfy
-            )
+    for network_name, network_id in attributes.network_names.iteritems():
+        tenant = prepare_and_get_test_tenant(
+            '{0}_tenant'.format(network_name), manager, cfy
+        )
         hello = MultiNetworkHelloWorld(
             cfy, manager, attributes, ssh_key, logger, tmpdir,
             tenant=tenant, suffix=tenant)
@@ -115,7 +109,7 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
             'agent_user': attributes.centos_7_username,
             'image': attributes.centos_7_image_name,
             'manager_network_name': network_name,
-            'network_name': attributes.network_names[network_name]
+            'network_name': network_id
         })
         hellos.append(hello)
 
@@ -134,20 +128,34 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
         hello.cleanup()
 
 
-def _enable_nics(manager, networks, tmpdir, logger):
-    """ Extra network interfaces need to be manually enabled on the manager """
+def _enable_nics(manager):
+    """
+    Extra network interfaces need to be manually enabled on the manager
+    `manager.networks` is a dict that looks like this:
+    {
+        "network_0": "10.0.0.6",
+        "network_1": "11.0.0.6",
+        "network_2": "12.0.0.6"
+    }
+    """
 
-    logger.info('Adding extra NICs...')
-    # Need to do this for each network except 0 (as eth0 is already enabled)
-    for i in range(1, len(networks)):
-        network_file_path = tmpdir / 'network_cfg_{0}'.format(i)
+    manager._logger.info('Adding extra NICs...')
+    for network_name, ip_addr in manager.networks.iteritems():
+        eth_num = network_name[-1]
+        # Need to do this for each network except 0 (eth0 is already enabled)
+        if eth_num == '0':
+            continue
+
+        network_file_path = manager._tmpdir / 'network_cfg_{0}'.format(eth_num)
+        config_content = NETWORK_CONFIG_TEMPLATE.format(eth_num, ip_addr)
+
         # Create and copy the interface config
-        network_file_path.write_text(NETWORK_CONFIG_TEMPLATE.format(i))
+        network_file_path.write_text(config_content)
         with manager.ssh() as fabric_ssh:
             fabric_ssh.put(
                 network_file_path,
-                '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
+                '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(eth_num),
                 use_sudo=True
             )
             # Start the interface
-            fabric_ssh.sudo('ifup eth{0}'.format(i))
+            fabric_ssh.sudo('ifup eth{0}'.format(eth_num))
