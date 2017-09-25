@@ -230,7 +230,7 @@ class _CloudifyManager(object):
 
     @property
     def image_name(self):
-        return ATTRIBUTES['cloudify_manager_{}_image_name'.format(
+        return self._attributes['cloudify_manager_{}_image_name'.format(
                 self.branch_name.replace('.', '_'))]
 
     @property
@@ -502,7 +502,7 @@ class CloudifyCluster(object):
         if preconfigure_callback:
             cluster.preconfigure_callback = preconfigure_callback
         for manager in cluster.managers:
-            manager.image_name = ATTRIBUTES['centos_7_image_name']
+            manager.image_name = attributes.centos_7_image_name
         cluster.create()
         return cluster
 
