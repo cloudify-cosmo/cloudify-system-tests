@@ -35,9 +35,9 @@ output "networks_{{ sn }}" {
 
 output "private_ip_address_{{ sn }}" { value = "${openstack_compute_instance_v2.server_{{ sn }}.network.0.fixed_ip_v4}" }
 output "public_ip_address_{{ sn }}" { value = "${openstack_networking_floatingip_v2.floatingip_{{ sn }}.address}" }
+output "server_name_{{ sn }}" { value = "${openstack_compute_instance_v2.server_{{ sn }}.name}" }
+output "server_id_{{ sn }}" { value = "${openstack_compute_instance_v2.server_{{ sn }}.id}" }
 {% endfor %}
-//output "server_name_0" { value = "${openstack_compute_instance_v2.server.name}" }
-//output "server_id_0" { value = "${openstack_compute_instance_v2.server.id}" }
 
 
 {% for n in range(num_of_networks) %}
