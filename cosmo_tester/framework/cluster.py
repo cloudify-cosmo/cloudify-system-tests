@@ -364,6 +364,7 @@ class NotAManager(_CloudifyManager):
             index,
             public_ip_address,
             private_ip_address,
+            networks,
             rest_client,
             ssh_key,
             cfy,
@@ -633,7 +634,6 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         self._manager_resources_package = \
             util.get_manager_resources_package_url()
         self._manager_blueprints_path = None
-        self._inputs_file = None
 
     def _get_server_flavor(self):
         return self._attributes.large_flavor_name
@@ -646,8 +646,8 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
 
         self._clone_manager_blueprints()
         for manager in self.managers:
-            self._create_inputs_file(manager)
-            self._bootstrap_manager()
+            inputs_file = self._create_inputs_file(manager)
+            self._bootstrap_manager(inputs_file)
 
     def _clone_manager_blueprints(self):
         self._manager_blueprints_path = git_helper.clone(
@@ -655,7 +655,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
                 str(self._tmpdir))
 
     def _create_inputs_file(self, manager):
-        self._inputs_file = self._tmpdir / 'inputs.json'
+        inputs_file = self._tmpdir / 'inputs_{0}.json'.format(manager.index)
         bootstrap_inputs = {
             'public_ip': manager.ip_address,
             'private_ip': manager.private_ip_address,
@@ -672,9 +672,10 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
 
         self._logger.info(
                 'Bootstrap inputs:%s%s', os.linesep, bootstrap_inputs_str)
-        self._inputs_file.write_text(bootstrap_inputs_str)
+        inputs_file.write_text(bootstrap_inputs_str)
+        return inputs_file
 
-    def _bootstrap_manager(self):
+    def _bootstrap_manager(self, inputs_file):
         manager_blueprint_path = \
             self._manager_blueprints_path / 'simple-manager-blueprint.yaml'
-        self._cfy.bootstrap([manager_blueprint_path, '-i', self._inputs_file])
+        self._cfy.bootstrap([manager_blueprint_path, '-i', inputs_file])
