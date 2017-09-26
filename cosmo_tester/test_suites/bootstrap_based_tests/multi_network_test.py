@@ -29,6 +29,8 @@ from cosmo_tester.test_suites.snapshots import (
     delete_manager
 )
 
+# The MTU is set to 1450 because we're using a static BOOTPROTO here (as
+# opposed to DHCP), which sets a lower default by default
 NETWORK_CONFIG_TEMPLATE = """DEVICE="eth{0}"
 BOOTPROTO="static"
 ONBOOT="yes"
