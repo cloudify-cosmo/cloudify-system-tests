@@ -20,6 +20,15 @@ from cosmo_tester.framework.cluster import CloudifyCluster
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
 
+from cosmo_tester.test_suites.snapshots import (
+    create_snapshot,
+    download_snapshot,
+    upload_snapshot,
+    restore_snapshot,
+    upgrade_agents,
+    delete_manager
+)
+
 NETWORK_CONFIG_TEMPLATE = """DEVICE="eth{0}"
 BOOTPROTO="static"
 ONBOOT="yes"
@@ -66,10 +75,48 @@ def _preconfigure_callback(_managers):
         _enable_nics(mgr)
 
 
-def test_multiple_networks(managers, multi_network_hello_worlds, logger):
-    logger.info('Testing manager with multiple networks')
-    for hello in multi_network_hello_worlds:
-        hello.verify_all()
+def test_multiple_networks(managers,
+                           cfy,
+                           multi_network_hello_worlds,
+                           logger,
+                           tmpdir,
+                           attributes):
+    logger.info('Testing managers with multiple networks')
+
+    # We should have at least 3 hello world objects. We will verify the first
+    # one completely on the first manager.
+    # All the other ones will be installed on the first manager,
+    # then we'll create a snapshot and restore it on the second manager, and
+    # finally, to complete the verification, we'll uninstall the remaining
+    # hellos on the new manager
+
+    old_manager = managers[0]
+    new_manager = managers[1]
+    snapshot_id = 'SNAPSHOT_ID'
+    local_snapshot_path = str(tmpdir / 'snap.zip')
+
+    first_hello = multi_network_hello_worlds[0]
+    first_hello.verify_all()
+
+    for hello in multi_network_hello_worlds[1:]:
+        hello.upload_blueprint()
+        hello.create_deployment()
+        hello.install()
+        hello.verify_installation()
+
+    create_snapshot(old_manager, snapshot_id, attributes, logger)
+    download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
+    upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
+    restore_snapshot(new_manager, snapshot_id, cfy, logger)
+
+    upgrade_agents(cfy, new_manager, logger)
+    delete_manager(old_manager, logger)
+
+    new_manager.use()
+    for hello in multi_network_hello_worlds[1:]:
+        hello.manager = new_manager
+        hello.uninstall()
+        hello.delete_deployment()
 
 
 class MultiNetworkHelloWorld(HelloWorldExample):
