@@ -357,6 +357,52 @@ class CloudifyMasterManager(_CloudifyManager):
 
     image_name = _get_latest_manager_image_name()
 
+    # The MTU is set to 1450 because we're using a static BOOTPROTO here (as
+    # opposed to DHCP), which sets a lower default by default
+    NETWORK_CONFIG_TEMPLATE = """DEVICE="eth{0}"
+BOOTPROTO="static"
+ONBOOT="yes"
+TYPE="Ethernet"
+USERCTL="yes"
+PEERDNS="yes"
+IPV6INIT="no"
+PERSISTENT_DHCLIENT="1"
+IPADDR="{1}"
+NETMASK="255.255.255.128"
+DEFROUTE="no"
+MTU=1450
+"""
+
+    def enable_nics(self):
+        """
+        Extra network interfaces need to be manually enabled on the manager
+        `manager.networks` is a dict that looks like this:
+        {
+            "network_0": "10.0.0.6",
+            "network_1": "11.0.0.6",
+            "network_2": "12.0.0.6"
+        }
+        """
+
+        self._logger.info('Adding extra NICs...')
+
+        # Need to do this for each network except 0 (eth0 is already enabled)
+        for i in range(1, len(self.networks)):
+            network_file_path = self._tmpdir / 'network_cfg_{0}'.format(i)
+            ip_addr = self.networks['network_{0}'.format(i)]
+            config_content = self.NETWORK_CONFIG_TEMPLATE.format(i, ip_addr)
+
+            # Create and copy the interface config
+            network_file_path.write_text(config_content)
+            with self.ssh() as fabric_ssh:
+                fabric_ssh.put(
+                    network_file_path,
+                    '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
+                    use_sudo=True
+                )
+                # Start the interface
+                fabric_ssh.sudo('ifup eth{0}'.format(i))
+
 
 class NotAManager(_CloudifyManager):
     def create(

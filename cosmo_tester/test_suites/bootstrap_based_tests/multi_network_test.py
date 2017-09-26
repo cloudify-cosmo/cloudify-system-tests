@@ -29,22 +29,6 @@ from cosmo_tester.test_suites.snapshots import (
     delete_manager
 )
 
-# The MTU is set to 1450 because we're using a static BOOTPROTO here (as
-# opposed to DHCP), which sets a lower default by default
-NETWORK_CONFIG_TEMPLATE = """DEVICE="eth{0}"
-BOOTPROTO="static"
-ONBOOT="yes"
-TYPE="Ethernet"
-USERCTL="yes"
-PEERDNS="yes"
-IPV6INIT="no"
-PERSISTENT_DHCLIENT="1"
-IPADDR="{1}"
-NETMASK="255.255.255.128"
-DEFROUTE="no"
-MTU=1450
-"""
-
 
 @pytest.fixture(scope='module', params=[3])
 def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
@@ -75,7 +59,7 @@ def _preconfigure_callback(_managers):
         mgr.bs_inputs = {'manager_networks': mgr.networks}
 
         # Configure NICs in order for networking to work properly
-        _enable_nics(mgr)
+        mgr.enable_nics()
 
 
 def test_multiple_networks(managers,
@@ -176,36 +160,3 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
     yield hellos
     for hello in hellos:
         hello.cleanup()
-
-
-def _enable_nics(manager):
-    """
-    Extra network interfaces need to be manually enabled on the manager
-    `manager.networks` is a dict that looks like this:
-    {
-        "network_0": "10.0.0.6",
-        "network_1": "11.0.0.6",
-        "network_2": "12.0.0.6"
-    }
-    """
-
-    manager._logger.info('Adding extra NICs...')
-    for network_name, ip_addr in manager.networks.iteritems():
-        eth_num = network_name[-1]
-        # Need to do this for each network except 0 (eth0 is already enabled)
-        if eth_num == '0':
-            continue
-
-        network_file_path = manager._tmpdir / 'network_cfg_{0}'.format(eth_num)
-        config_content = NETWORK_CONFIG_TEMPLATE.format(eth_num, ip_addr)
-
-        # Create and copy the interface config
-        network_file_path.write_text(config_content)
-        with manager.ssh() as fabric_ssh:
-            fabric_ssh.put(
-                network_file_path,
-                '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(eth_num),
-                use_sudo=True
-            )
-            # Start the interface
-            fabric_ssh.sudo('ifup eth{0}'.format(eth_num))
