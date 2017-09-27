@@ -20,6 +20,8 @@ from cosmo_tester.framework.cluster import CloudifyCluster
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
 
+from cosmo_tester.test_suites.ha.ha_helper import \
+    HighAvailabilityHelper as ha_helper
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
@@ -49,6 +51,33 @@ def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     yield cluster.managers
 
     cluster.destroy()
+
+
+@pytest.fixture(scope='function')
+def cluster(managers, cfy, logger):
+    """Creates a HA cluster from the passed in managers."""
+    logger.info('Creating HA cluster of %s managers', len(managers))
+
+    for manager in managers[1:]:
+        manager.upload_plugins = False
+
+    manager1 = managers[0]
+    manager1.use()
+
+    cfy.cluster.start(timeout=600,
+                      cluster_host_ip=manager1.private_ip_address,
+                      cluster_node_name=manager1.ip_address)
+
+    for manager in managers[1:]:
+        manager.use()
+        cfy.cluster.join(manager1.ip_address,
+                         timeout=600,
+                         cluster_host_ip=manager.private_ip_address,
+                         cluster_node_name=manager.ip_address)
+
+    cfy.cluster.nodes.list()
+
+    yield cluster
 
 
 def _preconfigure_callback(_managers):
@@ -102,6 +131,25 @@ def test_multiple_networks(managers,
     new_manager.use()
     for hello in multi_network_hello_worlds[1:]:
         hello.manager = new_manager
+        hello.uninstall()
+        hello.delete_deployment()
+
+
+def test_multiple_networks_ha(cluster,
+                              cfy,
+                              multi_network_hello_worlds,
+                              logger):
+    ha_helper.set_active(cluster.managers[0])
+
+    for hello in multi_network_hello_worlds:
+        hello.upload_blueprint()
+        hello.create_deployment()
+        hello.install()
+        hello.verify_installation()
+
+    ha_helper.set_active(cluster.managers[1], cfy, logger)
+
+    for hello in multi_network_hello_worlds:
         hello.uninstall()
         hello.delete_deployment()
 
