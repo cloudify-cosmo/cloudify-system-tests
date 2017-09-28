@@ -33,21 +33,15 @@ def cluster(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a HA cluster from an image in rackspace OpenStack."""
     logger.info('Creating HA cluster of %s managers', request.param)
-    hosts = TestHosts.create_image_based(
-        cfy,
-        ssh_key,
-        module_tmpdir,
-        attributes,
-        logger,
-        number_of_instances=request.param,
-        create=False)
+    hosts = TestHosts(
+            cfy, ssh_key, module_tmpdir, attributes, logger,
+            number_of_managers=request.param)
 
     for manager in hosts.instances[1:]:
         manager.upload_plugins = False
 
-    hosts.create()
-
     try:
+        cluster.create()
         manager1 = hosts.instances[0]
         ha_helper.delete_active_profile()
         manager1.use()

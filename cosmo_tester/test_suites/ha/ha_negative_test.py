@@ -30,14 +30,9 @@ def cluster(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a HA cluster from an image in rackspace OpenStack."""
     logger.info('Creating HA cluster of 2 managers')
-    cluster = TestHosts.create_image_based(
-        cfy,
-        ssh_key,
-        module_tmpdir,
-        attributes,
-        logger,
-        number_of_instances=2,
-        create=False)
+    cluster = TestHosts(
+            cfy, ssh_key, module_tmpdir, attributes, logger,
+            number_of_managers=2)
 
     # manager2 - Cloudify latest - don't install plugins
     cluster.instances[1].upload_plugins = False
@@ -45,6 +40,7 @@ def cluster(
     cluster.create()
 
     try:
+        cluster.create()
         manager1 = cluster.instances[0]
         manager2 = cluster.instances[1]
 
@@ -70,21 +66,14 @@ def cluster(
 def test_nonempty_manager_join_cluster_negative(cfy, attributes, ssh_key,
                                                 logger, tmpdir, module_tmpdir):
     logger.info('Creating HA cluster of 2 managers')
-    cluster = TestHosts.create_image_based(
-        cfy,
-        ssh_key,
-        module_tmpdir,
-        attributes,
-        logger,
-        number_of_instances=2,
-        create=False)
-
+    cluster = TestHosts(
+            cfy, ssh_key, module_tmpdir, attributes, logger,
+            number_of_instances=2)
     # manager2 - Cloudify latest - don't install plugins
     cluster.instances[1].upload_plugins = False
 
-    cluster.create()
-
     try:
+        cluster.create()
         manager1 = cluster.instances[0]
         manager2 = cluster.instances[1]
 

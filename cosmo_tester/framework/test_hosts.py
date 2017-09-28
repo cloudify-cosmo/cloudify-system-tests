@@ -704,6 +704,8 @@ class BootstrapBasedCloudifyCluster(TestHosts):
 
     def __init__(self, *args, **kwargs):
         super(BootstrapBasedCloudifyCluster, self).__init__(*args, **kwargs)
+        for manager in self.managers:
+            manager.image_name = self._attributes.centos_7_image_name
         self._manager_resources_package = \
             util.get_manager_resources_package_url()
         self._manager_blueprints_path = None
