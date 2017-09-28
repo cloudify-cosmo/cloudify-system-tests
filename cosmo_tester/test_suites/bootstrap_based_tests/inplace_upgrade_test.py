@@ -18,7 +18,7 @@ import pytest
 from time import sleep
 from os.path import join
 
-from cosmo_tester.framework.cluster import BootstrapBasedCloudifyCluster
+from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyCluster
 
 from . import get_hello_worlds
 
