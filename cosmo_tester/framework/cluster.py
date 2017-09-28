@@ -642,8 +642,7 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
 
         self._clone_manager_blueprints()
         for manager in self.managers:
-            inputs_file = self._create_inputs_file(manager)
-            self._bootstrap_manager(inputs_file)
+            self._bootstrap_manager(manager)
 
     def _clone_manager_blueprints(self):
         self._manager_blueprints_path = git_helper.clone(
@@ -671,7 +670,8 @@ class BootstrapBasedCloudifyCluster(CloudifyCluster):
         inputs_file.write_text(bootstrap_inputs_str)
         return inputs_file
 
-    def _bootstrap_manager(self, inputs_file):
+    def _bootstrap_manager(self, manager):
+        inputs_file = self._create_inputs_file(manager)
         manager_blueprint_path = \
             self._manager_blueprints_path / 'simple-manager-blueprint.yaml'
         self._cfy.bootstrap([manager_blueprint_path, '-i', inputs_file])
