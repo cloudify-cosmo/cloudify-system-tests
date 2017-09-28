@@ -529,59 +529,6 @@ class TestHosts(object):
     def _bootstrap_managers(self):
         pass
 
-    @staticmethod
-    def create_image_based(
-            cfy, ssh_key, tmpdir, attributes, logger,
-            number_of_instances=1,
-            instances=None,
-            create=True,
-            ):
-        """Creates an image based Cloudify manager.
-        :param create: Determines whether to actually create the environment
-         in this invocation. If set to False, create() should be invoked in
-         order to create the environment. Setting it to False allows to
-         change the servers configuration using the servers_config property
-         before calling create().
-        """
-        cluster = TestHosts(
-                cfy,
-                ssh_key,
-                tmpdir,
-                attributes,
-                logger,
-                number_of_instances=number_of_instances,
-                instances=instances,
-                )
-        if create:
-            cluster.create()
-        return cluster
-
-    @staticmethod
-    def create_bootstrap_based(cfy, ssh_key, tmpdir, attributes, logger,
-                               number_of_managers=1,
-                               tf_template=None,
-                               template_inputs=None,
-                               preconfigure_callback=None):
-        """Bootstraps a Cloudify manager using simple manager blueprint."""
-        cluster = BootstrapBasedCloudifyCluster(
-            cfy,
-            ssh_key,
-            tmpdir,
-            attributes,
-            logger,
-            number_of_managers=number_of_managers,
-            tf_template=tf_template,
-            template_inputs=template_inputs
-        )
-        logger.info('Bootstrapping cloudify manager using simple '
-                    'manager blueprint..')
-        if preconfigure_callback:
-            cluster.preconfigure_callback = preconfigure_callback
-        for manager in cluster.managers:
-            manager.image_name = attributes.centos_7_image_name
-        cluster.create()
-        return cluster
-
     def create_openstack_config_file(self):
         openstack_config_file = self._tmpdir / 'openstack_config.json'
         openstack_config_file.write_text(json.dumps({
@@ -704,7 +651,7 @@ class BootstrapBasedCloudifyCluster(TestHosts):
 
     def __init__(self, *args, **kwargs):
         super(BootstrapBasedCloudifyCluster, self).__init__(*args, **kwargs)
-        for manager in self.managers:
+        for manager in self.instances:
             manager.image_name = self._attributes.centos_7_image_name
         self._manager_resources_package = \
             util.get_manager_resources_package_url()
@@ -720,7 +667,7 @@ class BootstrapBasedCloudifyCluster(TestHosts):
         super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()
 
         self._clone_manager_blueprints()
-        for manager in self.managers:
+        for manager in self.instances:
             inputs_file = self._create_inputs_file(manager)
             self._bootstrap_manager(inputs_file)
 
