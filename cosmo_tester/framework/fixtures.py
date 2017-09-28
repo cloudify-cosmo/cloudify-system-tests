@@ -12,8 +12,8 @@ def image_based_manager(
             cfy, ssh_key, module_tmpdir, attributes, logger)
     try:
         cluster.create()
-        cluster.managers[0].use()
-        yield cluster.managers[0]
+        cluster.instances[0].use()
+        yield cluster.instances[0]
     finally:
         cluster.destroy()
 
@@ -26,7 +26,7 @@ def bootstrap_based_manager(
                                             attributes, logger)
     try:
         cluster.create()
-        cluster.managers[0].use()
-        yield cluster.managers[0]
+        cluster.instances[0].use()
+        yield cluster.instances[0]
     finally:
         cluster.destroy()

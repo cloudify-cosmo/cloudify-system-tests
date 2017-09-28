@@ -36,7 +36,7 @@ def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
 
     cluster = BootstrapBasedCloudifyCluster(
         cfy, ssh_key, module_tmpdir, attributes, logger,
-        number_of_managers=2,
+        number_of_instances=2,
         tf_template='openstack-multi-network-test.tf.template',
         template_inputs={
             'num_of_networks': request.param,
@@ -46,7 +46,7 @@ def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     cluster.preconfigure_callback = _preconfigure_callback
     try:
         cluster.create()
-        yield cluster.managers
+        yield cluster.instances
     finally:
         cluster.destroy()
 
