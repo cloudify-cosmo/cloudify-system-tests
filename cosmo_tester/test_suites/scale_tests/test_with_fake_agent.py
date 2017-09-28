@@ -63,7 +63,7 @@ def test_manager_agent_scaling(cfy, hosts):
 @pytest.fixture
 def hosts(cfy, ssh_key, module_tmpdir, attributes, logger):
 
-    instances = [IMAGES['master'], IMAGES['centos']]
+    instances = [IMAGES['master'](), IMAGES['centos']()]
 
     hosts = TestHosts(
             cfy, ssh_key, module_tmpdir, attributes, logger,
