@@ -236,16 +236,6 @@ class _CloudifyManager(VM):
         """Returns the private key path on the manager."""
         return REMOTE_PRIVATE_KEY_PATH
 
-    @contextmanager
-    def ssh(self, **kwargs):
-        with fabric_context_managers.settings(
-                host_string=self.ip_address,
-                user=self._attributes.centos_7_username,
-                key_filename=self._ssh_key.private_key_path,
-                abort_exception=Exception,
-                **kwargs):
-            yield fabric_api
-
     def __str__(self):
         return 'Cloudify manager [{}:{}]'.format(self.index, self.ip_address)
 
