@@ -18,6 +18,7 @@ import json
 import os
 
 import retrying
+
 from cosmo_tester.framework.test_hosts import (
     TestHosts,
     IMAGES,
@@ -29,7 +30,7 @@ from cosmo_tester.framework.util import (
 # CFY-6912
 from cloudify_cli.commands.executions import (
     _get_deployment_environment_creation_execution,
-    )
+)
 from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 
 
@@ -260,8 +261,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     with set_client_tenant(manager, tenant):
         execution = manager.client.executions.start(
             deployment_id,
-            'install',
-            )
+            'install')
     logger.info('Waiting for installation to finish')
     wait_for_execution(
         manager,
@@ -551,27 +551,24 @@ def get_nodes(manager, tenant=None):
         return manager.client.nodes.list()
 
 
-def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
-            hello_count, install_dev_tools=True):
+def hosts(
+        request, cfy, ssh_key, module_tmpdir, attributes, logger,
+        hello_count, install_dev_tools=True):
 
     manager_types = [request.param, 'master']
     hello_vms = ['centos' for i in range(hello_count)]
-    managers = [
+    instances = [
         IMAGES[mgr_type](upload_plugins=False)
         for mgr_type in manager_types + hello_vms
     ]
 
-    cluster = TestHosts.create_image_based(
-            cfy,
-            ssh_key,
-            module_tmpdir,
-            attributes,
-            logger,
-            instances=managers,
-            )
+    hosts = TestHosts(
+            cfy, ssh_key, module_tmpdir,
+            attributes, logger, instances=instances)
+    hosts.create()
 
     if request.param == '4.0.1':
-        with managers[0].ssh() as fabric_ssh:
+        with instances[0].ssh() as fabric_ssh:
             fabric_ssh.sudo('yum -y -q install wget')
             fabric_ssh.sudo(
                 'cd /tmp && '
@@ -590,12 +587,12 @@ def cluster(request, cfy, ssh_key, module_tmpdir, attributes, logger,
     # managers[1].
     # The hello_world VMs don't need these so we won't waste time installing
     # them.
-    for manager in managers[:2]:
+    for manager in instances[:2]:
         with manager.ssh() as fabric_ssh:
             fabric_ssh.sudo('yum -y -q install gcc')
             fabric_ssh.sudo('yum -y -q install python-devel')
 
-    return cluster
+    return hosts
 
 
 def _log(message, logger, tenant=None):

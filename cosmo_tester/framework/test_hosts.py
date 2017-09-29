@@ -280,16 +280,6 @@ class _CloudifyManager(VM):
         """Returns the private key path on the manager."""
         return REMOTE_PRIVATE_KEY_PATH
 
-    @contextmanager
-    def ssh(self, **kwargs):
-        with fabric_context_managers.settings(
-                host_string=self.ip_address,
-                user=self._attributes.centos_7_username,
-                key_filename=self._ssh_key.private_key_path,
-                abort_exception=Exception,
-                **kwargs):
-            yield fabric_api
-
     def __str__(self):
         return 'Cloudify manager [{}:{}]'.format(self.index, self.ip_address)
 
@@ -344,7 +334,7 @@ class _CloudifyManager(VM):
 
     @property
     def image_name(self):
-        return self._attributes['cloudify_manager_{}_image_name'.format(
+        return ATTRIBUTES['cloudify_manager_{}_image_name'.format(
                 self.branch_name.replace('.', '_'))]
 
     @property
@@ -547,7 +537,7 @@ class TestHosts(object):
                  ):
         """
         instances: supply a list of VM instances.
-        This allows pre-configuration to happen before starting the cluster, or
+        This allows pre-configuration to happen before starting the hosts, or
         for a list of instances of different versions to be created at once.
         if instances is provided, number_of_instances will be ignored
         """
@@ -572,59 +562,6 @@ class TestHosts(object):
 
     def _bootstrap_managers(self):
         pass
-
-    @staticmethod
-    def create_image_based(
-            cfy, ssh_key, tmpdir, attributes, logger,
-            number_of_instances=1,
-            instances=None,
-            create=True,
-            ):
-        """Creates an image based Cloudify manager.
-        :param create: Determines whether to actually create the environment
-         in this invocation. If set to False, create() should be invoked in
-         order to create the environment. Setting it to False allows to
-         change the servers configuration using the servers_config property
-         before calling create().
-        """
-        cluster = TestHosts(
-                cfy,
-                ssh_key,
-                tmpdir,
-                attributes,
-                logger,
-                number_of_instances=number_of_instances,
-                instances=instances,
-                )
-        if create:
-            cluster.create()
-        return cluster
-
-    @staticmethod
-    def create_bootstrap_based(cfy, ssh_key, tmpdir, attributes, logger,
-                               number_of_managers=1,
-                               tf_template=None,
-                               template_inputs=None,
-                               preconfigure_callback=None):
-        """Bootstraps a Cloudify manager using simple manager blueprint."""
-        cluster = BootstrapBasedCloudifyCluster(
-            cfy,
-            ssh_key,
-            tmpdir,
-            attributes,
-            logger,
-            number_of_managers=number_of_managers,
-            tf_template=tf_template,
-            template_inputs=template_inputs
-        )
-        logger.info('Bootstrapping cloudify manager using simple '
-                    'manager blueprint..')
-        if preconfigure_callback:
-            cluster.preconfigure_callback = preconfigure_callback
-        for manager in cluster.managers:
-            manager.image_name = attributes.centos_7_image_name
-        cluster.create()
-        return cluster
 
     def create_openstack_config_file(self):
         openstack_config_file = self._tmpdir / 'openstack_config.json'
@@ -693,11 +630,11 @@ class TestHosts(object):
                 if instance.upload_plugins:
                     instance._upload_plugin('openstack_centos_core')
 
-            self._logger.info('Cloudify cluster successfully created!')
+            self._logger.info('Test hosts successfully created!')
 
         except Exception as e:
             self._logger.error(
-                    'Error creating image based cloudify cluster: %s', e)
+                    'Error creating image based hosts: %s', e)
             try:
                 self.destroy()
             except sh.ErrorReturnCode as ex:
@@ -706,7 +643,7 @@ class TestHosts(object):
 
     def destroy(self):
         """Destroys the OpenStack infrastructure."""
-        self._logger.info('Destroying cloudify cluster..')
+        self._logger.info('Destroying test hosts..')
         with self._tmpdir:
             self._terraform.destroy(
                     ['-var-file', self._terraform_inputs_file, '-force'])
@@ -741,13 +678,15 @@ class TestHosts(object):
                     )
 
 
-class BootstrapBasedCloudifyCluster(TestHosts):
+class BootstrapBasedCloudifyManagers(TestHosts):
     """
     Bootstraps a Cloudify manager using simple manager blueprint.
     """
 
     def __init__(self, *args, **kwargs):
-        super(BootstrapBasedCloudifyCluster, self).__init__(*args, **kwargs)
+        super(BootstrapBasedCloudifyManagers, self).__init__(*args, **kwargs)
+        for manager in self.instances:
+            manager.image_name = self._attributes.centos_7_image_name
         self._manager_resources_package = \
             util.get_manager_resources_package_url()
         self._manager_blueprints_path = None
@@ -759,10 +698,10 @@ class BootstrapBasedCloudifyCluster(TestHosts):
         return self._attributes.centos_7_image_name
 
     def _bootstrap_managers(self):
-        super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()
+        super(BootstrapBasedCloudifyManagers, self)._bootstrap_managers()
 
         self._clone_manager_blueprints()
-        for manager in self.managers:
+        for manager in self.instances:
             inputs_file = self._create_inputs_file(manager)
             self._bootstrap_manager(inputs_file)
 
