@@ -290,7 +290,7 @@ class _CloudifyManager(VM):
 
     @property
     def image_name(self):
-        return self._attributes['cloudify_manager_{}_image_name'.format(
+        return ATTRIBUTES['cloudify_manager_{}_image_name'.format(
                 self.branch_name.replace('.', '_'))]
 
     @property
