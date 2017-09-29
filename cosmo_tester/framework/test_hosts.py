@@ -503,7 +503,7 @@ class TestHosts(object):
                  ):
         """
         instances: supply a list of VM instances.
-        This allows pre-configuration to happen before starting the cluster, or
+        This allows pre-configuration to happen before starting the hosts, or
         for a list of instances of different versions to be created at once.
         if instances is provided, number_of_instances will be ignored
         """
@@ -596,11 +596,11 @@ class TestHosts(object):
                 if instance.upload_plugins:
                     instance._upload_plugin('openstack_centos_core')
 
-            self._logger.info('Cloudify cluster successfully created!')
+            self._logger.info('Test hosts successfully created!')
 
         except Exception as e:
             self._logger.error(
-                    'Error creating image based cloudify cluster: %s', e)
+                    'Error creating image based hosts: %s', e)
             try:
                 self.destroy()
             except sh.ErrorReturnCode as ex:
@@ -609,7 +609,7 @@ class TestHosts(object):
 
     def destroy(self):
         """Destroys the OpenStack infrastructure."""
-        self._logger.info('Destroying cloudify cluster..')
+        self._logger.info('Destroying test hosts..')
         with self._tmpdir:
             self._terraform.destroy(
                     ['-var-file', self._terraform_inputs_file, '-force'])
@@ -644,13 +644,13 @@ class TestHosts(object):
                     )
 
 
-class BootstrapBasedCloudifyCluster(TestHosts):
+class BootstrapBasedCloudifyManagers(TestHosts):
     """
     Bootstraps a Cloudify manager using simple manager blueprint.
     """
 
     def __init__(self, *args, **kwargs):
-        super(BootstrapBasedCloudifyCluster, self).__init__(*args, **kwargs)
+        super(BootstrapBasedCloudifyManagers, self).__init__(*args, **kwargs)
         for manager in self.instances:
             manager.image_name = self._attributes.centos_7_image_name
         self._manager_resources_package = \
@@ -664,7 +664,7 @@ class BootstrapBasedCloudifyCluster(TestHosts):
         return self._attributes.centos_7_image_name
 
     def _bootstrap_managers(self):
-        super(BootstrapBasedCloudifyCluster, self)._bootstrap_managers()
+        super(BootstrapBasedCloudifyManagers, self)._bootstrap_managers()
 
         self._clone_manager_blueprints()
         for manager in self.instances:

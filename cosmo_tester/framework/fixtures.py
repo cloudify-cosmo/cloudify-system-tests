@@ -1,32 +1,32 @@
 
 import pytest
 
-from .test_hosts import TestHosts, BootstrapBasedCloudifyCluster
+from .test_hosts import TestHosts, BootstrapBasedCloudifyManagers
 
 
 @pytest.fixture(scope='module')
 def image_based_manager(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a cloudify manager from an image in rackspace OpenStack."""
-    cluster = TestHosts(
+    hosts = TestHosts(
             cfy, ssh_key, module_tmpdir, attributes, logger)
     try:
-        cluster.create()
-        cluster.instances[0].use()
-        yield cluster.instances[0]
+        hosts.create()
+        hosts.instances[0].use()
+        yield hosts.instances[0]
     finally:
-        cluster.destroy()
+        hosts.destroy()
 
 
 @pytest.fixture(scope='module')
 def bootstrap_based_manager(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
-    cluster = BootstrapBasedCloudifyCluster(cfy, ssh_key, module_tmpdir,
-                                            attributes, logger)
+    hosts = BootstrapBasedCloudifyManagers(
+            cfy, ssh_key, module_tmpdir, attributes, logger)
     try:
-        cluster.create()
-        cluster.instances[0].use()
-        yield cluster.instances[0]
+        hosts.create()
+        hosts.instances[0].use()
+        yield hosts.instances[0]
     finally:
-        cluster.destroy()
+        hosts.destroy()
