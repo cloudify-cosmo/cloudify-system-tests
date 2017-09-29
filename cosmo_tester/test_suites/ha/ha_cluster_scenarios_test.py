@@ -35,7 +35,7 @@ def hosts(
     logger.info('Creating HA cluster of %s managers', request.param)
     hosts = TestHosts(
             cfy, ssh_key, module_tmpdir, attributes, logger,
-            number_of_managers=request.param)
+            number_of_instances=request.param)
 
     for manager in hosts.instances[1:]:
         manager.upload_plugins = False
