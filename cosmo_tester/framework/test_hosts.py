@@ -219,6 +219,7 @@ class _CloudifyManager(VM):
                 ' "{plugin_dir}/"'
                 ' -o "{wagon_dir}"'
                 ' --requirements-file "{plugin_dir}/requirements.txt"'
+                ' --format tar.gz'
                 ' --verbose'
                 .format(
                     plugin_dir=plugin_dir,
