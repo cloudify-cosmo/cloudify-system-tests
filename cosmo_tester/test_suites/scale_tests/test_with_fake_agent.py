@@ -28,6 +28,10 @@ DEPLOYMENT = 'fake-agent-deployment'
 def test_manager_agent_scaling(cfy, hosts):
     manager, agent_host = hosts.instances
 
+    with open(agent_host.ssh_key) as f:
+        key = f.read()
+    manager.client.secrets.create('agent_host_key', key)
+
     blueprint_dir = os.path.join(
         os.path.dirname(__file__),
         '../../resources/blueprints/',
