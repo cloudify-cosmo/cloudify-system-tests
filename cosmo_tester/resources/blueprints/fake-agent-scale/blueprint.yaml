@@ -26,12 +26,14 @@ node_types:
         create:
           implementation: scripts/setup.py
           inputs:
-            action: create
+            action:
+              default: create
 
         delete:
           implementation: scripts/setup.py
           inputs:
-            action: delete
+            action:
+              default: delete
 
 
 node_templates:
