@@ -1,16 +1,8 @@
 plugins:
   fake_load_plugin:
-    executor: central_deployment_agent
+    executor: host_agent
     package_name: cloudify-fake-agent-plugin
     package_version: "4.1"
-
-
-dsl_definitions:
-  - &fakeload_inputs
-    host:
-      default: localhost
-    port:
-      default: 5566
 
 
 node_types:
@@ -26,7 +18,5 @@ node_types:
       cloudify.interfaces.lifecycle:
         start:
           implementation: fake_load_plugin.cloudify_fake_load.operations.start
-          inputs: *fakeload_inputs
         stop:
           implementation: fake_load_plugin.cloudify_fake_load.operations.stop
-          inputs: *fakeload_inputs

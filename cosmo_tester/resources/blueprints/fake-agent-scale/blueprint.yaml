@@ -23,22 +23,9 @@ node_templates:
         user: {get_input: host_user}
 
 
-  fake_node_server:
-    type: cloudify.nodes.Application
-
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        start:
-          implementation: fake_load_plugin.cloudify_fake_load.server_operations.start_server
-
-    relationships:
-      - type: cloudify.relationships.contained_in
-        target: fake_node_host
-
-
   fake_node:
     type: cloudify.fakeload.nodes.Instance
 
     relationships:
-      - type: cloudify.relationships.depends_on
+      - type: cloudify.relationships.contained_in
         target: fake_node_host
