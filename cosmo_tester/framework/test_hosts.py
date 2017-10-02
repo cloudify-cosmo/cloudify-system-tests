@@ -108,6 +108,12 @@ class VM(object):
         key = 'server_id_{}'.format(self.index)
         return self._attributes[key]
 
+    @property
+    def ssh_key(self):
+        """If `create() hasn't been called yet, AttributeError will be raised,
+        which is the correct exception anyway"""
+        return self._ssh_key.private_key_path
+
     def delete(self):
         """Deletes this instance from the OpenStack envrionment."""
         self._logger.info('Deleting server.. [id=%s]', self.server_id)
@@ -379,12 +385,6 @@ class _CloudifyManager(VM):
         ])
         self._logger.info('Running command:\n{0}'.format(cmd))
         os.system(cmd)
-
-    @property
-    def ssh_key(self):
-        """If `create() hasn't been called yet, AttributeError will be raised,
-        which is the correct exception anyway"""
-        return self._ssh_key.private_key_path
 
 
 def _get_latest_manager_image_name():
