@@ -17,7 +17,7 @@ node_templates:
     type: cloudify.nodes.Compute
 
     properties:
-      ip_address: {get_input: host_ip}
+      ip: {get_input: host_ip}
       agent_config:
         key: {get_input: key_file}
         user: {get_input: host_user}
