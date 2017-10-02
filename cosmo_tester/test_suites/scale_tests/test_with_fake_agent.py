@@ -51,7 +51,7 @@ def test_manager_agent_scaling(cfy, hosts):
             BLUEPRINT,
             DEPLOYMENT,
             inputs={
-                'host_ip': agent_host.ip,
+                'host_ip': agent_host.private_ip_address,
                 'host_user': agent_host.user,
                 'key_file': agent_host.ssh_key,
                 },
