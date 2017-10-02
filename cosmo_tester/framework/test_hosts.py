@@ -218,7 +218,7 @@ class _CloudifyManager(VM):
                 REMOTE_ENV_PATH + 'wagon create'
                 ' "{plugin_dir}/"'
                 ' -o "{wagon_dir}"'
-                ' --requirements-file requirements.txt'
+                ' --requirements-file "{plugin_dir}/requirements.txt"'
                 ' --verbose'
                 .format(
                     plugin_dir=plugin_dir,
