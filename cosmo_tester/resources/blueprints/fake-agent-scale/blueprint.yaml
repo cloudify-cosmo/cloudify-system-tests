@@ -2,13 +2,36 @@ tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/4.2.dev1/types.yaml
-  - ./plugin.yaml
 
 
 inputs:
   host_ip:
   host_user:
   key_file:
+
+
+node_types:
+
+  cloudify.fakeload.nodes.Instance:
+    derived_from: cloudify.nodes.Compute
+
+    properties:
+      agent_config:
+        default:
+          install_method: provided
+
+    interfaces:
+      cloudify.interfaces.lifecycle:
+
+        create:
+          implementation: scripts/setup.py
+          inputs:
+            action: create
+
+        delete:
+          implementation: scripts/setup.py
+          inputs:
+            action: delete
 
 
 node_templates:
