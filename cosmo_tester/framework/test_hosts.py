@@ -216,9 +216,9 @@ class _CloudifyManager(VM):
                 )
             fabric_ssh.run(
                 REMOTE_ENV_PATH + 'wagon create'
-                ' -s "{plugin_dir}/"'
+                ' "{plugin_dir}/"'
                 ' -o "{wagon_dir}"'
-                ' --with-requirements'
+                ' --requirements-file requirements.txt'
                 ' --verbose'
                 .format(
                     plugin_dir=plugin_dir,
