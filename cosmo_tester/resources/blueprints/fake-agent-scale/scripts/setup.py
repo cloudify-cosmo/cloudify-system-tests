@@ -2,6 +2,8 @@
 
 import os
 
+from cloudify import ctx
+from cloudify.exceptions import NonRecoverableError
 from cloudify_agent.installer.config.agent_config import (
     create_agent_config_and_installer,
     )
@@ -28,4 +30,14 @@ def create(agent_config, installer):
 
 
 if __name__ == "__main__":
-    actions[os.getenv('action')]()
+    try:
+        action = actions[os.getenv('action')]
+    except KeyError as e:
+        ctx.logger.error('invalid action')
+        raise NonRecoverableError(e)
+
+    try:
+        action()
+    except Exception as e:
+        ctx.logger.error(e)
+        raise NonRecoverableError(e)
