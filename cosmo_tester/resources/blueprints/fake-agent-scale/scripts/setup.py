@@ -7,7 +7,7 @@ from cloudify_agent.installer.config.agent_config import (
     )
 
 
-actions = []
+actions = {}
 
 
 def action(func):
