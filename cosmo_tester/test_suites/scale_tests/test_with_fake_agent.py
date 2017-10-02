@@ -63,14 +63,15 @@ def test_manager_agent_scaling(cfy, hosts):
 @pytest.fixture
 def hosts(cfy, ssh_key, module_tmpdir, attributes, logger):
 
-    instances = [IMAGES['master'](), IMAGES['centos']()]
+    instances = [IMAGES[x]() for x in ('master', 'centos')]
 
     hosts = TestHosts(
             cfy, ssh_key, module_tmpdir, attributes, logger,
             instances=instances)
 
-    instances[0].use()
-
-    yield instances
-
-    hosts.destroy()
+    try:
+        hosts.create()
+        instances[0].use()
+        yield hosts
+    finally:
+        hosts.destroy()
