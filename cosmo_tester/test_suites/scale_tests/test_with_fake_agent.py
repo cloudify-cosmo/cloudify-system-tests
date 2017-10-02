@@ -37,15 +37,7 @@ def test_manager_agent_scaling(cfy, hosts):
         '../../resources/blueprints/',
         'fake-agent-scale',
         )
-    manager.upload_plugin('agent/plugins/fake-load-plugin')
 
-    shutil.copy2(
-        os.path.join(
-            os.path.dirname(__file__),
-            "../../resources/agent/plugins/fake-load-plugin/plugin.yaml",
-        ),
-        blueprint_dir,
-        )
     manager.client.blueprints.upload(
             os.path.join(blueprint_dir, 'blueprint.yaml'),
             'fake-agent-blueprint',
