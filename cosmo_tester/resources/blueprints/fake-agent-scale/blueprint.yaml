@@ -11,21 +11,9 @@ inputs:
   agent_scale:
 
 
-node_types:
-
-  cloudify.fakeload.nodes.Instance:
-    derived_from: cloudify.nodes.Compute
-
-    properties:
-      agent_config:
-        default:
-          key: {get_secret: agent_host_key}
-          user: {get_input: host_user}
-
-
 node_templates:
 
-  fake_node_host:
+  agent_host:
     type: cloudify.nodes.Compute
 
     properties:
@@ -36,10 +24,13 @@ node_templates:
 
 
   fake_node:
-    type: cloudify.fakeload.nodes.Instance
+    type: cloudify.nodes.Compute
 
     properties:
       ip: {get_property: [fake_node_host, ip]}
+      agent_config:
+        key: {get_secret: agent_host_key}
+        user: {get_input: host_user}
 
     capabilities:
       scalable:
@@ -48,4 +39,4 @@ node_templates:
 
     relationships:
       - type: cloudify.relationships.contained_in
-        target: fake_node_host
+        target: agent_host
