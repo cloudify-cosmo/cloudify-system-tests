@@ -8,6 +8,7 @@ inputs:
   host_ip:
   host_user:
   key_file:
+  agent_scale:
 
 
 node_types:
@@ -38,7 +39,12 @@ node_templates:
     type: cloudify.fakeload.nodes.Instance
 
     properties:
-      ip: {get_property: fake_node_host, ip}
+      ip: {get_property: [fake_node_host, ip]}
+
+    capabilities:
+      scalable:
+        properties:
+          default_instances: {get_input: agent_scale}
 
     relationships:
       - type: cloudify.relationships.contained_in

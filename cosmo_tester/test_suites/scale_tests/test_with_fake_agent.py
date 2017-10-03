@@ -14,7 +14,6 @@
 #    * limitations under the License.
 
 import os
-import shutil
 
 import pytest
 
@@ -50,6 +49,7 @@ def test_manager_agent_scaling(cfy, hosts):
                 'host_ip': agent_host.private_ip_address,
                 'host_user': 'centos',
                 'key_file': agent_host.ssh_key,
+                'agent_scale': 15,
                 },
             )
 
