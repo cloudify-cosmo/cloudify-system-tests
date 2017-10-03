@@ -42,7 +42,7 @@ def test_manager_agent_scaling(cfy, hosts):
             'fake-agent-blueprint',
             )
 
-    manager.client.deployments.create(
+    deployment = manager.client.deployments.create(
             BLUEPRINT,
             DEPLOYMENT,
             inputs={
@@ -54,6 +54,19 @@ def test_manager_agent_scaling(cfy, hosts):
             )
 
     cfy.executions.start.install(['-d', DEPLOYMENT])
+
+    executions = manager.client.executions.list(
+            deployment_id=deployment.id,
+            workflow_id='install',
+            )
+    install = executions[0]
+
+    assert install.status == 'terminated'
+
+    with manager.ssh() as fabric:
+        rabbit_connections = fabric.sudo('rabbitmqctl list_connections')
+
+    print(rabbit_connections)
 
 
 @pytest.fixture
