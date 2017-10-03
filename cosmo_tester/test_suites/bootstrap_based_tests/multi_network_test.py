@@ -14,7 +14,10 @@
 #    * limitations under the License.
 
 import yaml
+import json
 import pytest
+from os.path import join
+from copy import deepcopy
 
 from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
@@ -29,9 +32,11 @@ from cosmo_tester.test_suites.snapshots import (
     delete_manager
 )
 
+NETWORK_0 = 'network_0'
 
-@pytest.fixture(scope='module', params=[3])
-def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+
+@pytest.fixture(scope='module')
+def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack."""
 
     hosts = BootstrapBasedCloudifyManagers(
@@ -39,7 +44,7 @@ def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
         number_of_instances=2,
         tf_template='openstack-multi-network-test.tf.template',
         template_inputs={
-            'num_of_networks': request.param,
+            'num_of_networks': 3,
             'num_of_managers': 2,
             'image_name': attributes.centos_7_image_name
         })
@@ -57,7 +62,11 @@ def _preconfigure_callback(_managers):
 
     # The preconfigure callback populates the networks config prior to the BS
     for mgr in _managers:
-        mgr.bs_inputs = {'manager_networks': mgr.networks}
+        # Remove one of the networks - it will be added post-bootstrap
+        all_networks = deepcopy(mgr.networks)
+        all_networks.pop(NETWORK_0)
+
+        mgr.bs_inputs = {'manager_networks': all_networks}
 
         # Configure NICs in order for networking to work properly
         mgr.enable_nics()
@@ -83,10 +92,12 @@ def test_multiple_networks(managers,
     snapshot_id = 'SNAPSHOT_ID'
     local_snapshot_path = str(tmpdir / 'snap.zip')
 
-    first_hello = multi_network_hello_worlds[0]
-    first_hello.verify_all()
+    # The first hello is the one that belongs to a network that will be added
+    # manually post bootstrap to the new manager
+    post_bootstrap_hello = multi_network_hello_worlds.pop(0)
+    post_bootstrap_hello.manager = new_manager
 
-    for hello in multi_network_hello_worlds[1:]:
+    for hello in multi_network_hello_worlds:
         hello.upload_blueprint()
         hello.create_deployment()
         hello.install()
@@ -101,10 +112,48 @@ def test_multiple_networks(managers,
     delete_manager(old_manager, logger)
 
     new_manager.use()
-    for hello in multi_network_hello_worlds[1:]:
+    for hello in multi_network_hello_worlds:
         hello.manager = new_manager
         hello.uninstall()
         hello.delete_deployment()
+
+    _add_network_0(new_manager, tmpdir, logger)
+    post_bootstrap_hello.verify_all()
+
+
+def _add_network_0(manager, tmpdir, logger):
+    logger.info('Adding network `{0}` to the new manager'.format(NETWORK_0))
+
+    local_cert_metadata = tmpdir / 'certificate_metadata'
+    remote_cert_metadata = '/etc/cloudify/ssl/certificate_metadata'
+    private_ip = manager.networks['default']
+
+    # This should add back NETWORK_0 we removed earlier
+    cert_metadata = {
+        'networks': manager.networks,
+        'internal_rest_host': private_ip
+    }
+    with open(local_cert_metadata, 'w') as f:
+        json.dump(cert_metadata, f)
+    with manager.ssh() as fabric_ssh:
+        logger.info('Putting a new `certificate_metadata` file')
+        fabric_ssh.put(local_cert_metadata, remote_cert_metadata)
+
+        ip_setter_path = '/opt/cloudify/manager-ip-setter/'
+        restservice_python = '/opt/manager/env/bin/python'
+        mgmtworker_python = '/opt/mgmtworker/env/bin/python'
+        update_ctx_script = join(ip_setter_path, 'update-provider-context.py')
+        certs_script = join(ip_setter_path, 'create-internal-ssl-certs.py')
+
+        logger.info('Updating the provider context...')
+        fabric_ssh.run('{0} {1} {2}'.format(
+            restservice_python, update_ctx_script, private_ip
+        ))
+
+        logger.info('Recreating internal certs')
+        fabric_ssh.run('{0} {1} {2}'.format(
+            mgmtworker_python, certs_script, private_ip
+        ))
 
 
 class MultiNetworkHelloWorld(HelloWorldExample):
@@ -146,7 +195,12 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
             'manager_network_name': network_name,
             'network_name': network_id
         })
-        hellos.append(hello)
+
+        # Make sure the post_bootstrap network is first
+        if network_name == NETWORK_0:
+            hellos.insert(0, hellos)
+        else:
+            hellos.append(hello)
 
     # Add one more hello world, that will run on the `default` network
     # implicitly
