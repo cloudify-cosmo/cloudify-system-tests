@@ -66,7 +66,14 @@ def test_manager_agent_scaling(cfy, hosts):
     with manager.ssh() as fabric:
         rabbit_connections = fabric.sudo('rabbitmqctl list_connections')
 
-    print(rabbit_connections)
+    default_tenant_connections = (
+            x for x in rabbit_connections.splitlines()
+            if 'default_tenant' in x
+            )
+
+    # There will be a few extras (mgmtworkers) so < double ensures only one
+    # connection per remote agent
+    assert len(default_tenant_connections) < 30
 
 
 @pytest.fixture
