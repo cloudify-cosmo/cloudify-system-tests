@@ -73,7 +73,7 @@ def test_manager_agent_scaling(cfy, hosts):
 
     # There will be a few extras (mgmtworkers) so < double ensures only one
     # connection per remote agent
-    assert len(default_tenant_connections) < 30
+    assert len(list(default_tenant_connections)) < 30
 
 
 @pytest.fixture
