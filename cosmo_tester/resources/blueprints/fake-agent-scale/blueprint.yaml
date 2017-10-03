@@ -18,22 +18,8 @@ node_types:
     properties:
       agent_config:
         default:
-          install_method: provided
-
-    interfaces:
-      cloudify.interfaces.lifecycle:
-
-        create:
-          implementation: scripts/setup.py
-          inputs:
-            action:
-              default: create
-
-        delete:
-          implementation: scripts/setup.py
-          inputs:
-            action:
-              default: delete
+          key: {get_secret: agent_host_key}
+          user: {get_input: host_user}
 
 
 node_templates:
@@ -50,6 +36,9 @@ node_templates:
 
   fake_node:
     type: cloudify.fakeload.nodes.Instance
+
+    properties:
+      ip: {get_property: fake_node_host, ip}
 
     relationships:
       - type: cloudify.relationships.contained_in
