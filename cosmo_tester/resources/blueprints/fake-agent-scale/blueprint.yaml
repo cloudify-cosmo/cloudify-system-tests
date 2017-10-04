@@ -39,8 +39,10 @@ node_templates:
   manager:
     type: cloudify.nodes.Compute
     properties:
-      install_agent: false
       ip: localhost
+      agent_config:
+        key: {get_secret: agent_host_key}
+        user: centos
 
   host_pool_service:
     type: cloudify.nodes.HostPoolService
