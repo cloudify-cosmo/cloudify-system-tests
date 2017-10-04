@@ -29,9 +29,9 @@ dsl_definitions:
       service_url:
         concat:
           - http://
-          - get_property: manager, ip
+          - get_property: [manager, ip]
           - ":"
-          - get_property: host_pool_service, port
+          - get_property: [host_pool_service, port]
 
 
 node_templates:
@@ -45,7 +45,6 @@ node_templates:
   host_pool_service:
     type: cloudify.nodes.HostPoolService
     properties:
-      pool: { get_input: pool }
       port: { get_input: host_pool_port }
     relationships:
     - type: cloudify.relationships.contained_in
