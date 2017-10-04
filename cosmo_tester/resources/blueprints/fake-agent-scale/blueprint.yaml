@@ -2,41 +2,95 @@ tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/4.2.dev1/types.yaml
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-host-pool-service/1.5/host-pool-service.yaml
+  - http://cloudify.co/spec/host-pool-plugin/1.5/plugin.yaml
 
 
 inputs:
   host_ip:
   host_user:
   key_file:
+  host_scale:
   agent_scale:
+
+  host_pool_port:
+    default: 8091
+
+
+node_types:
+
+  AgentHost:
+    derived_from: cloudify.hostpool.nodes.LinuxHost
+
+
+dsl_definitions:
+  - &hostpool_lifecycle_inputs
+    inputs:
+      service_url:
+        concat:
+          - http://
+          - get_property: manager, ip
+          - :
+          - get_property: host_pool_service, port
 
 
 node_templates:
 
-  agent_host:
+  manager:
     type: cloudify.nodes.Compute
+    properties:
+      install_agent: false
+      ip: localhost
 
+  host_pool_service:
+    type: cloudify.nodes.HostPoolService
+    properties:
+      pool: { get_input: pool }
+      port: { get_input: host_pool_port }
+    relationships:
+    - type: cloudify.relationships.contained_in
+      target: manager
+
+  agent_host:
+    type: cloudify.hostpool.nodes.LinuxHost
     properties:
       ip: {get_input: host_ip}
       agent_config:
         key: {get_secret: agent_host_key}
         user: {get_input: host_user}
-
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          *hostpool_lifecycle_inputs
+        delete:
+          *hostpool_lifecycle_inputs
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: host_pool_service
 
   fake_node:
     type: cloudify.nodes.Compute
-
     properties:
       ip: {get_property: [agent_host, ip]}
       agent_config:
         key: {get_secret: agent_host_key}
         user: {get_input: host_user}
-
     capabilities:
       scalable:
         properties:
           default_instances: {get_input: agent_scale}
-
     relationships:
       - type: cloudify.relationships.contained_in
         target: agent_host
+
+
+groups:
+  fake_node_and_hosts:
+    members: [agent_host, fake_node]
+
+
+policies:
+  hosts_and_agents_policy:
+    type: cloudify.policies.scaling
+    properties:
+      default_instances: {get_input: host_scale}

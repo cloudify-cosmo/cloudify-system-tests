@@ -30,6 +30,7 @@ def test_manager_agent_scaling(cfy, hosts):
     with open(agent_host.ssh_key) as f:
         key = f.read()
     manager.client.secrets.create('agent_host_key', key)
+    manager.upload_plugin('host-pool-plugin')
 
     blueprint_dir = os.path.join(
         os.path.dirname(__file__),
@@ -49,6 +50,7 @@ def test_manager_agent_scaling(cfy, hosts):
                 'host_ip': agent_host.private_ip_address,
                 'host_user': 'centos',
                 'key_file': agent_host.ssh_key,
+                'host_scale': 4,
                 'agent_scale': 15,
                 },
             )
