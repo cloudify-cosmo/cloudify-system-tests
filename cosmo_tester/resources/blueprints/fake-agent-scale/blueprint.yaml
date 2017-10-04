@@ -30,7 +30,7 @@ dsl_definitions:
         concat:
           - http://
           - get_property: manager, ip
-          - :
+          - ":"
           - get_property: host_pool_service, port
 
 
