@@ -19,6 +19,8 @@ import pytest
 from os.path import join
 from copy import deepcopy
 
+from cloudify_cli.constants import DEFAULT_TENANT_NAME
+
 from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
@@ -32,7 +34,7 @@ from cosmo_tester.test_suites.snapshots import (
     delete_manager
 )
 
-NETWORK_0 = 'network_0'
+NETWORK_2 = 'network_2'
 
 
 @pytest.fixture(scope='module')
@@ -64,7 +66,7 @@ def _preconfigure_callback(_managers):
     for mgr in _managers:
         # Remove one of the networks - it will be added post-bootstrap
         all_networks = deepcopy(mgr.networks)
-        all_networks.pop(NETWORK_0)
+        all_networks.pop(NETWORK_2)
 
         mgr.bs_inputs = {'manager_networks': all_networks}
 
@@ -117,29 +119,45 @@ def test_multiple_networks(managers,
         hello.uninstall()
         hello.delete_deployment()
 
-    _add_network_0(new_manager, tmpdir, logger)
+    _add_new_network(new_manager, tmpdir, logger)
     post_bootstrap_hello.verify_all()
 
 
-def _add_network_0(manager, tmpdir, logger):
-    logger.info('Adding network `{0}` to the new manager'.format(NETWORK_0))
+def _add_new_network(manager, tmpdir, logger):
+    logger.info('Adding network `{0}` to the new manager'.format(NETWORK_2))
 
     local_metadata_path = str(tmpdir / 'certificate_metadata')
     remote_metadata_path = '/etc/cloudify/ssl/certificate_metadata'
     private_ip = manager.private_ip_address
 
-    networks = manager.networks
-    networks['default'] = private_ip
-    # This should add back NETWORK_0 we removed earlier
+    old_networks = deepcopy(manager.networks)
+    new_networks = deepcopy(manager.networks)
+
+    # `network_2` shouldn't be on the manager right now
+    old_networks.pop(NETWORK_2)
+
+    # Need to add the `default` network manually here, as it is calculated
+    # implicitly during the bootstrap
+    for networks in (old_networks, new_networks):
+        networks['default'] = private_ip
+
+    # This should add back `network_2` that we removed earlier, in the
+    # preconfigure callback
     cert_metadata = {
-        'networks': networks,
+        'networks': new_networks,
         'internal_rest_host': private_ip
     }
     with open(local_metadata_path, 'w') as f:
         json.dump(cert_metadata, f)
 
     with manager.ssh() as fabric_ssh:
-        logger.info('Putting a new `certificate_metadata` file')
+        logger.info('Validating old `certificate_metadata`...')
+        old_metdata_str = fabric_ssh.get(remote_metadata_path, use_sudo=True)
+        old_metadata = yaml.load(old_metdata_str)
+
+        assert old_metadata['networks'] == old_networks
+
+        logger.info('Putting the new `certificate_metadata`...')
         fabric_ssh.put(
             local_metadata_path, remote_metadata_path, use_sudo=True
         )
@@ -164,6 +182,10 @@ def _add_network_0(manager, tmpdir, logger):
             script=certs_script,
             ip=private_ip
         ))
+
+        logger.info('Restarting services...')
+        fabric_ssh.sudo('systemctl restart cloudify-rabbitmq')
+        fabric_ssh.sudo('systemctl restart nginx')
 
 
 class MultiNetworkHelloWorld(HelloWorldExample):
@@ -207,14 +229,18 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
         })
 
         # Make sure the post_bootstrap network is first
-        if network_name == NETWORK_0:
+        if network_name == NETWORK_2:
             hellos.insert(0, hello)
         else:
             hellos.append(hello)
 
     # Add one more hello world, that will run on the `default` network
     # implicitly
-    hw = HelloWorldExample(cfy, manager, attributes, ssh_key, logger, tmpdir)
+    # TODO: See why this is necessary. Should be done by the FW
+    manager.upload_plugin('openstack_centos_core')
+    hw = HelloWorldExample(cfy, manager, attributes, ssh_key, logger, tmpdir,
+                           tenant=DEFAULT_TENANT_NAME,
+                           suffix=DEFAULT_TENANT_NAME)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     hw.inputs.update({
         'agent_user': attributes.centos_7_username,
