@@ -127,6 +127,7 @@ def _add_new_network(manager, tmpdir, logger):
     logger.info('Adding network `{0}` to the new manager'.format(NETWORK_2))
 
     local_metadata_path = str(tmpdir / 'certificate_metadata')
+    local_old_metadata_path = str(tmpdir / 'old_certificate_metadata')
     remote_metadata_path = '/etc/cloudify/ssl/certificate_metadata'
     private_ip = manager.private_ip_address
 
@@ -152,8 +153,11 @@ def _add_new_network(manager, tmpdir, logger):
 
     with manager.ssh() as fabric_ssh:
         logger.info('Validating old `certificate_metadata`...')
-        old_metdata_str = fabric_ssh.get(remote_metadata_path, use_sudo=True)
-        old_metadata = yaml.load(old_metdata_str)
+        fabric_ssh.get(
+            remote_metadata_path, local_old_metadata_path, use_sudo=True
+        )
+        with open(local_old_metadata_path, 'r') as f:
+            old_metadata = yaml.load(f)
 
         assert old_metadata['networks'] == old_networks
 
