@@ -137,11 +137,6 @@ def _add_new_network(manager, tmpdir, logger):
     # `network_2` shouldn't be on the manager right now
     old_networks.pop(NETWORK_2)
 
-    # Need to add the `default` network manually here, as it is calculated
-    # implicitly during the bootstrap
-    for networks in (old_networks, new_networks):
-        networks['default'] = private_ip
-
     # This should add back `network_2` that we removed earlier, in the
     # preconfigure callback
     cert_metadata = {
