@@ -124,20 +124,25 @@ def test_multiple_networks(managers,
 def _add_network_0(manager, tmpdir, logger):
     logger.info('Adding network `{0}` to the new manager'.format(NETWORK_0))
 
-    local_cert_metadata = tmpdir / 'certificate_metadata'
-    remote_cert_metadata = '/etc/cloudify/ssl/certificate_metadata'
-    private_ip = manager.networks['default']
+    local_metadata_path = str(tmpdir / 'certificate_metadata')
+    remote_metadata_path = '/etc/cloudify/ssl/certificate_metadata'
+    private_ip = manager.private_ip_address
 
+    networks = manager.networks
+    networks['default'] = private_ip
     # This should add back NETWORK_0 we removed earlier
     cert_metadata = {
-        'networks': manager.networks,
+        'networks': networks,
         'internal_rest_host': private_ip
     }
-    with open(local_cert_metadata, 'w') as f:
+    with open(local_metadata_path, 'w') as f:
         json.dump(cert_metadata, f)
+
     with manager.ssh() as fabric_ssh:
         logger.info('Putting a new `certificate_metadata` file')
-        fabric_ssh.put(local_cert_metadata, remote_cert_metadata)
+        fabric_ssh.put(
+            local_metadata_path, remote_metadata_path, use_sudo=True
+        )
 
         ip_setter_path = '/opt/cloudify/manager-ip-setter/'
         restservice_python = '/opt/manager/env/bin/python'
@@ -146,13 +151,18 @@ def _add_network_0(manager, tmpdir, logger):
         certs_script = join(ip_setter_path, 'create-internal-ssl-certs.py')
 
         logger.info('Updating the provider context...')
-        fabric_ssh.run('{0} {1} {2}'.format(
-            restservice_python, update_ctx_script, private_ip
+        fabric_ssh.sudo('{python} {script} --networks {networks} {ip}'.format(
+            python=restservice_python,
+            script=update_ctx_script,
+            networks=remote_metadata_path,
+            ip=private_ip
         ))
 
         logger.info('Recreating internal certs')
-        fabric_ssh.run('{0} {1} {2}'.format(
-            mgmtworker_python, certs_script, private_ip
+        fabric_ssh.sudo('{python} {script} {ip}'.format(
+            python=mgmtworker_python,
+            script=certs_script,
+            ip=private_ip
         ))
 
 
@@ -198,7 +208,7 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
 
         # Make sure the post_bootstrap network is first
         if network_name == NETWORK_0:
-            hellos.insert(0, hellos)
+            hellos.insert(0, hello)
         else:
             hellos.append(hello)
 
