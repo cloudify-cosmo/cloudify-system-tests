@@ -94,3 +94,4 @@ policies:
     type: cloudify.policies.scaling
     properties:
       default_instances: {get_input: host_scale}
+    targets: [fake_node_and_hosts]
