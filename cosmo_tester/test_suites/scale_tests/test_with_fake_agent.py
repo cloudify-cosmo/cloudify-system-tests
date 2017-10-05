@@ -15,6 +15,8 @@
 
 import os
 
+import yaml
+
 import pytest
 
 from cosmo_tester.framework.test_hosts import TestHosts, IMAGES
@@ -23,20 +25,41 @@ from cosmo_tester.framework.test_hosts import TestHosts, IMAGES
 BLUEPRINT = 'fake-agent-blueprint'
 DEPLOYMENT = 'fake-agent-deployment'
 
+AGENT_HOSTS = 4
 
-def test_manager_agent_scaling(cfy, hosts):
-    manager, agent_host = hosts.instances
 
-    with open(agent_host.ssh_key) as f:
+def test_manager_agent_scaling(cfy, ssh_key, hosts):
+    manager = hosts.instances[0]
+    agent_hosts = hosts.instances[1:]
+    host_scale = len(agent_hosts)
+
+    with open(ssh_key) as f:
         key = f.read()
     manager.client.secrets.create('agent_host_key', key)
     manager.upload_plugin('host-pool_centos_core')
+
+    pool = {'hosts': [
+                    {
+                        'name': 'host-pool-agent-host-{}'.format(i),
+                        'credentials': {'username': 'centos'},
+                        'endpoint': {
+                            'ip': host.ip_address,
+                            'port': 22,
+                            'protocol': 'ssh',
+                            }
+                    }
+                    for i, host in enumerate(agent_hosts)
+                ],
+            }
 
     blueprint_dir = os.path.join(
         os.path.dirname(__file__),
         '../../resources/blueprints/',
         'fake-agent-scale',
         )
+
+    with open(os.path.join(blueprint_dir, 'pool.yaml'), 'w') as f:
+        f.write(yaml.dump(pool))
 
     manager.client.blueprints.upload(
             os.path.join(blueprint_dir, 'blueprint.yaml'),
@@ -47,10 +70,9 @@ def test_manager_agent_scaling(cfy, hosts):
             BLUEPRINT,
             DEPLOYMENT,
             inputs={
-                'host_ip': agent_host.private_ip_address,
                 'host_user': 'centos',
-                'key_file': agent_host.ssh_key,
-                'host_scale': 4,
+                'key_file': ssh_key,
+                'host_scale': host_scale,
                 'agent_scale': 15,
                 },
             )
@@ -81,7 +103,7 @@ def test_manager_agent_scaling(cfy, hosts):
 @pytest.fixture
 def hosts(cfy, ssh_key, module_tmpdir, attributes, logger):
 
-    instances = [IMAGES[x]() for x in ('master', 'centos')]
+    instances = [IMAGES[x]() for x in ['master'] + ['centos']*AGENT_HOSTS]
 
     hosts = TestHosts(
             cfy, ssh_key, module_tmpdir, attributes, logger,

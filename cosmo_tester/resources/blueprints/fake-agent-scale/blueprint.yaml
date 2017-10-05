@@ -47,8 +47,10 @@ node_templates:
   host_pool_service:
     type: cloudify.nodes.HostPoolService
     properties:
+      pool: pool.yaml
       port: { get_input: host_pool_port }
       run_as_daemon: false
+      working_directory: /home/centos
     relationships:
     - type: cloudify.relationships.contained_in
       target: manager
