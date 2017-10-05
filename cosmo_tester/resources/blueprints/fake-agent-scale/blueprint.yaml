@@ -48,6 +48,7 @@ node_templates:
     type: cloudify.nodes.HostPoolService
     properties:
       port: { get_input: host_pool_port }
+      run_as_daemon: false
     relationships:
     - type: cloudify.relationships.contained_in
       target: manager
