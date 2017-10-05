@@ -9,7 +9,6 @@ imports:
 inputs:
   host_ip:
   host_user:
-  key_file:
   host_scale:
   agent_scale:
 

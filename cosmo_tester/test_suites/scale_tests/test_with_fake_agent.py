@@ -33,7 +33,7 @@ def test_manager_agent_scaling(cfy, ssh_key, hosts):
     agent_hosts = hosts.instances[1:]
     host_scale = len(agent_hosts)
 
-    with open(ssh_key) as f:
+    with open(ssh_key.private_key_path) as f:
         key = f.read()
     manager.client.secrets.create('agent_host_key', key)
     manager.upload_plugin('host-pool_centos_core')
@@ -71,7 +71,6 @@ def test_manager_agent_scaling(cfy, ssh_key, hosts):
             DEPLOYMENT,
             inputs={
                 'host_user': 'centos',
-                'key_file': ssh_key,
                 'host_scale': host_scale,
                 'agent_scale': 15,
                 },
