@@ -7,7 +7,6 @@ imports:
 
 
 inputs:
-  host_ip:
   host_user:
   host_scale:
   agent_scale:
@@ -57,7 +56,6 @@ node_templates:
   agent_host:
     type: cloudify.hostpool.nodes.LinuxHost
     properties:
-      ip: {get_input: host_ip}
       agent_config:
         key: {get_secret: agent_host_key}
         user: {get_input: host_user}
