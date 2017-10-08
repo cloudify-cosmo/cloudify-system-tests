@@ -45,8 +45,8 @@ def test_manager_agent_scaling(cfy, ssh_key, hosts):
                         'os': 'linux',
                         'credentials': {
                             'username': 'centos',
-			    'key': {'get_secret': 'agent_host_key'},
-			    },
+                            'key': {'get_secret': 'agent_host_key'},
+                            },
                         'endpoint': {
                             'ip': host.ip_address,
                             'port': 22,
