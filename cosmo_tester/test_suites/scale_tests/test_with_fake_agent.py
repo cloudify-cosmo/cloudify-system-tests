@@ -26,12 +26,13 @@ BLUEPRINT = 'fake-agent-blueprint'
 DEPLOYMENT = 'fake-agent-deployment'
 
 AGENT_HOSTS = 4
+AGENT_SCALE = 15
+AGENTS_TOTAL = AGENT_HOSTS * AGENT_SCALE
 
 
 def test_manager_agent_scaling(cfy, ssh_key, hosts):
     manager = hosts.instances[0]
     agent_hosts = hosts.instances[1:]
-    host_scale = len(agent_hosts)
 
     with open(ssh_key.private_key_path) as f:
         key = f.read()
@@ -75,8 +76,8 @@ def test_manager_agent_scaling(cfy, ssh_key, hosts):
             DEPLOYMENT,
             inputs={
                 'host_user': 'centos',
-                'host_scale': host_scale,
-                'agent_scale': 15,
+                'host_scale': AGENT_HOSTS,
+                'agent_scale': AGENT_SCALE,
                 },
             )
 
@@ -100,7 +101,7 @@ def test_manager_agent_scaling(cfy, ssh_key, hosts):
 
     # There will be a few extras (mgmtworkers) so < double ensures only one
     # connection per remote agent
-    assert len(list(default_tenant_connections)) < 30
+    assert len(list(default_tenant_connections)) < 2*AGENTS_TOTAL
 
 
 @pytest.fixture
