@@ -11,9 +11,6 @@ inputs:
   host_scale:
   agent_scale:
 
-  host_pool_port:
-    default: 8091
-
 
 node_types:
 
@@ -28,8 +25,7 @@ dsl_definitions:
         concat:
           - http://
           - get_property: [manager, ip]
-          - ":"
-          - get_property: [host_pool_service, port]
+          - ":8080"
 
 
 node_templates:
@@ -46,8 +42,6 @@ node_templates:
     type: cloudify.nodes.HostPoolService
     properties:
       pool: pool.yaml
-      port: { get_input: host_pool_port }
-      run_as_daemon: false
       working_directory: /home/centos
     relationships:
     - type: cloudify.relationships.contained_in
@@ -55,10 +49,6 @@ node_templates:
 
   agent_host:
     type: cloudify.hostpool.nodes.LinuxHost
-    properties:
-      agent_config:
-        key: {get_secret: agent_host_key}
-        user: {get_input: host_user}
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
@@ -71,11 +61,14 @@ node_templates:
 
   fake_node:
     type: cloudify.nodes.Compute
-    properties:
-      ip: {get_property: [agent_host, ip]}
-      agent_config:
-        key: {get_secret: agent_host_key}
-        user: {get_input: host_user}
+    interfaces:
+      cloudify.interfaces.cloudify_agent:
+        create:
+          inputs:
+            agent_config:
+              ip: {get_attribute: [agent_host, ip]}
+              key: {get_secret: agent_host_key}
+              user: {get_input: host_user}
     capabilities:
       scalable:
         properties:
