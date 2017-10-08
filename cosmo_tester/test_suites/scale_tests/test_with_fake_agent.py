@@ -63,7 +63,7 @@ def test_manager_agent_scaling(cfy, ssh_key, hosts):
         )
 
     with open(os.path.join(blueprint_dir, 'pool.yaml'), 'w') as f:
-        f.write(yaml.dump(pool))
+        f.write(yaml.safe_dump(pool))
 
     manager.client.blueprints.upload(
             os.path.join(blueprint_dir, 'blueprint.yaml'),
