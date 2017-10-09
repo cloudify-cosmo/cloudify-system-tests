@@ -176,9 +176,10 @@ def _add_new_network(manager, tmpdir, logger):
         ))
 
         logger.info('Recreating internal certs')
-        fabric_ssh.sudo('{python} {script} {ip}'.format(
+        fabric_ssh.sudo('{python} {script} --metadata {metadata} {ip}'.format(
             python=mgmtworker_python,
             script=certs_script,
+            metadata=remote_metadata_path,
             ip=private_ip
         ))
 
