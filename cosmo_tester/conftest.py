@@ -43,15 +43,13 @@ def logger(request):
 
 
 @pytest.fixture(scope='module')
-def module_tmpdir(request, logger):
+def module_tmpdir(request, tmpdir_factory, logger):
     suffix = request.module.__name__
-    temp_dir = Path(tempfile.mkdtemp(suffix=suffix))
+    dir = tmpdir_factory.mktemp(suffix)
+    temp_dir = Path(dir)
     logger.info('Created temp folder: %s', temp_dir)
 
-    yield temp_dir
-
-    logger.info('Deleting temp folder: %s', temp_dir)
-    shutil.rmtree(temp_dir)
+    return temp_dir
 
 
 class SSHKey(object):
