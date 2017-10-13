@@ -16,9 +16,7 @@
 
 import logging
 import os
-import shutil
 import sys
-import tempfile
 
 from path import Path
 import pytest
