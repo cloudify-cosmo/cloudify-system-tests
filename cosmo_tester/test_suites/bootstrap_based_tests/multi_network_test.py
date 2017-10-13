@@ -14,9 +14,19 @@
 #    * limitations under the License.
 
 import yaml
+import json
 import pytest
+from os.path import join
+from copy import deepcopy
+from StringIO import StringIO
 
-from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
+from cloudify_cli.constants import DEFAULT_TENANT_NAME
+
+from cosmo_tester.framework.test_hosts import (
+    BootstrapBasedCloudifyManagers,
+    CURRENT_MANAGER,
+    VM,
+)
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
 
@@ -29,9 +39,11 @@ from cosmo_tester.test_suites.snapshots import (
     delete_manager
 )
 
+NETWORK_2 = 'network_2'
 
-@pytest.fixture(scope='module', params=[3])
-def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+
+@pytest.fixture(scope='module')
+def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack."""
 
     hosts = BootstrapBasedCloudifyManagers(
@@ -39,7 +51,7 @@ def managers(request, cfy, ssh_key, module_tmpdir, attributes, logger):
         number_of_instances=2,
         tf_template='openstack-multi-network-test.tf.template',
         template_inputs={
-            'num_of_networks': request.param,
+            'num_of_networks': 3,
             'num_of_managers': 2,
             'image_name': attributes.centos_7_image_name
         })
@@ -57,7 +69,11 @@ def _preconfigure_callback(_managers):
 
     # The preconfigure callback populates the networks config prior to the BS
     for mgr in _managers:
-        mgr.bs_inputs = {'manager_networks': mgr.networks}
+        # Remove one of the networks - it will be added post-bootstrap
+        all_networks = deepcopy(mgr.networks)
+        all_networks.pop(NETWORK_2)
+
+        mgr.bs_inputs = {'manager_networks': all_networks}
 
         # Configure NICs in order for networking to work properly
         mgr.enable_nics()
@@ -83,10 +99,12 @@ def test_multiple_networks(managers,
     snapshot_id = 'SNAPSHOT_ID'
     local_snapshot_path = str(tmpdir / 'snap.zip')
 
-    first_hello = multi_network_hello_worlds[0]
-    first_hello.verify_all()
+    # The first hello is the one that belongs to a network that will be added
+    # manually post bootstrap to the new manager
+    post_bootstrap_hello = multi_network_hello_worlds.pop(0)
+    post_bootstrap_hello.manager = new_manager
 
-    for hello in multi_network_hello_worlds[1:]:
+    for hello in multi_network_hello_worlds:
         hello.upload_blueprint()
         hello.create_deployment()
         hello.install()
@@ -101,10 +119,78 @@ def test_multiple_networks(managers,
     delete_manager(old_manager, logger)
 
     new_manager.use()
-    for hello in multi_network_hello_worlds[1:]:
+    for hello in multi_network_hello_worlds:
         hello.manager = new_manager
         hello.uninstall()
         hello.delete_deployment()
+
+    _add_new_network(new_manager, tmpdir, logger)
+    post_bootstrap_hello.verify_all()
+
+
+def _add_new_network(manager, tmpdir, logger):
+    logger.info('Adding network `{0}` to the new manager'.format(NETWORK_2))
+
+    local_metadata_path = str(tmpdir / 'certificate_metadata')
+    local_old_metadata_path = str(tmpdir / 'old_certificate_metadata')
+    remote_metadata_path = '/etc/cloudify/ssl/certificate_metadata'
+    private_ip = manager.private_ip_address
+
+    old_networks = deepcopy(manager.networks)
+    new_networks = deepcopy(manager.networks)
+
+    # `network_2` shouldn't be on the manager right now
+    old_networks.pop(NETWORK_2)
+
+    # This should add back `network_2` that we removed earlier, in the
+    # preconfigure callback
+    cert_metadata = {
+        'networks': new_networks,
+        'internal_rest_host': private_ip
+    }
+    with open(local_metadata_path, 'w') as f:
+        json.dump(cert_metadata, f)
+
+    with manager.ssh() as fabric_ssh:
+        logger.info('Validating old `certificate_metadata`...')
+        fabric_ssh.get(
+            remote_metadata_path, local_old_metadata_path, use_sudo=True
+        )
+        with open(local_old_metadata_path, 'r') as f:
+            old_metadata = yaml.load(f)
+
+        assert old_metadata['networks'] == old_networks
+
+        logger.info('Putting the new `certificate_metadata`...')
+        fabric_ssh.put(
+            local_metadata_path, remote_metadata_path, use_sudo=True
+        )
+
+        ip_setter_path = '/opt/cloudify/manager-ip-setter/'
+        restservice_python = '/opt/manager/env/bin/python'
+        mgmtworker_python = '/opt/mgmtworker/env/bin/python'
+        update_ctx_script = join(ip_setter_path, 'update-provider-context.py')
+        certs_script = join(ip_setter_path, 'create-internal-ssl-certs.py')
+
+        logger.info('Updating the provider context...')
+        fabric_ssh.sudo('{python} {script} --networks {networks} {ip}'.format(
+            python=restservice_python,
+            script=update_ctx_script,
+            networks=remote_metadata_path,
+            ip=private_ip
+        ))
+
+        logger.info('Recreating internal certs')
+        fabric_ssh.sudo('{python} {script} --metadata {metadata} {ip}'.format(
+            python=mgmtworker_python,
+            script=certs_script,
+            metadata=remote_metadata_path,
+            ip=private_ip
+        ))
+
+        logger.info('Restarting services...')
+        fabric_ssh.sudo('systemctl restart cloudify-rabbitmq')
+        fabric_ssh.sudo('systemctl restart nginx')
 
 
 class MultiNetworkHelloWorld(HelloWorldExample):
@@ -146,11 +232,18 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
             'manager_network_name': network_name,
             'network_name': network_id
         })
-        hellos.append(hello)
+
+        # Make sure the post_bootstrap network is first
+        if network_name == NETWORK_2:
+            hellos.insert(0, hello)
+        else:
+            hellos.append(hello)
 
     # Add one more hello world, that will run on the `default` network
     # implicitly
-    hw = HelloWorldExample(cfy, manager, attributes, ssh_key, logger, tmpdir)
+    hw = HelloWorldExample(cfy, manager, attributes, ssh_key, logger, tmpdir,
+                           tenant=DEFAULT_TENANT_NAME,
+                           suffix=DEFAULT_TENANT_NAME)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     hw.inputs.update({
         'agent_user': attributes.centos_7_username,
@@ -161,3 +254,119 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
     yield hellos
     for hello in hellos:
         hello.cleanup()
+
+
+class _ProxyTestHosts(BootstrapBasedCloudifyManagers):
+    """A BootstrapBasedCloudifyManagers that only bootstraps one manager.
+
+    In the proxy test, we need a bootstrapped manager, and an additional
+    host for the proxy. We want both to be created in the same terraform
+    call so that they're on the same network, but we only want to bootstrap
+    one of the machines - the manager, not the proxy.
+
+    By convention, the first instance is the proxy, and the second instance
+    is the manager.
+    """
+    def _bootstrap_managers(self):
+        original_instances = self.instances
+        self.instances = [self.instances[1]]
+        try:
+            return super(_ProxyTestHosts, self)._bootstrap_managers()
+        finally:
+            self.instances = original_instances
+
+
+@pytest.fixture(scope='function')
+def proxy_hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+    # the convention for this test is that the proxy is instances[0] and
+    # the manager is instances[1]
+    # note that even though we bootstrap, we need to use CURRENT_MANAGER
+    # for the manager and not the VM to setup a manager correctly
+    instances = [VM(), CURRENT_MANAGER()]
+    hosts = _ProxyTestHosts(
+        cfy, ssh_key, module_tmpdir, attributes, logger, instances=instances)
+    hosts.preconfigure_callback = _proxy_preconfigure_callback
+    hosts.create()
+    try:
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
+PROXY_SERVICE_TEMPLATE = """
+[Unit]
+Description=Proxy for port {port}
+Wants=network-online.target
+[Service]
+User=root
+Group=root
+ExecStart=/bin/socat TCP-LISTEN:{port},fork TCP:{ip}:{port}
+Restart=always
+RestartSec=20s
+[Install]
+WantedBy=multi-user.target
+"""
+
+
+def _proxy_preconfigure_callback(_managers):
+    proxy, manager = _managers
+    proxy_ip = proxy.private_ip_address
+    manager_ip = manager.private_ip_address
+    # on the manager, we override the default network ip, so that by default
+    # all agents will go through the proxy
+    manager.bs_inputs = {'manager_networks': {'default': proxy_ip}}
+
+    # setup the proxy - simple socat services that forward all TCP connections
+    # to the manager
+    with proxy.ssh() as fabric:
+        fabric.sudo('yum install socat -y')
+        for port in [5671, 53333]:
+            service = 'proxy_{0}'.format(port)
+            filename = '/usr/lib/systemd/system/{0}.service'.format(service)
+            fabric.put(
+                StringIO(PROXY_SERVICE_TEMPLATE.format(
+                    ip=manager_ip, port=port)),
+                filename, use_sudo=True)
+            fabric.sudo('systemctl enable {0}'.format(service))
+            fabric.sudo('systemctl start {0}'.format(service))
+
+
+@pytest.fixture(scope='function')
+def proxy_helloworld(cfy, proxy_hosts, attributes, ssh_key, tmpdir, logger):
+    # don't use MultiNetworkTestHosts - we're testing with the default
+    # network, so no need to set manager network name
+    hw = HelloWorldExample(
+        cfy, proxy_hosts[1], attributes, ssh_key, logger, tmpdir)
+    hw.blueprint_file = 'openstack-blueprint.yaml'
+    hw.inputs.update({
+        'agent_user': attributes.centos_7_username,
+        'image': attributes.centos_7_image_name,
+    })
+
+    yield hw
+    if hw.cleanup_required:
+        logger.info('Hello world cleanup required..')
+        hw.cleanup()
+
+
+def test_agent_via_proxy(cfy, proxy_hosts, proxy_helloworld, tmpdir, logger):
+    proxy, manager = proxy_hosts
+
+    # to make sure that the agents go through the proxy, and not connect to
+    # the manager directly, we block all communication on the manager's
+    # rabbitmq and internal REST endpoint, except from the proxy (and from
+    # localhost)
+    manager_ip = manager.private_ip_address
+    proxy_ip = proxy.private_ip_address
+    with manager.ssh() as fabric:
+        for port in [5671, 53333]:
+            fabric.sudo(
+                'iptables -I INPUT -p tcp -s 0.0.0.0/0 --dport {0} -j DROP'
+                .format(port))
+            for ip in [proxy_ip, manager_ip, '127.0.0.1']:
+                fabric.sudo(
+                    'iptables -I INPUT -p tcp -s {0} --dport {1} -j ACCEPT'
+                    .format(ip, port))
+
+    manager.use()
+    proxy_helloworld.verify_all()
