@@ -43,8 +43,7 @@ def logger(request):
 @pytest.fixture(scope='module')
 def module_tmpdir(request, tmpdir_factory, logger):
     suffix = request.module.__name__
-    dir = tmpdir_factory.mktemp(suffix)
-    temp_dir = Path(dir)
+    temp_dir = Path(tmpdir_factory.mktemp(suffix))
     logger.info('Created temp folder: %s', temp_dir)
 
     return temp_dir
