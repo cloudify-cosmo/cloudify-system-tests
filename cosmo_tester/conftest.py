@@ -76,8 +76,7 @@ class SSHKey(object):
 def ssh_key(module_tmpdir, logger):
     key = SSHKey(module_tmpdir, logger)
     key.create()
-    yield key
-    key.delete()
+    return key
 
 
 @pytest.fixture(scope='module')
