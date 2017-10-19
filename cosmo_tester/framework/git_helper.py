@@ -38,7 +38,7 @@ def clone(url, basedir, branch=None):
 
     if not target.exists():
         logger.info("Cloning {0} to {1}".format(url, target))
-        git.clone(url, str(target)).wait()
+        git.clone(url, str(target), depth=1).wait()
         with target:
             logger.info("Checking out to {0} branch".format(branch))
             git.checkout(branch).wait()
