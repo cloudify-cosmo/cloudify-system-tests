@@ -34,7 +34,7 @@ def clone(url, basedir, branch=None):
 
     repo_name = url.split('.git')[0].split('/')[-1]
 
-    target = path(os.path.join(basedir, 'git', repo_name))
+    target = path(os.path.join(basedir, 'git', repo_name, branch))
 
     logger.info("Cloning {0} to {1}".format(url, target))
     git.clone(url, str(target)).wait()
