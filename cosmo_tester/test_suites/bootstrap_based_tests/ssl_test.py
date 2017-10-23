@@ -65,10 +65,7 @@ def test_ssl(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
     hello_world = centos_hello_world(cfy, manager, attributes, ssh_key,
                                      logger, module_tmpdir)
 
-    hello_world.upload_blueprint()
-    hello_world.create_deployment()
-    hello_world.install()
-    hello_world.verify_installation()
+    hello_world.upload_and_verify_install()
 
     cfy.ssl.disable()
     cfy.profiles.set('--ssl', 'off', '--skip-credentials-validation')

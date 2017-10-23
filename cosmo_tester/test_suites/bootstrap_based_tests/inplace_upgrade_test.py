@@ -53,10 +53,7 @@ def test_inplace_upgrade(cfy,
     hellos = get_hello_worlds(cfy, manager, attributes, ssh_key,
                               module_tmpdir, logger)
     for hello_world in hellos:
-        hello_world.upload_blueprint()
-        hello_world.create_deployment()
-        hello_world.install()
-        hello_world.verify_installation()
+        hello_world.upload_and_verify_install()
     create_snapshot(manager, snapshot_name, attributes, logger)
 
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])

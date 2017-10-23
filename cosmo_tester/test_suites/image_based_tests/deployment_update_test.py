@@ -49,11 +49,7 @@ def test_hello_world_deployment_update(
         cfy, manager, hello_world, tmpdir, logger):
     logger.info('Deploying hello world example..')
 
-    hello_world.upload_blueprint()
-    hello_world.create_deployment()
-    hello_world.install()
-    hello_world.verify_installation()
-
+    hello_world.upload_and_verify_install()
     http_endpoint = hello_world.outputs['http_endpoint']
     modified_port = '9090'
 

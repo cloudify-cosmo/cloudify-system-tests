@@ -108,10 +108,7 @@ def test_multiple_networks(managers,
     post_bootstrap_hello.manager = new_manager
 
     for hello in multi_network_hello_worlds:
-        hello.upload_blueprint()
-        hello.create_deployment()
-        hello.install()
-        hello.verify_installation()
+        hello.upload_and_verify_install()
 
     create_snapshot(old_manager, snapshot_id, attributes, logger)
     download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
