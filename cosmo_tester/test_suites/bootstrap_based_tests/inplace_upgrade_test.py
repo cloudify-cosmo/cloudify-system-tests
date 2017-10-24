@@ -15,13 +15,12 @@
 
 import pytest
 
-from time import sleep
 from os.path import join
 
+from cosmo_tester.framework import util
 from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
 
 from . import get_hello_worlds
-from ..snapshots import create_snapshot, restore_snapshot
 
 
 @pytest.fixture(scope='module')
@@ -54,64 +53,18 @@ def test_inplace_upgrade(cfy,
                               module_tmpdir, logger)
     for hello_world in hellos:
         hello_world.upload_and_verify_install()
-    create_snapshot(manager, snapshot_name, attributes, logger)
-
+    cfy.snapshots.create([snapshot_name])
+    util.wait_for_all_executions(manager)
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
     cfy.teardown(['-f', '--ignore-deployments'])
     hosts._bootstrap_manager(hosts._create_inputs_file(manager))
     openstack_config_file = hosts.create_openstack_config_file()
     manager._upload_necessary_files(openstack_config_file)
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
-    restore_snapshot(manager, snapshot_name, cfy, logger,
-                     restore_certificates=True)
-    _wait_for_reboot(manager)
-
-    # we need to give the agents enough time to reconnect to the manager;
-    # celery retries with a backoff of up to 32 seconds
-    sleep(35)
-
+    cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
+    util.wait_for_all_executions(manager)
+    util.wait_for_manager(manager)
     for hello_world in hellos:
         cfy.agents.install(['-t', hello_world.tenant])
         hello_world.uninstall()
         hello_world.delete_deployment()
-
-
-def _check_executions(manager):
-    try:
-        executions = manager.client.executions.list(
-            include_system_workflows=True).items
-        for execution in executions:
-            if execution['status'] != 'terminated':
-                return False
-        return True
-    except BaseException:
-        return False
-
-
-def _check_status(manager):
-    try:
-        status = manager.client.manager.get_status()
-        for service in status['services']:
-            for instance in service['instances']:
-                if instance['state'] != 'running':
-                    return False
-        return True
-    except BaseException:
-        return False
-
-
-def _wait_for_func(func, manager, message, retries, interval):
-    for i in range(retries):
-        if func(manager):
-            return
-        sleep(interval)
-    raise Exception(message)
-
-
-def _wait_for_reboot(manager, sleep_time=5):
-    sleep(sleep_time)
-    _wait_for_func(func=_check_status,
-                   manager=manager,
-                   message='Timed out: Reboot did not complete successfully',
-                   retries=60,
-                   interval=1)
