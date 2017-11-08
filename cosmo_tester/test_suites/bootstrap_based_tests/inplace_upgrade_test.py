@@ -72,6 +72,10 @@ def test_inplace_upgrade(cfy,
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
     _wait_for_restore(manager, snapshot_name)
 
+    # we need to give the agents enough time to reconnect to the manager;
+    # celery retries with a backoff of up to 32 seconds
+    sleep(35)
+
     for hello_world in hellos:
         cfy.agents.install(['-t', hello_world.tenant])
         hello_world.uninstall()
