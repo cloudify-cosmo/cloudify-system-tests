@@ -67,7 +67,7 @@ def test_inplace_upgrade(cfy,
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
     restore_snapshot(manager, snapshot_name, cfy, logger,
                      restore_certificates=True)
-    _wait_for_restore(manager, snapshot_name)
+    _wait_for_reboot(manager, snapshot_name)
 
     # we need to give the agents enough time to reconnect to the manager;
     # celery retries with a backoff of up to 32 seconds
@@ -111,7 +111,7 @@ def _wait_for_func(func, manager, message, retries, interval):
     raise Exception(message)
 
 
-def _wait_for_restore(manager, sleep_time=5):
+def _wait_for_reboot(manager, sleep_time=5):
     sleep(sleep_time)
     _wait_for_func(func=_check_status,
                    manager=manager,
