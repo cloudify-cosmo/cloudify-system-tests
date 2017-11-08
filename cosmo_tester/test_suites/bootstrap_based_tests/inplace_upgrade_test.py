@@ -21,6 +21,7 @@ from os.path import join
 from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
 
 from . import get_hello_worlds
+from ..snapshots import restore_snapshot
 
 
 @pytest.fixture(scope='module')
@@ -28,7 +29,7 @@ def hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
     # need to keep the hosts to use its inputs in the second bootstrap
     hosts = BootstrapBasedCloudifyManagers(
-            cfy, ssh_key, module_tmpdir, attributes, logger)
+        cfy, ssh_key, module_tmpdir, attributes, logger)
     try:
         hosts.create()
         yield hosts
@@ -69,8 +70,8 @@ def test_inplace_upgrade(cfy,
     openstack_config_file = hosts.create_openstack_config_file()
     manager._upload_necessary_files(openstack_config_file)
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
-    cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
-    _wait_for_restore(manager)
+    _wait_for_restore(manager, snapshot_name)
+
     for hello_world in hellos:
         cfy.agents.install(['-t', hello_world.tenant])
         hello_world.uninstall()
@@ -109,12 +110,9 @@ def _wait_for_func(func, manager, message, retries, interval):
     raise Exception(message)
 
 
-def _wait_for_restore(manager, sleep_time=5):
-    _wait_for_func(func=_check_executions,
-                   manager=manager,
-                   message='Timed out: An execution did not terminate',
-                   retries=180,
-                   interval=1)
+def _wait_for_restore(manager, snapshot_name, cfy, logger, sleep_time=5):
+    restore_snapshot(manager, snapshot_name, cfy, logger,
+                     restore_certificates=True)
     sleep(sleep_time)
     _wait_for_func(func=_check_status,
                    manager=manager,
