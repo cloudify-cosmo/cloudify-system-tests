@@ -21,7 +21,7 @@ from os.path import join
 from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
 
 from . import get_hello_worlds
-from ..snapshots import restore_snapshot
+from ..snapshots import create_snapshot, restore_snapshot
 
 
 @pytest.fixture(scope='module')
@@ -57,13 +57,8 @@ def test_inplace_upgrade(cfy,
         hello_world.create_deployment()
         hello_world.install()
         hello_world.verify_installation()
-    cfy.snapshots.create([snapshot_name])
-    # wait for snapshot creation to terminate
-    _wait_for_func(func=_check_executions,
-                   manager=manager,
-                   message='Timed out: An execution did not terminate',
-                   retries=60,
-                   interval=1)
+    create_snapshot(manager, snapshot_name, attributes, logger)
+
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
     cfy.teardown(['-f', '--ignore-deployments'])
     hosts._bootstrap_manager(hosts._create_inputs_file(manager))
