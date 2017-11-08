@@ -65,6 +65,8 @@ def test_inplace_upgrade(cfy,
     openstack_config_file = hosts.create_openstack_config_file()
     manager._upload_necessary_files(openstack_config_file)
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
+    restore_snapshot(manager, snapshot_name, cfy, logger,
+                     restore_certificates=True)
     _wait_for_restore(manager, snapshot_name)
 
     # we need to give the agents enough time to reconnect to the manager;
@@ -109,9 +111,7 @@ def _wait_for_func(func, manager, message, retries, interval):
     raise Exception(message)
 
 
-def _wait_for_restore(manager, snapshot_name, cfy, logger, sleep_time=5):
-    restore_snapshot(manager, snapshot_name, cfy, logger,
-                     restore_certificates=True)
+def _wait_for_restore(manager, sleep_time=5):
     sleep(sleep_time)
     _wait_for_func(func=_check_status,
                    manager=manager,
