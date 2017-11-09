@@ -82,6 +82,7 @@ def test_inplace_upgrade_411(cfy, hosts_411, attributes, ssh_key,
 
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
     cfy.teardown(['-f', '--ignore-deployments'])
+    git_helper.checkout(manager._manager_blueprints_path, 'master')
     hosts._bootstrap_manager(hosts._create_inputs_file(manager))
     openstack_config_file = hosts.create_openstack_config_file()
     manager._upload_necessary_files(openstack_config_file)
