@@ -690,4 +690,5 @@ class BootstrapBasedCloudifyManagers(TestHosts):
     def _bootstrap_manager(self, inputs_file):
         manager_blueprint_path = \
             self._manager_blueprints_path / 'simple-manager-blueprint.yaml'
-        self._cfy.bootstrap([manager_blueprint_path, '-i', inputs_file])
+        self._cfy.bootstrap([manager_blueprint_path, '-i', inputs_file],
+                            keep_up_on_failure=True)
