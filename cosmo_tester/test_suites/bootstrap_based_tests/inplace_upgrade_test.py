@@ -26,6 +26,10 @@ from ..snapshots import create_snapshot, restore_snapshot
 
 
 class Bootstrap411(BootstrapBasedCloudifyManagers):
+    def __init__(self, *args, **kwargs):
+        super(Bootstrap411, self).__init__(*args, **kwargs)
+        self._manager_resources_package = 'http://repository.cloudifysource.org/cloudify/4.1.1/ga-release/cloudify-manager-resources_4.1.1-ga.tar.gz'  # NOQA
+
     def _clone_manager_blueprints(self):
         super(Bootstrap411, self)._clone_manager_blueprints()
         git_helper.checkout(self._manager_blueprints_path, '4.1.1')
