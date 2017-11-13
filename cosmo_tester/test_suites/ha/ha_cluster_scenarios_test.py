@@ -96,6 +96,7 @@ def ha_hello_worlds(cfy, hosts, attributes, ssh_key, tmpdir, logger):
             hw.cleanup()
 
 
+@pytest.fixture(scope='function')
 def cluster_notstarted(cfy, ssh_key, module_tmpdir, attributes, logger):
     cluster = TestHosts(
         cfy,
