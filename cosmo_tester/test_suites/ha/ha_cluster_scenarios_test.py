@@ -104,7 +104,7 @@ def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
         module_tmpdir,
         attributes,
         logger,
-        number_of_managers=2)
+        number_of_instances=2)
 
     for manager in cluster.managers[1:]:
         manager.upload_plugins = False
