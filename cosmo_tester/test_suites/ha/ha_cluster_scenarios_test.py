@@ -96,6 +96,52 @@ def ha_hello_worlds(cfy, hosts, attributes, ssh_key, tmpdir, logger):
             hw.cleanup()
 
 
+def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
+    import pudb; pu.db
+    cluster = TestHosts(
+        cfy,
+        ssh_key,
+        module_tmpdir,
+        attributes,
+        logger,
+        number_of_managers=2,
+        create=False)
+
+    for manager in cluster.managers[1:]:
+        manager.upload_plugins = False
+
+    cluster.create()
+    manager1, manager2 = cluster.managers
+    ha_helper.delete_active_profile()
+    manager1.use()
+
+    hw = HelloWorldExample(
+        cfy, manager1, attributes, ssh_key, logger, module_tmpdir)
+    hw.blueprint_file = 'openstack-blueprint.yaml'
+    hw.inputs.update({
+        'agent_user': attributes.centos7_username,
+        'image': attributes.centos7_image_name,
+    })
+
+    hello_world.upload_blueprint()
+    hello_world.create_deployment()
+    hello_world.install()
+
+    cfy.cluster.start(timeout=600,
+                      cluster_host_ip=manager1.private_ip_address,
+                      cluster_node_name=manager1.ip_address)
+
+    manager2.use()
+    cfy.cluster.join(manager1.ip_address,
+                     timeout=600,
+                     cluster_host_ip=manager2.private_ip_address,
+                     cluster_node_name=manager2.ip_address)
+
+    cfy.cluster.nodes.list()
+    ha_helper.set_active(manager2, cfy, logger)
+    hello_world.uninstall()
+
+
 def test_data_replication(cfy, hosts, ha_hello_worlds, logger):
     manager1 = hosts.instances[0]
     ha_helper.delete_active_profile()
