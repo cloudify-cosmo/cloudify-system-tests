@@ -118,8 +118,8 @@ def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
         cfy, manager1, attributes, ssh_key, logger, module_tmpdir)
     hw.blueprint_file = 'openstack-blueprint.yaml'
     hw.inputs.update({
-        'agent_user': attributes.centos7_username,
-        'image': attributes.centos7_image_name,
+        'agent_user': attributes.centos_7_username,
+        'image': attributes.centos_7_image_name,
     })
 
     hw.upload_blueprint()
