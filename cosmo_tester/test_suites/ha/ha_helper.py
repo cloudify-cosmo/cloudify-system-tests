@@ -75,9 +75,11 @@ class HighAvailabilityHelper(object):
                 try:
                     nodes = manager.client.cluster.nodes.list()
                     if predicate(nodes):
-                        logger.info('_wait_cluster_status: {0} returned False'
+                        logger.info('_wait_cluster_status: {0} returned True'
                                     .format(predicate))
                         return
+                    logger.info('_wait_cluster_status: {0} returned False'
+                                .format(predicate))
                 except (ConnectionError, CloudifyClientError) as e:
                     logger.info('_wait_cluster_status: manager {0} did not '
                                 'respond: {1}'.format(manager, e))
