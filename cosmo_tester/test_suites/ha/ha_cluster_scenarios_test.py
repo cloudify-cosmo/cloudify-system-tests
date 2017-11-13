@@ -34,8 +34,8 @@ def hosts(
     """Creates a HA cluster from an image in rackspace OpenStack."""
     logger.info('Creating HA cluster of %s managers', request.param)
     hosts = TestHosts(
-            cfy, ssh_key, module_tmpdir, attributes, logger,
-            number_of_instances=request.param)
+        cfy, ssh_key, module_tmpdir, attributes, logger,
+        number_of_instances=request.param)
 
     for manager in hosts.instances[1:]:
         manager.upload_plugins = False
@@ -96,8 +96,7 @@ def ha_hello_worlds(cfy, hosts, attributes, ssh_key, tmpdir, logger):
             hw.cleanup()
 
 
-def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
-    import pudb; pu.db
+def cluster_notstarted(cfy, ssh_key, module_tmpdir, attributes, logger):
     cluster = TestHosts(
         cfy,
         ssh_key,
@@ -108,9 +107,20 @@ def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
 
     for manager in cluster.instances[1:]:
         manager.upload_plugins = False
-
     cluster.create()
-    manager1, manager2 = cluster.instances
+
+    try:
+        yield cluster
+    finally:
+        cluster.destroy()
+
+
+def test_agent_before_cluster(cfy, cluster_notstarted, ssh_key, module_tmpdir,
+                              attributes, logger):
+    import pudb; pu.db
+    # install an agent before starting the cluster, and check that the
+    # agent failovers after a set-active anyway
+    manager1, manager2 = cluster_notstarted.instances
     ha_helper.delete_active_profile()
     manager1.use()
 
