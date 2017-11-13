@@ -75,12 +75,14 @@ class HighAvailabilityHelper(object):
                 try:
                     nodes = manager.client.cluster.nodes.list()
                     if predicate(nodes):
+                        logger.info('_wait_cluster_status: {0} returned False'
+                                    .format(predicate))
                         return
-                except (ConnectionError, CloudifyClientError):
-                    logger.debug('_wait_cluster_status: manager {0} did not '
-                                 'respond'.format(manager))
+                except (ConnectionError, CloudifyClientError) as e:
+                    logger.info('_wait_cluster_status: manager {0} did not '
+                                'respond: {1}'.format(manager, e))
 
-            logger.debug('_wait_cluster_status: none of the nodes responded')
+            logger.info('_wait_cluster_status: none of the nodes responded')
             time.sleep(poll_interval)
 
         raise RuntimeError('Timeout when waiting for cluster status')
