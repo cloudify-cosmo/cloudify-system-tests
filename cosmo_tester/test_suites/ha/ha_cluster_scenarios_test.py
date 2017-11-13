@@ -106,11 +106,11 @@ def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
         logger,
         number_of_instances=2)
 
-    for manager in cluster.managers[1:]:
+    for manager in cluster.instances[1:]:
         manager.upload_plugins = False
 
     cluster.create()
-    manager1, manager2 = cluster.managers
+    manager1, manager2 = cluster.instances
     ha_helper.delete_active_profile()
     manager1.use()
 
@@ -122,9 +122,9 @@ def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
         'image': attributes.centos7_image_name,
     })
 
-    hello_world.upload_blueprint()
-    hello_world.create_deployment()
-    hello_world.install()
+    hw.upload_blueprint()
+    hw.create_deployment()
+    hw.install()
 
     cfy.cluster.start(timeout=600,
                       cluster_host_ip=manager1.private_ip_address,
@@ -138,7 +138,7 @@ def test_agent_before_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
 
     cfy.cluster.nodes.list()
     ha_helper.set_active(manager2, cfy, logger)
-    hello_world.uninstall()
+    hw.uninstall()
 
 
 def test_data_replication(cfy, hosts, ha_hello_worlds, logger):
