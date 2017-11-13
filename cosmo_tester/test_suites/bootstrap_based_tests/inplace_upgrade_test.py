@@ -15,6 +15,7 @@
 
 import pytest
 
+from time import sleep
 from os.path import join
 
 from cosmo_tester.framework import util
@@ -64,6 +65,11 @@ def test_inplace_upgrade(cfy,
     cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
     util.wait_for_all_executions(manager)
     util.wait_for_manager(manager)
+
+    # we need to give the agents enough time to reconnect to the manager;
+    # celery retries with a backoff of up to 32 seconds
+    sleep(35)
+
     for hello_world in hellos:
         cfy.agents.install(['-t', hello_world.tenant])
         hello_world.uninstall()
