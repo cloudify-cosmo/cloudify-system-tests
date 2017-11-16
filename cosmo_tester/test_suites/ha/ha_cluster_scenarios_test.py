@@ -21,7 +21,8 @@ from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
 from .ha_helper import HighAvailabilityHelper as ha_helper  # NOQA
 from . import skip_community
-from ..snapshots import create_snapshot, restore_snapshot, upgrade_agents
+from ..snapshots import create_snapshot, restore_snapshot, upgrade_agents, \
+    upload_snapshot, download_snapshot
 
 # Skip all tests in this module if we're running community tests,
 # using the pytestmark magic variable name
@@ -136,6 +137,7 @@ def upgrade_hosts(cfy, ssh_key, module_tmpdir, attributes, logger):
 
 def test_upgrade(cfy, upgrade_hosts, logger, attributes, tmpdir, ssh_key):
     import pudb; pu.db  # NOQA
+    local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     m1, m2, m3, m4 = upgrade_hosts.instances
     m1.use()
@@ -151,8 +153,10 @@ def test_upgrade(cfy, upgrade_hosts, logger, attributes, tmpdir, ssh_key):
     hw.create_deployment()
     hw.install()
     create_snapshot(m1, snapshot_id, attributes, logger)
+    download_snapshot(m1, local_snapshot_path, snapshot_id, logger)
 
     m3.use()
+    upload_snapshot(m3, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(m3, snapshot_id, cfy, logger)
     m4.use()
     cfy.cluster.join(m3.ip_address,
