@@ -146,6 +146,12 @@ def test_upgrade(cfy, upgrade_hosts, logger, attributes, tmpdir, ssh_key):
     m1.use()
     snapshot_id = 'snap1'
     hw = HelloWorldExample(cfy, m1, attributes, ssh_key, logger, tmpdir)
+    hw.blueprint_file = 'openstack-blueprint.yaml'
+    hw.inputs.update({
+        'agent_user': attributes.centos_7_username,
+        'image': attributes.centos_7_image_name,
+    })
+
     hw.upload_blueprint()
     hw.create_deployment()
     hw.install()
