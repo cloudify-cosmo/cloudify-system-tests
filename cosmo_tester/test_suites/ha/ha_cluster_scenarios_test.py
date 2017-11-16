@@ -169,6 +169,11 @@ def test_upgrade(cfy, upgrade_hosts, logger, attributes, tmpdir, ssh_key):
     upgrade_agents(cfy, m3, logger)
 
 
+def test_foo(cfy, hosts, ha_hello_worlds, logger):
+    import pudb; pu.db
+    print hosts
+
+
 def test_data_replication(cfy, hosts, ha_hello_worlds, logger):
     manager1 = hosts.instances[0]
     ha_helper.delete_active_profile()
@@ -269,6 +274,10 @@ def test_failover(cfy, hosts, ha_hello_worlds, logger):
     ha_helper.verify_nodes_status(new_expected_master, cfy, logger)
 
     _test_hellos(ha_hello_worlds)
+
+
+def test_bar(cfy, hosts, ha_hello_worlds, logger):
+    ha_helper.set_active(hosts.instances[1], cfy, logger)
 
 
 def test_remove_manager_from_cluster(cfy, hosts, ha_hello_worlds, logger):
