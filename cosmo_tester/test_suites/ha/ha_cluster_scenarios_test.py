@@ -156,6 +156,8 @@ def test_upgrade(cfy, upgrade_hosts, logger, attributes, tmpdir, ssh_key):
     download_snapshot(m1, local_snapshot_path, snapshot_id, logger)
 
     m3.use()
+    with m3.ssh() as fabric:
+        fabric.sudo('systemctl restart cloudify-mgmtworker')
     upload_snapshot(m3, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(m3, snapshot_id, cfy, logger)
     m4.use()
