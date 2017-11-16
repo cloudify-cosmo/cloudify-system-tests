@@ -19,9 +19,9 @@ import time
 from cosmo_tester.framework.examples.hello_world import HelloWorldExample
 from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
-from .ha_helper import HighAvailabilityHelper as ha_helper
+from .ha_helper import HighAvailabilityHelper as ha_helper  # NOQA
 from . import skip_community
-
+from ..snapshots import create_snapshot, restore_snapshot, upgrade_agents
 
 # Skip all tests in this module if we're running community tests,
 # using the pytestmark magic variable name
@@ -34,8 +34,8 @@ def hosts(
     """Creates a HA cluster from an image in rackspace OpenStack."""
     logger.info('Creating HA cluster of %s managers', request.param)
     hosts = TestHosts(
-            cfy, ssh_key, module_tmpdir, attributes, logger,
-            number_of_instances=request.param)
+        cfy, ssh_key, module_tmpdir, attributes, logger,
+        number_of_instances=request.param)
 
     for manager in hosts.instances[1:]:
         manager.upload_plugins = False
@@ -94,6 +94,66 @@ def ha_hello_worlds(cfy, hosts, attributes, ssh_key, tmpdir, logger):
             logger.info('Cleaning up hello world...')
             manager.use()
             hw.cleanup()
+
+
+@pytest.fixture(scope='function')
+def upgrade_hosts(cfy, ssh_key, module_tmpdir, attributes, logger):
+    hosts = TestHosts(
+        cfy, ssh_key, module_tmpdir, attributes, logger,
+        number_of_instances=4)
+
+    m1, m2, m3, m4 = hosts.instances
+    for manager in [m2, m4]:
+        manager.upload_plugins = False
+
+    try:
+        hosts.create()
+        ha_helper.delete_active_profile()
+        m1.use()
+        cfy.cluster.start(timeout=600,
+                          cluster_host_ip=m1.private_ip_address,
+                          cluster_node_name=m1.ip_address)
+
+        m2.use()
+        cfy.cluster.join(m1.ip_address,
+                         timeout=600,
+                         cluster_host_ip=m2.private_ip_address,
+                         cluster_node_name=m2.ip_address)
+        cfy.cluster.nodes.list()
+
+        m3.use()
+        cfy.cluster.start(timeout=600,
+                          cluster_host_ip=m3.private_ip_address,
+                          cluster_node_name=m3.ip_address)
+
+        m4.use()
+        cfy.cluster.join(m3.ip_address,
+                         timeout=600,
+                         cluster_host_ip=m4.private_ip_address,
+                         cluster_node_name=m4.ip_address)
+        cfy.cluster.nodes.list()
+
+        yield hosts
+
+    finally:
+        hosts.destroy()
+
+
+def test_upgrade(cfy, upgrade_hosts, logger, attributes, tmpdir, ssh_key):
+    import pudb; pu.db  # NOQA
+
+    m1, m2, m3, m4 = upgrade_hosts.instances
+    m1.use()
+    snapshot_id = 'snap1'
+    hw = HelloWorldExample(cfy, m1, attributes, ssh_key, logger, tmpdir)
+    hw.upload_blueprint()
+    hw.create_deployment()
+    hw.install()
+    create_snapshot(m1, snapshot_id, attributes, logger)
+
+    m3.use()
+    restore_snapshot(m3, snapshot_id, cfy, logger)
+    upgrade_agents(cfy, m3, logger)
 
 
 def test_data_replication(cfy, hosts, ha_hello_worlds, logger):
