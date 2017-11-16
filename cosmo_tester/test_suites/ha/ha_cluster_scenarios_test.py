@@ -126,11 +126,6 @@ def upgrade_hosts(cfy, ssh_key, module_tmpdir, attributes, logger):
                           cluster_host_ip=m3.private_ip_address,
                           cluster_node_name=m3.ip_address)
 
-        m4.use()
-        cfy.cluster.join(m3.ip_address,
-                         timeout=600,
-                         cluster_host_ip=m4.private_ip_address,
-                         cluster_node_name=m4.ip_address)
         cfy.cluster.nodes.list()
 
         yield hosts
@@ -159,6 +154,12 @@ def test_upgrade(cfy, upgrade_hosts, logger, attributes, tmpdir, ssh_key):
 
     m3.use()
     restore_snapshot(m3, snapshot_id, cfy, logger)
+    m4.use()
+    cfy.cluster.join(m3.ip_address,
+                     timeout=600,
+                     cluster_host_ip=m4.private_ip_address,
+                     cluster_node_name=m4.ip_address)
+
     upgrade_agents(cfy, m3, logger)
 
 
