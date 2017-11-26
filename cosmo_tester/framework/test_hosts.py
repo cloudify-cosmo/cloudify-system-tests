@@ -679,7 +679,7 @@ class BootstrapBasedCloudifyManagers(TestHosts):
         config_file.write_text(install_config_str)
         return config_file
 
-    def _bootstrap_manager(self, manager, inputs_file):
+    def _bootstrap_manager(self, manager, install_config):
         install_rpm_file = 'cloudify-manager-install.rpm'
         with manager.ssh() as fabric_ssh:
             fabric_ssh.run(
@@ -690,7 +690,7 @@ class BootstrapBasedCloudifyManagers(TestHosts):
             )
             fabric_ssh.sudo('yum install -y {0}'.format(install_rpm_file))
             fabric_ssh.put(
-                inputs_file,
+                install_config,
                 '/opt/cloudify-manager-install/config.yaml'
             )
             fabric_ssh.run('cfy_manager install')
