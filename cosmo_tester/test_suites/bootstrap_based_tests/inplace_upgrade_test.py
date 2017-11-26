@@ -44,6 +44,7 @@ def test_inplace_upgrade(cfy,
                          module_tmpdir,
                          logger):
     manager = hosts.instances[0]
+    manager.use()
     snapshot_name = 'inplace_upgrade_snapshot'
     snapshot_path = join(str(module_tmpdir), snapshot_name) + '.zip'
 
