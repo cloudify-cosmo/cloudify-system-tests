@@ -21,11 +21,13 @@ from os.path import join
 
 manager = bootstrap_based_manager
 DEFAULT_TENANT_ROLE = 'user'
+MANAGER_CERT_PATH = '/etc/cloudify/ssl/cloudify_external_cert.pem'
 
 
 def test_ssl(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
-    cert_path = join(module_tmpdir, '.cloudify', 'profiles',
-                     manager.ip_address, 'public_rest_cert.crt')
+    cert_path = join(module_tmpdir, 'public_rest_cert.crt')
+    with manager.ssh() as fabric:
+        fabric.get(MANAGER_CERT_PATH, cert_path)
     cfy.profiles.set('-c', cert_path)
 
     assert 'SSL disabled' in cfy.ssl.status()
