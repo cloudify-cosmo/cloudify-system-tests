@@ -133,7 +133,7 @@ class VM(object):
     def upload_plugin(self, plugin_name):
         return True
 
-    def _upload_necessary_files(self, openstack_config_file):
+    def upload_necessary_files(self):
         return True
 
     image_name = ATTRIBUTES['centos_7_image_name']
@@ -176,8 +176,9 @@ class _CloudifyManager(VM):
                                               'root', 'root', 'cloudify')
         self.additional_install_config = {}
 
-    def _upload_necessary_files(self, openstack_config_file):
+    def upload_necessary_files(self):
         self._logger.info('Uploading necessary files to %s', self)
+        openstack_config_file = self._create_openstack_config_file()
         with self.ssh() as fabric_ssh:
             openstack_json_path = REMOTE_OPENSTACK_CONFIG_PATH
             fabric_ssh.sudo('mkdir -p "{}"'.format(
@@ -381,6 +382,17 @@ class _CloudifyManager(VM):
             fabric_ssh.run('cfy_manager install')
         self.use()
 
+    def _create_openstack_config_file(self):
+        openstack_config_file = self._tmpdir / 'openstack_config.json'
+        openstack_config_file.write_text(json.dumps({
+            'username': os.environ['OS_USERNAME'],
+            'password': os.environ['OS_PASSWORD'],
+            'tenant_name': os.environ.get('OS_TENANT_NAME',
+                                          os.environ['OS_PROJECT_NAME']),
+            'auth_url': os.environ['OS_AUTH_URL']
+        }, indent=2))
+        return openstack_config_file
+
 
 def _get_latest_manager_image_name():
     """
@@ -412,8 +424,9 @@ class Cloudify3_4Manager(_CloudifyManager):
     branch_name = '3.4.2'
     tenant_name = restore_tenant_name = 'restore_tenant'
 
-    def _upload_necessary_files(self, openstack_config_file):
+    def upload_necessary_files(self):
         self._logger.info('Uploading necessary files to %s', self)
+        openstack_config_file = self._create_openstack_config_file()
         with self.ssh() as fabric_ssh:
             openstack_json_path = '/root/openstack_config.json'
             fabric_ssh.put(openstack_config_file,
@@ -432,8 +445,9 @@ class Cloudify3_4Manager(_CloudifyManager):
 class Cloudify4_0Manager(_CloudifyManager):
     branch_name = '4.0'
 
-    def _upload_necessary_files(self, openstack_config_file):
+    def upload_necessary_files(self):
         self._logger.info('Uploading necessary files to %s', self)
+        openstack_config_file = self._create_openstack_config_file()
         with self.ssh() as fabric_ssh:
             openstack_json_path = '/root/openstack_config.json'
             fabric_ssh.put(openstack_config_file,
@@ -565,17 +579,6 @@ class TestHosts(object):
     def _bootstrap_managers(self):
         pass
 
-    def create_openstack_config_file(self):
-        openstack_config_file = self._tmpdir / 'openstack_config.json'
-        openstack_config_file.write_text(json.dumps({
-            'username': os.environ['OS_USERNAME'],
-            'password': os.environ['OS_PASSWORD'],
-            'tenant_name': os.environ.get('OS_TENANT_NAME',
-                                          os.environ['OS_PROJECT_NAME']),
-            'auth_url': os.environ['OS_AUTH_URL']
-        }, indent=2))
-        return openstack_config_file
-
     def _get_server_flavor(self):
         return self._attributes.manager_server_flavor_name
 
@@ -586,8 +589,6 @@ class TestHosts(object):
         to provisioned VMs are uploaded to the server."""
         self._logger.info('Creating image based cloudify instances: '
                           '[number_of_instances=%d]', len(self.instances))
-
-        openstack_config_file = self.create_openstack_config_file()
 
         terraform_template_file = self._tmpdir / 'openstack-vm.tf'
 
@@ -628,7 +629,7 @@ class TestHosts(object):
             for instance in self.instances:
                 instance.verify_services_are_running()
 
-                instance._upload_necessary_files(openstack_config_file)
+                instance.upload_necessary_files()
                 if instance.upload_plugins:
                     instance.upload_plugin('openstack_centos_core')
 
