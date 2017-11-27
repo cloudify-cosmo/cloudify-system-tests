@@ -339,6 +339,48 @@ class _CloudifyManager(VM):
             fabric_ssh.run('cfy_manager remove')
             fabric_ssh.sudo('yum remove -y cloudify-manager-install')
 
+    def _create_config_file(self):
+        config_file = self._tmpdir / 'config_{0}.yaml'.format(self.index)
+        install_config = {
+            'manager':
+                {
+                    'public_ip': self.ip_address,
+                    'private_ip': self.private_ip_address,
+                    'security': {
+                        'admin_username': self._attributes.cloudify_username,
+                        'admin_password': self._attributes.cloudify_password,
+                    }
+                }
+        }
+
+        # Add any additional bootstrap inputs passed from the test
+        install_config.update(self.additional_install_config)
+        install_config_str = yaml.dump(install_config)
+
+        self._logger.info(
+            'Install config:\n{0}'.format(install_config_str))
+        config_file.write_text(install_config_str)
+        return config_file
+
+    def bootstrap(self):
+        manager_install_rpm = util.get_manager_install_rpm_url()
+        install_config = self._create_config_file()
+        install_rpm_file = 'cloudify-manager-install.rpm'
+        with self.ssh() as fabric_ssh:
+            fabric_ssh.run(
+                'curl -sS {0} -o {1}'.format(
+                    manager_install_rpm,
+                    install_rpm_file
+                )
+            )
+            fabric_ssh.sudo('yum install -y {0}'.format(install_rpm_file))
+            fabric_ssh.put(
+                install_config,
+                '/opt/cloudify-manager-install/config.yaml'
+            )
+            fabric_ssh.run('cfy_manager install')
+        self.use()
+
 
 def _get_latest_manager_image_name():
     """
@@ -652,51 +694,8 @@ class BootstrapBasedCloudifyManagers(TestHosts):
     def _get_server_flavor(self):
         return self._attributes.medium_flavor_name
 
-    def _get_latest_manager_image_name(self):
-        return self._attributes.centos_7_image_name
-
     def _bootstrap_managers(self):
         super(BootstrapBasedCloudifyManagers, self)._bootstrap_managers()
 
         for manager in self.instances:
-            config_file = self._create_config_file(manager)
-            self._bootstrap_manager(manager, config_file)
-
-    def _create_config_file(self, manager):
-        config_file = self._tmpdir / 'config_{0}.yaml'.format(manager.index)
-        install_config = {
-            'manager':
-                {
-                    'public_ip': manager.ip_address,
-                    'private_ip': manager.private_ip_address,
-                    'security': {
-                        'admin_username': self._attributes.cloudify_username,
-                        'admin_password': self._attributes.cloudify_password,
-                    }
-                }
-        }
-
-        # Add any additional bootstrap inputs passed from the test
-        install_config.update(manager.additional_install_config)
-        install_config_str = yaml.dump(install_config)
-
-        self._logger.info('Install config:\n{0}'.format(install_config_str))
-        config_file.write_text(install_config_str)
-        return config_file
-
-    def _bootstrap_manager(self, manager, install_config):
-        install_rpm_file = 'cloudify-manager-install.rpm'
-        with manager.ssh() as fabric_ssh:
-            fabric_ssh.run(
-                'curl -sS {0} -o {1}'.format(
-                    self._manager_install_rpm,
-                    install_rpm_file
-                )
-            )
-            fabric_ssh.sudo('yum install -y {0}'.format(install_rpm_file))
-            fabric_ssh.put(
-                install_config,
-                '/opt/cloudify-manager-install/config.yaml'
-            )
-            fabric_ssh.run('cfy_manager install')
-        manager.use()
+            manager.bootstrap()
