@@ -334,6 +334,11 @@ class _CloudifyManager(VM):
         self._logger.info('Running command:\n{0}'.format(cmd))
         os.system(cmd)
 
+    def teardown(self):
+        with self.ssh() as fabric_ssh:
+            fabric_ssh.run('cfy_manager remove')
+            fabric_ssh.sudo('yum remove -y cloudify-manager-install')
+
 
 def _get_latest_manager_image_name():
     """
@@ -694,3 +699,4 @@ class BootstrapBasedCloudifyManagers(TestHosts):
                 '/opt/cloudify-manager-install/config.yaml'
             )
             fabric_ssh.run('cfy_manager install')
+        manager.use()
