@@ -27,7 +27,7 @@ def test_teardown(cfy, manager, hello_worlds):  # noqa # (pytest fixture, not re
     for hello in hello_worlds:
         hello.verify_all()
 
-    cfy.teardown('-f')
+    manager.teardown()
     current_state = _get_system_state(manager)
     diffs = {}
 

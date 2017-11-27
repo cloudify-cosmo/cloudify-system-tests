@@ -44,7 +44,6 @@ def test_inplace_upgrade(cfy,
                          module_tmpdir,
                          logger):
     manager = hosts.instances[0]
-    manager.use()
     snapshot_name = 'inplace_upgrade_snapshot'
     snapshot_path = join(str(module_tmpdir), snapshot_name) + '.zip'
 
@@ -58,7 +57,7 @@ def test_inplace_upgrade(cfy,
     cfy.snapshots.create([snapshot_name])
     util.wait_for_all_executions(manager)
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
-    cfy.teardown(['-f', '--ignore-deployments'])
+    manager.teardown()
     config_file = hosts._create_config_file(manager)
     hosts._bootstrap_manager(manager, config_file)
     openstack_config_file = hosts.create_openstack_config_file()
