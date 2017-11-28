@@ -337,7 +337,7 @@ class _CloudifyManager(VM):
 
     def teardown(self):
         with self.ssh() as fabric_ssh:
-            fabric_ssh.run('cfy_manager remove')
+            fabric_ssh.run('cfy_manager remove --force')
             fabric_ssh.sudo('yum remove -y cloudify-manager-install')
 
     def _create_config_file(self):
