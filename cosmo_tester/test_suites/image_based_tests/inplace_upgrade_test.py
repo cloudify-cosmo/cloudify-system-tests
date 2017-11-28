@@ -19,7 +19,7 @@ from os.path import join
 from cosmo_tester.framework import util
 from cosmo_tester.framework.fixtures import image_based_manager
 
-from . import get_hello_worlds
+from cosmo_tester.framework.examples.hello_world import get_hello_worlds
 
 manager = image_based_manager
 

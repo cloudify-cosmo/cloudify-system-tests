@@ -16,14 +16,12 @@
 import pytest
 
 from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
-
-from . import hello_worlds  # noqa # (pytest fixture imported)
-
+from cosmo_tester.framework.examples.hello_world import hello_worlds # noqa # (pytest fixture imported)
 
 pre_bootstrap_state = None
 
 
-def test_teardown(cfy, manager, hello_worlds):  # noqa # (pytest fixture, not redefinition of hello_worlds)
+def test_teardown(manager, hello_worlds):  # noqa # (pytest fixture, not redefinition of hello_worlds)
     for hello in hello_worlds:
         hello.verify_all()
 
