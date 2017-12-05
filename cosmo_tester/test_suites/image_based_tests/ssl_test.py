@@ -14,12 +14,12 @@
 #    * limitations under the License.
 
 from cosmo_tester.framework.examples.hello_world import centos_hello_world
-from cosmo_tester.framework.fixtures import bootstrap_based_manager
+from cosmo_tester.framework.fixtures import image_based_manager
 from cosmo_tester.framework.util import is_community
 from cloudify_rest_client.client import CloudifyClient
 from os.path import join
 
-manager = bootstrap_based_manager
+manager = image_based_manager
 DEFAULT_TENANT_ROLE = 'user'
 REMOTE_EXTERNAL_CERT_PATH = '/etc/cloudify/ssl/cloudify_external_cert.pem'
 
