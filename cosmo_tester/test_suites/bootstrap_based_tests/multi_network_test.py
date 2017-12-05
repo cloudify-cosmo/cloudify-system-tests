@@ -141,6 +141,10 @@ def _add_new_network(manager, tmpdir, logger):
     old_networks = deepcopy(manager.networks)
     new_networks = deepcopy(manager.networks)
 
+    # The `default` network is added during manager installation
+    for networks in (old_networks, new_networks):
+        networks['default'] = private_ip
+
     # `network_2` shouldn't be on the manager right now
     old_networks.pop(NETWORK_2)
 
