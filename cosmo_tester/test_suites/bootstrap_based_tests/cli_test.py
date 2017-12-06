@@ -33,6 +33,7 @@ from cosmo_tester.framework.util import (
     get_resource_path,
     sh_bake,
 )
+from cosmo_tester.framework.test_hosts import get_latest_manager_image_name
 
 WINRM_PORT = 5985
 
@@ -50,8 +51,7 @@ def package_tester(request, ssh_key, attributes, tmpdir, logger):
     logger.info('Using temp dir: %s', tmpdir)
     tmpdir = Path(tmpdir)
 
-    tf_inputs = get_terraform_inputs(attributes, ssh_key)
-    tester = tester_class(tmpdir, tf_inputs, ssh_key, logger)
+    tester = tester_class(tmpdir, attributes, ssh_key, logger)
 
     yield tester
 
@@ -63,7 +63,6 @@ def test_cli_on_centos_7(package_tester, attributes):
     package_tester.inputs.update({
         'cli_image': attributes.centos_7_image_name,
         'cli_user': attributes.centos_7_username,
-        'manager_image': attributes.centos_7_image_name,
         'manager_user': attributes.centos_7_username,
         'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
@@ -75,7 +74,6 @@ def test_cli_on_centos_6(package_tester, attributes):
     package_tester.inputs.update({
         'cli_image': attributes.centos_6_image_name,
         'cli_user': attributes.centos_6_username,
-        'manager_image': attributes.centos_7_image_name,
         'manager_user': attributes.centos_7_username,
         'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
@@ -87,7 +85,6 @@ def test_cli_on_ubuntu_14_04(package_tester, attributes):
     package_tester.inputs.update({
         'cli_image': attributes.ubuntu_14_04_image_name,
         'cli_user': attributes.ubuntu_14_04_username,
-        'manager_image': attributes.centos_7_image_name,
         'manager_user': attributes.centos_7_username,
         'cli_package_url': get_cli_package_url('debian_cli_package_url')
     })
@@ -99,7 +96,6 @@ def test_cli_on_windows_2012(package_tester, attributes):
     package_tester.inputs.update({
         'cli_image': attributes.windows_2012_image_name,
         'cli_user': attributes.windows_2012_username,
-        'manager_image': attributes.centos_7_image_name,
         'manager_user': attributes.centos_7_username,
         'cli_flavor': attributes.medium_flavor_name,
     })
@@ -111,7 +107,6 @@ def test_cli_on_rhel_7(package_tester, attributes):
     package_tester.inputs.update({
         'cli_image': attributes.rhel_7_image_name,
         'cli_user': attributes.rhel_7_username,
-        'manager_image': attributes.centos_7_image_name,
         'manager_user': attributes.centos_7_username,
         'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
@@ -123,7 +118,6 @@ def test_cli_on_rhel_6(package_tester, attributes):
     package_tester.inputs.update({
         'cli_image': attributes.rhel_6_image_name,
         'cli_user': attributes.rhel_6_username,
-        'manager_image': attributes.centos_7_image_name,
         'manager_user': attributes.centos_7_username,
         'cli_package_url': get_cli_package_url('rhel_centos_cli_package_url')
     })
@@ -147,12 +141,13 @@ def test_cli_on_osx(package_tester, attributes):
 
 class _CliPackageTester(object):
 
-    def __init__(self, tmpdir, inputs, ssh_key, logger):
+    def __init__(self, tmpdir, attributes, ssh_key, logger):
         self.terraform = sh_bake(sh.terraform)
         self.tmpdir = tmpdir
-        self.inputs = inputs
+        self.attributes = attributes
         self.ssh_key = ssh_key
         self.logger = logger
+        self.inputs = self._get_default_inputs()
         self.inputs_file = self.tmpdir / 'inputs.json'
         os.mkdir(self.tmpdir / 'scripts')
 
@@ -170,6 +165,17 @@ class _CliPackageTester(object):
         self.logger.info('Testing CLI package..')
         with self.tmpdir:
             self.terraform.apply(['-var-file', self.inputs_file])
+
+    def _get_default_inputs(self):
+        return {
+            'resource_suffix': str(uuid.uuid4()),
+            'public_key_path': self.ssh_key.public_key_path,
+            'private_key_path': self.ssh_key.private_key_path,
+            'remote_key_path': '/etc/cloudify/key.pem',
+            'cli_flavor': self.attributes.small_flavor_name,
+            'manager_flavor': self.attributes.medium_flavor_name,
+            'manager_image': get_latest_manager_image_name()
+        }
 
     def write_inputs_file(self):
         self.inputs_file.write_text(json.dumps(self.inputs, indent=2))
@@ -308,14 +314,3 @@ class _OSXCliPackageTester(_CliPackageTester):
 
     def run_test(self):
         super(_OSXCliPackageTester, self).run_test()
-
-
-def get_terraform_inputs(attributes, ssh_key):
-    tf_inputs = {
-        'resource_suffix': str(uuid.uuid4()),
-        'public_key_path': ssh_key.public_key_path,
-        'private_key_path': ssh_key.private_key_path,
-        'cli_flavor': attributes.small_flavor_name,
-        'manager_flavor': attributes.medium_flavor_name,
-    }
-    return tf_inputs
