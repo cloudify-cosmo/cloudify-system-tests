@@ -82,6 +82,7 @@ resource "openstack_compute_secgroup_v2" "security_group" {
     ip_protocol = "tcp"
     cidr = "0.0.0.0/0"
   }
+  # This is here for the hello world web server installed in the test
   rule {
     from_port = 8080
     to_port = 8080
@@ -170,7 +171,7 @@ resource "openstack_compute_instance_v2" "manager_server" {
     inline = [
       "echo Setting permissions for private key file: ${var.remote_key_path}",
       "sudo cp /tmp/key.pem ${var.remote_key_path}",
-      "sudo chown cfyuser:cfyuser ${var.remote_key_path}",
+      "sudo chown cfyuser: ${var.remote_key_path}",
       "sudo chmod 400 ${var.remote_key_path}"
     ]
   }

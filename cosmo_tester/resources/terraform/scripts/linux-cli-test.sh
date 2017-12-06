@@ -18,6 +18,7 @@ else
     sudo dpkg -i cloudify-cli.deb
 fi
 
+# This ensures that if one of the commands fails, the whole execution fails
 set -e
 
 cfy profiles use ${PRIVATE_IP} -u admin -p admin -t default_tenant
