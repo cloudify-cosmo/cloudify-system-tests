@@ -114,13 +114,14 @@ def test_multiple_networks(managers,
 
     create_snapshot(old_manager, snapshot_id, attributes, logger)
     download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
+
+    new_manager.use()
+
     upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(new_manager, snapshot_id, cfy, logger)
-
     upgrade_agents(cfy, new_manager, logger)
     delete_manager(old_manager, logger)
 
-    new_manager.use()
     for hello in multi_network_hello_worlds:
         hello.manager = new_manager
         hello.uninstall()
