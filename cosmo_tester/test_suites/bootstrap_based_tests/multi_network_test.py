@@ -175,9 +175,7 @@ def _add_new_network(manager, tmpdir, logger):
 
         ip_setter_path = '/opt/cloudify/manager-ip-setter/'
         restservice_python = '/opt/manager/env/bin/python'
-        mgmtworker_python = '/opt/mgmtworker/env/bin/python'
         update_ctx_script = join(ip_setter_path, 'update-provider-context.py')
-        certs_script = join(ip_setter_path, 'create-internal-ssl-certs.py')
 
         logger.info('Updating the provider context...')
         fabric_ssh.sudo('{python} {script} --networks {networks} {ip}'.format(
@@ -188,12 +186,14 @@ def _add_new_network(manager, tmpdir, logger):
         ))
 
         logger.info('Recreating internal certs')
-        fabric_ssh.sudo('{python} {script} --metadata {metadata} {ip}'.format(
-            python=mgmtworker_python,
-            script=certs_script,
-            metadata=remote_metadata_path,
-            ip=private_ip
-        ))
+        fabric_ssh.sudo(
+            '{cfy_manager} create-internal-certs --metadata {metadata} {ip}'
+            .format(
+                cfy_manager='/usr/bin/cfy_manager',
+                metadata=remote_metadata_path,
+                ip=private_ip
+            )
+        )
 
         logger.info('Restarting services...')
         fabric_ssh.sudo('systemctl restart cloudify-rabbitmq')
