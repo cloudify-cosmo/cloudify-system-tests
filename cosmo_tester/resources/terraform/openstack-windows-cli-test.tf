@@ -2,6 +2,7 @@
 variable "resource_suffix" {}
 variable "public_key_path" {}
 variable "private_key_path" {}
+variable "remote_key_path" {}
 variable "cli_image" {}
 variable "cli_flavor" {}
 variable "manager_image" {}
@@ -133,11 +134,18 @@ resource "openstack_compute_instance_v2" "manager_server" {
     agent = "false"
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "echo hello world"
-    ]
+    provisioner "file" {
+    source = "${var.private_key_path}"
+    destination = "/tmp/key.pem"
   }
 
+  provisioner "remote-exec" {
+    inline = [
+      "echo Setting permissions for private key file: ${var.remote_key_path}",
+      "sudo cp /tmp/key.pem ${var.remote_key_path}",
+      "sudo chown cfyuser: ${var.remote_key_path}",
+      "sudo chmod 400 ${var.remote_key_path}"
+    ]
+  }
 
 }
