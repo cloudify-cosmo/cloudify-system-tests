@@ -257,8 +257,8 @@ class _WindowsCliPackageTester(_CliPackageTester):
         user = self.inputs['cli_user']
         self._session = winrm.Session(url, auth=(user, password))
 
-    def _run_test(self):
-        super(_WindowsCliPackageTester, self).run_test()
+    def _run_test(self, inputs):
+        super(_WindowsCliPackageTester, self).run_test(inputs)
         # At this stage, there are two VMs (Windows & Linux).
 
         self._calculate_outputs()
@@ -274,14 +274,12 @@ class _WindowsCliPackageTester(_CliPackageTester):
         cli_installer_exe_name = 'cloudify-cli.exe'
         cli_installer_exe_path = '{0}\\{1}'.format(work_dir,
                                                    cli_installer_exe_name)
-        bootstrap_inputs_file = '{0}\\inputs.json'.format(work_dir)
         cfy_exe = 'C:\\Cloudify\\embedded\\Scripts\\cfy.exe'
-        manager_blueprint_path = 'C:\\Cloudify\\cloudify-manager-blueprints\\simple-manager-blueprint.yaml'  # noqa
 
         self.logger.info('Uploading private key to Windows VM..')
         self._run_cmd('''
 Set-Content "{0}" "{1}"
-'''.format(remote_private_key_path, private_key))
+'''.format(remote_private_key_path, private_key), powershell=True)
 
         self.logger.info('Downloading CLI package..')
         cli_package_url = get_cli_package_url('windows_cli_package_url')
@@ -300,23 +298,43 @@ $client.DownloadFile($url, $file)""".format(
         self._run_cmd('''
 cd {0}
 & .\{1} /SILENT /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Cloudify"'''
-                      .format(work_dir, cli_installer_exe_name))
+                      .format(work_dir, cli_installer_exe_name),
+                      powershell=True)
 
-        self.logger.info('Creating bootstrap inputs file..')
-        bootstrap_inputs = json.dumps({
-            'public_ip': outputs.manager_public_ip_address,
-            'private_ip': outputs.manager_private_ip_address,
-            'ssh_user': self.inputs['manager_user'],
-            'ssh_key_filename': remote_private_key_path,
-        })
-        self._run_cmd(session, '''
-Set-Content "{0}" '{1}'
-'''.format(bootstrap_inputs_file, bootstrap_inputs))
+        self.logger.info('Testing cloudify manager...')
+        self._run_cmd(
+            '{cfy} profiles use {ip} -u admin -p admin -t default_tenant'
+            ''.format(cfy=cfy_exe, ip=self._outputs.manager_private_ip_address)
+        )
+        self._run_cmd(
+            '{cfy} blueprints upload {hello_world} -b bp '
+            '-n singlehost-blueprint.yaml'.format(
+                cfy=cfy_exe,
+                hello_world='cloudify-cosmo/cloudify-hello-world-example'
+            )
+        )
+        self._run_cmd(
+            '{cfy} deployments create -b bp dep '
+            '-i server_ip=$PrivateIP '
+            '-i agent_user=$User '
+            '-i agent_private_key_path=$AgentKeyPath'.format(
+                cfy=cfy_exe
+            )
+        )
+        self._run_cmd('{cfy} executions start install -d dep'.format(
+            cfy=cfy_exe
+        ))
 
-        self.logger.info('Bootstrapping manager..')
-        bootstrap_cmd = '{0} bootstrap {1} -i "{2}" -v --keep-up-on-failure'\
-            .format(cfy_exe, manager_blueprint_path, bootstrap_inputs_file)
-        self._run_cmd(session, bootstrap_cmd, powershell=False)
+        self._run_cmd('''
+$url=Invoke-WebRequest http://$PrivateIP:8080
+$url.ToString() | select-string "Hello, World"
+''', powershell=True)
+
+        self._run_cmd('{cfy} executions start uninstall -d dep'.format(
+            cfy=cfy_exe
+        ))
+        self._run_cmd('{cfy} deployments delete dep'.format(cfy=cfy_exe))
+        self._run_cmd('{cfy} blueprints delete bp'.format(cfy=cfy_exe))
 
 
 class _OSXCliPackageTester(_CliPackageTester):
