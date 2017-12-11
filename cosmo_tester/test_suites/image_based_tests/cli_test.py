@@ -211,9 +211,6 @@ class _WindowsCliPackageTester(_CliPackageTester):
                 'terraform/openstack-windows-cli-test.tf'),
                 self.tmpdir / 'openstack-windows-cli-test.tf')
         shutil.copy(get_resource_path(
-                'terraform/scripts/windows-cli-test.ps1'),
-                self.tmpdir / 'scripts/windows-cli-test.ps1')
-        shutil.copy(get_resource_path(
                 'terraform/scripts/windows-userdata.ps1'),
                     self.tmpdir / 'scripts/windows-userdata.ps1')
 
@@ -257,7 +254,7 @@ class _WindowsCliPackageTester(_CliPackageTester):
         user = self.inputs['cli_user']
         self._session = winrm.Session(url, auth=(user, password))
 
-    def _run_test(self, inputs):
+    def run_test(self, inputs):
         super(_WindowsCliPackageTester, self).run_test(inputs)
         # At this stage, there are two VMs (Windows & Linux).
 
