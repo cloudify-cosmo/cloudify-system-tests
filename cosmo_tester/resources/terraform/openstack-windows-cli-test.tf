@@ -80,6 +80,14 @@ resource "openstack_compute_secgroup_v2" "security_group" {
     ip_protocol = "tcp"
     cidr = "0.0.0.0/0"
   }
+  # This is here for the hello world web server installed in the test
+  rule {
+    from_port = 8080
+    to_port = 8080
+    ip_protocol = "tcp"
+    cidr = "0.0.0.0/0"
+  }
+
 }
 
 resource "openstack_compute_keypair_v2" "keypair" {
