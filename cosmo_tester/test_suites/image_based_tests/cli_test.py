@@ -312,10 +312,13 @@ cd {0}
         )
         self._run_cmd(
             '{cfy} deployments create -b bp dep '
-            '-i server_ip=$PrivateIP '
-            '-i agent_user=$User '
-            '-i agent_private_key_path=$AgentKeyPath'.format(
-                cfy=cfy_exe
+            '-i server_ip={ip} '
+            '-i agent_user={agent_user} '
+            '-i agent_private_key_path={key_path}'.format(
+                cfy=cfy_exe,
+                ip=self._outputs.manager_private_ip_address,
+                agent_user=self.inputs['manager_user'],
+                key_path=self.inputs['remote_key_path']
             )
         )
         self._run_cmd('{cfy} executions start install -d dep'.format(
@@ -323,9 +326,9 @@ cd {0}
         ))
 
         self._run_cmd('''
-$url=Invoke-WebRequest http://$PrivateIP:8080
+$url=Invoke-WebRequest -URI http://{ip}:8080 -UseBasicParsing
 $url.ToString() | select-string "Hello, World"
-''', powershell=True)
+'''.format(ip=self._outputs.manager_private_ip_address), powershell=True)
 
         self._run_cmd('{cfy} executions start uninstall -d dep'.format(
             cfy=cfy_exe
