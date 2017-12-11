@@ -312,6 +312,3 @@ class _OSXCliPackageTester(_CliPackageTester):
         shutil.copy(get_resource_path(
             'terraform/scripts/osx-cli-test.sh'),
             self.tmpdir / 'scripts/osx-cli-test.sh')
-
-    def run_test(self, inputs):
-        super(_OSXCliPackageTester, self).run_test(inputs)
