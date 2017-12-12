@@ -28,6 +28,8 @@ from cosmo_tester.framework.util import (
     set_client_tenant,
     prepare_and_get_test_tenant,
 )
+from cosmo_tester.framework.test_hosts import TestHosts
+from cosmo_tester.test_suites.ha.ha_helper import HighAvailabilityHelper as ha_helper  # NOQA
 
 manager = image_based_manager
 
@@ -61,6 +63,58 @@ def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
 
 # Two different tests for ubuntu/centos
 # because of different disable requiretty logic
+def test_userdata_after_failover(cfy, hosts_ficotest, attributes):
+    manager = hosts_ficotest.instances[0]
+    os_name = 'centos_7'
+    tenant = prepare_and_get_test_tenant(
+        'userdata_{}'.format(os_name),
+        manager,
+        cfy,
+    )
+    _test_linux_userdata_agent(
+        cfy,
+        manager,
+        attributes,
+        os_name=os_name,
+        tenant=tenant,
+    )
+
+
+def hosts_ficotest(cfy, ssh_key, module_tmpdir, attributes, logger):
+    """Creates a HA cluster from an image in rackspace OpenStack."""
+    logger.info('Creating HA cluster of %s managers', 2)
+    hosts = TestHosts(
+        cfy, ssh_key, module_tmpdir, attributes, logger,
+        number_of_instances=2)
+
+    for manager in hosts.instances[1:]:
+        manager.upload_plugins = False
+
+    try:
+        hosts.create()
+        manager1 = hosts.instances[0]
+        ha_helper.delete_active_profile()
+        manager1.use()
+
+        cfy.cluster.start(timeout=600,
+                          cluster_host_ip=manager1.private_ip_address,
+                          cluster_node_name=manager1.ip_address)
+
+        for manager in hosts.instances[1:]:
+            manager.use()
+            cfy.cluster.join(manager1.ip_address,
+                             timeout=600,
+                             cluster_host_ip=manager.private_ip_address,
+                             cluster_node_name=manager.ip_address)
+
+        cfy.cluster.nodes.list()
+
+        yield hosts
+
+    finally:
+        hosts.destroy()
+
+
 def test_centos_7_userdata_agent(cfy, manager, attributes):
     os_name = 'centos_7'
     tenant = prepare_and_get_test_tenant(
