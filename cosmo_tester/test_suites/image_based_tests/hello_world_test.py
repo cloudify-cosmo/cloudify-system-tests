@@ -27,20 +27,20 @@ def test_hello_world(hello_world, attributes, logger):
     hello_world.verify_all()
 
 
-def test_hello_world_backwards(hello_world_backwards_compat):
+def _test_hello_world_backwards(hello_world_backwards_compat):
     hello_world_backwards_compat.verify_all()
 
 
 @pytest.fixture(
     scope='function',
     params=[
-        'centos_6',
+        #'centos_6',
         'centos_7',
-        'rhel_6',
-        'rhel_7',
-        'ubuntu_14_04',
-        'ubuntu_16_04',
-        'windows_2012',
+        #'rhel_6',
+        #'rhel_7',
+        #'ubuntu_14_04',
+        #'ubuntu_16_04',
+        #'windows_2012',
     ],
 )
 def hello_world(request, cfy, manager, attributes, ssh_key, tmpdir, logger):

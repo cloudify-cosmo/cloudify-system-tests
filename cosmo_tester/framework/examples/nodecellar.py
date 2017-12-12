@@ -21,6 +21,7 @@ import requests
 from . import AbstractExample
 
 from cosmo_tester.framework.util import set_client_tenant
+from cosmo_tester.framework import constants
 
 
 class NodeCellarExample(AbstractExample):
@@ -34,7 +35,7 @@ class NodeCellarExample(AbstractExample):
                 self._inputs = {
                     'floating_network_id': self.attributes.floating_network_id,
                     'key_pair_name': self.attributes.keypair_name,
-                    'private_key_path': self.manager.remote_private_key_path,
+                    'private_key_path': constants.REMOTE_PRIVATE_KEY_PATH,
                     'network_name': self.attributes.network_name,
                     'image': self.attributes.ubuntu_14_04_image_name,
                     'flavor': self.attributes.medium_flavor_name,
@@ -45,7 +46,7 @@ class NodeCellarExample(AbstractExample):
                     'host_ip': self.manager.ip_address,
                     'agent_user': self.attributes.centos_7_username,
                     'agent_private_key_path':
-                        self.manager.remote_private_key_path
+                        constants.REMOTE_PRIVATE_KEY_PATH
                 }
             else:
                 self._inputs = {}

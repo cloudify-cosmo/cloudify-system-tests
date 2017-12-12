@@ -20,7 +20,7 @@ import requests
 from cosmo_tester.framework.examples import AbstractExample
 from cosmo_tester.framework.fixtures import image_based_manager
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
-from cosmo_tester.framework import util
+from cosmo_tester.framework import util, constants
 
 
 manager = image_based_manager
@@ -48,7 +48,7 @@ class HostPoolExample(AbstractExample):
                 'floating_network_id': attributes.floating_network_id,
                 'network_name': attributes.network_name,
                 'key_pair_name': attributes.keypair_name,
-                'private_key_path': self.manager.remote_private_key_path,
+                'private_key_path': constants.REMOTE_PRIVATE_KEY_PATH,
                 # key_path is where the hostpool service host will store the
                 # key to the hosts; it is not the same as the agent key
                 'key_path': '/tmp/' + str(uuid.uuid4()),

@@ -22,7 +22,7 @@ from cloudify.mocks import MockCloudifyContext
 from cloudify.state import current_ctx
 from cloudify_agent.api import defaults
 from cloudify_agent.installer import script
-from cosmo_tester.framework import util
+from cosmo_tester.framework import util, constants
 from cosmo_tester.framework.fixtures import image_based_manager
 from cosmo_tester.framework.util import (
     set_client_tenant,
@@ -198,7 +198,7 @@ def test_windows_userdata_agent(cfy,
         'install_method': install_method,
         'name': name,
         'keypair_name': attributes.keypair_name,
-        'private_key_path': manager.remote_private_key_path,
+        'private_key_path': constants.REMOTE_PRIVATE_KEY_PATH,
         'network_name': attributes.network_name
     }
     _test_userdata_agent(cfy, manager, inputs, tenant)
@@ -225,7 +225,7 @@ def _test_agent(agent_type, cfy, manager, attributes):
             deployment_id, blueprint_id, inputs={
                 'ip_address': manager.ip_address,
                 'user': attributes.centos_7_username,
-                'private_key_path': manager.remote_private_key_path
+                'private_key_path': constants.REMOTE_PRIVATE_KEY_PATH
             }, skip_plugins_validation=True)
     try:
         cfy.executions.start.install(['-d', deployment_id,
@@ -256,7 +256,7 @@ def _test_agent_alive_after_reboot(cfy, manager, attributes, os_name,
         'flavor': attributes['medium_flavor_name'],
         'user': attributes['{os}_username'.format(os=os_name)],
         'network_name': attributes['network_name'],
-        'private_key_path': manager.remote_private_key_path,
+        'private_key_path': constants.REMOTE_PRIVATE_KEY_PATH,
         'keypair_name': attributes['keypair_name'],
     }
 
@@ -313,7 +313,7 @@ def _test_linux_userdata_agent(cfy, manager, attributes, os_name, tenant,
         'install_method': install_method,
         'name': name,
         'keypair_name': attributes.keypair_name,
-        'private_key_path': manager.remote_private_key_path,
+        'private_key_path': constants.REMOTE_PRIVATE_KEY_PATH,
         'network_name': attributes.network_name
     }
 

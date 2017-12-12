@@ -25,6 +25,7 @@ from cosmo_tester.framework.util import (
     is_community,
     prepare_and_get_test_tenant,
 )
+from cosmo_tester.framework import constants
 
 from . import AbstractExample
 
@@ -44,7 +45,7 @@ class HelloWorldExample(AbstractExample):
                 self._inputs = {
                     'floating_network_id': self.attributes.floating_network_id,
                     'key_pair_name': self.attributes.keypair_name,
-                    'private_key_path': self.manager.remote_private_key_path,
+                    'private_key_path': constants.REMOTE_PRIVATE_KEY_PATH,
                     'flavor': self.attributes.small_flavor_name,
                     'network_name': self.attributes.network_name
                 }
@@ -53,7 +54,7 @@ class HelloWorldExample(AbstractExample):
                     'server_ip': self.manager.ip_address,
                     'agent_user': self.attributes.centos_7_username,
                     'agent_private_key_path':
-                        self.manager.remote_private_key_path,
+                        constants.REMOTE_PRIVATE_KEY_PATH,
                 }
             else:
                 self._inputs = {}

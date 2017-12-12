@@ -32,6 +32,7 @@ from cosmo_tester.framework.util import (
     create_rest_client,
     is_community,
 )
+from cosmo_tester.framework import constants
 # CFY-6912
 from cloudify_cli.commands.executions import (
     _get_deployment_environment_creation_execution,
@@ -245,7 +246,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     inputs = {
         'server_ip': target_vm.ip_address,
         'agent_user': attributes.centos_7_username,
-        'agent_private_key_path': manager.remote_private_key_path,
+        'agent_private_key_path': constants.REMOTE_PRIVATE_KEY_PATH,
     }
     upload_helloworld(
         manager,
