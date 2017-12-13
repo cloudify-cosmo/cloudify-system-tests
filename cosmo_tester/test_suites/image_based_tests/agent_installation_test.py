@@ -64,6 +64,7 @@ def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
 # Two different tests for ubuntu/centos
 # because of different disable requiretty logic
 def test_userdata_after_failover(cfy, hosts_ficotest, attributes):
+    import pudb; pu.db  # NOQA
     manager = hosts_ficotest.instances[0]
     os_name = 'centos_7'
     tenant = prepare_and_get_test_tenant(
