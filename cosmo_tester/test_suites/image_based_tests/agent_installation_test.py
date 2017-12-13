@@ -64,21 +64,35 @@ def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
 
 # Two different tests for ubuntu/centos
 # because of different disable requiretty logic
-def test_userdata_after_failover(cfy, hosts_ficotest, attributes, logger):
+def test_userdata_after_failover(
+        cfy, hosts_ficotest, attributes, logger, tmpdir):
     import pudb; pu.db  # NOQA
     first, second = hosts_ficotest.instances
     ha_helper.set_active(second, cfy, logger)
-    os_name = 'centos_7'
+
+    name = 'cloudify_agent'
     tenant = prepare_and_get_test_tenant(
-        'userdata_{}'.format(os_name),
-        second,
+        'userdataprov_windows_2012',
+        manager,
         cfy,
     )
-    _test_linux_userdata_agent(
+    install_userdata = _install_script(
+        name=name,
+        windows=True,
+        user=attributes.windows_2012_username,
+        manager=manager,
+        attributes=attributes,
+        tmpdir=tmpdir,
+        logger=logger,
+        tenant=tenant,
+    )
+    test_windows_userdata_agent(
         cfy,
-        second,
+        manager,
         attributes,
-        os_name=os_name,
+        install_method='provided',
+        name=name,
+        install_userdata=install_userdata,
         tenant=tenant,
     )
 
