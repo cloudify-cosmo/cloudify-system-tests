@@ -386,7 +386,7 @@ def test_userdata_after_failover(
         cfy, hosts_ficotest, attributes, logger, tmpdir):
     import pudb; pu.db  # NOQA
     first, second = hosts_ficotest
-    cfy.cluster.set_active(second.ip_address)
+    cfy.cluster('set-active', second.ip_address)
     time.sleep(40)
     manager = second
 
