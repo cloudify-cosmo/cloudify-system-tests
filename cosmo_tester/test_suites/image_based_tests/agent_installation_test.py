@@ -229,8 +229,12 @@ def test_windows_userdata_agent(cfy,
                                 install_userdata=None):
     user = attributes.windows_server_2012_username
     file_path = 'C:\\Users\\{0}\\test_file'.format(user)
-    userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
-            EXPECTED_FILE_CONTENT, file_path)
+    userdata = """ps1_sysnative
+$Computer = [ADSI]"WinNT://$Env:COMPUTERNAME,Computer"
+#set administrator password
+$name = hostname
+([adsi]"WinNT://$name/Administrator").SetPassword("Aa123456!")
+"""
     if install_userdata:
         userdata = create_multi_mimetype_userdata([userdata,
                                                    install_userdata])
