@@ -408,6 +408,24 @@ def test_userdata_after_failover_provided(
         install_userdata=install_userdata)
 
 
+def test_userdata_after_failover_linux(
+        cfy, hosts_ficotest, attributes, logger, tmpdir):
+    import pudb; pu.db  # NOQA
+    first, second = hosts_ficotest
+    cfy.cluster('set-active', second.ip_address)
+    time.sleep(40)
+    manager = second
+
+    _test_linux_userdata_agent(
+        cfy,
+        manager,
+        attributes,
+        image=attributes.centos7_image_name,
+        flavor=attributes.small_flavor_name,
+        user=attributes.centos7_username,
+        install_method='init_script')
+
+
 def test_userdata_after_failover_userdata(cfy,
                                 manager,
                                 attributes,
