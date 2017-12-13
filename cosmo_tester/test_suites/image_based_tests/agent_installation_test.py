@@ -426,6 +426,38 @@ def test_userdata_after_failover_linux(
         install_method='init_script')
 
 
+def test_userdata_failover_linux_provided(cfy,
+                                           manager,
+                                           attributes,
+                                           tmpdir,
+                                           logger):
+    import pudb; pu.db  # NOQA
+    first, second = hosts_ficotest
+    cfy.cluster('set-active', second.ip_address)
+    time.sleep(40)
+    manager = second
+
+    name = 'cloudify_agent'
+    user = attributes.ubuntu_username
+    install_userdata = install_script(name=name,
+                                      windows=False,
+                                      user=user,
+                                      manager=manager,
+                                      attributes=attributes,
+                                      tmpdir=tmpdir,
+                                      logger=logger)
+    _test_linux_userdata_agent(
+            cfy,
+            manager,
+            attributes,
+            image=attributes.ubuntu_14_04_image_name,
+            flavor=attributes.small_flavor_name,
+            user=user,
+            install_method='provided',
+            name=name,
+            install_userdata=install_userdata)
+
+
 def test_userdata_after_failover_userdata(cfy,
                                 manager,
                                 attributes,
