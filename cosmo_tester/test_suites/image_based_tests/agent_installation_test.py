@@ -16,6 +16,7 @@
 import os
 import time
 import uuid
+import pytest
 
 from cloudify import constants
 from cloudify.compute import create_multi_mimetype_userdata
@@ -25,6 +26,7 @@ from cloudify_agent.api import defaults
 from cloudify_agent.installer import script
 from cosmo_tester.framework import util
 from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.cluster import CloudifyCluster
 
 manager = image_based_manager
 
@@ -376,3 +378,66 @@ def install_script(name, windows, user, manager, attributes, tmpdir, logger):
     else:
         return '{0}\n' \
                'install_agent'.format(result)
+
+
+# Two different tests for ubuntu/centos
+# because of different disable requiretty logic
+def test_userdata_after_failover(
+        cfy, hosts_ficotest, attributes, logger, tmpdir):
+    import pudb; pu.db  # NOQA
+    first, second = hosts_ficotest
+    cfy.cluster.set_active(second.ip_address)
+    time.sleep(40)
+    manager = second
+
+    name = 'cloudify_agent'
+    install_userdata = install_script(
+        name=name,
+        windows=True,
+        user=attributes.windows_server_2012_username,
+        manager=manager,
+        attributes=attributes,
+        tmpdir=tmpdir,
+        logger=logger)
+    test_windows_userdata_agent(
+        cfy,
+        manager,
+        attributes,
+        install_method='provided',
+        name=name,
+        install_userdata=install_userdata)
+
+
+@pytest.fixture()
+def hosts_ficotest(cfy, ssh_key, module_tmpdir, attributes, logger):
+    """Creates a HA cluster from an image in rackspace OpenStack."""
+    logger.info('Creating HA cluster of %s managers', 2)
+    cluster = CloudifyCluster.create_image_based(
+        cfy, ssh_key, module_tmpdir, attributes, logger,
+        number_of_managers=2)
+
+    for manager in cluster.managers[1:]:
+        manager.upload_plugins = False
+
+    try:
+        cluster.create()
+        manager1 = cluster.managers[0]
+        manager1.use()
+
+        cfy.cluster.start(timeout=600,
+                          cluster_host_ip=manager1.private_ip_address,
+                          cluster_node_name=manager1.ip_address)
+
+        for manager in cluster.managers[1:]:
+            manager.use()
+            cfy.cluster.join(manager1.ip_address,
+                             timeout=600,
+                             cluster_host_ip=manager.private_ip_address,
+                             cluster_node_name=manager.ip_address)
+
+        cfy.cluster.nodes.list()
+
+        yield cluster.managers
+
+    finally:
+        cluster.destroy()
