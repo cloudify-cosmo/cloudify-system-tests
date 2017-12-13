@@ -15,6 +15,7 @@
 
 import os
 import time
+import pytest
 
 from cloudify import constants
 from cloudify.compute import create_multi_mimetype_userdata
@@ -82,6 +83,7 @@ def test_userdata_after_failover(cfy, hosts_ficotest, attributes, logger):
     )
 
 
+@pytest.fixture()
 def hosts_ficotest(cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a HA cluster from an image in rackspace OpenStack."""
     logger.info('Creating HA cluster of %s managers', 2)
