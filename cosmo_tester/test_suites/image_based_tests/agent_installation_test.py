@@ -382,7 +382,7 @@ def install_script(name, windows, user, manager, attributes, tmpdir, logger):
 
 # Two different tests for ubuntu/centos
 # because of different disable requiretty logic
-def test_userdata_after_failover(
+def test_userdata_after_failover_provided(
         cfy, hosts_ficotest, attributes, logger, tmpdir):
     import pudb; pu.db  # NOQA
     first, second = hosts_ficotest
@@ -406,6 +406,41 @@ def test_userdata_after_failover(
         install_method='provided',
         name=name,
         install_userdata=install_userdata)
+
+
+def test_userdata_after_failover_userdata(cfy,
+                                manager,
+                                attributes,
+                                install_method='init_script',
+                                name=None,
+                                install_userdata=None):
+    import pudb; pu.db  # NOQA
+    first, second = hosts_ficotest
+    cfy.cluster('set-active', second.ip_address)
+    time.sleep(40)
+    manager = second
+
+    user = attributes.windows_server_2012_username
+    file_path = 'C:\\Users\\{0}\\test_file'.format(user)
+    userdata = '#ps1_sysnative \nSet-Content {1} "{0}"'.format(
+            EXPECTED_FILE_CONTENT, file_path)
+    if install_userdata:
+        userdata = create_multi_mimetype_userdata([userdata,
+                                                   install_userdata])
+    inputs = {
+        'image': attributes.windows_server_2012_image_name,
+        'user': user,
+        'flavor': attributes.medium_flavor_name,
+        'os_family': 'windows',
+        'userdata': userdata,
+        'file_path': file_path,
+        'install_method': install_method,
+        'name': name,
+        'keypair_name': attributes.keypair_name,
+        'private_key_path': manager.remote_private_key_path,
+        'network_name': attributes.network_name
+    }
+    _test_userdata_agent(cfy, manager, inputs)
 
 
 @pytest.fixture()
