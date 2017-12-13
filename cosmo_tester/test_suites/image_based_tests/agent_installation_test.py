@@ -69,7 +69,7 @@ def test_userdata_after_failover(
     import pudb; pu.db  # NOQA
     first, second = hosts_ficotest.instances
     ha_helper.set_active(second, cfy, logger)
-
+    manager = second
     name = 'cloudify_agent'
     tenant = prepare_and_get_test_tenant(
         'userdataprov_windows_2012',
