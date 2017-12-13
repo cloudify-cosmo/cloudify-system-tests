@@ -426,11 +426,8 @@ def test_userdata_after_failover_linux(
         install_method='init_script')
 
 
-def test_userdata_failover_linux_provided(cfy,
-                                           manager,
-                                           attributes,
-                                           tmpdir,
-                                           logger):
+def test_userdata_failover_linux_provided(
+        cfy, hosts_ficotest, attributes, logger, tmpdir):
     import pudb; pu.db  # NOQA
     first, second = hosts_ficotest
     cfy.cluster('set-active', second.ip_address)
@@ -447,15 +444,15 @@ def test_userdata_failover_linux_provided(cfy,
                                       tmpdir=tmpdir,
                                       logger=logger)
     _test_linux_userdata_agent(
-            cfy,
-            manager,
-            attributes,
-            image=attributes.ubuntu_14_04_image_name,
-            flavor=attributes.small_flavor_name,
-            user=user,
-            install_method='provided',
-            name=name,
-            install_userdata=install_userdata)
+        cfy,
+        manager,
+        attributes,
+        image=attributes.ubuntu_14_04_image_name,
+        flavor=attributes.small_flavor_name,
+        user=user,
+        install_method='provided',
+        name=name,
+        install_userdata=install_userdata)
 
 
 def test_userdata_after_failover_userdata(cfy,
