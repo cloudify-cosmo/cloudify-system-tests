@@ -225,7 +225,7 @@ class _CloudifyManager(VM):
                 # from some reason this method is usually less error prone.
                 fabric_ssh.run(
                     'cfy plugins upload {0} -t {1} {2}'.format(
-                        plugin[0], tenant_name, yaml_snippet
+                        plugin[0]['wgn_url'], tenant_name, yaml_snippet
                     ))
         except Exception:
             try:
