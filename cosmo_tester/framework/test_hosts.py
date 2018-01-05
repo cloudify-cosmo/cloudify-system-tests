@@ -230,11 +230,14 @@ class _CloudifyManager(VM):
         except Exception:
             try:
                 self.use()
-                self._cfy.plugins.upload([plugin[0], '-t', tenant_name])
+                self._cfy.plugins.upload([
+                    plugin[0]['wgn_url'],
+                    '-t', tenant_name,
+                    '--yaml-path', plugin[0]['plugin_yaml_url']])
             except Exception:
                 # This is needed for 3.4 managers. local cfy isn't
                 # compatible and cfy isn't installed in the image
-                self.client.plugins.upload(plugin[0])
+                self.client.plugins.upload(plugin[0]['wgn_url'])
 
     @property
     def remote_private_key_path(self):
