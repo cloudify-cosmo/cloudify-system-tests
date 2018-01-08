@@ -92,9 +92,6 @@ def _get_system_state(mgr):
         # Prettify the packages output
         packages = [package.rsplit('-', 2)[0] for package in packages]
 
-        users = fabric.run('cut -d: -f1 /etc/passwd').split()
-        groups = fabric.run('cut -d: -f1 /etc/group').split()
-
     return {
         'systemd service files (/usr/lib/systemd/system)': systemd,
         'init_d service files (/etc/rc.d/init.d/)': init_d,
@@ -103,6 +100,4 @@ def _get_system_state(mgr):
         'folders in /etc': etc_dirs,
         'folders in /var/log': var_log_dirs,
         'yum packages': packages,
-        'os users': users,
-        'os groups': groups
     }
