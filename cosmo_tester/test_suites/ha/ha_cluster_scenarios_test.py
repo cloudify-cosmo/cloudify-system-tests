@@ -215,6 +215,28 @@ def test_remove_manager_from_cluster(cfy, hosts, ha_hello_worlds, logger):
     _test_hellos(ha_hello_worlds)
 
 
+def test_fail_and_recover(cfy, hosts, logger):
+    def _iptables(manager, block_nodes, flag='-A'):
+        with manager.ssh() as fabric:
+            for other_host in block_nodes[1:]:
+                fabric.sudo('iptables {0} INPUT -s {1} -j DROP'
+                            .format(flag, other_host.private_ip_address))
+                fabric.sudo('iptables {0} OUTPUT -d {1} -j DROP'
+                            .format(flag, other_host.private_ip_address))
+
+    original_master = hosts.instances[0]
+
+    logger.info('Simulating network failure that isolates the master')
+    _iptables(original_master, hosts.instances[1:])
+
+    ha_helper.wait_leader_election(hosts.instances[1:], logger)
+
+    logger.info('End of simulated network failure')
+    _iptables(original_master, hosts.instances[1:], flag='-D')
+
+    ha_helper.wait_nodes_online(hosts.instances, logger)
+
+
 def test_uninstall_dep(cfy, hosts, ha_hello_worlds,
                        logger):
     manager1 = hosts.instances[0]
