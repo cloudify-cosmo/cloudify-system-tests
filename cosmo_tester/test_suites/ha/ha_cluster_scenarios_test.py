@@ -15,6 +15,7 @@
 
 import pytest
 import time
+import fabric.network
 
 from cosmo_tester.framework.examples.hello_world import centos_hello_world
 from cosmo_tester.framework.test_hosts import TestHosts
@@ -216,13 +217,15 @@ def test_remove_manager_from_cluster(cfy, hosts, ha_hello_worlds, logger):
 
 
 def test_fail_and_recover(cfy, hosts, logger):
+
     def _iptables(manager, block_nodes, flag='-A'):
-        with manager.ssh() as fabric:
-            for other_host in block_nodes[1:]:
-                fabric.sudo('iptables {0} INPUT -s {1} -j DROP'
-                            .format(flag, other_host.private_ip_address))
-                fabric.sudo('iptables {0} OUTPUT -d {1} -j DROP'
-                            .format(flag, other_host.private_ip_address))
+        with manager.ssh() as _fabric:
+            for other_host in block_nodes:
+                _fabric.sudo('iptables {0} INPUT -s {1} -j DROP'
+                             .format(flag, other_host.private_ip_address))
+                _fabric.sudo('iptables {0} OUTPUT -d {1} -j DROP'
+                             .format(flag, other_host.private_ip_address))
+        fabric.network.disconnect_all()
 
     original_master = hosts.instances[0]
 
