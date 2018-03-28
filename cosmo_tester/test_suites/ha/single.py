@@ -37,6 +37,7 @@ def hosts(
             cfy, ssh_key, module_tmpdir, attributes, logger,
             number_of_instances=request.param)
     try:
+        hosts.create()
         yield hosts
 
     finally:
