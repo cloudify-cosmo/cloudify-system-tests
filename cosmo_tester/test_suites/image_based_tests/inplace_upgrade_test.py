@@ -16,14 +16,17 @@
 from time import sleep
 from os.path import join
 
+from flaky import flaky
+
 from cosmo_tester.framework import util
 from cosmo_tester.framework.fixtures import image_based_manager
-
 from cosmo_tester.framework.examples.hello_world import get_hello_worlds
+
 
 manager = image_based_manager
 
 
+@flaky(max_runs=3)
 def test_inplace_upgrade(cfy,
                          manager,
                          attributes,

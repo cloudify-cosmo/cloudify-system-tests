@@ -41,6 +41,7 @@ setup(
         'wagon[venv]==0.6.3',
         'pytest==3.0.4',
         'testtools==2.2.0',
+        'flaky==3.4.0',
         'openstacksdk==0.9.13'
     ],
     entry_points={
