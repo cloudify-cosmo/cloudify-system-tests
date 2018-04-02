@@ -145,7 +145,7 @@ def _install_blueprint(cfy, logger, blueprint_name, deployment_name, blueprint_y
 
     logger.info('Creating deployment')
     cfy.deployments.create('-b', blueprint_name, deployment_name,
-                           '-l', 'global')
+                           '-l', 'global', '-i', 'user', '-i', 'key', '-i', 'ip')
 
     logger.info('Installing execution')
     cfy.executions.start.install('-d', deployment_name)
