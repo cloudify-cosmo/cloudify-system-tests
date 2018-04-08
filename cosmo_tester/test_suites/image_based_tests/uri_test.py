@@ -22,8 +22,7 @@ def image_based_manager(
         number_of_instances=2)
     try:
         hosts.create()
-        hosts.instances[0].use()
-        yield hosts.instances[0]
+        yield hosts.instances
     finally:
         hosts.destroy()
 
