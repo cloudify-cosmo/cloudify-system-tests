@@ -16,8 +16,9 @@
 import time
 import pytest
 import os
+import json
 
-from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
+from cosmo_tester.framework.test_hosts import TestHosts
 
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
@@ -36,9 +37,12 @@ from cosmo_tester.test_suites.ha.ha_helper \
 def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps 3 Cloudify managers on a VM in Rackspace OpenStack."""
 
-    hosts = BootstrapBasedCloudifyManagers(
+    hosts = TestHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=3)
+
+    for manager in hosts.instances[1:]:
+        manager.upload_plugins = False
 
     try:
         hosts.create()
@@ -55,12 +59,20 @@ def test_sanity_scenario(managers,
     manager1 = managers[0]
     manager2 = managers[1]
     manager3 = managers[2]
+
     blueprint_yaml = 'simple-blueprint.yaml'
     blueprint_name = deployment_name = "nodecellar"
     user_name = "sanity_user"
     user_pass = "user123"
     tenant_name = "tenant"
     tenant_role = "user"
+
+    inputs = {
+        'host_ip': manager1.ip_address,
+        'agent_user': attributes.centos_7_username,
+        'agent_private_key_path':
+            manager1.remote_private_key_path,
+    }
 
     logger.info('Using manager1')
     manager1.use()
@@ -81,9 +93,11 @@ def test_sanity_scenario(managers,
     # Creating secrets
     _create_secrets(cfy, logger, manager1)
 
-    _install_blueprint(cfy, logger, blueprint_name, deployment_name, blueprint_yaml)
+    _install_blueprint(cfy, logger, blueprint_name, deployment_name,
+                       blueprint_yaml, inputs)
 
     logger.info('Use second manager')
+    cfy.profiles.set('-u', 'admin', '-p', 'admin', '-t', 'default_tenant')
     manager2.use()
 
     logger.info('Joining HA cluster')
@@ -95,8 +109,8 @@ def test_sanity_scenario(managers,
     snapshot_id = 'SNAPSHOT_ID'
     local_snapshot_path = str(tmpdir / 'snap.zip')
     logger.info('Creating snapshot')
-    create_snapshot(manager1, snapshot_id, attributes, logger)
-    download_snapshot(manager1, local_snapshot_path, snapshot_id, logger)
+    create_snapshot(manager2, snapshot_id, attributes, logger)
+    download_snapshot(manager2, local_snapshot_path, snapshot_id, logger)
 
     manager3.use()
 
@@ -134,18 +148,20 @@ def _uninstall_blueprint(cfy, logger, blueprint_name, deployment_name):
     cfy.blueprint.delete(blueprint_name)
 
 
-def _install_blueprint(cfy, logger, blueprint_name, deployment_name, blueprint_yaml):
+def _install_blueprint(cfy, logger, blueprint_name, deployment_name,
+                       blueprint_yaml, inputs):
     blueprint_path = os.path.abspath(os.path.join
                                      (os.path.dirname(__file__), '..', '..',
                                       'resources/blueprints/sanity-scenario-'
-                                      'nodecellar/blueprint.yaml'))
+                                      'nodecellar/nodecellar-example.zip'))
 
     logger.info('Uploading blueprint')
-    cfy.blueprint.upload(blueprint_path, '-b', blueprint_name, '-l', 'private', '-n', blueprint_yaml)
+    cfy.blueprint.upload(blueprint_path, '-b', blueprint_name, '-l', 'private',
+                         '-n', blueprint_yaml)
 
     logger.info('Creating deployment')
     cfy.deployments.create('-b', blueprint_name, deployment_name,
-                           '-l', 'global', '-i', 'user', '-i', 'key', '-i', 'ip')
+                           '-l', 'private', '-i', json.dumps(inputs))
 
     logger.info('Installing execution')
     cfy.executions.start.install('-d', deployment_name)
@@ -170,7 +186,7 @@ def _manage_tenants(cfy, logger, user_name, user_pass, tenant_name, role):
     cfy.tenants.create(tenant_name)
 
     logger.info('Adding user to tenant')
-    cfy.tenants('add-user', user_name, '-t', tenant_name, '-r', role)  # fix
+    cfy.tenants('add-user', user_name, '-t', tenant_name, '-r', role)
 
     _set_sanity_user(cfy, logger, tenant_name, user_name, user_pass)
 
