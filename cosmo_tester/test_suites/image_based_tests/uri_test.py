@@ -14,12 +14,15 @@ from cosmo_tester.test_suites.ha.ha_helper \
 
 
 @pytest.fixture(scope='module')
-def image_based_manager(
+def managers(
         cfy, ssh_key, module_tmpdir, attributes, logger):
     """Creates a cloudify manager from an image in rackspace OpenStack."""
     hosts = TestHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=2)
+
+    hosts.instances[1].upload_plugins = False
+
     try:
         hosts.create()
         yield hosts.instances
@@ -28,10 +31,10 @@ def image_based_manager(
 
 
 def test_hello_world(cfy,
-                     manager,
+                     managers,
                      logger):
-    manager1 = manager[0]
-    manager2 = manager[1]
+    manager1 = managers[0]
+    manager2 = managers[1]
     blueprint_yaml = 'simple-blueprint.yaml'
     blueprint_name = deployment_name = "nodecellar"
     user_name = "sanity_user"
@@ -56,7 +59,7 @@ def test_hello_world(cfy,
                     tenant_role)
 
     # Creating secrets
-    _create_secrets(cfy, logger, manager)
+    _create_secrets(cfy, logger, manager1)
 
     _install_blueprint(cfy, logger, blueprint_name, deployment_name, blueprint_yaml)
 
