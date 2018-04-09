@@ -1,13 +1,8 @@
-# from time import sleep
-# from os.path import join
 import pytest
 import os
+import time
 
 from cosmo_tester.framework.test_hosts import TestHosts
-# from cosmo_tester.framework import util
-# from cosmo_tester.test_suites.ha.ha_helper \
-#     import HighAvailabilityHelper as ha_helper
-
 
 from cosmo_tester.test_suites.ha.ha_helper \
     import HighAvailabilityHelper as ha_helper
@@ -32,15 +27,18 @@ def managers(
 
 def test_hello_world(cfy,
                      managers,
-                     logger):
+                     logger,
+                     tmpdir):
     manager1 = managers[0]
     manager2 = managers[1]
     blueprint_yaml = 'simple-blueprint.yaml'
     blueprint_name = deployment_name = "nodecellar"
+    snapshot_name = 'snap'
     user_name = "sanity_user"
     user_pass = "user123"
     tenant_name = "tenant"
     tenant_role = "user"
+    allow_second_manager_in_cluster = False
 
     logger.info('Using manager1')
     manager1.use()
@@ -63,14 +61,24 @@ def test_hello_world(cfy,
 
     _install_blueprint(cfy, logger, blueprint_name, deployment_name, blueprint_yaml)
 
-    logger.info('Use second manager')
-    manager2.use()
+    """Choose between joining a second manager to the cluster
+    or creating snapshot which will be restored on the second manager"""
+    if allow_second_manager_in_cluster:
+        logger.info('Use second manager')
+        manager2.use()
 
-    logger.info('Joining HA cluster')
-    _join_cluster(cfy, manager1, manager2)
+        logger.info('Joining HA cluster')
+        _join_cluster(cfy, manager1, manager2)
 
-    logger.info('Set passive manager')
-    ha_helper.set_active(manager2, cfy, logger)
+        logger.info('Set passive manager')
+        ha_helper.set_active(manager2, cfy, logger)
+
+    else:
+        _snapshots_create_and_download(cfy, logger, snapshot_name)
+        manager2.use()
+        os.system('pwd')
+        os.system("ls -l")
+        _snapshots_upload_and_restore(cfy, logger, snapshot_name)
 
     _set_sanity_user(cfy, logger, tenant_name, user_name, user_pass)
 
@@ -136,6 +144,23 @@ def _join_cluster(cfy, manager1, manager2):
     cfy.cluster.nodes.list()
 
 
+def _snapshots_create_and_download(cfy, logger, snapshot_name):
+    logger.info('Creating snapshot')
+    cfy.snapshots.create(snapshot_name)
+    time.sleep(10)
+    logger.info('Downloading snapshot')
+    cfy.snapshots.download(snapshot_name)
+    cfy.snapshots.list()
+
+
+def _snapshots_upload_and_restore(cfy, logger, snapshot_name):
+    logger.info('Uploading snapshot')
+    cfy.snapshots.upload('snap.zip', '-s', snapshot_name)
+    cfy.snapshots.restore(snapshot_name)
+    time.sleep(30)
+    cfy.agent.install('-a')
+
+
 def _set_sanity_user(cfy, logger, tenant_name, user_name, user_pass):
 
     logger.info('Set to sanity_user')
@@ -144,8 +169,12 @@ def _set_sanity_user(cfy, logger, tenant_name, user_name, user_pass):
 
 def _uninstall_blueprint(cfy, logger, blueprint_name, deployment_name):
     try:
+        logger.info('Deleting snap.zip')
+        os.system('rm snap.zip')
+
         logger.info('Uninstalling execution')
         cfy.executions.start.uninstall('-d', deployment_name)
+
     except:
         cfy.profiles.set('-u', 'admin', '-p', 'admin', '-t', 'default_tenant')
         cfy.executions.start.uninstall('-d', deployment_name)
