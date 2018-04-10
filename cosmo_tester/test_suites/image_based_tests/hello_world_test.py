@@ -109,4 +109,6 @@ def hello_world_backwards_compat(request, cfy, manager, attributes, ssh_key,
     assert blueprint_dsl_version.endswith(version_check_ending)
 
     yield hw
-    hw.cleanup()
+
+    # For older CLIs we need to explicitly pass this param
+    hw.cleanup(allow_custom_params=True)
