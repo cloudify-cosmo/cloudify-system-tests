@@ -64,7 +64,7 @@ class HelloWorldExample(AbstractExample):
         http_endpoint = self.outputs['http_endpoint']
         if self.disable_iptables:
             self._disable_iptables(http_endpoint)
-        self.assert_webserver_running(http_endpoint)
+        self.assert_webserver_running()
 
     @retry(stop_max_attempt_number=3, wait_fixed=10000)
     def _disable_iptables(self, http_endpoint):
@@ -82,7 +82,8 @@ class HelloWorldExample(AbstractExample):
             fabric_api.sudo('sudo chkconfig iptables off')
 
     @retry(stop_max_attempt_number=10, wait_fixed=5000)
-    def assert_webserver_running(self, http_endpoint):
+    def assert_webserver_running(self):
+        http_endpoint = self.outputs['http_endpoint']
         self.logger.info(
                 'Verifying web server is running on: {0}'.format(
                         http_endpoint))
