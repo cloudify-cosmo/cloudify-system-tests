@@ -23,18 +23,14 @@ def managers(
 
 def test_hidden_secrets(managers,
                         cfy,
-                        logger, tmpdir):
+                        logger,
+                        tmpdir):
 
     snap_path = str(tmpdir / 'snap.zip')
 
     manager1 = managers[0]
     manager2 = managers[1]
-    agent_user_key = 'user'
-    agent_user_value = 'centos'
-    key_pair_key = 'key'
-    key_pair_value = manager1.remote_private_key_path
-    server_ip_key = 'ip'
-    server_ip_value = manager1.ip_address
+    secret_dict = {'user': 'centos', 'key': manager1.remote_private_key_path, 'ip': manager1.ip_address}
     user_name1 = 'user1'
     password = 'user123'
     tenant_name = 'default_tenant'
@@ -47,19 +43,13 @@ def test_hidden_secrets(managers,
 
     # Testing hidden secret create command by an admin user
     logger.info('Creating secrets by admin')
-    _hidden_secret_create(cfy, logger, agent_user_key, agent_user_value)
-    _hidden_secret_create(cfy, logger, key_pair_key, key_pair_value)
-    _hidden_secret_create(cfy, logger, server_ip_key, server_ip_value)
+    _hidden_secret_create(cfy, secret_dict)
 
     logger.info('Creating user and adding to tenant')
     _user_create(cfy, logger, user_name1, password)
     cfy.tenants('add-user', user_name1, '-t', tenant_name, '-r', tenant_role)
 
     _set_profile(cfy, logger, user_name1, password, tenant_name)
-
-    # Testing that hidden secret can't be seen by non admin user
-    logger.info('Get secret value by user1')
-    cfy.secrets.list()
 
     # Installing blueprint
     _install_blueprint(cfy, logger, blueprint_id, blueprint_path)
@@ -81,22 +71,17 @@ def test_hidden_secrets(managers,
     time.sleep(30)
     cfy.agents.install()
     _set_profile(cfy, logger, user_name1, password, tenant_name)
-    cfy.secrets.list()
     cfy.executions.start.uninstall('-d', blueprint_id)
 
 
 def _user_create(cfy, logger, user_name, user_pass):
     logger.info('Creating new user')
     cfy.users.create(user_name, '-p', user_pass)
-    logger.info('user list')
-    cfy.users.list()
 
 
-def _hidden_secret_create(cfy, logger, secret_key, secret_value):
-    logger.info('Creating hidden secret')
-    cfy.secrets.create(secret_key, '-s', secret_value, '--hidden-value')
-    logger.info('secret list')
-    cfy.secrets.list()
+def _hidden_secret_create(cfy, secret_dict):
+    for key in secret_dict:
+        cfy.secrets.create(key, '-s', secret_dict[key], '--hidden-value')
 
 
 def _set_profile(cfy, logger, user_name, password, tenant):
