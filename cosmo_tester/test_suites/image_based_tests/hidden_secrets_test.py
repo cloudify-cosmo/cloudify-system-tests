@@ -38,7 +38,6 @@ def test_hidden_secrets(managers,
     blueprint_id = 'hello-world'
     blueprint_path = os.path.join(os.path.dirname(__file__), '/home/uri/dev/repos/cloudify-hello-world-example/'
                                                              'secret-blueprint.yaml')
-    logger.info('Use manager')
     manager1.use()
 
     # Testing hidden secret create command by an admin user
@@ -58,6 +57,7 @@ def test_hidden_secrets(managers,
 
     # Snapshot create and download
     cfy.snapshots.create('snap')
+    logger.info('Waiting to snapshot to complete creation')
     time.sleep(10)
     cfy.snapshots.download('snap', '-o', snap_path)
 
