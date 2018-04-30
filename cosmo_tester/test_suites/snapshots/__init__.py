@@ -77,6 +77,7 @@ MULTI_TENANT_MANAGERS = (
     '4.0.1',
     '4.1',
     '4.3.1',
+    'master',
 )
 
 
