@@ -1,6 +1,6 @@
 sh==1.11
 path.py==8.1.2
-PyYAML==3.10
+PyYAML==3.12
 nose
 xmltodict
 requests>=2.7.0,<3.0.0
