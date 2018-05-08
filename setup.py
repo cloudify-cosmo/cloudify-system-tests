@@ -27,7 +27,7 @@ setup(
     install_requires=[
         'paramiko==1.18.3',
         'fabric==1.13.1',
-        'PyYAML==3.10',
+        'PyYAML==3.12',
         'requests>=2.7.0,<3.0.0',
         'sh==1.11',
         'path.py==8.1.2',
