@@ -102,7 +102,8 @@ resource "openstack_compute_instance_v2" "server{{ loop.index0 }}" {
 
   provisioner "remote-exec" {
     inline = [
-      "echo hello world"
+      "echo hello world",
+      "sudo yum update -y"
     ]
     connection {
       type = "ssh"
