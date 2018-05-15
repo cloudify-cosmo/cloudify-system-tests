@@ -14,14 +14,22 @@
 #    * limitations under the License.
 
 # import pytest
+import os
 
 from cosmo_tester.framework.fixtures import image_based_manager
 
 manager = image_based_manager
-STAGE_E2E_SELENIUM_HOST = '10.239.0.203'
 
 
 def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
+
+    os.environ['STAGE_E2E_SELENIUM_HOST'] = '10.239.0.203'
+    os.environ['STAGE_E2E_MANAGER_URL'] = manager.ip_address
+
+    logger.info('os.environ:')
+    logger.info(os.environ)
+    logger.info(manager.ip_address)
+    logger.info(attributes)
 
     # Example of using fabric_ssh
 
