@@ -27,6 +27,4 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
     os.environ["STAGE_E2E_MANAGER_URL"] = manager.ip_address
     subprocess.call(['npm', 'run', 'e2e'])
-
-
-
+    
