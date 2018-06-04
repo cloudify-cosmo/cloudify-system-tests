@@ -22,9 +22,10 @@ import os
 
 manager = image_based_manager
 
+
 def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
-    os.environ['STAGE_E2E_SELENIUM_HOST'] = '10.239.0.203'
-    os.environ['STAGE_E2E_MANAGER_URL'] = manager.ip_address
+    os.environ["STAGE_E2E_SELENIUM_HOST"] = '10.239.0.203'
+    os.environ["STAGE_E2E_MANAGER_URL"] = manager.ip_address
     print(os.environ)
-    subprocess.call(['npm', 'run', 'e2e'], cwd=os.environ['CLOUDIFY_STAGE_REPO_PATH'])
+    subprocess.call(['npm', 'run', 'e2e'], cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
