@@ -39,7 +39,7 @@ def hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     finally:
         hosts.destroy()
 
-        
+
 def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
     os.environ["STAGE_E2E_SELENIUM_HOST"] = '10.239.0.203'
