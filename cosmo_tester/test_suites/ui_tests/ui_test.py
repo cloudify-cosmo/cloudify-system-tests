@@ -28,10 +28,8 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
     os.environ["STAGE_E2E_SELENIUM_HOST"] = '10.239.0.203'
     os.environ["STAGE_E2E_MANAGER_URL"] = manager.ip_address
 
-    print "Environmental variables:"
-    print os.environ
-    print os.environ["UPDATE_STAGE_ON_MANAGER"]
-    print os.environ["UPDATE_STAGE_ON_MANAGER"] == 'true'
+    print "UPDATE_STAGE_ON_MANAGER =", os.environ["UPDATE_STAGE_ON_MANAGER"]
+    print "UPDATE_STAGE_ON_MANAGER == true", os.environ["UPDATE_STAGE_ON_MANAGER"] == 'true'
 
     if os.environ["UPDATE_STAGE_ON_MANAGER"] == 'true':
         print "Uploading Stage package"
@@ -44,6 +42,8 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
                             cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
             subprocess.call(['npm', 'run', 'zip'],
                             cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
+        subprocess.call(['npm', 'run', 'upload'],
+                        cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
 
     print "Running Stage system tests"
     subprocess.call(['npm', 'run', 'e2e'],
