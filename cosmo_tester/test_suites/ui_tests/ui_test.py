@@ -27,5 +27,19 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
     os.environ["STAGE_E2E_SELENIUM_HOST"] = '10.239.0.203'
     os.environ["STAGE_E2E_MANAGER_URL"] = manager.ip_address
+
+    if os.environ["UPDATE_STAGE_ON_MANAGER"] == "true":
+        print "Uploading Stage package"
+        os.environ["MANAGER_IP"] = os.environ["STAGE_E2E_MANAGER_URL"]
+        os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
+        if not os.environ["STAGE_PACKAGE_URL"]:
+            subprocess.call(['npm', 'run', 'beforebuild'],
+                            cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
+            subprocess.call(['npm', 'run', 'build'],
+                            cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
+            subprocess.call(['npm', 'run', 'zip'],
+                            cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
+
+    print "Running Stage system tests"
     subprocess.call(['npm', 'run', 'e2e'],
                     cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
