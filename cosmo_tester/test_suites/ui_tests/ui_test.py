@@ -30,8 +30,10 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
     print "Environmental variables:"
     print os.environ
+    print os.environ["UPDATE_STAGE_ON_MANAGER"]
+    print os.environ["UPDATE_STAGE_ON_MANAGER"] == 'true'
 
-    if os.environ["UPDATE_STAGE_ON_MANAGER"] == "true":
+    if os.environ["UPDATE_STAGE_ON_MANAGER"] == 'true':
         print "Uploading Stage package"
         os.environ["MANAGER_IP"] = os.environ["STAGE_E2E_MANAGER_URL"]
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
