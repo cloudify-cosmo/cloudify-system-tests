@@ -37,7 +37,7 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         if not os.environ["STAGE_PACKAGE_URL"]:
             subprocess.call(['npm', 'run', 'beforebuild'],
-                            cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])p
+                            cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
             subprocess.call(['npm', 'run', 'build'],
                             cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
             subprocess.call(['npm', 'run', 'zip'],
