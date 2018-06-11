@@ -58,12 +58,6 @@ resource "openstack_compute_secgroup_v2" "security_group" {
     cidr = "0.0.0.0/0"
   }
   rule {
-    from_port = 8086
-    to_port = 8086
-    ip_protocol = "tcp"
-    cidr = "0.0.0.0/0"
-  }
-  rule {
     from_port = 8080
     to_port = 8080
     ip_protocol = "tcp"
@@ -112,7 +106,7 @@ resource "openstack_compute_instance_v2" "server{{ loop.index0 }}" {
     ]
     connection {
       type = "ssh"
-      user = "centos"
+      user = "{{ server.username }}"
       private_key = "${file("${var.private_key_path}")}"
       timeout = "10m"
       agent = "false"

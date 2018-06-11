@@ -12,11 +12,16 @@ cloudify_tenant: default_tenant
 # could be skipped, both of which have a good chance of wasting a lot of time.
 image_type: 'premium'
 
+# If the manager install rpm name is not set, the latest image name will be taken from
+# (cloudify-premium|cloudify-versions)/packages-urls/manager-install-rpm.yaml
+cloudify_manager_install_rpm_url: ''
+
 # If the latest image name is not set, the latest image name will be generated
 # based on the image name prefix and the currently installed CLI version
 # e.g. cloudify-manager-premium-4.2.dev1
 cloudify_manager_latest_image: ''
 cloudify_manager_image_name_prefix: cloudify-manager-premium
+cloudify_manager_4_3_1_image_name: cloudify-manager-premium-4.3.1
 cloudify_manager_4_1_image_name: cloudify-manager-premium-4.1
 cloudify_manager_4_0_1_image_name: cloudify-manager-premium-4.0.1
 cloudify_manager_4_0_image_name: cloudify-manager-premium-4.0
@@ -29,6 +34,11 @@ cli_urls_override:
   debian_cli_package_url: null
   osx_cli_package_url: null
 
+default_manager_distro: rhel
+default_linux_username: cloud-user
+default_linux_image_name: rhel-server-7.5
+default_openstack_plugin: openstack_redhat_maipo
+
 centos_7_username: centos
 centos_7_image_name: CentOS-7-x86_64-GenericCloud  
 centos_7_AMI: ami-7abd0209
@@ -37,7 +47,7 @@ centos_6_username: centos
 centos_6_image_name: centos_6.6
 
 rhel_7_username: cloud-user
-rhel_7_image_name: rhel-server-7.4-x86_64-kvm-cert
+rhel_7_image_name: rhel-server-7.5
 
 rhel_6_username: cloud-user
 rhel_6_image_name: rhel-guest-image-6.9-120.x86_64.qcow2

@@ -413,6 +413,8 @@ def prepare_and_get_test_tenant(test_param, manager, cfy):
         identifier passed in as 'test_param'), and returns the name of the
         tenant that should be used for this test.
     """
+    default_openstack_plugin = get_attributes()['default_openstack_plugin']
+
     if is_community():
         tenant = 'default_tenant'
         # It is expected that the plugin is already uploaded for the
@@ -420,29 +422,6 @@ def prepare_and_get_test_tenant(test_param, manager, cfy):
     else:
         tenant = test_param
         cfy.tenants.create(tenant)
-        manager.upload_plugin('openstack_centos_core',
+        manager.upload_plugin(default_openstack_plugin,
                               tenant_name=tenant)
     return tenant
-
-
-@retrying.retry(stop_max_attempt_number=180, wait_fixed=1000)
-def wait_for_all_executions(manager, include_system_workflows=True):
-    executions = manager.client.executions.list(
-        include_system_workflows=include_system_workflows
-    )
-    for execution in executions:
-        if execution['status'] != 'terminated':
-            raise StandardError(
-                'Timed out: An execution did not terminate'
-            )
-
-
-@retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
-def wait_for_manager(manager):
-    status = manager.client.manager.get_status()
-    for service in status['services']:
-        for instance in service['instances']:
-            if instance['state'] != 'running':
-                raise StandardError(
-                    'Timed out: Reboot did not complete successfully'
-                )

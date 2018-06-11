@@ -76,6 +76,7 @@ SINGLE_TENANT_MANAGERS = (
 MULTI_TENANT_MANAGERS = (
     '4.0.1',
     '4.1',
+    '4.3.1',
     'master',
 )
 
@@ -393,7 +394,7 @@ def create_snapshot(manager, snapshot_id, attributes, logger):
     logger.info('Creating snapshot on old manager..')
     manager.client.snapshots.create(
         snapshot_id=snapshot_id,
-        include_metrics=True,
+        include_metrics=False,
         include_credentials=True,
         include_logs=True,
         include_events=True
@@ -406,6 +407,8 @@ def create_snapshot(manager, snapshot_id, attributes, logger):
 
 
 def manager_supports_users_in_snapshot_creation(manager):
+    # You probably don't want to change this, unless somebody broke snapshots
+    # for users in a recent manager version and we decided to release anyway
     return (
         manager.branch_name not in ('3.4.2', '4.0', '4.0.1', '4.1',
                                     '4.1.1')
@@ -678,6 +681,7 @@ def upload_test_plugin(manager, logger, tenant=None):
     _log('Uploading test plugin', logger, tenant)
     with set_client_tenant(manager, tenant):
         manager.client.plugins.upload(TEST_PLUGIN_URL)
+        manager.wait_for_all_executions()
 
 
 def get_plugins_list(manager, tenant=None):
@@ -751,6 +755,11 @@ def hosts(
         with manager.ssh() as fabric_ssh:
             fabric_ssh.sudo('yum -y -q install gcc')
             fabric_ssh.sudo('yum -y -q install python-devel')
+
+    with instances[0].ssh() as fabric_ssh:
+        fabric_ssh.sudo('systemctl restart cloudify-restservice')
+
+    instances[0].verify_services_are_running()
 
     return hosts
 

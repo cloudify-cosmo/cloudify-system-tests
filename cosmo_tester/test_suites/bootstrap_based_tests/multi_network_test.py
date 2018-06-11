@@ -57,7 +57,8 @@ def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
         template_inputs={
             'num_of_networks': 3,
             'num_of_managers': 2,
-            'image_name': attributes.centos_7_image_name
+            'image_name': attributes.default_linux_image_name,
+            'username': attributes.default_linux_username
         })
     hosts.preconfigure_callback = _preconfigure_callback
 
@@ -325,7 +326,7 @@ def _proxy_preconfigure_callback(_managers):
     # on the manager, we override the default network ip, so that by default
     # all agents will go through the proxy
     manager.additional_install_config = {
-        'agent': {'networks': {'default': proxy_ip}}
+        'agent': {'networks': {'default': str(proxy_ip)}}
     }
 
     # setup the proxy - simple socat services that forward all TCP connections

@@ -23,7 +23,7 @@ from cosmo_tester.framework.util import prepare_and_get_test_tenant
 manager = image_based_manager
 
 
-def test_hello_world(hello_world, attributes, logger):
+def test_hello_world(hello_world):
     hello_world.verify_all()
 
 
@@ -51,7 +51,7 @@ def hello_world(request, cfy, manager, attributes, ssh_key, tmpdir, logger):
     if 'windows' in request.param:
         hw.blueprint_file = 'openstack-windows-blueprint.yaml'
         hw.inputs.update({
-            'flavor': attributes['medium_flavor_name'],
+            'flavor': attributes['large_flavor_name'],
         })
     else:
         hw.blueprint_file = 'openstack-blueprint.yaml'
@@ -76,7 +76,7 @@ def hello_world(request, cfy, manager, attributes, ssh_key, tmpdir, logger):
 @pytest.fixture(
     scope='function',
     params=[
-        '1.2',
+        '1_2',
     ],
 )
 def hello_world_backwards_compat(request, cfy, manager, attributes, ssh_key,
@@ -84,10 +84,13 @@ def hello_world_backwards_compat(request, cfy, manager, attributes, ssh_key,
     tenant_param = 'dsl_{ver}'.format(ver=request.param)
     tenant = prepare_and_get_test_tenant(tenant_param, manager, cfy)
 
+    # Using 1_2 instead of 1.2 because diamond deliminates using dots (.),
+    # so having a dot in the deployment name (passed as the suffix to the
+    # HelloWorldExample constructor) messes things up
     dsl_git_checkout_mappings = {
         # dsl versions 1.0 and 1.1 cannot be tested with this because they do
         # not have usable singlehost blueprints in the hello world repo
-        '1.2': '3.3.1',
+        '1_2': '3.3.1',
         # 1.3 is current, and is on git checkout 4.1, but this is tested by
         # the OS tests above
     }
@@ -100,11 +103,12 @@ def hello_world_backwards_compat(request, cfy, manager, attributes, ssh_key,
     hw.blueprint_file = 'singlehost-blueprint.yaml'
 
     hw.clone_example()
-    version_check_ending = request.param.replace('.', '_')
     with open(hw.blueprint_path) as blueprint_handle:
         blueprint = yaml.load(blueprint_handle)
     blueprint_dsl_version = blueprint['tosca_definitions_version']
-    assert blueprint_dsl_version.endswith(version_check_ending)
+    assert blueprint_dsl_version.endswith(request.param)
 
     yield hw
-    hw.cleanup()
+
+    # For older CLIs we need to explicitly pass this param
+    hw.cleanup(allow_custom_params=True)

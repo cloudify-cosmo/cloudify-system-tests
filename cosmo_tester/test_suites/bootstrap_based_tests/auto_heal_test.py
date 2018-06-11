@@ -21,11 +21,54 @@ import requests
 import retrying
 
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
-from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.fixtures import bootstrap_based_manager
 from cosmo_tester.framework import util
 
-manager = image_based_manager
+manager = bootstrap_based_manager
+manager.additional_install_config = {
+    'riemann': {
+        'skip_installation': False,
+        'sources': {
+            'daemonize_source_url': 'daemonize-1.7.3-7.el7.x86_64.rpm',
+            'riemann_source_url': 'riemann-0.2.6-1.noarch.rpm',
+            'cloudify_riemann_url': 'cloudify-riemann-*.rpm',
+        },
+    },
+    'amqpinflux': {
+        'skip_installation': False,
+        'sources': {
+            'amqpinflux_source_url': 'cloudify-amqp-influx-*.x86_64.rpm',
+        },
+    },
+    'influxdb': {
+        'skip_installation': False,
+        'endpoint_ip': '',
+        'sources': {
+            'influxdb_source_url': 'influxdb-0.8.8-1.x86_64.rpm',
+        },
+    },
+}
 openstack = util.create_openstack_client()
+
+
+def assert_deployment_metrics_exist(nodecellar):
+    nodecellar.logger.info('Verifying deployment metrics...')
+    # This query finds all the time series that begin with the
+    # deployment ID (which should be all the series created by diamond)
+    # and have values in the last 5 seconds
+    with nodecellar.manager.ssh() as fabric:
+        result = fabric.run(
+            'curl -G "{url}" --data-urlencode '
+            '"q=select * from /^{dep}\./i '
+            'where time > now() - 5s"'.format(
+                url='http://localhost:8086/db/cloudify/series?u=root&p=root',
+                dep=nodecellar.deployment_id
+            ), quiet=True
+        )
+        if result == '[]':
+            pytest.fail(
+                'Monitoring events list for deployment with ID `{0}` '
+                'were not found on influxDB'.format(nodecellar.deployment_id))
 
 
 @pytest.fixture(scope='function')
@@ -47,6 +90,7 @@ def test_nodecellar_auto_healing(cfy, manager, nodecellar, logger):
 
     logger.info('Installing nodecellar..')
     nodecellar.upload_and_verify_install()
+    assert_deployment_metrics_exist(nodecellar)
 
     logger.info('Killing nodejs host..')
     outputs = nodecellar.outputs
@@ -70,6 +114,7 @@ def test_nodecellar_auto_healing(cfy, manager, nodecellar, logger):
 
     logger.info('Verifying nodecellar is working after auto healing..')
     nodecellar.verify_installation()
+    assert_deployment_metrics_exist(nodecellar)
     nodecellar.uninstall()
     nodecellar.delete_deployment()
 

@@ -41,6 +41,7 @@ RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-de
 
 MANAGER_API_VERSIONS = {
     'master': 'v3',
+    '4.3.1': 'v3',
     '4.1': 'v3',
     '4.0.1': 'v3',
     '4.0': 'v3',
@@ -88,7 +89,7 @@ class VM(object):
     def ssh(self, **kwargs):
         with fabric_context_managers.settings(
                 host_string=self.ip_address,
-                user=self._attributes.centos_7_username,
+                user=self._attributes.default_linux_username,
                 key_filename=self._ssh_key.private_key_path,
                 abort_exception=Exception,
                 **kwargs):
@@ -136,7 +137,8 @@ class VM(object):
     def upload_necessary_files(self):
         return True
 
-    image_name = ATTRIBUTES['centos_7_image_name']
+    image_name = ATTRIBUTES['default_linux_image_name']
+    username = ATTRIBUTES['default_linux_username']
     branch_name = 'master'
 
 
@@ -172,7 +174,6 @@ class _CloudifyManager(VM):
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
         self._openstack = util.create_openstack_client()
-        self.influxdb_url = 'http://localhost:8086/db/cloudify/series?u=root&p=root'  # NOQA
         self.additional_install_config = {}
 
     def upload_necessary_files(self):
@@ -237,6 +238,8 @@ class _CloudifyManager(VM):
                 # This is needed for 3.4 managers. local cfy isn't
                 # compatible and cfy isn't installed in the image
                 self.client.plugins.upload(plugin['wgn_url'])
+
+        self.wait_for_all_executions()
 
     @property
     def remote_private_key_path(self):
@@ -325,7 +328,7 @@ class _CloudifyManager(VM):
         self._logger.info('#' * 80)
         self._logger.info(
             '\nssh -o StrictHostKeyChecking=no {user}@{ip} -i {key}'.format(
-                user=self._attributes.centos_7_username,
+                user=self._attributes.default_linux_username,
                 ip=self.ip_address,
                 key=self._ssh_key.private_key_path)
         )
@@ -336,7 +339,7 @@ class _CloudifyManager(VM):
         cmd = ' '.join([
             self.rsync_path,
             self.ip_address,
-            self._attributes.centos_7_username,
+            self._attributes.default_linux_username,
             self._ssh_key.private_key_path
         ])
         self._logger.info('Running command:\n{0}'.format(cmd))
@@ -371,7 +374,10 @@ class _CloudifyManager(VM):
         return config_file
 
     def bootstrap(self):
-        manager_install_rpm = util.get_manager_install_rpm_url()
+        manager_install_rpm = \
+            ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
+            util.get_manager_install_rpm_url()
+
         install_config = self._create_config_file()
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
@@ -400,6 +406,28 @@ class _CloudifyManager(VM):
         }, indent=2))
         return openstack_config_file
 
+    @retrying.retry(stop_max_attempt_number=180, wait_fixed=1000)
+    def wait_for_all_executions(self, include_system_workflows=True):
+        executions = self.client.executions.list(
+            include_system_workflows=include_system_workflows,
+            _all_tenants=True
+        )
+        for execution in executions:
+            if execution['status'] != 'terminated':
+                raise StandardError(
+                    'Timed out: An execution did not terminate'
+                )
+
+    @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
+    def wait_for_manager(self):
+        status = self.client.manager.get_status()
+        for service in status['services']:
+            for instance in service['instances']:
+                if instance['state'] != 'running':
+                    raise StandardError(
+                        'Timed out: Reboot did not complete successfully'
+                    )
+
 
 def get_latest_manager_image_name():
     """
@@ -418,11 +446,15 @@ def get_latest_manager_image_name():
         if version_num.endswith('.0') and version_num.count('.') > 1:
             version_num = version_num[:-2]
 
+        distro = ATTRIBUTES.default_manager_distro
         version = version_num + version_milestone
         image_name = '{prefix}-{suffix}'.format(
             prefix=ATTRIBUTES.cloudify_manager_image_name_prefix,
-            suffix=version,
+            suffix=version
         )
+
+        if distro != 'centos':
+            image_name = image_name + '-{distro}'.format(distro=distro)
 
     return image_name
 
@@ -476,6 +508,10 @@ class Cloudify4_0_1Manager(_CloudifyManager):
 
 class Cloudify4_1Manager(_CloudifyManager):
     branch_name = '4.1'
+
+
+class Cloudify4_3_1Manager(_CloudifyManager):
+    branch_name = '4.3.1'
 
 
 class CloudifyMasterManager(_CloudifyManager):
@@ -536,6 +572,7 @@ IMAGES = {
     '4.0': Cloudify4_0Manager,
     '4.0.1': Cloudify4_0_1Manager,
     '4.1': Cloudify4_1Manager,
+    '4.3.1': Cloudify4_3_1Manager,
     'master': CloudifyMasterManager,
     'centos': VM,
 }
@@ -639,7 +676,8 @@ class TestHosts(object):
 
                 instance.upload_necessary_files()
                 if instance.upload_plugins:
-                    instance.upload_plugin('openstack_centos_core')
+                    instance.upload_plugin(
+                        self._attributes.default_openstack_plugin)
 
             self._logger.info('Test hosts successfully created!')
 
@@ -664,7 +702,10 @@ class TestHosts(object):
             public_ip_address = outputs['public_ip_address_{}'.format(i)]
             private_ip_address = outputs['private_ip_address_{}'.format(i)]
             # Some templates don't expose networks as outputs
-            networks = outputs.get('networks_{}'.format(i), [])
+            networks = outputs.get('networks_{}'.format(i), {})
+            # Convert unicode to strings, in order to avoid ruamel issues
+            # when loading this dict into the config.yaml
+            networks = {str(k): str(v) for k, v in networks.items()}
             if hasattr(instance, 'api_version'):
                 rest_client = util.create_rest_client(
                         public_ip_address,
@@ -697,8 +738,7 @@ class BootstrapBasedCloudifyManagers(TestHosts):
     def __init__(self, *args, **kwargs):
         super(BootstrapBasedCloudifyManagers, self).__init__(*args, **kwargs)
         for manager in self.instances:
-            manager.image_name = self._attributes.centos_7_image_name
-        self._manager_install_rpm = util.get_manager_install_rpm_url()
+            manager.image_name = self._attributes.default_linux_image_name
 
     def _get_server_flavor(self):
         return self._attributes.medium_flavor_name
