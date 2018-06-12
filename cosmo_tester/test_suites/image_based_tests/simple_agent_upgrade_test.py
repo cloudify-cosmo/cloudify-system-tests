@@ -57,8 +57,8 @@ def nodecellar(managers, cfy, ssh_key, tmpdir, attributes, logger):
         nc.cleanup()
 
 
-def test_restore_snapshot_and_agents_install(
-        managers, hello, cfy, logger, tmpdir
+def test_old_agent_stopped_after_agent_upgrade(
+        managers, nodecellar, cfy, logger, tmpdir
 ):
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
     snapshot_id = 'snap'
@@ -68,7 +68,7 @@ def test_restore_snapshot_and_agents_install(
 
     old_manager.use()
 
-    hello.upload_and_verify_install()
+    nodecellar.upload_and_verify_install()
 
     old_manager.client.snapshots.create(snapshot_id, False, True)
     assert_snapshot_created(old_manager, snapshot_id, None)
@@ -82,9 +82,6 @@ def test_restore_snapshot_and_agents_install(
     verify_services_status(new_manager)
 
     new_manager.use()
-    cfy.agents.install(['--stop-old-agent'])
-
-    delete_manager(old_manager, logger)
-    hello.manager = new_manager
-    hello.assert_webserver_running()
-    hello.uninstall()
+    nodecellar.manager = new_manager
+    nodecellar.verify_installation()
+    nodecellar.uninstall()
