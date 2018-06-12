@@ -51,6 +51,7 @@ def nodecellar(managers, cfy, ssh_key, tmpdir, attributes, logger):
     """
     manager = managers[0]
     nc = NodeCellarExample(cfy, manager, attributes, ssh_key, logger, tmpdir)
+    nc.blueprint_file = 'openstack-blueprint.yaml'
     yield nc
     if nc.cleanup_required:
         nc.cleanup()
