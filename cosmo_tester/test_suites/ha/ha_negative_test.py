@@ -117,7 +117,6 @@ def test_remove_from_cluster_and_use_negative(cfy, hosts, logger):
     logger.info('Trying to use a manager previously removed'
                 ' from HA cluster')
     for retry in range(10):
-
         with pytest.raises(Exception) as exinfo:
             # use a separate profile name, to force creating a new profile
             # (pre-existing profile would be connected to the whole cluster,
@@ -135,6 +134,16 @@ def test_remove_from_cluster_and_use_negative(cfy, hosts, logger):
         assert 'This node was removed from the Cloudify Manager cluster' in \
             exinfo.value.message
         break
+    # we've tested the CLI, but let's check rejoin using the rest-client
+    # directly. No need to retry because we already waited.
+    with pytest.raises(Exception) as exinfo:
+                manager2.client.cluster.join(
+                    host_ip=manager2.private_ip_address,
+                    node_name=manager2.private_ip_address,
+                    join_addrs=[manager1.private_ip_address],
+                    credentials={})
+    assert 'This node was removed from the Cloudify Manager cluster' in \
+        exinfo.value.message
 
 
 def test_manager_already_in_cluster_join_cluster_negative(cfy,
