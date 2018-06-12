@@ -16,7 +16,7 @@
 import pytest
 
 from cosmo_tester.framework.test_hosts import TestHosts
-from cosmo_tester.framework.examples.hello_world import centos_hello_world
+from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
 
 from cosmo_tester.test_suites.snapshots import (
     assert_snapshot_created,
@@ -43,12 +43,17 @@ def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
 
 
 @pytest.fixture(scope='function')
-def hello(managers, cfy, ssh_key, tmpdir, attributes, logger):
+def nodecellar(managers, cfy, ssh_key, tmpdir, attributes, logger):
+    """
+    Using nodecellar instead of hello world, because the process stays up
+    after the old agent is stopped (as opposed to the webserver started in
+    hello world)
+    """
     manager = managers[0]
-    hw = centos_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir)
-    yield hw
-    if hw.cleanup_required:
-        hw.cleanup()
+    nc = NodeCellarExample(cfy, manager, attributes, ssh_key, logger, tmpdir)
+    yield nc
+    if nc.cleanup_required:
+        nc.cleanup()
 
 
 def test_restore_snapshot_and_agents_install(
