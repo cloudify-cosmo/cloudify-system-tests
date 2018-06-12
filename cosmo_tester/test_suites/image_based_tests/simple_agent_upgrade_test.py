@@ -18,14 +18,7 @@ import pytest
 from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
 
-from cosmo_tester.test_suites.snapshots import (
-    assert_snapshot_created,
-    download_snapshot,
-    upload_snapshot,
-    restore_snapshot,
-    delete_manager,
-    verify_services_status
-)
+from cosmo_tester.test_suites.snapshots import restore_snapshot
 
 
 @pytest.fixture(scope='module')
@@ -70,13 +63,13 @@ def test_old_agent_stopped_after_agent_upgrade(
 
     nodecellar.upload_and_verify_install()
 
-    old_manager.client.snapshots.create(snapshot_id, False, True)
-    assert_snapshot_created(old_manager, snapshot_id, None)
-    download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
+    cfy.snapshots.create([snapshot_id])
+    old_manager.wait_for_all_executions()
+    cfy.snapshots.download([snapshot_id, '-o', local_snapshot_path])
 
     new_manager.use()
 
-    upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
+    cfy.snapshots.upload([local_snapshot_path, '-s', snapshot_id])
     restore_snapshot(new_manager, snapshot_id, cfy, logger)
 
     verify_services_status(new_manager)
