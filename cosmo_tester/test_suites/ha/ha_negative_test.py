@@ -13,6 +13,7 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import time
 import pytest
 from cosmo_tester.framework.examples.hello_world import centos_hello_world
 from cosmo_tester.framework.test_hosts import TestHosts
@@ -115,13 +116,25 @@ def test_remove_from_cluster_and_use_negative(cfy, hosts, logger):
 
     logger.info('Trying to use a manager previously removed'
                 ' from HA cluster')
-    with pytest.raises(Exception) as exinfo:
-        # use a separate profile name, to force creating a new profile
-        # (pre-existing profile would be connected to the whole cluster,
-        # which at this point consists only of manager1)
-        manager2.use(profile_name='new-profile')
-    assert 'This node was removed from the Cloudify Manager cluster' in \
-        exinfo.value.message
+    for retry in range(10):
+
+        with pytest.raises(Exception) as exinfo:
+            # use a separate profile name, to force creating a new profile
+            # (pre-existing profile would be connected to the whole cluster,
+            # which at this point consists only of manager1)
+            manager2.use(profile_name='new-profile')
+
+        # need to give the replica some time for it to notice it has been
+        # removed and change the error message. This should happen on the
+        # order of one to several seconds. On the last retry, it is required
+        # that the message has already changed by then.
+        if retry < 9 and 'It is not the active manager in the cluster.' in \
+                exinfo.value.message:
+            time.sleep(2)
+            continue
+        assert 'This node was removed from the Cloudify Manager cluster' in \
+            exinfo.value.message
+        break
 
 
 def test_manager_already_in_cluster_join_cluster_negative(cfy,
