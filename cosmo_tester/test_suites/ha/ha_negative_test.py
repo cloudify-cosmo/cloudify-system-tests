@@ -124,30 +124,6 @@ def test_remove_from_cluster_and_use_negative(cfy, hosts, logger):
         exinfo.value.message
 
 
-def test_remove_from_cluster_and_rejoin_negative(cfy, hosts, logger):
-    manager1 = hosts.instances[0]
-    manager2 = hosts.instances[1]
-
-    logger.info('Removing the standby manager %s from the HA cluster',
-                manager2.ip_address)
-    cfy.cluster.nodes.remove(manager2.ip_address)
-    ha_helper.wait_leader_election([manager1], logger)
-
-    # we need to use the rest-client to check rejoining - can't do this from
-    # the CLI, because we can't `use` manager2 (it's impossible to use
-    # nodes removed from the cluster, as checked by another test)
-    logger.info('Trying to rejoin HA cluster with a manager previously'
-                ' removed from cluster')
-    with pytest.raises(Exception) as exinfo:
-        manager2.client.cluster.join(
-            host_ip=manager2.private_ip_address,
-            node_name=manager2.private_ip_address,
-            join_addrs=[manager1.private_ip_address],
-            credentials={})
-    assert 'This node was removed from the Cloudify Manager cluster' == \
-        exinfo.value.message
-
-
 def test_manager_already_in_cluster_join_cluster_negative(cfy,
                                                           hosts, logger):
     manager1 = hosts.instances[0]
