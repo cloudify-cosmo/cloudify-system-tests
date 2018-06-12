@@ -13,7 +13,10 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+from time import sleep
+
 import pytest
+from sh import ErrorReturnCode
 
 from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
@@ -72,7 +75,24 @@ def test_old_agent_stopped_after_agent_upgrade(
     cfy.snapshots.upload([local_snapshot_path, '-s', snapshot_id])
     restore_snapshot(new_manager, snapshot_id, cfy, logger)
 
-    verify_services_status(new_manager)
+    # Wait for the tasks that run after the restore execution to finish
+    sleep(20)
+
+    cfy.agents.install('--stop-old-agent')
+
+    old_manager.use()
+
+    # We now expect the old agent to be stopped, and thus unresponsive. So,
+    # calling `cfy agents validate` on the old manager should fail
+    try:
+        logger.info('Validating the old agent is indeed down')
+        cfy.agents.validate()
+    except ErrorReturnCode:
+        logger.info('Old agent unresponsive, as expected')
+    else:
+        raise StandardError('Old agent is still responsive')
+
+    old_manager.delete()
 
     new_manager.use()
     nodecellar.manager = new_manager
