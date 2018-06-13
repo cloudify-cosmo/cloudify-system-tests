@@ -72,7 +72,7 @@ node_templates:
         target: vm
     interfaces:
       cloudify.interfaces.lifecycle:
-        create: scripts/iptables.py
+        create: scripts/iptables.sh
 
 outputs:
   endpoint:
