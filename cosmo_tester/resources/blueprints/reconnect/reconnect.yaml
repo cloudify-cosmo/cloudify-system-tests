@@ -65,6 +65,14 @@ node_templates:
           inputs:
             args:
               security_groups: [{ get_attribute: [ security_group, external_name ]}]
+  app:
+    type: cloudify.nodes.Root
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create: scripts/iptables.py
 
 outputs:
   endpoint:
