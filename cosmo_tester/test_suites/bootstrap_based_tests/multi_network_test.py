@@ -96,7 +96,6 @@ def _preconfigure_callback(_managers):
 
 class ReconnectExample(AbstractExample):
     def upload_blueprint(self):
-        self.clone_example()
         blueprint_file = get_resource_path(
             'blueprints/reconnect/reconnect.yaml')
 
