@@ -113,7 +113,9 @@ class ReconnectExample(AbstractExample):
             'key_pair_name': self.attributes.keypair_name,
             'private_key_path': self.manager.remote_private_key_path,
             'flavor': self.attributes.small_flavor_name,
-            'network_name': self.attributes.network_name
+            'network_name': self.attributes.network_name,
+            'agent_user': self.attributes.centos_7_username,
+            'image': self.attributes.centos_7_image_name,
         }
         return self._inputs
 
