@@ -28,11 +28,17 @@ from cosmo_tester.framework.test_hosts import (
     CURRENT_MANAGER,
     VM,
 )
+from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.examples.hello_world import AbstractExample
 from cosmo_tester.framework.examples.hello_world import (
     HelloWorldExample,
     centos_hello_world
 )
-from cosmo_tester.framework.util import prepare_and_get_test_tenant
+from cosmo_tester.framework.util import (
+    prepare_and_get_test_tenant,
+    set_client_tenant,
+    get_resource_path
+)
 
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
@@ -44,6 +50,8 @@ from cosmo_tester.test_suites.snapshots import (
 )
 
 NETWORK_2 = 'network_2'
+
+manager = image_based_manager
 
 
 @pytest.fixture(scope='module')
@@ -84,6 +92,43 @@ def _preconfigure_callback(_managers):
 
         # Configure NICs in order for networking to work properly
         mgr.enable_nics()
+
+
+class ReconnectExample(AbstractExample):
+    def upload_blueprint(self):
+        self.clone_example()
+        blueprint_file = get_resource_path(
+            'blueprints/reconnect/reconnect.yaml')
+
+        self.logger.info('Uploading blueprint: %s [id=%s]',
+                         blueprint_file,
+                         self.blueprint_id)
+        with set_client_tenant(self.manager, self.tenant):
+            self.manager.client.blueprints.upload(
+                blueprint_file, self.blueprint_id)
+
+    @property
+    def inputs(self):
+        self._inputs = {
+            'floating_network_id': self.attributes.floating_network_id,
+            'key_pair_name': self.attributes.keypair_name,
+            'private_key_path': self.manager.remote_private_key_path,
+            'flavor': self.attributes.small_flavor_name,
+            'network_name': self.attributes.network_name
+        }
+        return self._inputs
+
+
+@pytest.fixture(scope='function')
+def reconnect_example(cfy, manager, attributes, ssh_key, logger, tmpdir):
+    e = ReconnectExample(cfy, manager, attributes, ssh_key, logger, tmpdir,
+                         tenant='default_tenant', suffix='')
+    yield e
+
+
+def test_foo(cfy, manager, reconnect_example, logger, tmpdir):
+    import pudb; pu.db  # NOQA
+    reconnect_example.verify_all()
 
 
 def test_multiple_networks(managers,
