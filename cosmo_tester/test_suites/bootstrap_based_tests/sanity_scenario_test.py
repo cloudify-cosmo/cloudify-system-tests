@@ -87,9 +87,9 @@ def test_sanity_scenario(managers,
     # Start HA cluster, add manager2 to it
     _start_cluster(cfy, manager1, logger)
 
-    # _set_admin_user(cfy, manager2, logger)
+    _set_admin_user(cfy, manager2, logger)
 
-    _join_cluster(cfy, manager2, manager2, logger)
+    _join_cluster(cfy, manager1, manager2, logger)
 
     time.sleep(30)
 
