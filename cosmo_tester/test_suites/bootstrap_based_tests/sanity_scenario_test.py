@@ -75,7 +75,7 @@ def test_sanity_scenario(managers,
                          attributes,
                          nodecellar):
     manager1 = managers[0]
-    # manager2 = managers[1]
+    manager2 = managers[1]
     manager3 = managers[2]
 
     logger.info('Cfy version')
@@ -89,7 +89,7 @@ def test_sanity_scenario(managers,
 
     # _set_admin_user(cfy, manager2, logger)
 
-    # _join_cluster(cfy, manager1, manager2, logger)
+    _join_cluster(cfy, manager1, manager2, logger)
 
     time.sleep(30)
 
@@ -106,18 +106,16 @@ def test_sanity_scenario(managers,
 
     # Simulate failover (manager2 will be the new cluster master)
     logger.info('Setting replica manager')
-    # _set_admin_user(cfy, manager2, logger)
-    # ha_helper.set_active(manager2, cfy, logger)
+    _set_admin_user(cfy, manager2, logger)
+    ha_helper.set_active(manager2, cfy, logger)
     # time.sleep(30)
 
     # Create and download snapshots from the new cluster master (manager2)
     snapshot_id = 'SNAPSHOT_ID'
     local_snapshot_path = str(tmpdir / 'snap.zip')
     logger.info('Creating snapshot')
-    # create_snapshot(manager2, snapshot_id, attributes, logger)
-    # download_snapshot(manager2, local_snapshot_path, snapshot_id, logger)
-    create_snapshot(manager1, snapshot_id, attributes, logger)
-    download_snapshot(manager1, local_snapshot_path, snapshot_id, logger)
+    create_snapshot(manager2, snapshot_id, attributes, logger)
+    download_snapshot(manager2, local_snapshot_path, snapshot_id, logger)
 
     _set_admin_user(cfy, manager3, logger)
 
