@@ -17,8 +17,8 @@ import time
 import pytest
 
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
-from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
-# from cosmo_tester.framework.test_hosts import TestHosts
+# from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
+from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
 
 from cosmo_tester.test_suites.snapshots import (
@@ -42,7 +42,7 @@ TENANT_NAME = "tenant"
 def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps 3 Cloudify managers on a VM in Rackspace OpenStack."""
 
-    hosts = BootstrapBasedCloudifyManagers(
+    hosts = TestHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=3)
 
@@ -75,7 +75,7 @@ def test_sanity_scenario(managers,
                          attributes,
                          nodecellar):
     manager1 = managers[0]
-    manager2 = managers[1]
+    # manager2 = managers[1]
     manager3 = managers[2]
 
     logger.info('Cfy version')
@@ -87,9 +87,9 @@ def test_sanity_scenario(managers,
     # Start HA cluster, add manager2 to it
     _start_cluster(cfy, manager1, logger)
 
-    _set_admin_user(cfy, manager2, logger)
+    # _set_admin_user(cfy, manager2, logger)
 
-    _join_cluster(cfy, manager1, manager2, logger)
+    # _join_cluster(cfy, manager1, manager2, logger)
 
     time.sleep(30)
 
@@ -100,22 +100,24 @@ def test_sanity_scenario(managers,
     # Creating secrets
     _create_secrets(cfy, logger, attributes, manager1)
 
-    nodecellar.upload_and_verify_install()
+    # nodecellar.upload_and_verify_install()
 
     _set_admin_user(cfy, manager1, logger)
 
     # Simulate failover (manager2 will be the new cluster master)
     logger.info('Setting replica manager')
-    _set_admin_user(cfy, manager2, logger)
-    ha_helper.set_active(manager2, cfy, logger)
-    time.sleep(30)
+    # _set_admin_user(cfy, manager2, logger)
+    # ha_helper.set_active(manager2, cfy, logger)
+    # time.sleep(30)
 
     # Create and download snapshots from the new cluster master (manager2)
     snapshot_id = 'SNAPSHOT_ID'
     local_snapshot_path = str(tmpdir / 'snap.zip')
     logger.info('Creating snapshot')
-    create_snapshot(manager2, snapshot_id, attributes, logger)
-    download_snapshot(manager2, local_snapshot_path, snapshot_id, logger)
+    # create_snapshot(manager2, snapshot_id, attributes, logger)
+    # download_snapshot(manager2, local_snapshot_path, snapshot_id, logger)
+    create_snapshot(manager1, snapshot_id, attributes, logger)
+    download_snapshot(manager1, local_snapshot_path, snapshot_id, logger)
 
     _set_admin_user(cfy, manager3, logger)
 
@@ -124,6 +126,7 @@ def test_sanity_scenario(managers,
     upload_snapshot(manager3, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(manager3, snapshot_id, cfy, logger)
     time.sleep(30)
+    import pudb; pu.db  # NOQA
     verify_services_status(manager3)
     # wait for agents reconnection
 
