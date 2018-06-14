@@ -89,7 +89,7 @@ def test_sanity_scenario(managers,
 
     # _set_admin_user(cfy, manager2, logger)
 
-    _join_cluster(cfy, manager1, manager2, logger)
+    _join_cluster(cfy, manager2, manager2, logger)
 
     time.sleep(30)
 
