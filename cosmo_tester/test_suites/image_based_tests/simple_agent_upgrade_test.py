@@ -78,14 +78,19 @@ def test_old_agent_stopped_after_agent_upgrade(
     # Wait for the tasks that run after the restore execution to finish
     sleep(20)
 
-    cfy.agents.install('--stop-old-agent')
-
+    # Before upgrading the agents, the old agent should still be up
     old_manager.use()
+    cfy.agents.validate()
+
+    # Upgrade to new agents and stop old agents
+    new_manager.use()
+    cfy.agents.install('--stop-old-agent')
 
     # We now expect the old agent to be stopped, and thus unresponsive. So,
     # calling `cfy agents validate` on the old manager should fail
     try:
         logger.info('Validating the old agent is indeed down')
+        old_manager.use()
         cfy.agents.validate()
     except ErrorReturnCode:
         logger.info('Old agent unresponsive, as expected')
