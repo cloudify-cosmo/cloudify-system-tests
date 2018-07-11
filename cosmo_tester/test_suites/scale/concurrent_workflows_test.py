@@ -86,7 +86,9 @@ def test_concurrent_workflows(cfy, manager, logger):
     logger.info('Preparing test environment is completed.')
     time.sleep(5)
 
-    stat_thread = Thread(target=statistics, args=(manager, client,))
+    stat_thread = Thread(target=statistics, args=(manager,
+                                                  client,
+                                                  logger, ))
     stat_thread.daemon = True
     stat_thread.start()
 
@@ -103,7 +105,8 @@ def test_concurrent_workflows(cfy, manager, logger):
                            args=(client,
                                  deployments[workflow_count],
                                  workflow,
-                                 exec_params,))
+                                 exec_params,
+                                 logger,))
                 threads.append(t)
                 workflow_count += 1
                 logger.info('Running {0} workflow'.format(workflow))
@@ -112,7 +115,7 @@ def test_concurrent_workflows(cfy, manager, logger):
             for t in threads:
                 t.join()
 
-    time.sleep(cycle_num * cycle_sleep)
+    time.sleep(cycle_num * cycle_sleep / 1000)
 
     logger.info('Terminated workflows: {0}'.
                 format(len([e for e in
@@ -131,7 +134,7 @@ def test_concurrent_workflows(cfy, manager, logger):
                                 status='pending')])))
 
 
-def statistics(manager, client):
+def statistics(manager, client, logger):
     """thread worker function"""
     top_cpu_command = "top -b -n1 | grep 'Cpu(s)' | awk '{print $2 + $4}'"
     memory_used_command = "free | grep Mem | awk '{print $3/$2 * 100.0}'"
@@ -154,14 +157,7 @@ def statistics(manager, client):
             except ConnectionError:
                 pass
             except CloudifyClientError:
-                with manager.ssh() as fabric:
-                    try:
-                        fabric.run(
-                            'sudo systemctl status nginx')
-                        fabric.run(
-                            'sudo systemctl status cloudify-restservice')
-                    except SSHException:
-                        pass
+                _check_nginx_status(logger)
 
             current_time = datetime.now().strftime('%H:%M:%S')
             with manager.ssh() as fabric:
@@ -189,10 +185,16 @@ def deployment(client, deployment_id, logger):
     return
 
 
-def execution(client, deployment_id, workflow, exec_params):
+def execution(client, deployment_id, workflow, exec_params, logger):
     """thread worker function"""
-    client.executions.start(deployment_id, workflow,
-                            parameters=exec_params)
+    try:
+        client.executions.start(deployment_id, workflow,
+                                parameters=exec_params)
+    except CloudifyClientError:
+        _check_nginx_status(logger)
+        logger.info(
+            'Failed to run workflow {0} for deployment {1}'.
+            format(workflow, deployment_id))
     return
 
 
@@ -238,3 +240,17 @@ def _get_running_executions_num(client):
                 client.executions.list(
                     _get_all_results=True,
                     status='started')])
+
+
+def _check_nginx_status(logger):
+    with manager.ssh() as fabric:
+        try:
+            logger.info('Nginx status: {0}'.format(
+                fabric.run(
+                    'sudo systemctl status nginx.service')))
+            logger.info('Rest service status: {0}'.format(
+                fabric.run(
+                    'sudo systemctl status '
+                    'cloudify-restservice.service')))
+        except SSHException:
+            pass
