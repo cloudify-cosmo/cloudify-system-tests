@@ -365,7 +365,7 @@ class _CloudifyManager(VM):
 
         # Add any additional bootstrap inputs passed from the test
         install_config.update(self.additional_install_config)
-        install_config_str = yaml.dump(install_config)
+        install_config_str = yaml.safe_dump(install_config)
 
         self._logger.info(
             'Install config:\n{0}'.format(install_config_str))
