@@ -22,8 +22,7 @@ from path import Path
 import sh
 
 from cosmo_tester.framework.test_hosts import TestHosts
-from cosmo_tester.framework.util import sh_bake, get_attributes
-from . import conftest
+from cosmo_tester.framework.util import sh_bake, get_attributes, SSHKey
 
 
 logger = logging.getLogger()
@@ -45,17 +44,17 @@ def create_cluster_object(ssh_key, clean=False):
     cfy = sh_bake(sh.cfy)
     attributes = get_attributes(logger)
     hosts = TestHosts(
-            cfy,
-            ssh_key,
-            tmpdir,
-            attributes,
-            logger,
-            upload_plugins=not clean)
+        cfy,
+        ssh_key,
+        tmpdir,
+        attributes,
+        logger,
+        upload_plugins=not clean)
     return hosts
 
 
 def create_ssh_key_object():
-    ssh_key = conftest.SSHKey(tmpdir, logger)
+    ssh_key = SSHKey(tmpdir, logger)
     return ssh_key
 
 
@@ -93,12 +92,12 @@ def destroy():
 
 def create_parser():
     parser = argparse.ArgumentParser(
-            description='== Cloudify system tests utility! ==')
+        description='== Cloudify system tests utility! ==')
     sub_parsers = parser.add_subparsers()
 
     bootstrap_parser = sub_parsers.add_parser(
-            'bootstrap',
-            help='Bootstrap an image based cloudify manager.')
+        'bootstrap',
+        help='Bootstrap an image based cloudify manager.')
     bootstrap_parser.set_defaults(which='bootstrap')
     bootstrap_parser.add_argument(
         '--clean',
@@ -110,8 +109,8 @@ def create_parser():
     )
 
     destroy_parser = sub_parsers.add_parser(
-            'destroy',
-            help='Destroy cloudify manager.')
+        'destroy',
+        help='Destroy cloudify manager.')
     destroy_parser.set_defaults(which='destroy')
     return parser
 
