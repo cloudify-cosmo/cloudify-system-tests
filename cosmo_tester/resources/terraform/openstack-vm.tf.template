@@ -112,6 +112,10 @@ resource "openstack_compute_instance_v2" "server{{ loop.index0 }}" {
       agent = "false"
     }
   }
+  timeouts {
+    create = "60m"
+    delete = "2h"
+  }
 }
 
 {% endfor %}
