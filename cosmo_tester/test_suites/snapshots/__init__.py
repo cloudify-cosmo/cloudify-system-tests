@@ -465,7 +465,8 @@ def prepare_credentials_tests(cfy, logger, manager):
 
 def update_credentials(cfy, logger, manager):
     logger.info('Changing to modified admin credentials')
-    change_profile_credentials('admin', CHANGED_ADMIN_PASSWORD, cfy)
+    change_profile_credentials('admin', CHANGED_ADMIN_PASSWORD, cfy,
+                               validate=False)
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
@@ -496,8 +497,11 @@ def test_user(username, password, cfy, logger, admin_password='admin'):
     cfy.profiles.set(['-u', 'admin', '-p', admin_password])
 
 
-def change_profile_credentials(username, password, cfy):
-    cfy.profiles.set(['-u', username, '-p', password])
+def change_profile_credentials(username, password, cfy, validate=True):
+    cmd = ['-u', username, '-p', password]
+    if not validate:
+        cmd.append('--skip-credentials-validation')
+    cfy.profiles.set(cmd)
 
 
 def update_admin_password(new_password, cfy):
