@@ -463,10 +463,13 @@ def prepare_credentials_tests(cfy, logger, manager):
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
-def check_credentials(cfy, logger, manager):
+def update_credentials(cfy, logger, manager):
     logger.info('Changing to modified admin credentials')
     change_profile_credentials('admin', CHANGED_ADMIN_PASSWORD, cfy)
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+
+
+def check_credentials(cfy, logger, manager):
     logger.info('Checking test user still works')
     test_user('testuser', 'testpass', cfy, logger, CHANGED_ADMIN_PASSWORD)
 
