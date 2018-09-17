@@ -20,7 +20,7 @@ from copy import deepcopy
 from StringIO import StringIO
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
-
+from cosmo_tester.framework.util import is_community
 from cosmo_tester.framework.test_hosts import (
     BootstrapBasedCloudifyManagers,
     CURRENT_MANAGER,
@@ -31,7 +31,7 @@ from cosmo_tester.framework.examples.hello_world import (
     centos_hello_world
 )
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
-
+from cosmo_tester.test_suites.ha import ha_helper
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
@@ -137,7 +137,33 @@ def test_multiple_networks(managers,
     post_bootstrap_hello.verify_all()
 
 
-def _add_new_network(manager, logger):
+@pytest.mark.skipif(is_community(), reason='Cloudify Community version does '
+                                           'not support clustering')
+def test_multiple_networks_cluster(managers,
+                                   cfy,
+                                   multi_network_hello_worlds,
+                                   logger,
+                                   tmpdir,
+                                   attributes):
+    logger.info('Testing cluster with multiple networks')
+    ha_helper.setup_cluster(managers, cfy, logger)
+    manager1, manager2 = managers
+
+    ha_helper.verify_nodes_status(manager1, cfy, logger)
+    _add_new_network(manager1, logger)
+    # not restarting on the replica
+    _add_new_network(manager2, logger, restart=False)
+
+    for hello in multi_network_hello_worlds:
+        hello.upload_blueprint()
+        hello.create_deployment()
+        hello.install()
+    ha_helper.set_active(manager2, cfy, logger)
+    for hello in multi_network_hello_worlds:
+        hello.uninstall()
+
+
+def _add_new_network(manager, logger, restart=True):
     logger.info('Adding network `{0}` to the new manager'.format(NETWORK_2))
 
     old_networks = deepcopy(manager.networks)
@@ -150,10 +176,11 @@ def _add_new_network(manager, logger):
                 networks=networks_json
             )
         )
-        logger.info('Restarting services...')
-        fabric_ssh.sudo('systemctl restart cloudify-rabbitmq')
-        fabric_ssh.sudo('systemctl restart nginx')
-        fabric_ssh.sudo('systemctl restart cloudify-mgmtworker')
+        if restart:
+            logger.info('Restarting services...')
+            fabric_ssh.sudo('systemctl restart cloudify-rabbitmq')
+            fabric_ssh.sudo('systemctl restart nginx')
+            fabric_ssh.sudo('systemctl restart cloudify-mgmtworker')
 
 
 class MultiNetworkHelloWorld(HelloWorldExample):
