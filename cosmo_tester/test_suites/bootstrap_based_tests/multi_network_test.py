@@ -178,10 +178,12 @@ def test_multiple_networks_cluster(cluster_managers,
     manager1, manager2 = cluster_managers
 
     ha_helper.verify_nodes_status(manager1, cfy, logger)
-    _add_new_network(manager1, logger)
     # not restarting on the replica
     _add_new_network(manager2, logger, restart=False)
-
+    _add_new_network(manager1, logger)
+    manager2.use()
+    ha_helper.wait_nodes_online(cluster_managers, logger)
+    ha_helper.set_active(manager1, cfy, logger)
     for hello in multi_network_cluster_hello_worlds:
         hello.upload_blueprint()
         hello.create_deployment()
@@ -268,18 +270,19 @@ def _make_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
         hello.cleanup()
 
 
-@pytest.fixture(scope='function')
+@pytest.yield_fixture(scope='function')
 def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
                                logger):
     return _make_network_hello_worlds(cfy, managers, attributes, ssh_key,
                                       tmpdir, logger)
 
 
-@pytest.fixture(scope='function')
+@pytest.yield_fixture(scope='function')
 def multi_network_cluster_hello_worlds(cfy, cluster_managers, attributes,
                                        ssh_key, tmpdir, logger):
-    return _make_network_hello_worlds(cfy, cluster_managers, attributes,
-                                      ssh_key, tmpdir, logger)
+    for x in _make_network_hello_worlds(cfy, cluster_managers, attributes,
+                                      ssh_key, tmpdir, logger):
+        yield x
 
 
 class _ProxyTestHosts(BootstrapBasedCloudifyManagers):
