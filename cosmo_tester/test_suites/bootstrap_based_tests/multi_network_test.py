@@ -270,19 +270,24 @@ def _make_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
         hello.cleanup()
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.fixture(scope='function')
 def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
                                logger):
-    return _make_network_hello_worlds(cfy, managers, attributes, ssh_key,
-                                      tmpdir, logger)
+    # unfortunately, pytest wants the fixtures to be generators syntactically
+    # so we can't just do `return _make_network..()` when factoring out
+    # common functionality, we need to do this silly thing.
+    # In python 2.x, we don't have `yield from` either.
+    for _x in _make_network_hello_worlds(cfy, managers, attributes, ssh_key,
+                                         tmpdir, logger):
+        yield _x
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.fixture(scope='function')
 def multi_network_cluster_hello_worlds(cfy, cluster_managers, attributes,
                                        ssh_key, tmpdir, logger):
-    for x in _make_network_hello_worlds(cfy, cluster_managers, attributes,
-                                      ssh_key, tmpdir, logger):
-        yield x
+    for _x in _make_network_hello_worlds(cfy, cluster_managers, attributes,
+                                         ssh_key, tmpdir, logger):
+        yield _x
 
 
 class _ProxyTestHosts(BootstrapBasedCloudifyManagers):
