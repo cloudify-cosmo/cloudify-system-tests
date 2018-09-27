@@ -42,8 +42,8 @@ def hosts(
         manager.upload_plugins = False
 
     try:
-        ha_helper.setup_cluster(hosts.instances, cfy, logger)
         hosts.create()
+        ha_helper.setup_cluster(hosts.instances, cfy, logger)
     finally:
         hosts.destroy()
 
