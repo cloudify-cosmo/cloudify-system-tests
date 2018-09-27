@@ -44,6 +44,7 @@ def hosts(
     try:
         hosts.create()
         ha_helper.setup_cluster(hosts.instances, cfy, logger)
+        yield hosts
     finally:
         hosts.destroy()
 
