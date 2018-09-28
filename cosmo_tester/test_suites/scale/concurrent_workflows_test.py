@@ -49,10 +49,9 @@ except (KeyError, ValueError):
     envvars_provided = False
 else:
     envvars_provided = True
-
-STAT_FILE_PATH = '/tmp/scale/{0}_manager_stats_{1}.csv'.format(
-    manager_server_flavor_name,
-    datetime.now().strftime("%Y%m%d-%H%M%S"))
+    STAT_FILE_PATH = '/tmp/scale/{0}_manager_stats_{1}.csv'.format(
+        manager_server_flavor_name,
+        datetime.now().strftime("%Y%m%d-%H%M%S"))
 
 WORKFLOWS = ['geturl_wf', 'gentar_wf', 'factorial_wf']
 
