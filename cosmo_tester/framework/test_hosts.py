@@ -160,6 +160,34 @@ class VM(object):
                 use_sudo=use_sudo
             )
 
+    def get_remote_file_content(self, remote_path, use_sudo=True):
+        tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
+
+        self.get_remote_file(remote_path, tmp_local_path, use_sudo)
+
+        with open(tmp_local_path, 'r') as f:
+            content = f.read()
+
+        os.unlink(tmp_local_path)
+        return content
+
+    def put_remote_file_content(self, remote_path, content, use_sudo=True):
+        tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
+
+        with open(tmp_local_path, 'w') as f:
+            f.write(content)
+
+        self.put_remote_file(remote_path, tmp_local_path, use_sudo)
+
+        os.unlink(tmp_local_path)
+
+    def run_command(self, command, use_sudo=False):
+        with self.ssh() as fabric_ssh:
+            if use_sudo:
+                return fabric_ssh.sudo(command)
+            else:
+                return fabric_ssh.run(command)
+
     image_name = ATTRIBUTES['default_linux_image_name']
     username = ATTRIBUTES['default_linux_username']
     branch_name = 'master'
