@@ -140,6 +140,26 @@ class VM(object):
     def ssh_key(self):
         return self._ssh_key
 
+    def get_remote_file(self, remote_path, local_path, use_sudo=True):
+        """ DUmp the contents of the remote file into the local path """
+
+        with self.ssh() as fabric_ssh:
+            fabric_ssh.get(
+                remote_path,
+                local_path,
+                use_sudo=use_sudo
+            )
+
+    def put_remote_file(self, remote_path, local_path, use_sudo=True):
+        """ Dump the contents of the local file into the remote path """
+
+        with self.ssh() as fabric_ssh:
+            fabric_ssh.put(
+                local_path,
+                remote_path,
+                use_sudo=use_sudo
+            )
+
     image_name = ATTRIBUTES['default_linux_image_name']
     username = ATTRIBUTES['default_linux_username']
     branch_name = 'master'
