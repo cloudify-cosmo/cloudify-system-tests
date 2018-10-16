@@ -24,7 +24,7 @@ manager = image_based_manager
 
 
 @pytest.fixture(scope='function')
-def infrastructure(cfy, manager, attributes, ssh_key, logger, tmpdir):
+def vm_infrastructure(cfy, manager, attributes, ssh_key, logger, tmpdir):
     hw = centos_hello_world(cfy,
                             manager,
                             attributes,
@@ -32,7 +32,7 @@ def infrastructure(cfy, manager, attributes, ssh_key, logger, tmpdir):
                             logger,
                             tmpdir)
     hw.blueprint_file = util.get_resource_path(
-        'blueprints/deployment_proxy/infrastructure.yaml'
+        'blueprints/deployment_proxy/vm_infrastructure.yaml'
     )
     hw.blueprint_id = 'os_infra'
     hw.deployment_id = 'os_infra'
@@ -58,16 +58,21 @@ def web_app(cfy, manager, attributes, ssh_key, logger, tmpdir):
 
 def test_deployment_proxy(cfy,
                           manager,
-                          infrastructure,
+                          vm_infrastructure,
                           web_app,
                           tmpdir,
                           logger):
+    # We're uploading a blueprint that creates an infrastructure for a VM,
+    # and then exposes capabilities, which will be used in the application
     logger.info('Deploying infrastructure blueprint')
 
-    infrastructure.upload_blueprint()
-    infrastructure.create_deployment()
-    infrastructure.install()
+    vm_infrastructure.upload_blueprint()
+    vm_infrastructure.create_deployment()
+    vm_infrastructure.install()
 
     logger.info('Deploying application blueprint')
+    # This application relies on capabilities that it gets from the vm_infra,
+    # as well as utilizing the new agent proxy ability to connect to an
+    # agent of a node installed previously in another deployment (vm_infra)
     web_app.verify_all()
     logger.info('Webserver successfully validated over proxy')
