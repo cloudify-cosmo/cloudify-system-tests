@@ -43,7 +43,7 @@ from manager_rest.flask_utils import setup_flask_app
 setup_flask_app()
 
 tenants = models.Tenant.query.all()
-decrypted_passwords = {t.rabbitmq_username: 
+decrypted_passwords = {t.rabbitmq_username:
                            decrypt(t.rabbitmq_password) for t in tenants}
 with open('%s', 'w') as f:
     json.dump(decrypted_passwords, f)
