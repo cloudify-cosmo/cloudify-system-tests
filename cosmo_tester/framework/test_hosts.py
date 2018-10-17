@@ -141,7 +141,7 @@ class VM(object):
         return self._ssh_key
 
     def get_remote_file(self, remote_path, local_path, use_sudo=True):
-        """ DUmp the contents of the remote file into the local path """
+        """ Dump the contents of the remote file into the local path """
 
         with self.ssh() as fabric_ssh:
             fabric_ssh.get(
