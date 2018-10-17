@@ -23,7 +23,7 @@ manager = image_based_manager
 REMOTE_CERT_PATH = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
 REMOTE_CONF_PATH = '/opt/manager/rest-security.conf'
 REMOTE_HOOKS_PATH = '/opt/mgmtworker/config/hooks.conf'
-LIST_USERS_COMMAND = 'rabbitmqctl -n cloudify-manager@localhost list_users'
+LIST_MQ_USERS_COMMAND = 'rabbitmqctl -n cloudify-manager@localhost list_users'
 
 NEW_TENANT = 'new_tenant'
 NEW_KEY = 'new_key'
@@ -39,7 +39,7 @@ def test_cfy_manager_configure(manager, logger, tmpdir):
 
     logger.info('Creating new tenant and validating RMQ user was created...')
     manager.client.tenants.create(NEW_TENANT)
-    output = manager.run_command(LIST_USERS_COMMAND, use_sudo=True)
+    output = manager.run_command(LIST_MQ_USERS_COMMAND, use_sudo=True)
     assert NEW_TENANT in output
 
     logger.info('Editing security config file on the manager...')
@@ -56,7 +56,7 @@ def test_cfy_manager_configure(manager, logger, tmpdir):
     assert old_cert == new_cert
 
     logger.info('Verifying RabbitMQ users recreated after configure...')
-    output = manager.run_command(LIST_USERS_COMMAND, use_sudo=True)
+    output = manager.run_command(LIST_MQ_USERS_COMMAND, use_sudo=True)
     assert NEW_TENANT in output
 
     logger.info('Validating security config file on the manager persists...')
