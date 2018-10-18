@@ -52,8 +52,6 @@ with open('%s', 'w') as f:
 
 
 def test_cfy_manager_configure(manager, logger, tmpdir):
-    manager.sync_local_code_to_manager()
-
     logger.info('Putting code to get decrypted passwords on manager...')
     manager.put_remote_file_content(
         remote_path=GET_MQ_PASSWORDS_CODE_PATH,
