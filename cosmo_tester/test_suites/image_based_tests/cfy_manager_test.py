@@ -24,7 +24,7 @@ REMOTE_CERT_PATH = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
 REMOTE_CONF_PATH = '/opt/manager/rest-security.conf'
 REMOTE_HOOKS_PATH = '/opt/mgmtworker/config/hooks.conf'
 AUTH_MQ_USER_CMD = 'sudo rabbitmqctl -n cloudify-manager@localhost ' \
-                   'authenticate_user {user} {password}'
+                   'authenticate_user "{user}" "{password}"'
 
 NEW_TENANT = 'new_tenant'
 NEW_KEY = 'new_key'
