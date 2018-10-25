@@ -74,3 +74,185 @@ echo "Running a bash script!"
 PY_SCRIPT = '''#!/usr/bin/env python
 print 'Running a python script!'
 '''
+
+
+class AbstractTier1Cluster(AbstractExample):
+    REPOSITORY_URL = 'https://github.com/Cloudify-PS/manager-of-managers.git'  # NOQA
+
+    @property
+    def inputs(self):
+        openstack_config = util.get_openstack_config()
+
+        device_mapping_config = {
+            'boot_index': '0',
+            'uuid': self.attributes.default_linux_image_id,
+            'volume_size': 30,
+            'source_type': 'image',
+            'destination_type': 'volume',
+            'delete_on_termination': True
+        }
+
+        inputs = {
+            'os_password': openstack_config['password'],
+            'os_username': openstack_config['username'],
+            'os_tenant': openstack_config['tenant_name'],
+            'os_auth_url': openstack_config['auth_url'],
+            'os_region': os.environ['OS_REGION_NAME'],
+
+            'os_image': '',
+            'os_flavor': self.attributes.manager_server_flavor_name,
+            'os_device_mapping': [device_mapping_config],
+            'os_network': self.attributes.network_name,
+            'os_subnet': self.attributes.subnet_name,
+            'os_keypair': self.attributes.keypair_name,
+            'os_security_group': self.attributes.security_group_name,
+
+            'ssh_user': self.attributes.default_linux_username,
+            'ssh_private_key_path': self.manager.remote_private_key_path,
+
+            'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
+            'ca_key': self.attributes.LOCAL_REST_KEY_FILE,
+            'install_rpm_path': INSTALL_RPM_PATH,
+            'manager_admin_password': self.attributes.cloudify_password,
+
+            'num_of_instances': 2,
+
+            # Config in the same format as config.yaml
+            # Skipping sanity to save time
+            'additional_config': {'sanity': {'skip_sanity': True}}
+        }
+
+        inputs.update(self.network_inputs)
+
+        if self.first_deployment:
+            additional_inputs = {
+                'tenants': [TENANT_1, TENANT_2],
+                'plugins': [
+                    {
+                        'wagon': PLUGIN_WGN_PATH,
+                        'yaml': PLUGIN_YAML_PATH,
+                        'tenant': TENANT_1
+                    }
+                ],
+                'secrets': [
+                    {
+                        'key': SECRET_STRING_KEY,
+                        'string': SECRET_STRING_VALUE,
+                        'tenant': TENANT_2
+                    },
+                    {
+                        'key': SECRET_FILE_KEY,
+                        'file': SCRIPT_PY_PATH,
+                        'visibility': 'global'
+                    }
+                ],
+                'blueprints': [
+                    {
+                        'path': BLUEPRINT_ZIP_PATH,
+                        'filename': 'no-monitoring-singlehost-blueprint.yaml'
+                    },
+                    {
+                        'path': BLUEPRINT_ZIP_PATH,
+                        'id': 'second_bp',
+                        'filename': 'singlehost-blueprint.yaml',
+                        'tenant': TENANT_2
+                    },
+                    {
+                        'path': BLUEPRINT_ZIP_PATH,
+                        'id': 'third_bp',
+                        'filename': 'openstack-blueprint.yaml',
+                        'tenant': TENANT_1,
+                        'visibility': 'global'
+                    }
+                ],
+                'scripts': [SCRIPT_SH_PATH, SCRIPT_PY_PATH],
+                'files': [
+                    {
+                        'src': PLUGIN_YAML_PATH,
+                        'dst': '/tmp/plugin.yaml'
+                    },
+                    {
+                        'src': SCRIPT_PY_PATH,
+                        'dst': '/tmp/script.py'
+                    }
+                ]
+            }
+        else:
+            additional_inputs = {
+                'restore': True,
+                'old_deployment_id': MOM_DEP_ID_1,
+                'snapshot_id': TIER_1_SNAP_ID,
+                # TODO: Test _with_ agents
+                'transfer_agents': False
+            }
+
+        inputs.update(additional_inputs)
+        return inputs
+
+    @property
+    def network_inputs(self):
+        raise NotImplementedError('Each Tier 1 Cluster class needs to '
+                                  'add additional network inputs')
+
+    def validate(self):
+        raise NotImplementedError('Each Tier 1 Cluster class needs to '
+                                  'implement the `validate` method')
+
+    @property
+    def first_deployment(self):
+        """
+        Indicate that this is the initial deployment, as opposed to the second
+        one, to which we will upgrade
+        """
+        return self.deployment_id == MOM_DEP_ID_1
+
+    def upload_blueprint(self):
+        # We only want to upload the blueprint once, but create several deps
+        if self.first_deployment:
+            super(AbstractTier1Cluster, self).upload_blueprint()
+
+    def install(self):
+        super(AbstractTier1Cluster, self).install()
+        self._populate_status_output()
+
+    def _populate_status_output(self):
+        # This workflow populates the deployment outputs with status info
+        self.cfy.executions.start('get_status', '-d', self.deployment_id)
+        self.cfy.deployments.outputs(self.deployment_id)
+
+    def verify_installation(self):
+        super(AbstractTier1Cluster, self).verify_installation()
+
+        cluster_status = self.outputs['cluster_status']
+        for service in cluster_status['leader_status']:
+            assert service['status'] == 'running'
+
+        for tier_1_manager in cluster_status['cluster_status']:
+            for check in ('cloudify services', 'consul',
+                          'database', 'heartbeat'):
+                assert tier_1_manager[check] == 'OK'
+
+    def deploy_and_validate(self):
+        self.logger.info(
+            'Deploying Tier 1 cluster on deployment: {0}'.format(
+                self.deployment_id
+            )
+        )
+        self.upload_and_verify_install()
+        self.validate()
+
+    def backup(self):
+        self.logger.info(
+            'Running backup workflow on Tier 1 cluster on dep: {0}...'.format(
+                self.deployment_id
+            )
+        )
+
+        backup_params = {
+            'snapshot_id': TIER_1_SNAP_ID,
+            'backup_params': []
+        }
+        self.cfy.executions.start(
+            'backup', '-d', self.deployment_id,
+            '-p', json.dumps(backup_params)
+        )
