@@ -95,6 +95,16 @@ def _decrypt_password(password, private_key_path):
     return out
 
 
+def get_openstack_config():
+    return {
+        'username': os.environ['OS_USERNAME'],
+        'password': os.environ['OS_PASSWORD'],
+        'tenant_name': os.environ.get('OS_TENANT_NAME',
+                                      os.environ['OS_PROJECT_NAME']),
+        'auth_url': os.environ['OS_AUTH_URL']
+    }
+
+
 def create_openstack_client():
     conn = openstack_connection.Connection(
             auth_url=os.environ['OS_AUTH_URL'],
