@@ -256,3 +256,54 @@ class AbstractTier1Cluster(AbstractExample):
             'backup', '-d', self.deployment_id,
             '-p', json.dumps(backup_params)
         )
+
+
+# Using function scope here, in order to have a clean Tier 2 manager each time
+@pytest.fixture(scope='function')
+def tier_2_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
+    """
+    Creates a Tier 2 Cloudify manager with all the necessary resources on it
+    """
+    hosts = TestHosts(
+            cfy, ssh_key, module_tmpdir, attributes, logger)
+    try:
+        hosts.create()
+        manager = hosts.instances[0]
+        manager.use()
+        _upload_resources_to_tier_2_manager(manager, logger)
+        yield manager
+    finally:
+        hosts.destroy()
+
+
+def _upload_resources_to_tier_2_manager(manager, logger):
+    manager.client.plugins.upload(MOM_PLUGIN_WGN_URL, MOM_PLUGIN_YAML_URL)
+    manager.client.plugins.upload(OS_PLUGIN_WGN_URL, OS_PLUGIN_YAML_URL)
+
+    files_to_download = [
+        (util.get_manager_install_rpm_url(), INSTALL_RPM_PATH),
+        (OS_201_PLUGIN_WGN_URL, PLUGIN_WGN_PATH),
+        (OS_201_PLUGIN_YAML_URL, PLUGIN_YAML_PATH),
+        (HELLO_WORLD_URL, BLUEPRINT_ZIP_PATH)
+    ]
+    files_to_create = [
+        (SH_SCRIPT, SCRIPT_SH_PATH),
+        (PY_SCRIPT, SCRIPT_PY_PATH)
+    ]
+
+    logger.info('Downloading necessary files to the Tier 2 manager...')
+    for src_url, dst_path in files_to_download:
+        manager.run_command(
+            'curl -L {0} -o {1}'.format(src_url, dst_path),
+            use_sudo=True
+        )
+
+    for src_content, dst_path in files_to_create:
+        manager.put_remote_file_content(dst_path, src_content, use_sudo=True)
+
+    logger.info('Giving `cfyuser` permissions to downloaded files...')
+    for _, dst_path in files_to_download + files_to_create:
+        manager.run_command(
+            'chown cfyuser:cfyuser {0}'.format(dst_path),
+            use_sudo=True
+        )
