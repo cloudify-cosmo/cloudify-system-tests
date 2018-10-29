@@ -303,3 +303,69 @@ def _upload_resources_to_tier_2_manager(manager, logger):
             'chown cfyuser:cfyuser {0}'.format(dst_path),
             use_sudo=True
         )
+
+
+class FixedIpTier1Cluster(AbstractTier1Cluster):
+    RESOURCE_POOLS = [
+        {
+            'ip_address': '10.0.0.11',
+            'hostname': 'Tier_1_Manager_1'
+        },
+        {
+            'ip_address': '10.0.0.12',
+            'hostname': 'Tier_1_Manager_2'
+        }
+    ]
+
+    @property
+    def network_inputs(self):
+        return {
+            # Only relevant when working with the Private Fixed IP paradigm.
+            # See more in private_fixed_ip.yaml
+            'resource_pool': self.RESOURCE_POOLS
+        }
+
+    def validate(self):
+        cluster_ips = self.outputs['cluster_ips']
+        actual_ips = set(cluster_ips['Slaves'] + [cluster_ips['Master']])
+
+        fixed_ips = {r['ip_address'] for r in self.RESOURCE_POOLS}
+
+        assert actual_ips == fixed_ips
+
+
+@pytest.fixture(scope='module')
+def fixed_ip_2_tier_1_clusters(cfy, tier_2_manager,
+                               attributes, ssh_key, module_tmpdir, logger):
+    """ Yield 2 Tier 1 clusters set up with fixed private IPs """
+
+    clusters = _get_tier_1_clusters(
+        'cfy_manager_fixed_ip',
+        2,
+        FixedIpTier1Cluster,
+        cfy, logger, module_tmpdir, attributes, ssh_key, tier_2_manager
+    )
+
+    yield clusters
+    for cluster in clusters:
+        cluster.cleanup()
+
+
+def _get_tier_1_clusters(resource_id, number_of_deps, cluster_class,
+                         cfy, logger, tmpdir, attributes, ssh_key,
+                         tier_2_manager):
+    clusters = []
+
+    for i in range(number_of_deps):
+        cluster = cluster_class(
+            cfy, tier_2_manager, attributes,
+            ssh_key, logger, tmpdir, suffix=resource_id
+        )
+        cluster.blueprint_id = '{0}_bp'.format(resource_id)
+        cluster.deployment_id = '{0}_dep_{1}'.format(resource_id, i)
+        cluster.blueprint_file = 'blueprint.yaml'
+        clusters.append(cluster)
+
+    return clusters
+
+
