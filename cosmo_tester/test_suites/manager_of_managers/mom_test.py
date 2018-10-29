@@ -546,3 +546,30 @@ def test_tier_1_cluster_inplace_upgrade(fixed_ip_2_tier_1_clusters):
     first_cluster.uninstall()
 
     second_cluster.deploy_and_validate()
+
+
+def test_tier_2_upgrade(floating_ip_2_tier_1_clusters, tier_2_manager,
+                        cfy, tmpdir, logger):
+    local_snapshot_path = str(tmpdir / 'snapshot.zip')
+
+    cfy.snapshots.create([TIER_2_SNAP_ID])
+    tier_2_manager.wait_for_all_executions()
+    cfy.snapshots.download([TIER_2_SNAP_ID, '-o', local_snapshot_path])
+
+    tier_2_manager.teardown()
+    tier_2_manager.bootstrap()
+
+    _upload_resources_to_tier_2_manager(tier_2_manager, logger)
+
+    cfy.snapshots.upload([local_snapshot_path, '-s', TIER_2_SNAP_ID])
+    restore_snapshot(tier_2_manager, TIER_2_SNAP_ID, cfy, logger,
+                     restore_certificates=True)
+
+    # Wait for the tasks that run after the restore execution to finish
+    sleep(20)
+
+    cfy.agents.install()
+
+    # This will only work properly if the Tier 2 manager was restored correctly
+    for cluster in floating_ip_2_tier_1_clusters:
+        cluster.uninstall()
