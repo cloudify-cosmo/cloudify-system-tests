@@ -254,8 +254,8 @@ class AbstractTier1Cluster(AbstractExample):
         )
 
 
-# Using function scope here, in order to have a clean Tier 2 manager each time
-@pytest.fixture(scope='function')
+# Using module scope here, in order to only bootstrap one Tier 2 manager
+@pytest.fixture(scope='module')
 def tier_2_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
     """
     Creates a Tier 2 Cloudify manager with all the necessary resources on it
