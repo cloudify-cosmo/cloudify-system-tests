@@ -43,15 +43,9 @@ OS_201_PLUGIN_YAML_URL = 'http://www.getcloudify.org/spec/openstack-plugin/2.0.1
 
 HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/4.5.zip'  # NOQA
 
-MOM_ID = 'cfy_manager'
-MOM_BP_ID = 'cfy_manager_bp'
-MOM_DEP_ID_1 = 'cfy_manager_dep_1'
-MOM_DEP_ID_2 = 'cfy_manager_dep_2'
-
 TENANT_1 = 'tenant_1'
 TENANT_2 = 'tenant_2'
 
-TIER_1_SNAP_ID = 'snapshot_id'
 TIER_2_SNAP_ID = 'snapshot_id'
 
 INSTALL_RPM_PATH = '/etc/cloudify/cloudify-manager-install.rpm'
@@ -178,10 +172,12 @@ class AbstractTier1Cluster(AbstractExample):
                 ]
             }
         else:
+            # A trick to get the deployment ID of the first cluster
+            old_deployment_id = self.deployment_id.replace('1', '0')
             additional_inputs = {
                 'restore': True,
-                'old_deployment_id': MOM_DEP_ID_1,
-                'snapshot_id': TIER_1_SNAP_ID,
+                'old_deployment_id': old_deployment_id,
+                'snapshot_id': old_deployment_id,
                 # TODO: Test _with_ agents
                 'transfer_agents': False
             }
@@ -204,7 +200,7 @@ class AbstractTier1Cluster(AbstractExample):
         Indicate that this is the initial deployment, as opposed to the second
         one, to which we will upgrade
         """
-        return self.deployment_id == MOM_DEP_ID_1
+        return '0' in self.deployment_id
 
     def upload_blueprint(self):
         # We only want to upload the blueprint once, but create several deps
@@ -249,7 +245,7 @@ class AbstractTier1Cluster(AbstractExample):
         )
 
         backup_params = {
-            'snapshot_id': TIER_1_SNAP_ID,
+            'snapshot_id': self.deployment_id,
             'backup_params': []
         }
         self.cfy.executions.start(
