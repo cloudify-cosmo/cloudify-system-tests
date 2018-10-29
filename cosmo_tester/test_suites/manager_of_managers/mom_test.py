@@ -526,3 +526,23 @@ def test_tier_1_cluster_staged_upgrade(floating_ip_2_tier_1_clusters):
     first_cluster.backup()
 
     second_cluster.deploy_and_validate()
+
+
+def test_tier_1_cluster_inplace_upgrade(fixed_ip_2_tier_1_clusters):
+    """
+    In this scenario the second cluster is created _instead_ of the first one
+    with the same fixed private IPs
+    """
+    first_cluster = fixed_ip_2_tier_1_clusters[0]
+    second_cluster = fixed_ip_2_tier_1_clusters[1]
+
+    # Note that we can't easily validate that resources were created on the
+    # Tier 1 clusters here, because they're using a fixed private IP, which
+    # would not be accessible by a REST client from here. This is why we're
+    # only testing that the upgrade has succeeded, and that the IPs were the
+    # same for both Tier 1 deployments
+    first_cluster.deploy_and_validate()
+    first_cluster.backup()
+    first_cluster.uninstall()
+
+    second_cluster.deploy_and_validate()
