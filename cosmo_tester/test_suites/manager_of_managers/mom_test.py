@@ -512,3 +512,17 @@ def _get_tier_1_clusters(resource_id, number_of_deps, cluster_class,
         clusters.append(cluster)
 
     return clusters
+
+
+def test_tier_1_cluster_staged_upgrade(floating_ip_2_tier_1_clusters):
+    """
+    In this scenario the second cluster is created _alongside_ the first one
+    with different floating IPs
+    """
+    first_cluster = floating_ip_2_tier_1_clusters[0]
+    second_cluster = floating_ip_2_tier_1_clusters[1]
+
+    first_cluster.deploy_and_validate()
+    first_cluster.backup()
+
+    second_cluster.deploy_and_validate()
