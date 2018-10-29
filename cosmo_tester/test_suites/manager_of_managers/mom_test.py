@@ -369,3 +369,146 @@ def _get_tier_1_clusters(resource_id, number_of_deps, cluster_class,
     return clusters
 
 
+class FloatingIpTier1Cluster(AbstractTier1Cluster):
+    def __init__(self, *args, **kwargs):
+        super(FloatingIpTier1Cluster, self).__init__(*args, **kwargs)
+        self._tier_1_client = None
+
+    @property
+    def network_inputs(self):
+        return {
+            # Only relevant when working with the Floating IP paradigm.
+            # See more in floating_ip.yaml
+            'os_floating_network': self.attributes.floating_network_id
+        }
+
+    def _patch_blueprint(self):
+        # We want to import `floating_ip.yaml` instead of
+        # `private_fixed_ip.yaml`, to use the Floating IP paradigm
+        infra_path = str(self._cloned_to / 'include' /
+                         'openstack' / 'infra.yaml')
+        with open(infra_path, 'r') as f:
+            blueprint_dict = yaml.load(f)
+
+        imports = blueprint_dict['imports']
+        imports.remove('private_fixed_ip.yaml')
+        imports.append('floating_ip.yaml')
+        blueprint_dict['imports'] = imports
+
+        with open(infra_path, 'w') as f:
+            yaml.dump(blueprint_dict, f)
+
+    @property
+    def client(self):
+        if not self._tier_1_client:
+            self._tier_1_client = util.create_rest_client(
+                manager_ip=self.master_ip,
+                username=self.attributes.cloudify_username,
+                password=self.attributes.cloudify_password,
+                tenant=self.attributes.cloudify_tenant,
+                protocol='https',
+                cert=self._get_tier_1_cert()
+            )
+
+        return self._tier_1_client
+
+    @property
+    def master_ip(self):
+        return self.outputs['cluster_ips']['Master']
+
+    def _get_tier_1_cert(self):
+        local_cert = str(self.tmpdir / 'ca_cert.pem')
+        self.manager.get_remote_file(
+            self.attributes.LOCAL_REST_CERT_FILE,
+            local_cert,
+            use_sudo=True
+        )
+        return local_cert
+
+    def validate(self):
+        """
+        For Floating IP clusters validation involves creating a REST client
+        to connect to the master manager, and making sure that certain
+        Cloudify resources (tenants, plugins, etc) were created
+        """
+        self._validate_tenants_created()
+        self._validate_blueprints_created()
+        self._validate_secrets_created()
+        self._validate_plugins_created()
+
+    def _validate_tenants_created(self):
+        self.logger.info(
+            'Validating that tenants were created on Tier 1 cluster...'
+        )
+        tenants = self.client.tenants.list(_include=['name'])
+        tenant_names = {t['name'] for t in tenants}
+        assert tenant_names == {DEFAULT_TENANT_NAME, TENANT_1, TENANT_2}
+
+    def _validate_blueprints_created(self):
+        self.logger.info(
+            'Validating that blueprints were created on Tier 1 cluster...'
+        )
+        blueprints = self.client.blueprints.list(
+            _all_tenants=True,
+            _include=['id', 'tenant_name']
+        )
+        blueprint_pairs = {(b['id'], b['tenant_name']) for b in blueprints}
+        assert blueprint_pairs == {
+            (
+                'cloudify-hello-world-example-4.5.no-monitoring-singlehost-blueprint',  # NOQA
+                DEFAULT_TENANT_NAME
+            ),
+            ('second_bp', TENANT_2),
+            ('third_bp', TENANT_1)
+        }
+
+    def _validate_secrets_created(self):
+        self.logger.info(
+            'Validating that secrets were created on Tier 1 cluster...'
+        )
+        secrets = self.client.secrets.list(_all_tenants=True)
+        secrets = {s['key']: s for s in secrets}
+
+        assert set(secrets.keys()) == {SECRET_FILE_KEY, SECRET_STRING_KEY}
+
+        file_secret_value = self.client.secrets.get(SECRET_FILE_KEY)
+        assert file_secret_value.value == PY_SCRIPT
+
+        tenant = secrets[SECRET_STRING_KEY]['tenant_name']
+
+        # Temporarily change the tenant in the REST client, to access a secret
+        # on this tenant
+        with util.set_client_tenant(self, tenant):
+            string_secret_value = self.client.secrets.get(
+                SECRET_STRING_KEY).value
+            assert string_secret_value == SECRET_STRING_VALUE
+
+    def _validate_plugins_created(self):
+        self.logger.info(
+            'Validating that plugins were created on Tier 1 cluster...'
+        )
+
+        plugins = self.client.plugins.list(_all_tenants=True)
+        assert len(plugins) == 1
+
+        plugin = plugins[0]
+        assert plugin.package_name == 'cloudify-openstack-plugin'
+        assert plugin.package_version == '2.0.1'
+        assert plugin['tenant_name'] == TENANT_1
+
+
+@pytest.fixture(scope='module')
+def floating_ip_2_tier_1_clusters(cfy, tier_2_manager,
+                                  attributes, ssh_key, module_tmpdir, logger):
+    """ Yield 2 Tier 1 clusters set up with floating IPs """
+
+    clusters = _get_tier_1_clusters(
+        'cfy_manager_floating_ip',
+        2,
+        FloatingIpTier1Cluster,
+        cfy, logger, module_tmpdir, attributes, ssh_key, tier_2_manager
+    )
+
+    yield clusters
+    for cluster in clusters:
+        cluster.cleanup()
