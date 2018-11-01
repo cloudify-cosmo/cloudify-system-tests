@@ -77,6 +77,8 @@ class AbstractTier1Cluster(AbstractExample):
 
     @property
     def inputs(self):
+        # To see explanations of the following inputs, see
+        # https://github.com/Cloudify-PS/manager-of-managers#blueprint-inputs
         openstack_config = util.get_openstack_config()
 
         device_mapping_config = {
@@ -263,6 +265,7 @@ class AbstractTier1Cluster(AbstractExample):
             'backup', '-d', self.deployment_id,
             '-p', json.dumps(backup_params)
         )
+        self.logger.info('Backup completed successfully')
 
 
 # Using module scope here, in order to only bootstrap one Tier 2 manager
@@ -314,6 +317,7 @@ def _upload_resources_to_tier_2_manager(manager, logger):
             'chown cfyuser:cfyuser {0}'.format(dst_path),
             use_sudo=True
         )
+    logger.info('All permissions granted to `cfyuser`')
 
 
 class FixedIpTier1Cluster(AbstractTier1Cluster):
@@ -337,12 +341,14 @@ class FixedIpTier1Cluster(AbstractTier1Cluster):
         }
 
     def validate(self):
+        self.logger.info('Validating deployment outputs...')
         cluster_ips = self.outputs['cluster_ips']
         actual_ips = set(cluster_ips['Slaves'] + [cluster_ips['Master']])
 
         fixed_ips = {r['ip_address'] for r in self.RESOURCE_POOLS}
 
         assert actual_ips == fixed_ips
+        self.logger.info('Outputs validated successfully')
 
 
 class FloatingIpTier1Cluster(AbstractTier1Cluster):
@@ -419,6 +425,7 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
         tenants = self.client.tenants.list(_include=['name'])
         tenant_names = {t['name'] for t in tenants}
         assert tenant_names == {DEFAULT_TENANT_NAME, TENANT_1, TENANT_2}
+        self.logger.info('Tenants validated successfully')
 
     def _validate_blueprints_created(self):
         self.logger.info(
@@ -437,6 +444,7 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
             ('second_bp', TENANT_2),
             ('third_bp', TENANT_1)
         }
+        self.logger.info('Blueprints validated successfully')
 
     def _validate_secrets_created(self):
         self.logger.info(
@@ -458,6 +466,7 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
             string_secret_value = self.client.secrets.get(
                 SECRET_STRING_KEY).value
             assert string_secret_value == SECRET_STRING_VALUE
+        self.logger.info('Secrets validated successfully')
 
     def _validate_plugins_created(self):
         self.logger.info(
@@ -471,6 +480,7 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
         assert plugin.package_name == 'cloudify-openstack-plugin'
         assert plugin.package_version == '2.0.1'
         assert plugin['tenant_name'] == TENANT_1
+        self.logger.info('Plugins validated successfully')
 
 
 @pytest.fixture(scope='module')
