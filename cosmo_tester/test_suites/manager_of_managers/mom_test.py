@@ -122,7 +122,29 @@ class AbstractTier1Cluster(AbstractExample):
         inputs.update(self.network_inputs)
 
         if self.first_deployment:
-            additional_inputs = {
+            additional_inputs = self._get_additional_resources_inputs()
+        else:
+            additional_inputs = self._get_upgrade_inputs()
+
+        inputs.update(additional_inputs)
+        return inputs
+
+    def _get_upgrade_inputs(self):
+        # A trick to get the deployment ID of the first cluster
+        old_deployment_id = self.deployment_id.replace(
+            SECOND_DEP_INDICATOR,
+            FIRST_DEP_INDICATOR
+        )
+        return {
+                'restore': True,
+                'old_deployment_id': old_deployment_id,
+                'snapshot_id': old_deployment_id,
+                'transfer_agents': False
+            }
+
+    @staticmethod
+    def _get_additional_resources_inputs():
+        return {
                 'tenants': [TENANT_1, TENANT_2],
                 'plugins': [
                     {
@@ -174,19 +196,6 @@ class AbstractTier1Cluster(AbstractExample):
                     }
                 ]
             }
-        else:
-            # A trick to get the deployment ID of the first cluster
-            old_deployment_id = self.deployment_id.replace('1', '0')
-            additional_inputs = {
-                'restore': True,
-                'old_deployment_id': old_deployment_id,
-                'snapshot_id': old_deployment_id,
-                # TODO: Test _with_ agents
-                'transfer_agents': False
-            }
-
-        inputs.update(additional_inputs)
-        return inputs
 
     @property
     def network_inputs(self):
