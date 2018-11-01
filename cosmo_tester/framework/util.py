@@ -38,6 +38,13 @@ import cosmo_tester
 from cosmo_tester import resources
 
 
+OS_USERNAME_ENV = 'OS_USERNAME'
+OS_PASSWORD_ENV = 'OS_PASSWORD'
+OS_TENANT_NAME_ENV = 'OS_TENANT_NAME'
+OS_PROJECT_NAME_ENV = 'OS_PROJECT_NAME'
+OS_AUTH_URL_ENV = 'OS_AUTH_URL'
+
+
 class AttributesDict(dict):
     __getattr__ = dict.__getitem__
 
@@ -97,20 +104,20 @@ def _decrypt_password(password, private_key_path):
 
 def get_openstack_config():
     return {
-        'username': os.environ['OS_USERNAME'],
-        'password': os.environ['OS_PASSWORD'],
-        'tenant_name': os.environ.get('OS_TENANT_NAME',
-                                      os.environ['OS_PROJECT_NAME']),
-        'auth_url': os.environ['OS_AUTH_URL']
+        'username': os.environ[OS_USERNAME_ENV],
+        'password': os.environ[OS_PASSWORD_ENV],
+        'tenant_name': os.environ.get(OS_TENANT_NAME_ENV,
+                                      os.environ[OS_PROJECT_NAME_ENV]),
+        'auth_url': os.environ[OS_AUTH_URL_ENV]
     }
 
 
 def create_openstack_client():
     conn = openstack_connection.Connection(
-            auth_url=os.environ['OS_AUTH_URL'],
-            project_name=os.environ['OS_PROJECT_NAME'],
-            username=os.environ['OS_USERNAME'],
-            password=os.environ['OS_PASSWORD'])
+            auth_url=os.environ[OS_AUTH_URL_ENV],
+            project_name=os.environ[OS_PROJECT_NAME_ENV],
+            username=os.environ[OS_USERNAME_ENV],
+            password=os.environ[OS_PASSWORD_ENV])
     return conn
 
 

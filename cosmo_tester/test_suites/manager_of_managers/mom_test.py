@@ -46,6 +46,9 @@ HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-exampl
 TENANT_1 = 'tenant_1'
 TENANT_2 = 'tenant_2'
 
+FIRST_DEP_INDICATOR = '0'
+SECOND_DEP_INDICATOR = '1'
+
 TIER_2_SNAP_ID = 'snapshot_id'
 
 INSTALL_RPM_PATH = '/etc/cloudify/cloudify-manager-install.rpm'
@@ -200,7 +203,7 @@ class AbstractTier1Cluster(AbstractExample):
         Indicate that this is the initial deployment, as opposed to the second
         one, to which we will upgrade
         """
-        return '0' in self.deployment_id
+        return FIRST_DEP_INDICATOR in self.deployment_id
 
     def upload_blueprint(self):
         # We only want to upload the blueprint once, but create several deps
