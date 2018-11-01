@@ -150,9 +150,6 @@ def test_multiple_networks(managers,
     upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(new_manager, snapshot_id, cfy, logger)
 
-    # wait a while to allow the restore-snapshot post-workflow commands to run
-    time.sleep(30)
-
     upgrade_agents(cfy, new_manager, logger)
     delete_manager(old_manager, logger)
 

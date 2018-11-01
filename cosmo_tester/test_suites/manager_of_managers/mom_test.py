@@ -16,7 +16,6 @@
 import os
 import json
 import yaml
-from time import sleep
 
 import pytest
 
@@ -576,9 +575,6 @@ def test_tier_2_upgrade(floating_ip_2_tier_1_clusters, tier_2_manager,
     cfy.snapshots.upload([local_snapshot_path, '-s', TIER_2_SNAP_ID])
     restore_snapshot(tier_2_manager, TIER_2_SNAP_ID, cfy, logger,
                      restore_certificates=True)
-
-    # Wait for the tasks that run after the restore execution to finish
-    sleep(20)
 
     cfy.agents.install()
 
