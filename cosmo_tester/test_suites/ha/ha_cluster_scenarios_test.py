@@ -244,14 +244,12 @@ def test_uninstall_dep(cfy, hosts, ha_hello_worlds,
 
 def test_heal_after_failover(cfy, hosts, ha_hello_worlds, logger):
     manager1 = hosts.instances[0]
-    ha_helper.delete_active_profile()
     manager1.use()
     ha_helper.verify_nodes_status(manager1, cfy, logger)
     _test_hellos(ha_hello_worlds, install=True)
 
     manager2 = hosts.instances[-1]
     ha_helper.set_active(manager2, cfy, logger)
-    ha_helper.delete_active_profile()
     manager2.use()
 
     # The tricky part we're validating here is that the agent install script
