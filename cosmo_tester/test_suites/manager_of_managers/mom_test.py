@@ -23,6 +23,9 @@ from cosmo_tester.test_suites.snapshots import restore_snapshot
 from . import constants
 from .tier_1_clusters import FloatingIpTier1Cluster, FixedIpTier1Cluster
 
+# Important - the MoM plugin is currently only compiled for Centos, so it's
+# necessary to run these system tests on Centos as well
+
 
 # Using module scope here, in order to only bootstrap one Tier 2 manager
 @pytest.fixture(scope='module')
