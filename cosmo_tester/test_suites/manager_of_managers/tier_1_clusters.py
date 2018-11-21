@@ -242,6 +242,29 @@ class AbstractTier1Cluster(AbstractExample):
         )
         self.logger.info('Backup completed successfully')
 
+    def execute_hello_world_workflow(self, workflow_id):
+        self.logger.info(
+            'Executing workflow {0} on deployment {1} '
+            'on a Tier 1 cluster...'.format(workflow_id,
+                                            constants.HELLO_WORLD_DEP)
+        )
+        workflow_params = {
+            'workflow_id': workflow_id,
+            'deployment_id': constants.HELLO_WORLD_DEP,
+            'tenant_name': constants.TENANT_1
+        }
+
+        self.cfy.executions.start([
+            'execute_workflow',
+            '-d', self.deployment_id,
+            '-p', json.dumps(workflow_params)
+        ])
+        self.logger.info(
+            'Successfully executed workflow {0} on deployment {1} '
+            'on a Tier 1 cluster'.format(workflow_id,
+                                         constants.HELLO_WORLD_DEP)
+        )
+
 
 class FixedIpTier1Cluster(AbstractTier1Cluster):
     RESOURCE_POOLS = [
