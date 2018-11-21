@@ -68,6 +68,21 @@ class AbstractTier1Cluster(AbstractExample):
 
             'num_of_instances': 2,
 
+            # We're uploading the private SSH key and OS config from
+            # the Tier 2 manager to the Tier 1 managers, to be used later
+            # in the bash script (see SCRIPT_SH in constants)
+            'files': [
+                {
+                    'src': constants.REMOTE_PRIVATE_KEY_PATH,
+                    'dst': constants.SSH_KEY_TMP_PATH
+                },
+                {
+                    'src': constants.REMOTE_OPENSTACK_CONFIG_PATH,
+                    'dst': constants.OS_CONFIG_TMP_PATH
+                }
+            ],
+            'scripts': [constants.SCRIPT_SH_PATH, constants.SCRIPT_PY_PATH],
+
             # Config in the same format as config.yaml
             # Skipping sanity to save time
             'additional_config': {'sanity': {'skip_sanity': True}}
