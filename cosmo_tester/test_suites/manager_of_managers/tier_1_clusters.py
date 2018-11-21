@@ -111,8 +111,7 @@ class AbstractTier1Cluster(AbstractExample):
                 'transfer_agents': False
             }
 
-    @staticmethod
-    def _get_additional_resources_inputs():
+    def _get_additional_resources_inputs(self):
         return {
                 'tenants': [constants.TENANT_1, constants.TENANT_2],
                 'plugins': [
@@ -153,16 +152,23 @@ class AbstractTier1Cluster(AbstractExample):
                         'visibility': 'global'
                     }
                 ],
-                'scripts': [constants.SCRIPT_SH_PATH,
-                            constants.SCRIPT_PY_PATH],
-                'files': [
+                'deployments': [
                     {
-                        'src': constants.PLUGIN_YAML_PATH,
-                        'dst': '/tmp/plugin.yaml'
-                    },
-                    {
-                        'src': constants.SCRIPT_PY_PATH,
-                        'dst': '/tmp/script.py'
+                        'deployment_id': constants.HELLO_WORLD_DEP,
+                        'blueprint_id': constants.HELLO_WORLD_BP,
+                        'tenant': constants.TENANT_1,
+                        'inputs': {
+                            'key_pair_name': self.attributes.keypair_name,
+                            'floating_network_id':
+                                self.attributes.floating_network_id,
+                            'agent_user':
+                                self.attributes.default_linux_username,
+                            'private_key_path':
+                                self.manager.remote_private_key_path,
+                            'image': self.attributes.default_linux_image_id,
+                            'network_name': self.attributes.network_name,
+                            'flavor': self.attributes.small_flavor_name
+                        }
                     }
                 ]
             }
