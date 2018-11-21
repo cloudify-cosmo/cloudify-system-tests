@@ -146,9 +146,17 @@ def test_tier_1_cluster_staged_upgrade(floating_ip_2_tier_1_clusters):
     second_cluster = floating_ip_2_tier_1_clusters[1]
 
     first_cluster.deploy_and_validate()
+
+    # Install hello world deployment on Tier 1 cluster
+    first_cluster.execute_hello_world_workflow('install')
+
     first_cluster.backup()
 
-    second_cluster.deploy_and_validate()
+    try:
+        second_cluster.deploy_and_validate()
+    finally:
+        # Uninstall hello world deployment from Tier 1 cluster
+        second_cluster.execute_hello_world_workflow('uninstall')
 
 
 def test_tier_1_cluster_inplace_upgrade(fixed_ip_2_tier_1_clusters):
