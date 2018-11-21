@@ -361,6 +361,7 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
         """
         self._validate_tenants_created()
         self._validate_blueprints_created()
+        self._validate_deployments_created()
         self._validate_secrets_created()
         self._validate_plugins_created()
 
@@ -393,6 +394,21 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
             (constants.HELLO_WORLD_BP, constants.TENANT_1)
         }
         self.logger.info('Blueprints validated successfully')
+
+    def _validate_deployments_created(self):
+        self.logger.info(
+            'Validating that deployments were created on Tier 1 cluster...'
+        )
+        deployments = self.client.deployments.list(
+            _all_tenants=True,
+            _include=['id', 'blueprint_id']
+        )
+        assert len(deployments) == 1
+        deployment = deployments[0]
+        assert deployment.id == constants.HELLO_WORLD_DEP
+        assert deployment.blueprint_id == constants.HELLO_WORLD_BP
+
+        self.logger.info('Deployments validated successfully')
 
     def _validate_secrets_created(self):
         self.logger.info(
