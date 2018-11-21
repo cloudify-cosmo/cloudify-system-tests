@@ -13,7 +13,12 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-MOM_PLUGIN_VERSION = '1.5.6'
+from cosmo_tester.framework.test_hosts import (
+    REMOTE_OPENSTACK_CONFIG_PATH,
+    REMOTE_PRIVATE_KEY_PATH
+)
+
+MOM_PLUGIN_VERSION = '2.0.1'
 MOM_PLUGIN_WGN_URL = 'https://github.com/Cloudify-PS/manager-of-managers/releases/download/v{0}/cloudify_manager_of_managers-{0}-py27-none-linux_x86_64.wgn'.format(MOM_PLUGIN_VERSION)  # NOQA
 MOM_PLUGIN_YAML_URL = 'https://github.com/Cloudify-PS/manager-of-managers/releases/download/v{0}/cmom_plugin.yaml'.format(MOM_PLUGIN_VERSION)  # NOQA
 
@@ -60,9 +65,23 @@ BLUEPRINT_ZIP_PATH = '/etc/cloudify/cloudify-hello-world-example.zip'
 SCRIPT_SH_PATH = '/etc/cloudify/script_1.sh'
 SCRIPT_PY_PATH = '/etc/cloudify/script_2.py'
 
+SSH_KEY_TMP_PATH = '/tmp/ssh_key'
+OS_CONFIG_TMP_PATH = '/tmp/openstack_config.json'
+
 SH_SCRIPT = '''#!/usr/bin/env bash
-echo "Running a bash script!"
-'''
+echo "Moving the SSH key..."
+sudo cp {tmp_ssh_key_path} {ssh_key_path}
+sudo chown cfyuser: {ssh_key_path}
+
+echo "Moving the OS config..."
+sudo cp {tmp_os_config_path} {os_config_path}
+sudo chown cfyuser: {os_config_path}
+'''.format(
+    tmp_ssh_key_path=SSH_KEY_TMP_PATH,
+    ssh_key_path=REMOTE_PRIVATE_KEY_PATH,
+    tmp_os_config_path=OS_CONFIG_TMP_PATH,
+    os_config_path=REMOTE_OPENSTACK_CONFIG_PATH
+)
 
 PY_SCRIPT = '''#!/usr/bin/env python
 print 'Running a python script!'
