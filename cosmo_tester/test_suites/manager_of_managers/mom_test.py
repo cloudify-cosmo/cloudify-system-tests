@@ -39,17 +39,21 @@ def tier_2_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
         hosts.create()
         manager = hosts.instances[0]
         manager.use()
-        _upload_resources_to_tier_2_manager(manager, logger)
+        _upload_resources_to_tier_2_manager(cfy, manager, logger)
         yield manager
     finally:
         hosts.destroy()
 
 
-def _upload_resources_to_tier_2_manager(manager, logger):
-    manager.client.plugins.upload(constants.MOM_PLUGIN_WGN_URL,
-                                  constants.MOM_PLUGIN_YAML_URL)
-    manager.client.plugins.upload(constants.OS_PLUGIN_WGN_URL,
-                                  constants.OS_PLUGIN_YAML_URL)
+def _upload_resources_to_tier_2_manager(cfy, manager, logger):
+    cfy.plugins.upload(
+        constants.MOM_PLUGIN_WGN_URL,
+        '-y', constants.MOM_PLUGIN_YAML_URL
+    )
+    cfy.plugins.upload(
+        constants.OS_PLUGIN_WGN_URL,
+        '-y', constants.OS_PLUGIN_YAML_URL
+    )
 
     files_to_download = [
         (util.get_manager_install_rpm_url(), constants.INSTALL_RPM_PATH),
@@ -179,8 +183,9 @@ def test_tier_2_upgrade(floating_ip_2_tier_1_clusters, tier_2_manager,
 
     tier_2_manager.teardown()
     tier_2_manager.bootstrap()
+    tier_2_manager.use()
 
-    _upload_resources_to_tier_2_manager(tier_2_manager, logger)
+    _upload_resources_to_tier_2_manager(cfy, tier_2_manager, logger)
 
     cfy.snapshots.upload([local_snapshot_path, '-s', constants.TIER_2_SNAP_ID])
     restore_snapshot(tier_2_manager, constants.TIER_2_SNAP_ID, cfy, logger,
