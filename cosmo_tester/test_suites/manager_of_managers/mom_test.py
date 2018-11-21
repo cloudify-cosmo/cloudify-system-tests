@@ -57,8 +57,8 @@ def _upload_resources_to_tier_2_manager(cfy, manager, logger):
 
     files_to_download = [
         (util.get_manager_install_rpm_url(), constants.INSTALL_RPM_PATH),
-        (constants.OS_201_PLUGIN_WGN_URL, constants.PLUGIN_WGN_PATH),
-        (constants.OS_201_PLUGIN_YAML_URL, constants.PLUGIN_YAML_PATH),
+        (constants.HW_OS_PLUGIN_WGN_URL, constants.HW_OS_PLUGIN_WGN_PATH),
+        (constants.HW_OS_PLUGIN_YAML_URL, constants.HW_OS_PLUGIN_YAML_PATH),
         (constants.HELLO_WORLD_URL, constants.BLUEPRINT_ZIP_PATH)
     ]
     files_to_create = [

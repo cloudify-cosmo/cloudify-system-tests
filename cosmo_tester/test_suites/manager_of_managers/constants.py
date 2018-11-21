@@ -36,6 +36,8 @@ HW_OS_PLUGIN_WGN_URL = OS_WGN_URL_TEMPLATE.format(HW_OS_PLUGIN_VERSION,
 HW_OS_PLUGIN_YAML_URL = OS_YAML_URL_TEMPLATE.format(HW_OS_PLUGIN_VERSION)
 
 HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/4.5.zip'  # NOQA
+HELLO_WORLD_BP = 'hello_world_bp'
+HELLO_WORLD_DEP = 'hello_world_dep'
 
 TENANT_1 = 'tenant_1'
 TENANT_2 = 'tenant_2'

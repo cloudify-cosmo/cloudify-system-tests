@@ -102,8 +102,8 @@ class AbstractTier1Cluster(AbstractExample):
                 'tenants': [constants.TENANT_1, constants.TENANT_2],
                 'plugins': [
                     {
-                        'wagon': constants.PLUGIN_WGN_PATH,
-                        'yaml': constants.PLUGIN_YAML_PATH,
+                        'wagon': constants.HW_OS_PLUGIN_WGN_PATH,
+                        'yaml': constants.HW_OS_PLUGIN_YAML_PATH,
                         'tenant': constants.TENANT_1
                     }
                 ],
@@ -132,7 +132,7 @@ class AbstractTier1Cluster(AbstractExample):
                     },
                     {
                         'path': constants.BLUEPRINT_ZIP_PATH,
-                        'id': 'third_bp',
+                        'id': constants.HELLO_WORLD_BP,
                         'filename': 'openstack-blueprint.yaml',
                         'tenant': constants.TENANT_1,
                         'visibility': 'global'
@@ -346,7 +346,7 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
                 DEFAULT_TENANT_NAME
             ),
             ('second_bp', constants.TENANT_2),
-            ('third_bp', constants.TENANT_1)
+            (constants.HELLO_WORLD_BP, constants.TENANT_1)
         }
         self.logger.info('Blueprints validated successfully')
 
