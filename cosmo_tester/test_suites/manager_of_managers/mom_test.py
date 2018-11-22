@@ -189,6 +189,10 @@ def test_tier_1_cluster_inplace_upgrade(fixed_ip_2_tier_1_clusters):
 
 def test_tier_2_upgrade(floating_ip_2_tier_1_clusters, tier_2_manager,
                         cfy, tmpdir, logger):
+    # ** Important ** this test uses the fixture floating_ip_2_tier_1_clusters
+    # and expects it to already exist and be installed, so when run alone,
+    # this test is expected to fail. It will succeed only if the whole
+    # module is executed (as it relies on test_tier_1_cluster_staged_upgrade)
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     cfy.snapshots.create([constants.TIER_2_SNAP_ID])
