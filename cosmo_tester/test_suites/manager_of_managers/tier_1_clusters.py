@@ -423,9 +423,9 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
 
         expected_set = {constants.SECRET_FILE_KEY, constants.SECRET_STRING_KEY}
 
-        # We test `in` instead of `==` because during upgrade we add
-        # secrets for ssh key content
-        assert expected_set in set(secrets.keys())
+        # During upgrade we add secrets for ssh keys, so the actual set might
+        # not be equal exactly, but may contain extra values
+        assert set(secrets.keys()).issuperset(expected_set)
 
         file_secret_value = self.client.secrets.get(constants.SECRET_FILE_KEY)
         assert file_secret_value.value == constants.PY_SCRIPT
