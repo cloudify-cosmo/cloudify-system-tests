@@ -27,6 +27,7 @@ from . import constants
 
 class AbstractTier1Cluster(AbstractExample):
     REPOSITORY_URL = 'https://github.com/Cloudify-PS/manager-of-managers.git'  # NOQA
+    TRANSFER_AGENTS = None
 
     @property
     def inputs(self):
@@ -108,7 +109,7 @@ class AbstractTier1Cluster(AbstractExample):
                 'restore': True,
                 'old_deployment_id': old_deployment_id,
                 'snapshot_id': old_deployment_id,
-                'transfer_agents': False
+                'transfer_agents': self.TRANSFER_AGENTS
             }
 
     def _get_additional_resources_inputs(self):
@@ -267,6 +268,7 @@ class AbstractTier1Cluster(AbstractExample):
 
 
 class FixedIpTier1Cluster(AbstractTier1Cluster):
+    TRANSFER_AGENTS = False
     RESOURCE_POOLS = [
         {
             'ip_address': '10.0.0.11',
@@ -298,6 +300,8 @@ class FixedIpTier1Cluster(AbstractTier1Cluster):
 
 
 class FloatingIpTier1Cluster(AbstractTier1Cluster):
+    TRANSFER_AGENTS = True
+
     def __init__(self, *args, **kwargs):
         super(FloatingIpTier1Cluster, self).__init__(*args, **kwargs)
         self._tier_1_client = None
