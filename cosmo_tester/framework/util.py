@@ -25,6 +25,7 @@ import requests
 import retrying
 import yaml
 import errno
+import platform
 from os import makedirs
 
 from openstack import connection as openstack_connection
@@ -454,3 +455,7 @@ def mkdirs(folder_path):
             pass
         else:
             raise
+
+
+def is_redhat():
+    return 'redhat' in platform.platform()

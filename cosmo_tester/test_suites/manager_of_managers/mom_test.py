@@ -23,9 +23,6 @@ from cosmo_tester.test_suites.snapshots import restore_snapshot
 from . import constants
 from .tier_1_clusters import FloatingIpTier1Cluster, FixedIpTier1Cluster
 
-# Important - the MoM plugin is currently only compiled for Centos, so it's
-# necessary to run these system tests on Centos as well
-
 
 # Using module scope here, in order to only bootstrap one Tier 2 manager
 @pytest.fixture(scope='module')
@@ -137,6 +134,11 @@ def _get_tier_1_clusters(resource_id, number_of_deps, cluster_class,
     return clusters
 
 
+@pytest.mark.skipif(util.is_redhat(),
+                    reason='MoM plugin is only available on Centos')
+@pytest.mark.skipif(util.is_community(),
+                    reason='Cloudify Community version does '
+                           'not support clustering')
 def test_tier_1_cluster_staged_upgrade(floating_ip_2_tier_1_clusters):
     """
     In this scenario the second cluster is created _alongside_ the first one
@@ -159,6 +161,11 @@ def test_tier_1_cluster_staged_upgrade(floating_ip_2_tier_1_clusters):
         second_cluster.execute_hello_world_workflow('uninstall')
 
 
+@pytest.mark.skipif(util.is_redhat(),
+                    reason='MoM plugin is only available on Centos')
+@pytest.mark.skipif(util.is_community(),
+                    reason='Cloudify Community version does '
+                           'not support clustering')
 def test_tier_1_cluster_inplace_upgrade(fixed_ip_2_tier_1_clusters):
     """
     In this scenario the second cluster is created _instead_ of the first one
@@ -187,6 +194,11 @@ def test_tier_1_cluster_inplace_upgrade(fixed_ip_2_tier_1_clusters):
         second_cluster.execute_hello_world_workflow('uninstall')
 
 
+@pytest.mark.skipif(util.is_redhat(),
+                    reason='MoM plugin is only available on Centos')
+@pytest.mark.skipif(util.is_community(),
+                    reason='Cloudify Community version does '
+                           'not support clustering')
 def test_tier_2_upgrade(floating_ip_2_tier_1_clusters, tier_2_manager,
                         cfy, tmpdir, logger):
     # ** Important ** this test uses the fixture floating_ip_2_tier_1_clusters
