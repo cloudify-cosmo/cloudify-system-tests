@@ -450,6 +450,6 @@ class FloatingIpTier1Cluster(AbstractTier1Cluster):
 
         plugin = plugins[0]
         assert plugin.package_name == 'cloudify-openstack-plugin'
-        assert plugin.package_version == '2.0.1'
+        assert plugin.package_version == constants.HW_OS_PLUGIN_VERSION
         assert plugin['tenant_name'] == constants.TENANT_1
         self.logger.info('Plugins validated successfully')
