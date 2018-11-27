@@ -24,22 +24,28 @@ from . import constants
 from .tier_1_clusters import FloatingIpTier1Cluster, FixedIpTier1Cluster
 
 
+fixed_ip_clusters = []
+floating_ip_clusters = []
+
+tier_2_hosts = None
+
+
 # Using module scope here, in order to only bootstrap one Tier 2 manager
 @pytest.fixture(scope='module')
 def tier_2_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
     """
     Creates a Tier 2 Cloudify manager with all the necessary resources on it
     """
-    hosts = TestHosts(
+    global tier_2_hosts
+    tier_2_hosts = TestHosts(
             cfy, ssh_key, module_tmpdir, attributes, logger)
-    try:
-        hosts.create()
-        manager = hosts.instances[0]
-        manager.use()
-        _upload_resources_to_tier_2_manager(cfy, manager, logger)
-        yield manager
-    finally:
-        hosts.destroy()
+    tier_2_hosts.create()
+    manager = tier_2_hosts.instances[0]
+    manager.use()
+    _upload_resources_to_tier_2_manager(cfy, manager, logger)
+    yield manager
+
+    # We don't need to teardown - this is handled by `teardown_module`
 
 
 def _upload_resources_to_tier_2_manager(cfy, manager, logger):
@@ -87,16 +93,18 @@ def floating_ip_2_tier_1_clusters(cfy, tier_2_manager,
                                   attributes, ssh_key, module_tmpdir, logger):
     """ Yield 2 Tier 1 clusters set up with floating IPs """
 
-    clusters = _get_tier_1_clusters(
-        'cfy_manager_floating_ip',
-        2,
-        FloatingIpTier1Cluster,
-        cfy, logger, module_tmpdir, attributes, ssh_key, tier_2_manager
-    )
+    global floating_ip_clusters
+    if not floating_ip_clusters:
+        floating_ip_clusters = _get_tier_1_clusters(
+            'cfy_manager_floating_ip',
+            2,
+            FloatingIpTier1Cluster,
+            cfy, logger, module_tmpdir, attributes, ssh_key, tier_2_manager
+        )
 
-    yield clusters
-    for cluster in clusters:
-        cluster.cleanup()
+    yield floating_ip_clusters
+
+    # We don't need to teardown - this is handled by `teardown_module`
 
 
 @pytest.fixture(scope='module')
@@ -104,16 +112,18 @@ def fixed_ip_2_tier_1_clusters(cfy, tier_2_manager,
                                attributes, ssh_key, module_tmpdir, logger):
     """ Yield 2 Tier 1 clusters set up with fixed private IPs """
 
-    clusters = _get_tier_1_clusters(
-        'cfy_manager_fixed_ip',
-        2,
-        FixedIpTier1Cluster,
-        cfy, logger, module_tmpdir, attributes, ssh_key, tier_2_manager
-    )
+    global fixed_ip_clusters
+    if not fixed_ip_clusters:
+        fixed_ip_clusters = _get_tier_1_clusters(
+            'cfy_manager_fixed_ip',
+            2,
+            FixedIpTier1Cluster,
+            cfy, logger, module_tmpdir, attributes, ssh_key, tier_2_manager
+        )
 
-    yield clusters
-    for cluster in clusters:
-        cluster.cleanup()
+    yield fixed_ip_clusters
+
+    # We don't need to teardown - this is handled by `teardown_module`
 
 
 def _get_tier_1_clusters(resource_id, number_of_deps, cluster_class,
@@ -201,11 +211,10 @@ def test_tier_1_cluster_inplace_upgrade(fixed_ip_2_tier_1_clusters):
                            'not support clustering')
 def test_tier_2_upgrade(floating_ip_2_tier_1_clusters, tier_2_manager,
                         cfy, tmpdir, logger):
-    # ** Important ** this test uses the fixture floating_ip_2_tier_1_clusters
-    # and expects it to already exist and be installed, so when run alone,
-    # this test is expected to fail. It will succeed only if the whole
-    # module is executed (as it relies on test_tier_1_cluster_staged_upgrade)
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
+
+    tier_1_cluster = floating_ip_2_tier_1_clusters[0]
+    tier_1_cluster.deploy_and_validate()
 
     cfy.snapshots.create([constants.TIER_2_SNAP_ID])
     tier_2_manager.wait_for_all_executions()
@@ -226,5 +235,19 @@ def test_tier_2_upgrade(floating_ip_2_tier_1_clusters, tier_2_manager,
     cfy.agents.install()
 
     # This will only work properly if the Tier 2 manager was restored correctly
-    for cluster in floating_ip_2_tier_1_clusters:
-        cluster.uninstall()
+    tier_1_cluster.uninstall()
+
+
+def teardown_module():
+    """
+    First destroy any Tier 1 clusters, then destroy the Tier 2 manager.
+    Using `teardown_module` because we want to create only a single instance
+    of a Tier 2 manager, as well as the Floating IP Tier 1 cluster, no matter
+    whether we run a single test or a whole module.
+    """
+    if floating_ip_clusters:
+        for cluster in floating_ip_clusters:
+            cluster.cleanup()
+
+    if tier_2_hosts:
+        tier_2_hosts.destroy()
