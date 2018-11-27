@@ -29,6 +29,10 @@ class AbstractTier1Cluster(AbstractExample):
     REPOSITORY_URL = 'https://github.com/Cloudify-PS/manager-of-managers.git'  # NOQA
     TRANSFER_AGENTS = None
 
+    def __init__(self, *args, **kwargs):
+        super(AbstractTier1Cluster, self).__init__(*args, **kwargs)
+        self._deployed = False
+
     @property
     def inputs(self):
         # To see explanations of the following inputs, see
@@ -218,11 +222,15 @@ class AbstractTier1Cluster(AbstractExample):
                 assert tier_1_manager[check] == 'OK'
 
     def deploy_and_validate(self):
+        if self._deployed:
+            self.logger.info('Tier 1 cluster was already deployed')
+            return
         self.logger.info(
             'Deploying Tier 1 cluster on deployment: {0}'.format(
                 self.deployment_id
             )
         )
+        self._deployed = True
         self.upload_and_verify_install()
         self.validate()
 
