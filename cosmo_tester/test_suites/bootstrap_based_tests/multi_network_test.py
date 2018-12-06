@@ -147,7 +147,8 @@ def test_multiple_networks(managers,
     new_manager.use()
 
     upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
-    restore_snapshot(new_manager, snapshot_id, cfy, logger)
+    restore_snapshot(new_manager, snapshot_id, cfy, logger,
+                     change_password=False)
 
     upgrade_agents(cfy, new_manager, logger)
     delete_manager(old_manager, logger)
@@ -163,12 +164,12 @@ def test_multiple_networks(managers,
 
 @pytest.mark.skipif(is_community(), reason='Cloudify Community version does '
                                            'not support clustering')
-def test_multiple_networks_cluster(cluster_managers,
-                                   cfy,
-                                   multi_network_cluster_hello_worlds,
-                                   logger,
-                                   tmpdir,
-                                   attributes):
+def _test_multiple_networks_cluster(cluster_managers,
+                                    cfy,
+                                    multi_network_cluster_hello_worlds,
+                                    logger,
+                                    tmpdir,
+                                    attributes):
     logger.info('Testing cluster with multiple networks')
     ha_helper.setup_cluster(cluster_managers, cfy, logger)
     manager1, manager2 = cluster_managers
