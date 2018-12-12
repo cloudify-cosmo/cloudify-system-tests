@@ -21,7 +21,7 @@ from requests.exceptions import ConnectionError
 from cloudify_rest_client.exceptions import CloudifyClientError
 
 
-def set_active(manager, cfy, logger, ignore_node_host_ip=None):
+def set_active(manager, cfy, logger):
     try:
         logger.info('Setting active manager %s',
                     manager.ip_address)
@@ -29,8 +29,7 @@ def set_active(manager, cfy, logger, ignore_node_host_ip=None):
     except Exception as e:
         logger.info('Setting active manager error message: %s', e.message)
     finally:
-        wait_nodes_online([manager], logger,
-                          ignore_node_host_ip=ignore_node_host_ip)
+        wait_nodes_online([manager], logger)
 
 
 def wait_leader_election(managers, logger):
@@ -46,17 +45,16 @@ def wait_leader_election(managers, logger):
     _wait_cluster_status(_is_there_a_leader, managers, logger)
 
 
-def wait_nodes_online(managers, logger, ignore_node_host_ip=None):
+def wait_nodes_online(managers, logger):
     """Wait until all of the cluster nodes are online"""
     def _all_nodes_online(nodes):
         return all(node['online'] for node in nodes)
     logger.info('Waiting for all nodes to be online...')
-    _wait_cluster_status(_all_nodes_online, managers, logger,
-                         ignore_node_host_ip=ignore_node_host_ip)
+    _wait_cluster_status(_all_nodes_online, managers, logger)
 
 
 def _wait_cluster_status(predicate, managers, logger, timeout=150,
-                         poll_interval=1, ignore_node_host_ip=None):
+                         poll_interval=1):
     """Wait until the cluster is in a state decided by predicate
 
     :param predicate: a function deciding if the cluster is in the desired
@@ -66,18 +64,12 @@ def _wait_cluster_status(predicate, managers, logger, timeout=150,
     :param logger: The logger to use
     :param timeout: How long to wait for leader election
     :param poll_interval: Interval to wait between requests
-    :param ignore_node_host_ip: Node to ignore while waiting for status
     """
     deadline = time.time() + timeout
     while time.time() < deadline:
         for manager in managers:
             try:
                 nodes = manager.client.cluster.nodes.list()
-                if ignore_node_host_ip:
-                    for node in nodes:
-                        if node['host_ip'] == ignore_node_host_ip:
-                            nodes.items.remove(node)
-                            break
                 if predicate(nodes):
                     return
             except (ConnectionError, CloudifyClientError):

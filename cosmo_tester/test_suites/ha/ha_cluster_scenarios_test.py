@@ -182,10 +182,8 @@ def test_failover(cfy, hosts, ha_hello_worlds, logger):
 
 
 def test_remove_manager_from_cluster(cfy, hosts, ha_hello_worlds, logger,
-                                     ignore_node_host_ip=None,
                                      delete_profile=True):
-    ha_helper.set_active(hosts.instances[1], cfy, logger,
-                         ignore_node_host_ip=ignore_node_host_ip)
+    ha_helper.set_active(hosts.instances[1], cfy, logger)
     if delete_profile:
         ha_helper.delete_active_profile()
 

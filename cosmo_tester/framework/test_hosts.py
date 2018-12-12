@@ -859,7 +859,6 @@ class TestHosts(object):
                 'Error creating image based hosts: %s', e)
             try:
                 self.destroy()
-                pass
             except sh.ErrorReturnCode as ex:
                 self._logger.error('Error on terraform destroy: %s', ex)
             raise
@@ -1016,6 +1015,13 @@ class DistributedInstallationCloudifyManager(TestHosts):
         for manager in self.instances:
             manager.image_name = self._attributes.default_linux_image_name
 
+        self.database = self.instances[0]
+        self.manager = self.instances[1]
+        if cluster:
+            self.joining_managers = self.instances[2:4]
+        if sanity:
+            self.sanity_manager = self.instances[4]
+
         # CA certificates
         self.ca_cert_path = str(os.path.join(self._tmpdir, 'root.crt'))
         self.ca_key_path = str(os.path.join(self._tmpdir, 'root.key'))
@@ -1029,22 +1035,6 @@ class DistributedInstallationCloudifyManager(TestHosts):
                                                      'postgresql.crt'))
         self.postgresql_key_path = str(os.path.join(self._tmpdir,
                                                     'postgresql.key'))
-
-    @property
-    def database(self):
-        return self.instances[0]
-
-    @property
-    def manager(self):
-        return self.instances[1]
-
-    @property
-    def joining_managers(self):
-        return self.instances[2:4]
-
-    @property
-    def sanity_manager(self):
-        return self.instances[4]
 
     def _create_ssl_certificates_on_instances(self):
         # Generating ROOT CA certificate
@@ -1074,7 +1064,8 @@ class DistributedInstallationCloudifyManager(TestHosts):
 
         # Generating client certificates for every client instance
         certificates_files_to_copy = []
-        for instance in self.instances[1:]:
+        cluster_instances = [self.manager] + self.joining_managers
+        for instance in cluster_instances:
             cert_path, key_path = util.generate_ssl_certificate(
                 [instance.private_ip_address],
                 instance.private_ip_address,
@@ -1119,7 +1110,8 @@ class DistributedInstallationCloudifyManager(TestHosts):
             (self.server_cert_path, '/tmp/server.crt'),
             (self.server_key_path, '/tmp/server.key')
         ]
-        for instance in self.instances:
+        cluster_instances += [self.database]
+        for instance in cluster_instances:
             for src, dst in certificates_files_to_copy:
                 instance.put_remote_file(dst, src)
 
