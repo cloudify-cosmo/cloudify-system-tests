@@ -120,6 +120,7 @@ def prepared_manager(manager, cfy, logger):
             try:
                 if tenant != 'default_tenant':
                     manager.client.tenants.create(tenant)
+                    break
             except CloudifyClientError:
                 time.sleep(2)
 
@@ -259,14 +260,18 @@ def test_basic_summary_deployments(prepared_manager):
     )
 
 
-def test_basic_summary_executions(prepared_manager):
+@pytest.mark.parametrize("target_field, value", [
+    ("status", "terminated"),
+    ("status_display", "completed")
+])
+def test_basic_summary_executions(prepared_manager, target_field, value):
     results = _sort_summary(prepared_manager.client.summary.executions.get(
-        _target_field='status',
-    ).items, sort_key='status')
+        _target_field=target_field,
+    ).items, sort_key=target_field)
 
     expected = _sort_summary([
-        {u'executions': 12, u'status': u'terminated'},
-    ], sort_key='status')
+        {u'executions': 12, u'{0}'.format(target_field): u'{0}'.format(value)},
+    ], sort_key=target_field)
 
     assert results == expected, (
         '{0} != {1}'.format(results, expected)
