@@ -867,7 +867,7 @@ def test_cli_nodes_summary_subfield_non_json(prepared_manager, cfy):
 def test_cli_node_instances_summary(prepared_manager, cfy):
     prepared_manager.use()
     results = json.loads(
-        cfy.node_instances.summary('node_id', '--json').stdout
+        cfy('node-instances', 'summary', 'node_id', '--json').stdout
     )
     expected = [
         {"node_id": "fakeapp1", "node_instances": 6},
@@ -882,7 +882,8 @@ def test_cli_node_instances_summary(prepared_manager, cfy):
 def test_cli_node_instances_summary_subfield(prepared_manager, cfy):
     prepared_manager.use()
     results = json.loads(
-        cfy.node_instances.summary(
+        cfy(
+            'node-instances', 'summary',
             'tenant_name', 'node_id', '--json', '--all-tenants',
         ).stdout
     )
@@ -934,7 +935,8 @@ def test_cli_node_instances_summary_subfield_non_json(prepared_manager, cfy):
         place of the None used in the json output).
     """
     prepared_manager.use()
-    results = cfy.node_instances.summary(
-        'tenant_name', 'node_id', '--all-tenants',
+    results = cfy(
+        'node-instances', 'summary', 'tenant_name', 'node_id',
+        '--all-tenants',
     ).stdout
     assert 'TOTAL' in results
