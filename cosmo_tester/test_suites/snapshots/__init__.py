@@ -73,6 +73,7 @@ MULTI_TENANT_MANAGERS = (
     'master',
 )
 
+
 def get_multi_tenant_versions_list():
     if is_community():
         # Community only works single tenanted
