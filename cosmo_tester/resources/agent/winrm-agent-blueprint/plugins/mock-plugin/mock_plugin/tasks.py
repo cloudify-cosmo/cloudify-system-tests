@@ -14,15 +14,56 @@
 #  * limitations under the License.
 
 import os
+import getpass
 
 from cloudify.decorators import operation
+from cloudify.exceptions import NonRecoverableError
 
 
 @operation
-def run(**_):
-    pass
+def prepare_userdata(ctx, service_user, service_password, **_):
+    userdata = """
+#ps1_sysnative
+winrm quickconfig -q
+winrm set winrm/config              '@{MaxTimeoutms="1800000"}'
+winrm set winrm/config/winrs        '@{MaxMemoryPerShellMB="300"}'
+winrm set winrm/config/service      '@{AllowUnencrypted="true"}'
+winrm set winrm/config/service/auth '@{Basic="true"}'
+&netsh advfirewall firewall add rule name="WinRM 5985" protocol=TCP dir=in localport=5985 action=allow
+&netsh advfirewall firewall add rule name="WinRM 5986" protocol=TCP dir=in localport=5986 action=allow
+    """     # noqa
+
+    if service_user:
+        userdata += """
+&net user {user} '{password}' /add
+&net localgroup "Administrators" "{user}" /add
+        """.format(user=service_user, password=service_password)
+
+    ctx.instance.runtime_properties['userdata'] = userdata
 
 
 @operation
-def get_env_variable(env_variable, **_):
-    return os.environ[env_variable]
+def test_app(ctx, service_user, service_password, **_):
+    current_user = getpass.getuser()
+    if not service_user:
+        # If no service user is given, then the current user must
+        # be identical to the value of the COMPUTERNAME environment
+        # variable, with the suffix of "$".
+        computer_name = os.environ['COMPUTERNAME']
+        expected_user = computer_name + "$"
+        if current_user != expected_user:
+            raise NonRecoverableError(
+                "No service_user provided, but current_user is '{}' "
+                "(expected: '{}')".format(current_user,
+                                          expected_user))
+    else:
+        # If service user is given, then its substring after "\" must
+        # be equal to the current user.
+        user_name_part = service_user
+        if '\\' in user_name_part:
+            user_name_part = user_name_part.split('\\', 1)[1]
+            if user_name_part.lower() != current_user.lower():
+                raise NonRecoverableError(
+                    "service_user provided ({}) doesn't match current user "
+                    "({})".format(service_user, current_user)
+                )
