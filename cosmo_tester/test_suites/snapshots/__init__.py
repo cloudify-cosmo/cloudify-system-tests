@@ -62,14 +62,6 @@ DEPLOYMENT_ENVIRONMENT_PATH = (
 )
 CHANGED_ADMIN_PASSWORD = 'changedmin'
 
-# These manager versions only support single tenant snapshot restores in
-# premium
-SINGLE_TENANT_MANAGERS = (
-    '3.4.2',
-    # Technically this supports multiple tenants, but we can't restore
-    # snapshots from it with multiple tenants.
-    '4.0',
-)
 # These manager versions support multiple tenant snapshot restores in premium
 MULTI_TENANT_MANAGERS = (
     '4.0.1',
@@ -80,18 +72,6 @@ MULTI_TENANT_MANAGERS = (
     '4.5',
     'master',
 )
-
-
-def get_single_tenant_versions_list():
-    if is_community():
-        # Community only works single tenanted so should eventually be testing
-        # SINGLE_TENANT_MANAGERS + MULTI_TENANT_MANAGERS here...
-        # Unfortunately, at the moment there are resource constraints in the
-        # test environment so it will only be testing current.
-        return ['master']
-    else:
-        return SINGLE_TENANT_MANAGERS
-
 
 def get_multi_tenant_versions_list():
     if is_community():
@@ -752,7 +732,7 @@ def hosts(
                 'cd /tmp && '
                 'mkdir patch && '
                 'cd patch && '
-                'wget http://repository.cloudifysource.org/cloudify/4.0.1/patch3/cloudify-401-te-patch-3.tar.gz && '  # noqa
+                'wget http://repository.cloudifysource.org/cloudify/old-version/4.0.1/patch3/cloudify-401-te-patch-3.tar.gz && '  # noqa
                 'tar --strip-components=1 -xzf *.tar.gz && '
                 './apply-patch.sh'
             )
