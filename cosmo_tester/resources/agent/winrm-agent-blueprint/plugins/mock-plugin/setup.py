@@ -19,9 +19,9 @@ from setuptools import setup
 
 setup(
     name='mock-plugin',
-    version='4.0a2',
-    author='Gigaspaces',
-    author_email='cloudify@gigaspaces.com',
+    version='1.0',
+    author='Cloudify',
+    author_email='hello@cloudify.co',
     packages=[
         'mock_plugin'
     ]
