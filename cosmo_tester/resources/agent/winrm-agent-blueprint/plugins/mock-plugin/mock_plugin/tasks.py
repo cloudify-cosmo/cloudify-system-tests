@@ -22,8 +22,9 @@ from cloudify.exceptions import NonRecoverableError
 
 @operation
 def prepare_userdata(ctx, service_user, service_password, **_):
-    userdata = """
-#ps1_sysnative
+    # First line must not be empty, otherwise the entire
+    # userdata section is ignored.
+    userdata = """#ps1_sysnative
 winrm quickconfig -q
 winrm set winrm/config              '@{MaxTimeoutms="1800000"}'
 winrm set winrm/config/winrs        '@{MaxMemoryPerShellMB="300"}'
@@ -31,14 +32,17 @@ winrm set winrm/config/service      '@{AllowUnencrypted="true"}'
 winrm set winrm/config/service/auth '@{Basic="true"}'
 &netsh advfirewall firewall add rule name="WinRM 5985" protocol=TCP dir=in localport=5985 action=allow
 &netsh advfirewall firewall add rule name="WinRM 5986" protocol=TCP dir=in localport=5986 action=allow
-    """     # noqa
+"""     # noqa
 
     if service_user:
-        userdata += """
-&net user {user} '{password}' /add
+        userdata += """&net user {user} '{password}' /add
 &net localgroup "Administrators" "{user}" /add
-        """.format(user=service_user, password=service_password)
+""".format(user=service_user, password=service_password)
 
+    ctx.logger.info("Rendered userdata:\n"
+                    "------------------\n"
+                    "{}\n"
+                    "------------------".format(userdata))
     ctx.instance.runtime_properties['userdata'] = userdata
 
 
