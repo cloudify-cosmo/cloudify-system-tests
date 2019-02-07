@@ -45,18 +45,7 @@ winrm set winrm/config/service/auth '@{Basic="true"}'
 @operation
 def test_app(ctx, service_user, service_password, **_):
     current_user = getpass.getuser()
-    if not service_user:
-        # If no service user is given, then the current user must
-        # be identical to the value of the COMPUTERNAME environment
-        # variable, with the suffix of "$".
-        computer_name = os.environ['COMPUTERNAME']
-        expected_user = computer_name + "$"
-        if current_user != expected_user:
-            raise NonRecoverableError(
-                "No service_user provided, but current_user is '{}' "
-                "(expected: '{}')".format(current_user,
-                                          expected_user))
-    else:
+    if service_user:
         # If service user is given, then its substring after "\" must
         # be equal to the current user.
         user_name_part = service_user
@@ -67,3 +56,14 @@ def test_app(ctx, service_user, service_password, **_):
                     "service_user provided ({}) doesn't match current user "
                     "({})".format(service_user, current_user)
                 )
+    else:
+        # If no service user is given, then the current user must
+        # be identical to the value of the COMPUTERNAME environment
+        # variable, with the suffix of "$".
+        computer_name = os.environ['COMPUTERNAME']
+        expected_user = computer_name + "$"
+        if current_user != expected_user:
+            raise NonRecoverableError(
+                "No service_user provided, but current_user is '{}' "
+                "(expected: '{}')".format(current_user,
+                                          expected_user))
