@@ -204,6 +204,73 @@ def test_windows_userdata_agent(cfy,
     _test_userdata_agent(cfy, manager, inputs, tenant)
 
 
+def test_windows_winrm_with_service_user(
+        cfy,
+        manager,
+        attributes):
+    # Better choose a password containing a dollar sign,
+    # in order to ensure that command-line options for
+    # "cfy-agent configure" are generated correctly.
+    test_windows_winrm(cfy, manager, attributes,
+                       service_user='testuser',
+                       service_password='hsd7d2h!RSn2$A')
+
+
+def test_windows_winrm(
+        cfy,
+        manager,
+        attributes,
+        os_name='windows_2012',
+        tenant=None,
+        service_user='',
+        service_password=''):
+    user = attributes.windows_2012_username
+    if not tenant:
+        tenant = prepare_and_get_test_tenant(
+            'winrm_{}'.format(os_name),
+            manager,
+            cfy
+        )
+
+    inputs = {
+        'image': attributes.windows_2012_image_name,
+        'flavor': attributes.medium_flavor_name,
+        'user': user,
+        'network_name': attributes.network_name,
+        'private_key_path': manager.remote_private_key_path,
+        'keypair_name': attributes.keypair_name,
+        'service_user': service_user,
+        'service_password': service_password
+    }
+
+    blueprint_id = deployment_id = 'winrm{0}'.format(time.time())
+    blueprint_path = util.get_resource_path(
+        'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
+
+    with set_client_tenant(manager, tenant):
+        manager.client.blueprints.upload(blueprint_path, blueprint_id)
+        manager.client.deployments.create(
+            deployment_id,
+            blueprint_id,
+            inputs=inputs,
+            skip_plugins_validation=True)
+
+    cfy.executions.start.install(['-d', deployment_id,
+                                  '--tenant-name', tenant])
+
+    try:
+        cfy.executions.start.execute_operation(
+            deployment_id=deployment_id,
+            parameters={
+                'operation': 'test.interface.test',
+                'node_ids': ['test_app']
+            },
+            tenant_name=tenant)
+    finally:
+        cfy.executions.start.uninstall(['-d', deployment_id,
+                                        '--tenant-name', tenant])
+
+
 def _test_agent(agent_type, cfy, manager, attributes):
     agent_blueprints = {
         'a3_2': 'agent/3-2-agent-blueprint/3-2-agent-mispelled-blprint.yaml',
