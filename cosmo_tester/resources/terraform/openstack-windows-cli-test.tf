@@ -34,7 +34,7 @@ output "manager_server_id" { value = "${openstack_compute_instance_v2.manager_se
 
 resource "openstack_networking_router_v2" "router" {
   name = "router-${var.resource_suffix}"
-  external_gateway = "dda079ce-12cf-4309-879a-8e67aec94de4"
+  external_gateway = "2579fb53-4710-4706-ba46-c016f6c837c5"
 }
 
 resource "openstack_networking_network_v2" "network" {
@@ -97,7 +97,7 @@ resource "openstack_compute_keypair_v2" "keypair" {
 
 # CLI
 resource "openstack_networking_floatingip_v2" "cli_floatingip" {
-  pool = "GATEWAY_NET"
+  pool = "ext-net"
 }
 
 resource "openstack_compute_instance_v2" "cli_server" {
@@ -118,7 +118,7 @@ resource "openstack_compute_instance_v2" "cli_server" {
 
 # MANAGER
 resource "openstack_networking_floatingip_v2" "manager_floatingip" {
-  pool = "GATEWAY_NET"
+  pool = "ext-net"
 }
 
 resource "openstack_compute_instance_v2" "manager_server" {

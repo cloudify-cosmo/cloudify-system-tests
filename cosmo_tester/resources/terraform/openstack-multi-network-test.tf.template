@@ -43,7 +43,7 @@ output "server_id_{{ sn }}" { value = "${openstack_compute_instance_v2.server_{{
 {% for n in range(num_of_networks) %}
 resource "openstack_networking_router_v2" "router_{{ n }}" {
   name = "router-{{ n }}-${var.resource_suffix}"
-  external_gateway = "dda079ce-12cf-4309-879a-8e67aec94de4"
+  external_gateway = "2579fb53-4710-4706-ba46-c016f6c837c5"
 }
 
 resource "openstack_networking_network_v2" "network_{{ n }}" {
@@ -109,7 +109,7 @@ resource "openstack_compute_keypair_v2" "keypair" {
 {% for sn in range(num_of_managers) %}
 
 resource "openstack_networking_floatingip_v2" "floatingip_{{ sn }}" {
-  pool = "GATEWAY_NET"
+  pool = "ext-net"
 }
 
 resource "openstack_compute_instance_v2" "server_{{ sn }}" {
