@@ -204,16 +204,42 @@ def test_windows_userdata_agent(cfy,
     _test_userdata_agent(cfy, manager, inputs, tenant)
 
 
-def test_windows_winrm_with_service_user(
+def test_windows_with_service_user_winrm(
         cfy,
         manager,
-        attributes):
-    # Better choose a password containing a dollar sign,
-    # in order to ensure that command-line options for
-    # "cfy-agent configure" are generated correctly.
-    test_windows_winrm(cfy, manager, attributes,
-                       service_user='testuser',
-                       service_password='hsd7d2h!RSn2$A')
+        attributes,
+        os_name='windows_2012',
+        tenant=None):
+    _test_windows_with_service_user(
+        cfy, manager, attributes, 'remote', os_name, tenant)
+
+
+def test_windows_with_service_user_init_script(
+        cfy,
+        manager,
+        attributes,
+        os_name='windows_2012',
+        tenant=None):
+    _test_windows_with_service_user(
+        cfy, manager, attributes, 'init_script', os_name, tenant)
+
+
+def _test_windows_with_service_user(
+        cfy,
+        manager,
+        attributes,
+        install_method,
+        os_name,
+        tenant):
+    _test_windows_common(
+        cfy, manager, attributes,
+        'agent/windows-service-user-blueprint/blueprint.yaml',
+        {
+            'service_user': 'testuser',
+            'service_password': 'syvcASdn3a$q1',
+            'install_method': install_method
+        },
+        os_name, tenant)
 
 
 def test_windows_winrm(
@@ -221,38 +247,51 @@ def test_windows_winrm(
         manager,
         attributes,
         os_name='windows_2012',
-        tenant=None,
-        service_user='',
-        service_password=''):
+        tenant=None):
+    _test_windows_common(
+        cfy, manager, attributes,
+        'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml',
+        None,
+        os_name, tenant)
+
+
+def _test_windows_common(
+        cfy,
+        manager,
+        attributes,
+        blueprint_path,
+        inputs,
+        os_name,
+        tenant):
     user = attributes.windows_2012_username
     if not tenant:
         tenant = prepare_and_get_test_tenant(
-            'winrm_{}'.format(os_name),
+            'wintest_{}'.format(os_name),
             manager,
             cfy
         )
 
-    inputs = {
+    effective_inputs = {
         'image': attributes.windows_2012_image_name,
         'flavor': attributes.medium_flavor_name,
         'user': user,
         'network_name': attributes.network_name,
         'private_key_path': manager.remote_private_key_path,
         'keypair_name': attributes.keypair_name,
-        'service_user': service_user,
-        'service_password': service_password
     }
 
-    blueprint_id = deployment_id = 'winrm{0}'.format(time.time())
-    blueprint_path = util.get_resource_path(
-        'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml')
+    if inputs:
+        effective_inputs.update(inputs)
+
+    blueprint_id = deployment_id = 'wintest{0}'.format(time.time())
+    blueprint_path = util.get_resource_path(blueprint_path)
 
     with set_client_tenant(manager, tenant):
         manager.client.blueprints.upload(blueprint_path, blueprint_id)
         manager.client.deployments.create(
             deployment_id,
             blueprint_id,
-            inputs=inputs,
+            inputs=effective_inputs,
             skip_plugins_validation=True)
 
     cfy.executions.start.install(['-d', deployment_id,

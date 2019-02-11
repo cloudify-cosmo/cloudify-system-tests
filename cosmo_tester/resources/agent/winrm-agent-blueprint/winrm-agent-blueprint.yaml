@@ -37,11 +37,6 @@ inputs:
     type: string
     default: ''
 
-dsl_definitions:
-  - &service_info
-    service_user: { get_input: service_user }
-    service_password: { get_input: service_password }
-
 node_templates:
   security_group:
     type: cloudify.openstack.nodes.SecurityGroup
@@ -57,15 +52,6 @@ node_templates:
       resource_id: { get_input: keypair_name }
       private_key_path: { get_input: private_key_path }
 
-  userdata_initializer:
-    type: cloudify.nodes.Root
-    interfaces:
-      cloudify.interfaces.lifecycle:
-        create:
-          implementation: mock.mock_plugin.tasks.prepare_userdata
-          executor: central_deployment_agent
-          inputs: *service_info
-
   host:
     type: cloudify.openstack.nodes.WindowsServer
     properties:
@@ -73,12 +59,17 @@ node_templates:
       flavor: { get_input: flavor }
       agent_config:
         user: { get_input: user }
-        port: 5985
         key: { get_input: private_key_path }
-        process_management: *service_info
       management_network_name: { get_input: network_name }
       server:
-        userdata: { get_attribute: [ userdata_initializer, userdata] }
+        userdata: |
+          #ps1_sysnative
+          winrm quickconfig -q
+          winrm set winrm/config              '@{MaxTimeoutms="1800000"}'
+          winrm set winrm/config/winrs        '@{MaxMemoryPerShellMB="300"}'
+          winrm set winrm/config/service      '@{AllowUnencrypted="true"}'
+          winrm set winrm/config/service/auth '@{Basic="true"}'
+          &netsh advfirewall firewall add rule name="WinRM 5985" protocol=TCP dir=in localport=5985 action=allow
     interfaces:
       cloudify.interfaces.lifecycle:
         create:
@@ -89,8 +80,6 @@ node_templates:
           inputs:
             max_retries: 50
     relationships:
-      - type: cloudify.relationships.depends_on
-        target: userdata_initializer
       - type: cloudify.openstack.server_connected_to_keypair
         target: keypair
       - type: cloudify.openstack.server_connected_to_security_group
@@ -102,7 +91,6 @@ node_templates:
       test.interface:
         test:
           implementation: mock.mock_plugin.tasks.test_app
-          inputs: *service_info
     relationships:
       - type: cloudify.relationships.contained_in
         target: host
