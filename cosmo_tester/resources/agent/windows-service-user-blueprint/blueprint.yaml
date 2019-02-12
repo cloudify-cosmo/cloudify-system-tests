@@ -62,7 +62,9 @@ node_templates:
         create:
           implementation: mock.mock_plugin.tasks.prepare_userdata
           executor: central_deployment_agent
-          inputs: *service_info
+          inputs:
+            <<: *service_info
+            install_method: { get_input: install_method }
 
   host:
     type: cloudify.openstack.nodes.WindowsServer
