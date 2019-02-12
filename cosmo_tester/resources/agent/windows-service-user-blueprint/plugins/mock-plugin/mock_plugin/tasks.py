@@ -21,14 +21,31 @@ from cloudify.exceptions import NonRecoverableError
 
 
 @operation
-def prepare_userdata(ctx, service_user, service_password, **_):
+def prepare_userdata(ctx, service_user, service_password,
+                     install_method, **_):
+    userdata = ''
+
+    if install_method == 'remote':
+        userdata += """winrm quickconfig -q
+winrm set winrm/config              '@{MaxTimeoutms="1800000"}'
+winrm set winrm/config/winrs        '@{MaxMemoryPerShellMB="300"}'
+winrm set winrm/config/service      '@{AllowUnencrypted="true"}'
+winrm set winrm/config/service/auth '@{Basic="true"}'
+&netsh advfirewall firewall add rule name="WinRM 5985" protocol=TCP dir=in localport=5985 action=allow
+"""  # noqa
+
     if service_user:
-        userdata = """#ps1_sysnative
-&net user {user} '{password}' /add
+        ctx.logger.info("Received service_user: %s", service_user)
+        username = service_user.split('\\', 1)[1]
+        ctx.logger.info("Username to create locally: %s", username)
+        userdata += """&net user {user} '{password}' /add
 &net localgroup "Administrators" "{user}" /add
-""".format(user=service_user, password=service_password)
-    else:
-        userdata = ''
+""".format(user=username, password=service_password)
+
+    if userdata:
+        userdata = "#ps1_sysnative\n" \
+                   "$PSDefaultParameterValues['*:Encoding'] = 'utf8'\n" + \
+                   userdata
 
     ctx.logger.info("Rendered userdata:\n"
                     "------------------\n"
