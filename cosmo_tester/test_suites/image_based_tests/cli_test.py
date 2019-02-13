@@ -92,15 +92,15 @@ def test_cli_on_ubuntu_14_04(package_tester, attributes):
     package_tester.run_test(inputs)
 
 
-@pytest.mark.parametrize('package_tester', ['windows'], indirect=True)
-def test_cli_on_windows_2012(package_tester, attributes):
-    inputs = {
-        'cli_image': attributes.windows_2012_image_name,
-        'cli_user': attributes.windows_2012_username,
-        'manager_user': attributes.default_linux_username,
-        'cli_flavor': attributes.medium_flavor_name,
-    }
-    package_tester.run_test(inputs)
+#@pytest.mark.parametrize('package_tester', ['windows'], indirect=True)
+#def test_cli_on_windows_2012(package_tester, attributes):
+#    inputs = {
+#        'cli_image': attributes.windows_2012_image_name,
+#        'cli_user': attributes.windows_2012_username,
+#        'manager_user': attributes.default_linux_username,
+#        'cli_flavor': attributes.medium_flavor_name,
+#    }
+#    package_tester.run_test(inputs)
 
 
 @pytest.mark.parametrize('package_tester', ['linux'], indirect=True)
