@@ -1,5 +1,5 @@
-git+https://github.com/cloudify-cosmo/cloudify-common@5.0.dev1#egg=cloudify-common==5.0.dev1
-git+https://github.com/cloudify-cosmo/cloudify-cli@5.0.dev1#egg=cloudify==5.0.dev1
-git+https://github.com/cloudify-cosmo/cloudify-agent@5.0.dev1#egg=cloudify-agent==5.0.dev1
+git+https://github.com/cloudify-cosmo/cloudify-common@4.6#egg=cloudify-common==4.6
+git+https://github.com/cloudify-cosmo/cloudify-cli@4.6#egg=cloudify==4.6
+git+https://github.com/cloudify-cosmo/cloudify-agent@4.6#egg=cloudify-agent==4.6
 mock
 passlib==1.7.1
