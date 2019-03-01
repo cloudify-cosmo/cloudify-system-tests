@@ -48,7 +48,7 @@ class HelloWorldExample(AbstractExample):
                     'flavor': self.attributes.small_flavor_name,
                     'network_name': self.attributes.network_name
                 }
-            elif self._blueprint_file == 'singlehost-blueprint.yaml':
+            elif self._blueprint_file == 'singlehost-simple-hello.yaml':
                 self._inputs = {
                     'server_ip': self.manager.ip_address,
                     'agent_user': self.attributes.default_linux_username,
