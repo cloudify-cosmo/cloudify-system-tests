@@ -140,7 +140,7 @@ def create_helloworld_just_deployment(manager, logger, tenant=None):
     """
     upload_helloworld(
         manager,
-        'openstack-blueprint.yaml',
+        'ec2-blueprint.yaml',
         NOINSTALL_BLUEPRINT_ID,
         tenant,
         logger,
