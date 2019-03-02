@@ -103,6 +103,14 @@ def _preconfigure_callback(_managers):
         all_networks = deepcopy(mgr.networks)
         all_networks.pop(NETWORK_2)
 
+        all_networks = {
+            net_name: {
+                'manager': net_ip,
+                'brokers': [net_ip],
+            }
+            for net_name, net_ip in all_networks.items()
+        }
+
         mgr.additional_install_config = {
             'agent': {'networks': all_networks},
             'sanity': {'skip_sanity': 'true'}
@@ -195,7 +203,9 @@ def _add_new_network(manager, logger, restart=True):
 
     old_networks = deepcopy(manager.networks)
     network2_ip = old_networks.pop(NETWORK_2)
-    networks_json = '{{"{0}":"{1}"}}'.format(NETWORK_2, network2_ip)
+    networks_json = (
+        '{{ "{0}": {{ "manager": "{1}", "brokers": ["{1}"] }} }}'
+    ).format(NETWORK_2, network2_ip)
     with manager.ssh() as fabric_ssh:
         fabric_ssh.sudo(
             "{cfy_manager} add-networks --networks '{networks}' ".format(
@@ -346,7 +356,14 @@ def _proxy_preconfigure_callback(_managers):
     # on the manager, we override the default network ip, so that by default
     # all agents will go through the proxy
     manager.additional_install_config = {
-        'agent': {'networks': {'default': str(proxy_ip)}}
+        'agent': {
+            'networks': {
+                'default': {
+                    'manager': str(proxy_ip),
+                    'brokers': [str(proxy_ip)],
+                },
+            },
+        },
     }
 
     # setup the proxy - simple socat services that forward all TCP connections
