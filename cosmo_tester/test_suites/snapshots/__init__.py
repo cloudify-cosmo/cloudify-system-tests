@@ -38,7 +38,7 @@ from cloudify_cli.constants import CREATE_DEPLOYMENT
 from cloudify_rest_client.exceptions import UserUnauthorizedError
 
 
-HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/4.0.zip'  # noqa
+HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/master.zip'  # noqa
 # We need this because 3.4 (and 4.0!) snapshots don't handle agent_config,
 # but 3.4 example blueprints use it instead of cloudify_agent
 OLD_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/3.3.1.zip'  # noqa
