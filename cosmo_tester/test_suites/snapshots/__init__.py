@@ -233,7 +233,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     }
     upload_helloworld(
         manager,
-        'singlehost-blueprint.yaml',
+        'test-blueprint.yaml',
         blueprint_id,
         tenant,
         logger,
