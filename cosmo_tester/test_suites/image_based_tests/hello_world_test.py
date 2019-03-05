@@ -14,7 +14,6 @@
 #    * limitations under the License.
 
 import pytest
-import yaml
 
 from cosmo_tester.framework.examples.hello_world import (  # noqa
     HelloWorldExample,
@@ -81,44 +80,3 @@ def hello_world(request, cfy, manager, attributes, ssh_key, tmpdir, logger):
         hw.disable_iptables = True
     yield hw
     hw.cleanup()
-
-
-@pytest.fixture(
-    scope='function',
-    params=[
-        '1_2',
-    ],
-)
-def hello_world_backwards_compat(request, cfy, manager, attributes, ssh_key,
-                                 tmpdir, logger):
-    tenant_param = 'dsl_{ver}'.format(ver=request.param)
-    tenant = prepare_and_get_test_tenant(tenant_param, manager, cfy)
-
-    # Using 1_2 instead of 1.2 because diamond deliminates using dots (.),
-    # so having a dot in the deployment name (passed as the suffix to the
-    # HelloWorldExample constructor) messes things up
-    dsl_git_checkout_mappings = {
-        # dsl versions 1.0 and 1.1 cannot be tested with this because they do
-        # not have usable singlehost blueprints in the hello world repo
-        '1_2': '3.3.1',
-        # 1.3 is current, and is on git checkout 4.1, but this is tested by
-        # the OS tests above
-    }
-
-    hw = HelloWorldExample(
-            cfy, manager, attributes, ssh_key, logger, tmpdir,
-            tenant=tenant, suffix=request.param)
-
-    hw.branch = dsl_git_checkout_mappings[request.param]
-    hw.blueprint_file = 'singlehost-blueprint.yaml'
-
-    hw.clone_example()
-    with open(hw.blueprint_path) as blueprint_handle:
-        blueprint = yaml.load(blueprint_handle)
-    blueprint_dsl_version = blueprint['tosca_definitions_version']
-    assert blueprint_dsl_version.endswith(request.param)
-
-    yield hw
-
-    # For older CLIs we need to explicitly pass this param
-    hw.cleanup(allow_custom_params=True)
