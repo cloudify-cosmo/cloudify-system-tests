@@ -140,7 +140,7 @@ def create_helloworld_just_deployment(manager, logger, tenant=None):
     """
     upload_helloworld(
         manager,
-        'test-ec2-blueprint.yaml',
+        'test-ec2-bp.yaml',
         NOINSTALL_BLUEPRINT_ID,
         tenant,
         logger,
@@ -233,7 +233,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     }
     upload_helloworld(
         manager,
-        'test-blueprint.yaml',
+        'test-bp.yaml',
         blueprint_id,
         tenant,
         logger,
