@@ -14,7 +14,6 @@
 #    * limitations under the License.
 
 import pytest
-import yaml
 
 from cosmo_tester.framework.examples.hello_world import (  # noqa
     HelloWorldExample,
