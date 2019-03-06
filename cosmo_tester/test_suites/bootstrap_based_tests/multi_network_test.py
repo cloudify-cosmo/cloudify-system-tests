@@ -170,6 +170,7 @@ def test_multiple_networks(managers,
     post_bootstrap_hello.verify_all()
 
 
+@pytest.mark.skip(reason="Skipped while we're working on new clustering.")
 @pytest.mark.skipif(is_community(), reason='Cloudify Community version does '
                                            'not support clustering')
 def test_multiple_networks_cluster(cluster_managers,
