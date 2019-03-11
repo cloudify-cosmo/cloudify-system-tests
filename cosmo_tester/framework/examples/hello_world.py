@@ -130,7 +130,7 @@ def centos_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir,
     hello = HelloWorldExample(
         cfy, manager, attributes, ssh_key, logger, tmpdir,
         tenant=tenant, suffix=suffix)
-    hello.blueprint_file = 'openstack-blueprint.yaml'
+    hello.blueprint_file = 'test-openstack-bp.yaml'
     hello.inputs.update({
         'agent_user': attributes.centos_7_username,
         'image': attributes.centos_7_image_name,
