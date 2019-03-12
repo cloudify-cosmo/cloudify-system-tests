@@ -59,7 +59,6 @@ DATABASE_SERVICES_TO_INSTALL = [
 ]
 MANAGER_SERVICES_TO_INSTALL = [
     'queue_service',
-    'composer_service',
     'manager_service'
 ]
 
