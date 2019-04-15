@@ -124,6 +124,11 @@ class AbstractExample(testtools.TestCase):
             self.manager.client.blueprints.upload(
                 blueprint_file, self.blueprint_id)
 
+    def delete_blueprint(self):
+        self.logger.info('Deleting blueprint: {0}'.format(self.blueprint_id))
+        with set_client_tenant(self.manager, self.tenant):
+            self.manager.client.blueprints.delete(self.blueprint_id)
+
     def create_deployment(self):
         self.logger.info(
                 'Creating deployment [id=%s] with the following inputs:%s%s',

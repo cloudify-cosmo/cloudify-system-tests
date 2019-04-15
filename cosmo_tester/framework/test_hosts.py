@@ -1,5 +1,5 @@
 ########
-# Copyright (c) 2018 Cloudify Platform Ltd. All rights reserved
+# Copyright (c) 2019 Cloudify Platform Ltd. All rights reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 #    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
+
 import textwrap
 from abc import ABCMeta, abstractproperty
 
@@ -31,7 +32,6 @@ from fabric import api as fabric_api
 from fabric import context_managers as fabric_context_managers
 
 from cosmo_tester.framework import util
-from ..test_suites.ha.ha_helper import start_cluster
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
@@ -366,7 +366,7 @@ class _CloudifyManager(VM):
         status = self.client.manager.get_status()
         for service in status['services']:
             for instance in service['instances']:
-                if any(service not in instance['Id'] for
+                if all(service not in instance['Id'] for
                        service in ['postgresql', 'rabbitmq']):
                     assert instance['SubState'] == 'running', \
                         'service {0} is in {1} state'.format(
@@ -454,7 +454,7 @@ class _CloudifyManager(VM):
         config_file.write_text(install_config_str)
         return config_file
 
-    def bootstrap(self, is_db=False):
+    def bootstrap(self, enter_sanity_mode=True):
         manager_install_rpm = \
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
@@ -474,7 +474,7 @@ class _CloudifyManager(VM):
                 '/etc/cloudify/config.yaml'
             )
             fabric_ssh.run('cfy_manager install')
-        if not is_db:
+        if enter_sanity_mode:
             self.enter_sanity_mode()
 
     def _create_openstack_config_file(self):
@@ -570,6 +570,9 @@ class _CloudifyDatabaseOnly(_CloudifyManager):
                     'PostgreSQL is not in an active state, Error: {0}.'
                     ' Retrying...'.format(e.message))
 
+    def bootstrap(self, enter_sanity_mode=False):
+        super(_CloudifyDatabaseOnly, self).bootstrap(enter_sanity_mode)
+
     def api_version(self):
         pass
 
@@ -639,14 +642,14 @@ class _CloudifyMessageQueueOnly(_CloudifyManager):
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
-        self.additional_install_config = {}
+        self.additional_install_config = {'rabbitmq': {}}
 
     @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
     def verify_services_are_running(self):
         with self.ssh() as fabric_ssh:
             # validate PostgreSQL server is running
             try:
-                fabric_ssh.sudo('rabbitmqctl -n cloudify-manager@localhost '
+                fabric_ssh.sudo('rabbitmqctl -n rabbit@localhost '
                                 'list_users &> /dev/null')
                 self._logger.info('RabbitMQ active')
                 return True
@@ -654,6 +657,9 @@ class _CloudifyMessageQueueOnly(_CloudifyManager):
                 self._logger.warn(
                     'RabbitMQ is not in an active state, Error: {0}.'
                     ' Retrying...'.format(e.message))
+
+    def bootstrap(self, enter_sanity_mode=False):
+        super(_CloudifyMessageQueueOnly, self).bootstrap(enter_sanity_mode)
 
     def api_version(self):
         pass
@@ -1117,6 +1123,14 @@ class DistributedInstallationCloudifyManager(TestHosts):
     """
     Bootstraps a Cloudify Manager with an external PostgreSQL Database
     """
+    POSTGRESQL_CLIENT_CERT_NAME = 'postgresql_client{0}.crt'
+    POSTGRESQL_CLIENT_KEY_NAME = 'postgresql_client{0}.key'
+    POSTGRESQL_SERVER_CERT_NAME = 'postgresql_server.crt'
+    POSTGRESQL_SERVER_KEY_NAME= 'postgresql_server.key'
+    RABBITMQ_CERT_NAME = 'rabbitmq_server.crt'
+    RABBITMQ_KEY_NAME = 'rabbitmq_server.key'
+    ROOT_CERT_NAME = 'root.crt'
+    ROOT_KEY_NAME = 'root.key'
 
     def __init__(self, cluster=False, sanity=False, *args, **kwargs):
         self.cluster = cluster
@@ -1154,24 +1168,28 @@ class DistributedInstallationCloudifyManager(TestHosts):
             self.sanity_manager = self.instances[5]
 
         # CA certificates
-        self.ca_cert_path = str(os.path.join(self._tmpdir, 'root.crt'))
-        self.ca_key_path = str(os.path.join(self._tmpdir, 'root.key'))
+        self.ca_cert_path = str(os.path.join(self._tmpdir,
+                                             self.ROOT_CERT_NAME))
+        self.ca_key_path = str(os.path.join(self._tmpdir,
+                                            self.ROOT_KEY_NAME))
 
         # PostgreSQL Server certificates
-        self.server_cert_path = str(os.path.join(self._tmpdir, 'server.crt'))
-        self.server_key_path = str(os.path.join(self._tmpdir, 'server.key'))
+        self.postgresql_server_cert_path = str(os.path.join(
+            self._tmpdir, self.POSTGRESQL_SERVER_CERT_NAME))
+        self.postgresql_server_key_path = str(os.path.join(
+            self._tmpdir, self.POSTGRESQL_SERVER_KEY_NAME))
 
         # RabbitMQ Server certificates
-        self.message_queue_cert_path = str(os.path.join(self._tmpdir,
-                                                        'rabbitmq.crt'))
-        self.message_queue_key_path = str(os.path.join(self._tmpdir,
-                                                       'rabbitmq.key'))
+        self.message_queue_cert_path = str(os.path.join(
+            self._tmpdir, self.RABBITMQ_CERT_NAME))
+        self.message_queue_key_path = str(os.path.join(
+            self._tmpdir, self.RABBITMQ_KEY_NAME))
 
         # PostgreSQL Clients certificates
-        self.postgresql_cert_path = str(os.path.join(self._tmpdir,
-                                                     'postgresql.crt'))
-        self.postgresql_key_path = str(os.path.join(self._tmpdir,
-                                                    'postgresql.key'))
+        self.postgresql_client_cert_path = str(os.path.join(
+            self._tmpdir, self.POSTGRESQL_CLIENT_CERT_NAME))
+        self.postgresql_client_key_path = str(os.path.join(
+            self._tmpdir, self.POSTGRESQL_CLIENT_KEY_NAME))
 
     def _create_ssl_certificates_on_instances(self):
         # Generating ROOT CA certificate
@@ -1180,8 +1198,8 @@ class DistributedInstallationCloudifyManager(TestHosts):
         # Generating PostgreSQL server certificates
         util.generate_ssl_certificate([self.database.private_ip_address],
                                       self.database.private_ip_address,
-                                      self.server_cert_path,
-                                      self.server_key_path,
+                                      self.postgresql_server_cert_path,
+                                      self.postgresql_server_key_path,
                                       self.ca_cert_path,
                                       self.ca_key_path)
 
@@ -1192,10 +1210,12 @@ class DistributedInstallationCloudifyManager(TestHosts):
         })
         self.database.additional_install_config.update({
             'ssl_inputs': {
-                'postgresql_server_cert_path': '/tmp/server.crt',
-                'postgresql_server_key_path': '/tmp/server.key',
-                'ca_cert_path': '/tmp/root.crt',
-                'ca_key_path': '/tmp/root.key'
+                'postgresql_server_cert_path': '/tmp/{0}'.format(
+                    self.POSTGRESQL_SERVER_CERT_NAME),
+                'postgresql_server_key_path': '/tmp/{0}'.format(
+                    self.POSTGRESQL_SERVER_KEY_NAME),
+                'ca_cert_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
+                'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME)
             }
         })
 
@@ -1207,10 +1227,10 @@ class DistributedInstallationCloudifyManager(TestHosts):
                                       self.ca_cert_path,
                                       self.ca_key_path)
 
-        # Required instead of implementing a deep-copy function with huge
-        # overhead
         self.message_queue.additional_install_config['rabbitmq'].update({
-            'broker_cert_path': '/tmp/rabbitmq_cert.crt'
+            'ca_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
+            'cert_path': '/tmp/{0}'.format(self.RABBITMQ_CERT_NAME),
+            'key_path': '/tmp/{0}'.format(self.RABBITMQ_KEY_NAME)
         })
 
         # Generating client certificates for every client instance
@@ -1222,20 +1242,26 @@ class DistributedInstallationCloudifyManager(TestHosts):
             cert_path, key_path = util.generate_ssl_certificate(
                 [instance.private_ip_address],
                 instance.private_ip_address,
-                self.postgresql_cert_path + str(instance.index),
-                self.postgresql_key_path + str(instance.index),
+                self.postgresql_client_cert_path.format(str(instance.index)),
+                self.postgresql_client_key_path.format(str(instance.index)),
                 self.ca_cert_path,
                 self.ca_key_path)
             certificates_files_to_copy.append(
                 (
                     cert_path,
-                    '/tmp/postgresql{0}.crt'.format(instance.index)
+                    '/tmp/{0}'.format(
+                        self.POSTGRESQL_CLIENT_CERT_NAME.format(
+                            str(instance.index))
+                    )
                 )
             )
             certificates_files_to_copy.append(
                 (
                     key_path,
-                    '/tmp/postgresql{0}.key'.format(instance.index)
+                    '/tmp/{0}'.format(
+                        self.POSTGRESQL_CLIENT_KEY_NAME.format(
+                            str(instance.index))
+                    )
                 )
             )
             # Required instead of implementing a deep-copy function with huge
@@ -1243,14 +1269,21 @@ class DistributedInstallationCloudifyManager(TestHosts):
             instance.additional_install_config['postgresql_client'].update({
                 'ssl_enabled': 'true'
             })
+            instance.additional_install_config['rabbitmq'].update({
+                'ca_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME)
+            })
             instance.additional_install_config.update({
                 'ssl_inputs': {
                     'postgresql_client_cert_path':
-                        '/tmp/postgresql{0}.crt'.format(instance.index),
+                        '/tmp/{0}'.format(
+                            self.POSTGRESQL_CLIENT_CERT_NAME.format(
+                                str(instance.index))),
                     'postgresql_client_key_path':
-                        '/tmp/postgresql{0}.key'.format(instance.index),
-                    'ca_cert_path': '/tmp/root.crt',
-                    'ca_key_path': '/tmp/root.key'
+                        '/tmp/{0}'.format(
+                            self.POSTGRESQL_CLIENT_KEY_NAME.format(
+                                str(instance.index))),
+                    'ca_cert_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
+                    'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME)
                 }
             })
 
@@ -1258,14 +1291,20 @@ class DistributedInstallationCloudifyManager(TestHosts):
         # and all the clients certificates and keys to all the servers
         # Each certificate will be used with its relevant instance
         certificates_files_to_copy += [
-            (self.ca_cert_path, '/tmp/root.crt'),
-            (self.ca_key_path, '/tmp/root.key'),
-            (self.server_cert_path, '/tmp/server.crt'),
-            (self.server_key_path, '/tmp/server.key'),
-            (self.message_queue_cert_path, '/tmp/rabbitmq.crt'),
-            (self.message_queue_key_path, '/tmp/rabbitmq.key')
+            (self.ca_cert_path,
+             '/tmp/{0}'.format(self.ROOT_CERT_NAME)),
+            (self.ca_key_path,
+             '/tmp/{0}'.format(self.ROOT_KEY_NAME)),
+            (self.postgresql_server_cert_path,
+             '/tmp/{0}'.format(self.POSTGRESQL_SERVER_CERT_NAME)),
+            (self.postgresql_server_key_path,
+             '/tmp/{0}'.format(self.POSTGRESQL_SERVER_KEY_NAME)),
+            (self.message_queue_cert_path,
+             '/tmp/{0}'.format(self.RABBITMQ_CERT_NAME)),
+            (self.message_queue_key_path,
+             '/tmp/{0}'.format(self.RABBITMQ_KEY_NAME))
         ]
-        cluster_instances += [self.database]
+        cluster_instances += [self.database, self.message_queue]
         for instance in cluster_instances:
             for src, dst in certificates_files_to_copy:
                 instance.put_remote_file(dst, src)
@@ -1277,12 +1316,11 @@ class DistributedInstallationCloudifyManager(TestHosts):
         super(DistributedInstallationCloudifyManager, self).\
             _bootstrap_managers()
         self._create_ssl_certificates_on_instances()
-        self.database.bootstrap(is_db=True)
+        self.database.bootstrap()
         self.message_queue.bootstrap()
         self.manager.bootstrap()
         if self.cluster:
             self.manager.use()
-            start_cluster(self.manager, self.manager._cfy)
             for joining_manager in self.joining_managers:
                 joining_manager.bootstrap()
             if self.sanity:

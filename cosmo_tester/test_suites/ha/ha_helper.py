@@ -13,44 +13,26 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-
-import time
 import os
+import time
+import fabric.network
 
 from requests.exceptions import ConnectionError
 from cloudify_rest_client.exceptions import CloudifyClientError
 
 
-def set_active(manager, cfy, logger):
-    try:
-        logger.info('Setting active manager %s',
-                    manager.ip_address)
-        cfy.cluster('set-active', manager.ip_address)
-    except Exception as e:
-        logger.info('Setting active manager error message: %s', e.message)
-    finally:
-        wait_nodes_online([manager], logger)
-
-
-def wait_leader_election(managers, logger, wait_before_check=None):
-    if wait_before_check:
-        time.sleep(wait_before_check)
-    """Wait until there is a leader in the cluster"""
-    def _is_there_a_leader(nodes):
-        # we only consider there to be a leader, if it is online and
-        # passing all checks
-        for node in nodes:
-            if node['master'] and node['online'] and \
-                    all(node['checks'].values()):
-                return True
-    logger.info('Waiting for a leader election...')
-    _wait_cluster_status(_is_there_a_leader, managers, logger)
-
-
-def wait_nodes_online(managers, logger):
+def wait_nodes_online(cfy, managers, logger):
     """Wait until all of the cluster nodes are online"""
     def _all_nodes_online(nodes):
-        return all(node['online'] for node in nodes)
+        result = cfy.cluster.status()
+        index, count = 0, 0
+        while index < len(result):
+            index = result.find('Active', index)
+            if index == -1:
+                break
+            count += 1
+        if count == len(nodes):
+            return True
     logger.info('Waiting for all nodes to be online...')
     _wait_cluster_status(_all_nodes_online, managers, logger)
 
@@ -71,7 +53,7 @@ def _wait_cluster_status(predicate, managers, logger, timeout=150,
     while time.time() < deadline:
         for manager in managers:
             try:
-                nodes = manager.client.cluster.nodes.list()
+                nodes = manager.client.manager.get_managers().items
                 if predicate(nodes):
                     return
             except (ConnectionError, CloudifyClientError):
@@ -84,20 +66,6 @@ def _wait_cluster_status(predicate, managers, logger, timeout=150,
     raise RuntimeError('Timeout when waiting for cluster status')
 
 
-def verify_nodes_status(manager, cfy, logger):
-    logger.info('Verifying that manager %s is a leader '
-                'and others are replicas', manager.ip_address)
-    cfy.cluster.nodes.list()
-    nodes = manager.client.cluster.nodes.list()
-    for node in nodes:
-        if node.name == str(manager.ip_address):
-            assert node.master is True
-            logger.info('Manager %s is a leader ', node.name)
-        else:
-            assert node.master is not True
-            logger.info('Manager %s is a replica ', node.name)
-
-
 def delete_active_profile():
     active_profile_path = os.path.join(os.environ['CFY_WORKDIR'],
                                        '.cloudify/active.profile')
@@ -105,27 +73,98 @@ def delete_active_profile():
         os.remove(active_profile_path)
 
 
-def start_cluster(manager, cfy):
-    delete_active_profile()
+def _set_test_user(cfy, manager, logger, username, userpass, tenant_name):
     manager.use()
-
-    cfy.cluster.start(timeout=600,
-                      cluster_host_ip=manager.private_ip_address,
-                      cluster_node_name=manager.ip_address)
-
-    return manager
+    logger.info('Using manager `{0}`'.format(manager.ip_address))
+    cfy.profiles.set('-u', username, '-p', userpass, '-t', tenant_name)
 
 
-def setup_cluster(hosts, cfy, logger):
-    manager1 = start_cluster(hosts[0], cfy)
+def toggle_cluster_node(manager, service, logger, disable=True):
+    """
+    Disable or enable a manager to avoid it from being picked as the leader
+    during tests
+    """
+    action_msg, action = \
+        ("Shutting down", 'stop') if disable else ("Starting", 'start')
+    with manager.ssh() as fabric:
+        logger.info('{0} {1} service on manager {2}'.format(
+            action_msg, service, manager.ip_address))
+        fabric.run('sudo systemctl {0} {1}'.format(action, service))
 
-    for manager in hosts[1:]:
-        manager.use()
-        cfy.cluster.join(manager1.ip_address,
-                         timeout=600,
-                         cluster_host_ip=manager.private_ip_address,
-                         cluster_node_name=manager.ip_address)
 
-    cfy.cluster.nodes.list()
-    wait_nodes_online(hosts, logger)
-    return hosts
+def reverse_cluster_test(cluster_machines, logger):
+    for manager in cluster_machines.instances:
+        toggle_cluster_node(manager, 'nginx', logger, disable=False)
+
+
+def failover_cluster(cfy, distributed_installation,
+                     distributed_ha_hello_worlds, logger):
+    """Test that the cluster fails over in case of a service failure
+
+    - stop nginx on leader
+    - check that a new leader is elected
+    - stop mgmtworker on that new leader, and restart nginx on the former
+    - check that the original leader was elected
+    """
+    cfy.cluster.update_profile()
+    remaining_active_node = distributed_installation.instances[-1]
+    # stop nginx on all nodes except last - force choosing the last as the
+    # leader (because only the last one has services running)
+    for manager in distributed_installation.instances[:-1]:
+        logger.info('Simulating manager %s REST failure by stopping'
+                    ' nginx service', manager.ip_address)
+        toggle_cluster_node(manager, 'nginx', logger)
+
+    # Making sure ClusterHTTPClient works properly
+    cfy.cluster.status()
+
+    _test_hellos(distributed_ha_hello_worlds)
+
+    new_remaining_active_node = distributed_installation.instances[0]
+    # force going back to the original active manager - start nginx on it, and
+    # stop nginx on the current active manager (simulating failure)
+    toggle_cluster_node(new_remaining_active_node, 'nginx',
+                        logger, disable=False)
+    logger.info('Simulating manager %s REST failure by stopping '
+                'nginx service', remaining_active_node.ip_address)
+    toggle_cluster_node(remaining_active_node, 'nginx', logger,
+                        disable=True)
+
+    cfy.cluster.status()
+
+    _test_hellos(distributed_ha_hello_worlds, delete_blueprint=True)
+
+
+def fail_and_recover_cluster(cfy, distributed_installation, logger):
+    def _iptables(manager, block_nodes, flag='-A'):
+        with manager.ssh() as _fabric:
+            for other_host in block_nodes:
+                _fabric.sudo('iptables {0} INPUT -s {1} -j DROP'
+                             .format(flag, other_host.private_ip_address))
+                _fabric.sudo('iptables {0} OUTPUT -d {1} -j DROP'
+                             .format(flag, other_host.private_ip_address))
+        fabric.network.disconnect_all()
+
+    victim_manager = distributed_installation.instances[0]
+
+    logger.info('Simulating network failure that isolates a manager')
+    _iptables(victim_manager, distributed_installation.instances[1:])
+
+    cfy.cluster.status()
+
+    logger.info('End of simulated network failure')
+    _iptables(victim_manager, distributed_installation.instances[1:],
+              flag='-D')
+
+    wait_nodes_online(cfy, distributed_installation.instances, logger)
+
+
+def _test_hellos(hello_worlds, install=False, delete_blueprint=False):
+    for hello_world in hello_worlds:
+        if delete_blueprint:
+            hello_world.delete_blueprint()
+            continue
+        hello_world.upload_blueprint()
+        if install:
+            hello_world.create_deployment()
+            hello_world.install()
