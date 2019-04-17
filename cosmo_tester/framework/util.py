@@ -180,7 +180,7 @@ def get_plugin_wagon_urls():
 
     branch = os.environ.get('BRANCH_NAME_CORE', 'master')
     url_format = 'https://raw.githubusercontent.com/cloudify-cosmo/' \
-                 'cloudify-versions/{branch}/packages-urls/plugin-urls.yaml'
+                 'cloudify-versions/4.6-build/packages-urls/plugin-urls.yaml'
     response = _fetch(branch=branch)
     if response.status_code != 200:
         if branch == 'master':
