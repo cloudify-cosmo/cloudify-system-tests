@@ -42,6 +42,7 @@ RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-de
 
 MANAGER_API_VERSIONS = {
     'master': 'v3.1',
+    '4.6-build': 'v3.1',
     '4.5': 'v3.1',
     '4.4': 'v3.1',
     '4.3.1': 'v3',
