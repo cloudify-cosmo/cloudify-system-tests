@@ -42,6 +42,7 @@ RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-de
 
 MANAGER_API_VERSIONS = {
     'master': 'v3.1',
+    '4.6': 'v3.1',
     '4.5.5': 'v3.1',
     '4.5': 'v3.1',
     '4.4': 'v3.1',
@@ -260,7 +261,6 @@ class _CloudifyManager(VM):
         """
         Test Managers should be in sanity mode to skip Cloudify license
         validations.
-        :return:
         """
         with self.ssh() as fabric_ssh:
 
@@ -453,7 +453,7 @@ class _CloudifyManager(VM):
         config_file.write_text(install_config_str)
         return config_file
 
-    def bootstrap(self, db=False):
+    def bootstrap(self, is_db=False):
         manager_install_rpm = \
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
@@ -473,7 +473,7 @@ class _CloudifyManager(VM):
                 '/etc/cloudify/config.yaml'
             )
             fabric_ssh.run('cfy_manager install')
-        if not db:
+        if not is_db:
             self.enter_sanity_mode()
 
     def _create_openstack_config_file(self):
@@ -690,6 +690,10 @@ class Cloudify4_5_5Manager(_CloudifyManager):
     branch_name = '4.5.5'
 
 
+class Cloudify4_6Manager(_CloudifyManager):
+    branch_name = '4.6'
+
+
 class CloudifyMasterManager(_CloudifyManager):
     branch_name = 'master'
     image_name_attribute = 'cloudify_manager_image_name_prefix'
@@ -773,6 +777,7 @@ IMAGES = {
     '4.4': Cloudify4_4Manager,
     '4.5': Cloudify4_5Manager,
     '4.5.5': Cloudify4_5_5Manager,
+    '4.6': Cloudify4_6Manager,
     'master': CloudifyMasterManager,
     'master_distributed_manager': CloudifyDistributed_Manager,
     'master_distributed_manager_cluster_joined':
@@ -1158,7 +1163,7 @@ class DistributedInstallationCloudifyManager(TestHosts):
         super(DistributedInstallationCloudifyManager, self).\
             _bootstrap_managers()
         self._create_ssl_certificates_on_instances()
-        self.database.bootstrap(db=True)
+        self.database.bootstrap(is_db=True)
         self.manager.bootstrap()
         if self.cluster:
             self.manager.use()
