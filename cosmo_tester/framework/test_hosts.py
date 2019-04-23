@@ -37,11 +37,12 @@ from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
-
+SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-dev/master/scripts/rsync.sh'  # NOQA
 
 MANAGER_API_VERSIONS = {
     'master': 'v3.1',
+    '4.6': 'v3.1',
     '4.5.5': 'v3.1',
     '4.5': 'v3.1',
     '4.4': 'v3.1',
@@ -254,6 +255,26 @@ class _CloudifyManager(VM):
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
+            self.enter_sanity_mode()
+
+    def enter_sanity_mode(self):
+        """
+        Test Managers should be in sanity mode to skip Cloudify license
+        validations.
+        """
+        with self.ssh() as fabric_ssh:
+
+            fabric_ssh.sudo('mkdir -p "{}"'.format(
+                os.path.dirname(SANITY_MODE_FILE_PATH)))
+
+            fabric_ssh.sudo('echo sanity >> "{0}"'.format(
+                SANITY_MODE_FILE_PATH))
+            fabric_ssh.sudo('chown cfyuser:cfyuser {sanity_mode}'.format(
+                sanity_mode=SANITY_MODE_FILE_PATH,
+            ))
+            fabric_ssh.sudo('chmod 440 {sanity_mode}'.format(
+                sanity_mode=SANITY_MODE_FILE_PATH,
+            ))
 
     def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
         all_plugins = util.get_plugin_wagon_urls()
@@ -432,7 +453,7 @@ class _CloudifyManager(VM):
         config_file.write_text(install_config_str)
         return config_file
 
-    def bootstrap(self):
+    def bootstrap(self, is_db=False):
         manager_install_rpm = \
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
@@ -452,6 +473,8 @@ class _CloudifyManager(VM):
                 '/etc/cloudify/config.yaml'
             )
             fabric_ssh.run('cfy_manager install')
+        if not is_db:
+            self.enter_sanity_mode()
 
     def _create_openstack_config_file(self):
         openstack_config_file = self._tmpdir / 'openstack_config.json'
@@ -667,6 +690,10 @@ class Cloudify4_5_5Manager(_CloudifyManager):
     branch_name = '4.5.5'
 
 
+class Cloudify4_6Manager(_CloudifyManager):
+    branch_name = '4.6'
+
+
 class CloudifyMasterManager(_CloudifyManager):
     branch_name = 'master'
     image_name_attribute = 'cloudify_manager_image_name_prefix'
@@ -750,6 +777,7 @@ IMAGES = {
     '4.4': Cloudify4_4Manager,
     '4.5': Cloudify4_5Manager,
     '4.5.5': Cloudify4_5_5Manager,
+    '4.6': Cloudify4_6Manager,
     'master': CloudifyMasterManager,
     'master_distributed_manager': CloudifyDistributed_Manager,
     'master_distributed_manager_cluster_joined':
@@ -858,7 +886,6 @@ class TestHosts(object):
 
             for instance in self.instances:
                 instance.verify_services_are_running()
-
                 instance.upload_necessary_files()
                 if instance.upload_plugins:
                     instance.upload_plugin(
@@ -1136,7 +1163,7 @@ class DistributedInstallationCloudifyManager(TestHosts):
         super(DistributedInstallationCloudifyManager, self).\
             _bootstrap_managers()
         self._create_ssl_certificates_on_instances()
-        self.database.bootstrap()
+        self.database.bootstrap(is_db=True)
         self.manager.bootstrap()
         if self.cluster:
             self.manager.use()
