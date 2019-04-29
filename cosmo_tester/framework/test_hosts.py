@@ -603,8 +603,10 @@ def get_latest_manager_image_name():
         version = util.get_cli_version()
         version_num, _, version_milestone = version.partition('-')
 
-        if version_num.endswith('.0') and version_num.count('.') > 1:
-            version_num = version_num[:-2]
+        # starting 5.0.0, we name images with the trailing .0
+        if LooseVersion(version_num) < '5.0.0':
+            if version_num.endswith('.0') and version_num.count('.') > 1:
+                version_num = version_num[:-2]
 
         distro = ATTRIBUTES.default_manager_distro
         version = version_num + version_milestone
