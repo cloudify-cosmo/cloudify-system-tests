@@ -19,7 +19,6 @@ from copy import deepcopy
 from StringIO import StringIO
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
-from cosmo_tester.framework.util import is_community
 from cosmo_tester.framework.test_hosts import (
     BootstrapBasedCloudifyManagers,
     CURRENT_MANAGER,
@@ -30,7 +29,6 @@ from cosmo_tester.framework.examples.hello_world import (
     centos_hello_world
 )
 from cosmo_tester.framework.util import prepare_and_get_test_tenant
-from cosmo_tester.test_suites.ha import ha_helper
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
@@ -160,34 +158,6 @@ def test_multiple_networks(managers,
 
     _add_new_network(new_manager, logger)
     post_bootstrap_hello.verify_all()
-
-
-@pytest.mark.skipif(is_community(), reason='Cloudify Community version does '
-                                           'not support clustering')
-def test_multiple_networks_cluster(cluster_managers,
-                                   cfy,
-                                   multi_network_cluster_hello_worlds,
-                                   logger,
-                                   tmpdir,
-                                   attributes):
-    logger.info('Testing cluster with multiple networks')
-    ha_helper.setup_cluster(cluster_managers, cfy, logger)
-    manager1, manager2 = cluster_managers
-
-    ha_helper.verify_nodes_status(manager1, cfy, logger)
-    # not restarting on the replica
-    _add_new_network(manager2, logger, restart=False)
-    _add_new_network(manager1, logger)
-    manager2.use()
-    ha_helper.wait_nodes_online(cluster_managers, logger)
-    ha_helper.set_active(manager1, cfy, logger)
-    for hello in multi_network_cluster_hello_worlds:
-        hello.upload_blueprint()
-        hello.create_deployment()
-        hello.install()
-    ha_helper.set_active(manager2, cfy, logger)
-    for hello in multi_network_cluster_hello_worlds:
-        hello.uninstall()
 
 
 def _add_new_network(manager, logger, restart=True):
