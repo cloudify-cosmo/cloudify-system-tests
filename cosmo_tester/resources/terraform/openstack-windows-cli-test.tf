@@ -46,6 +46,10 @@ resource "openstack_networking_subnet_v2" "subnet" {
   network_id = "${openstack_networking_network_v2.network.id}"
   cidr = "10.0.0.0/24"
   dns_nameservers = ["8.8.8.8", "8.8.4.4"]
+  allocation_pools = {
+    start = "10.0.0.5"
+    end   = "10.0.0.254"
+  }
 }
 
 resource "openstack_networking_router_interface_v2" "router_interface" {
