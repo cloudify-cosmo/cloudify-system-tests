@@ -56,8 +56,8 @@ resource "openstack_networking_subnet_v2" "subnet_{{ n }}" {
   cidr = "1{{ n }}.0.0.0/24"
   dns_nameservers = ["8.8.8.8", "8.8.4.4"]
   allocation_pools = {
-    start = "10.0.0.5"
-    end   = "10.0.0.254"
+    start = "1{{ n }}.0.0.5"
+    end   = "1{{ n }}.0.0.254"
   }
 }
 
