@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/5.0.0.dev1/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/2.0.1/plugin.yaml
+  - plugin:cloudify-openstack-plugin
   - types.yaml
 
 
@@ -38,6 +38,8 @@ node_templates:
       rules:
         - port: 22
           remote_ip_prefix: 0.0.0.0/0
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   host:
     type: cloudify.openstack.nodes.Server
@@ -57,6 +59,7 @@ node_templates:
             args:
               security_groups: [{ get_attribute: [ security_group, external_name ]}]
               key_name: { get_input: keypair_name }
+      cloudify.interfaces.validation: {}
     relationships:
       - type: cloudify.openstack.server_connected_to_security_group
         target: security_group
