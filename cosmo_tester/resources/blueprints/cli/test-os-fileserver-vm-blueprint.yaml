@@ -3,7 +3,7 @@ tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/5.0.0.dev1/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/2.0.1/plugin.yaml
+  - plugin:cloudify-openstack-plugin
 
 inputs:
   prefix:
@@ -40,6 +40,8 @@ node_templates:
         tenant_name: { get_input: os_tenant_name }
         auth_url: { get_input: os_auth_url }
         region: { get_input: os_region }
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   router:
     type: cloudify.openstack.nodes.Router
@@ -49,12 +51,16 @@ node_templates:
     relationships:
       - target: external_network
         type: cloudify.relationships.connected_to
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   network:
     type: cloudify.openstack.nodes.Network
     properties:
       resource_id: { concat: [{ get_input: prefix }, '-network'] }
       openstack_config: *OPENSTACK_CONFIG
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   subnet:
     type: cloudify.openstack.nodes.Subnet
@@ -70,6 +76,8 @@ node_templates:
         type: cloudify.relationships.contained_in
       - target: router
         type: cloudify.openstack.subnet_connected_to_router
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   floating_ip:
     type: cloudify.openstack.nodes.FloatingIP
@@ -77,6 +85,8 @@ node_templates:
       floatingip:
         floating_network_name: { get_property: [external_network, resource_id] }
       openstack_config: *OPENSTACK_CONFIG
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   security_group:
     type: cloudify.openstack.nodes.SecurityGroup
@@ -90,6 +100,8 @@ node_templates:
         - port: 8080
           remote_ip_prefix: 0.0.0.0/0
       openstack_config: *OPENSTACK_CONFIG
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   keypair:
     type: cloudify.openstack.nodes.KeyPair
@@ -97,6 +109,8 @@ node_templates:
       resource_id: { concat: [{ get_input: prefix }, '-keypair'] }
       private_key_path: { get_input: key_pair_path }
       openstack_config: *OPENSTACK_CONFIG
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   server:
     type: cloudify.openstack.nodes.Server
@@ -117,6 +131,8 @@ node_templates:
         type: cloudify.openstack.server_connected_to_keypair
       - target: security_group
         type: cloudify.openstack.server_connected_to_security_group
+    interfaces:
+      cloudify.interfaces.validation: {}
 
 outputs:
   vm_public_ip_address:
