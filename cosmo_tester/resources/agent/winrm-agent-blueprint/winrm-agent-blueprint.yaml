@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_3
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/5.0.0.dev1/types.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/2.0.1/plugin.yaml
+    - plugin:cloudify-openstack-plugin
 
 plugins:
   mock:
@@ -44,6 +44,8 @@ node_templates:
       rules:
         - port: 5985
           remote_ip_prefix: 0.0.0.0/0
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   keypair:
     type: cloudify.openstack.nodes.KeyPair
@@ -51,6 +53,8 @@ node_templates:
       use_external_resource: true
       resource_id: { get_input: keypair_name }
       private_key_path: { get_input: private_key_path }
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   host:
     type: cloudify.openstack.nodes.WindowsServer
@@ -80,6 +84,7 @@ node_templates:
         start:
           inputs:
             max_retries: 50
+      cloudify.interfaces.validation: {}
     relationships:
       - type: cloudify.openstack.server_connected_to_keypair
         target: keypair
