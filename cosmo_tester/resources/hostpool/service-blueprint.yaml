@@ -3,7 +3,7 @@ tosca_definitions_version: cloudify_dsl_1_3
 imports:
   - http://www.getcloudify.org/spec/cloudify/5.0.0.dev1/types.yaml
   - http://www.getcloudify.org/spec/fabric-plugin/1.5.2/plugin.yaml
-  - http://www.getcloudify.org/spec/openstack-plugin/2.0.1/plugin.yaml
+  - plugin:cloudify-openstack-plugin
   - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-host-pool-service/1.1/host-pool-service.yaml
 
 inputs:
@@ -80,12 +80,16 @@ node_templates:
     properties:
       floatingip:
         floating_network_id: { get_input: floating_network_id }
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   network:
     type: cloudify.openstack.nodes.Network
     properties:
       resource_id: { get_input: network_name }
       use_external_resource: true
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   host_security_group:
     type: cloudify.openstack.nodes.SecurityGroup
@@ -95,6 +99,8 @@ node_templates:
           port: 22
         - remote_ip_prefix: 0.0.0.0/0
           port: 5985
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   service_host:
     type: cloudify.openstack.nodes.Server
@@ -112,6 +118,7 @@ node_templates:
           inputs:
             args:
               security_groups: [{ get_attribute: [ host_security_group, external_name ]}]
+      cloudify.interfaces.validation: {}
     relationships:
       - target: service_ip
         type: cloudify.openstack.server_connected_to_floating_ip
@@ -130,6 +137,8 @@ node_templates:
       rules:
         - remote_ip_prefix: 0.0.0.0/0
           port: { get_property: [ host_pool_service, port ] }
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   host_pool_key:
     type: cloudify.openstack.nodes.KeyPair
@@ -137,6 +146,8 @@ node_templates:
       use_external_resource: true
       resource_id: { get_input: key_pair_name }
       private_key_path: { get_input: private_key_path }
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   windows_host_template:
     type: cloudify.openstack.nodes.WindowsServer
@@ -165,6 +176,8 @@ node_templates:
         type: cloudify.openstack.server_connected_to_keypair
       - target: host_security_group
         type: cloudify.openstack.server_connected_to_security_group
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   centos_host_template:
     type: cloudify.openstack.nodes.Server
@@ -183,6 +196,8 @@ node_templates:
         type: managed_by_host_pool_service
       - target: host_security_group
         type: cloudify.openstack.server_connected_to_security_group
+    interfaces:
+      cloudify.interfaces.validation: {}
 
   ubuntu_host_template:
     type: cloudify.openstack.nodes.Server
@@ -201,6 +216,8 @@ node_templates:
         type: managed_by_host_pool_service
       - target: host_security_group
         type: cloudify.openstack.server_connected_to_security_group
+    interfaces:
+      cloudify.interfaces.validation: {}
 
 outputs:
   endpoint:
