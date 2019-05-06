@@ -486,12 +486,12 @@ def _install_script(name, windows, user, manager, attributes, tmpdir, logger,
         node_id='node',
         tenant={'name': tenant},
         rest_token=manager.client.tokens.get().value,
+        managers=manager.client.manager.get_managers(),
+        brokers=manager.client.manager.get_brokers(),
         properties={'agent_config': {
             'user': user,
             'windows': windows,
             'install_method': 'init_script',
-            'rest_host': manager.private_ip_address,
-            'broker_ip': manager.private_ip_address,
             'name': name
         }})
     try:
