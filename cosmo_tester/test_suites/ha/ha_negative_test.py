@@ -15,7 +15,6 @@
 
 import time
 import pytest
-from cosmo_tester.framework.examples.hello_world import centos_hello_world
 from cosmo_tester.framework.test_hosts import TestHosts
 from . import skip_community
 from . import ha_helper
@@ -41,44 +40,6 @@ def hosts(
         hosts.create()
         ha_helper.setup_cluster(hosts.instances, cfy, logger)
         yield hosts
-
-    finally:
-        hosts.destroy()
-
-
-def test_nonempty_manager_join_cluster_negative(cfy, attributes, ssh_key,
-                                                logger, tmpdir, module_tmpdir):
-    logger.info('Creating HA cluster of 2 managers')
-    hosts = TestHosts(
-        cfy, ssh_key, module_tmpdir, attributes, logger,
-        number_of_instances=2)
-
-    try:
-        hosts.create()
-        manager1 = hosts.instances[0]
-        manager2 = hosts.instances[1]
-
-        ha_helper.delete_active_profile()
-        manager1.use()
-        cfy.cluster.start(timeout=600,
-                          cluster_host_ip=manager1.private_ip_address,
-                          cluster_node_name=manager1.ip_address)
-
-        cfy.cluster.nodes.list()
-
-        ha_helper.delete_active_profile()
-        manager2.use()
-        hello_world = centos_hello_world(cfy, manager2, attributes, ssh_key,
-                                         logger, tmpdir)
-
-        hello_world.upload_blueprint()
-
-        logger.info('Joining HA cluster from a non-empty manager')
-        with pytest.raises(Exception):
-            cfy.cluster.join(manager1.ip_address,
-                             timeout=600,
-                             cluster_host_ip=manager2.private_ip_address,
-                             cluster_node_name=manager2.ip_address)
 
     finally:
         hosts.destroy()
@@ -128,20 +89,3 @@ def test_remove_from_cluster_and_use_negative(cfy, hosts, logger):
             credentials={})
     assert 'This node was removed from the Cloudify Manager cluster' in \
         exinfo.value.message
-
-
-def test_manager_already_in_cluster_join_cluster_negative(cfy,
-                                                          hosts, logger):
-    manager1 = hosts.instances[0]
-    manager2 = hosts.instances[1]
-
-    ha_helper.set_active(manager2, cfy, logger)
-    ha_helper.delete_active_profile()
-    manager2.use()
-    logger.info('Joining HA cluster with the manager %s that is already'
-                ' a part of the cluster', manager2.ip_address)
-    with pytest.raises(Exception):
-        cfy.cluster.join(manager1.ip_address,
-                         timeout=600,
-                         cluster_host_ip=manager2.private_ip_address,
-                         cluster_node_name=manager2.ip_address)
