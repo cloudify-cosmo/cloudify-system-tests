@@ -14,6 +14,7 @@
 #    * limitations under the License.
 
 import os
+import re
 import time
 import fabric.network
 
@@ -25,14 +26,9 @@ def wait_nodes_online(cfy, managers, logger):
     """Wait until all of the cluster nodes are online"""
     def _all_nodes_online(nodes):
         result = cfy.cluster.status()
-        index, count = 0, 0
-        while index < len(result):
-            index = result.find('Active', index)
-            if index == -1:
-                break
-            count += 1
-        if count == len(nodes):
+        if len(re.findall('Active', result.stdout)) == len(nodes):
             return True
+        return False
     logger.info('Waiting for all nodes to be online...')
     _wait_cluster_status(_all_nodes_online, managers, logger)
 
@@ -106,7 +102,6 @@ def failover_cluster(cfy, distributed_installation,
     - stop mgmtworker on that new leader, and restart nginx on the former
     - check that the original leader was elected
     """
-    cfy.cluster.update_profile()
     remaining_active_node = distributed_installation.instances[-1]
     # stop nginx on all nodes except last - force choosing the last as the
     # leader (because only the last one has services running)
@@ -150,8 +145,6 @@ def fail_and_recover_cluster(cfy, distributed_installation, logger):
     logger.info('Simulating network failure that isolates a manager')
     _iptables(victim_manager, distributed_installation.instances[1:])
 
-    cfy.cluster.status()
-
     logger.info('End of simulated network failure')
     _iptables(victim_manager, distributed_installation.instances[1:],
               flag='-D')
@@ -162,9 +155,9 @@ def fail_and_recover_cluster(cfy, distributed_installation, logger):
 def _test_hellos(hello_worlds, install=False, delete_blueprint=False):
     for hello_world in hello_worlds:
         if delete_blueprint:
-            hello_world.delete_blueprint()
+            hello_world.delete_blueprint(use_cfy=True)
             continue
-        hello_world.upload_blueprint()
+        hello_world.upload_blueprint(use_cfy=True)
         if install:
             hello_world.create_deployment()
             hello_world.install()

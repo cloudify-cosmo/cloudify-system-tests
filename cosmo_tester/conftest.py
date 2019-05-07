@@ -14,16 +14,17 @@
 #  * limitations under the License.
 
 
-import logging
 import os
 import sys
+import logging
 
-from path import Path
 import sh
+import pytest
 import fabric.network
+from path import Path
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.fixtures import *
+from cosmo_tester.framework.fixtures import *  # noqa
 
 
 @pytest.fixture(scope='module')

@@ -1126,7 +1126,7 @@ class DistributedInstallationCloudifyManager(TestHosts):
     POSTGRESQL_CLIENT_CERT_NAME = 'postgresql_client{0}.crt'
     POSTGRESQL_CLIENT_KEY_NAME = 'postgresql_client{0}.key'
     POSTGRESQL_SERVER_CERT_NAME = 'postgresql_server.crt'
-    POSTGRESQL_SERVER_KEY_NAME= 'postgresql_server.key'
+    POSTGRESQL_SERVER_KEY_NAME = 'postgresql_server.key'
     RABBITMQ_CERT_NAME = 'rabbitmq_server.crt'
     RABBITMQ_KEY_NAME = 'rabbitmq_server.key'
     ROOT_CERT_NAME = 'root.crt'

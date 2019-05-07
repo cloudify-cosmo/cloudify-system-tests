@@ -151,7 +151,8 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
                     'cluster_members': {
                         'localhost': {
                             'default': str(
-                                distributed_installation[1].private_ip_address),
+                                distributed_installation[1].private_ip_address
+                            ),
                         }
                     }
                 },
@@ -172,7 +173,8 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
                     'cluster_members': {
                         'localhost': {
                             'default': str(
-                                distributed_installation[1].private_ip_address),
+                                distributed_installation[1].private_ip_address
+                            ),
                         }
                     }
                 },
@@ -254,8 +256,7 @@ def distributed_nodecellar(cfy, distributed_installation, attributes,
     manager = distributed_installation.manager
     manager.use()
     tenant = prepare_and_get_test_tenant(TENANT_NAME, manager, cfy)
-    nc = NodeCellarExample(
-        cfy, manager, attributes, ssh_key, logger, tmpdir,
-        tenant=tenant, suffix='simple')
+    nc = NodeCellarExample(cfy, manager, attributes, ssh_key, logger, tmpdir,
+                           tenant=tenant, suffix='simple')
     nc.blueprint_file = 'simple-blueprint-with-secrets.yaml'
     yield nc

@@ -112,7 +112,7 @@ class AbstractExample(testtools.TestCase):
         """ A method that add the ability to patch the blueprint if needed """
         pass
 
-    def upload_blueprint(self):
+    def upload_blueprint(self, use_cfy=False):
         self.clone_example()
         blueprint_file = self._cloned_to / self.blueprint_file
         self._patch_blueprint()
@@ -120,14 +120,29 @@ class AbstractExample(testtools.TestCase):
         self.logger.info('Uploading blueprint: %s [id=%s]',
                          blueprint_file,
                          self.blueprint_id)
-        with set_client_tenant(self.manager, self.tenant):
-            self.manager.client.blueprints.upload(
-                blueprint_file, self.blueprint_id)
+        if use_cfy:
+            self.cfy.profile.set([
+                '-t', self.tenant,
+            ])
+            self.cfy.blueprint.upload([
+                '-b', self.blueprint_id,
+                blueprint_file
+            ])
+        else:
+            with set_client_tenant(self.manager, self.tenant):
+                self.manager.client.blueprints.upload(
+                    blueprint_file, self.blueprint_id)
 
-    def delete_blueprint(self):
+    def delete_blueprint(self, use_cfy=False):
         self.logger.info('Deleting blueprint: {0}'.format(self.blueprint_id))
-        with set_client_tenant(self.manager, self.tenant):
-            self.manager.client.blueprints.delete(self.blueprint_id)
+        if use_cfy:
+            self.cfy.profile.set([
+                '-t', self.tenant,
+            ])
+            self.cfy.blueprint.delete(self.blueprint_id)
+        else:
+            with set_client_tenant(self.manager, self.tenant):
+                self.manager.client.blueprints.delete(self.blueprint_id)
 
     def create_deployment(self):
         self.logger.info(

@@ -24,7 +24,6 @@ from cosmo_tester.test_suites.snapshots import (
     verify_services_status
 )
 from ..ha.ha_helper import (
-    wait_nodes_online,
     failover_cluster,
     fail_and_recover_cluster,
     reverse_cluster_test,
@@ -52,7 +51,7 @@ def test_distributed_installation_ha(distributed_installation,
     logger.info('Testing HA functionality for cluster with an external '
                 'database and an external message queue')
     # Update cfy-profile with all managers in the cluster
-    cfy.cluster.update_profile()
+    cfy.cluster('update-profile')
 
     failover_cluster(cfy, distributed_installation,
                      distributed_ha_hello_worlds, logger)
@@ -66,7 +65,7 @@ def test_distributed_installation_ha(distributed_installation,
                          indirect=True)
 def test_distributed_installation_ha_remove_from_cluster(
         distributed_installation, cfy, logger, distributed_ha_hello_worlds):
-    cfy.cluster.update_profile()
+    cfy.cluster('update-profile')
 
     _test_hellos(distributed_ha_hello_worlds)
 
@@ -89,7 +88,7 @@ def test_distributed_installation_ha_remove_from_cluster(
                          indirect=True)
 def test_distributed_installation_delete_from_cluster(
         distributed_installation, cfy, logger, distributed_ha_hello_worlds):
-    cfy.cluster.update_profile()
+    cfy.cluster('update-profile')
 
     _test_hellos(distributed_ha_hello_worlds)
 
@@ -118,7 +117,7 @@ def test_distributed_installation_sanity(distributed_installation,
     manager_aio = distributed_installation.sanity_manager
 
     manager1.use()
-    cfy.cluster.update_profile()
+    cfy.cluster('update-profile')
 
     logger.info('Cfy version')
     cfy('--version')
