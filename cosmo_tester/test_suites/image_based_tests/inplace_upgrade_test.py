@@ -67,6 +67,10 @@ def test_inplace_upgrade(cfy,
     manager.wait_for_all_executions()
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
     manager.teardown()
+    with manager.ssh() as fabric_ssh:
+        # The teardown doesn't properly clean up rabbitmq
+        fabric_ssh.sudo('pkill -f rabbitmq')
+        fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
     manager.bootstrap()
     manager.use()
     manager.upload_necessary_files()
