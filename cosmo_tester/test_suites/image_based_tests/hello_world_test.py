@@ -29,10 +29,6 @@ def test_hello_world(hello_world):
     hello_world.verify_all()
 
 
-def test_hello_world_backwards(hello_world_backwards_compat):
-    hello_world_backwards_compat.verify_all()
-
-
 def test_hello_world_using_cfy_install_command(hello_worlds):  # noqa
     # Run the test twice: community and premium
     for hw in hello_worlds:
