@@ -41,7 +41,7 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
             subprocess.call(['grunt', 'pack'],
                             cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
         logger.info('Uploading Composer package...')
-        subprocess.call(['e2e/uploadPackage.sh],
+        subprocess.call(['e2e/uploadPackage.sh'],
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
 
     logger.info('Starting Composer system tests...')
