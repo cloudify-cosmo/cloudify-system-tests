@@ -27,9 +27,6 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
     if os.environ["UPDATE_COMPOSER_ON_MANAGER"] == 'true':
         logger.info('Starting update of Composer package on Manager...')
-        if os.environ["CENTOS_MANAGER"] == 'false':
-            logger.info('Setting Manager user to cloud-user')
-            os.environ["MANAGER_USER"] = 'cloud-user'
         os.environ["MANAGER_IP"] = manager.ip_address
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         if not os.environ["COMPOSER_PACKAGE_URL"]:
