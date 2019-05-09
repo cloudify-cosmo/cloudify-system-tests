@@ -29,14 +29,13 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
         logger.info('Starting update of Composer package on Manager...')
         os.environ["MANAGER_IP"] = manager.ip_address
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
-        if not os.environ["COMPOSER_PACKAGE_URL"]:
-            logger.info('Creating Composer package...')
-            subprocess.call(['npm', 'install'],
-                            cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
-            subprocess.call(['bower', 'install'],
-                            cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
-            subprocess.call(['grunt', 'pack'],
-                            cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
+        logger.info('Creating Composer package...')
+        subprocess.call(['npm', 'install'],
+                        cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
+        subprocess.call(['bower', 'install'],
+                        cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
+        subprocess.call(['grunt', 'pack'],
+                        cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
         logger.info('Uploading Composer package...')
         subprocess.call(['e2e/uploadPackage.sh'],
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
