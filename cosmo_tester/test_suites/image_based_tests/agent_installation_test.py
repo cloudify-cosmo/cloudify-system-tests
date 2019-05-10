@@ -411,6 +411,9 @@ def _install_script(name, windows, user, manager, attributes, tmpdir, logger,
                                                defaults.INTERNAL_REST_PORT)
         ),
         constants.MANAGER_FILE_SERVER_ROOT_KEY: str(tmpdir),
+        constants.MANAGER_NAME: (
+            manager.client.manager.get_managers()[0].hostname
+        ),
     }
     (tmpdir / 'cloudify_agent').mkdir()
 
