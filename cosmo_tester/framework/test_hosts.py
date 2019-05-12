@@ -438,6 +438,7 @@ class _CloudifyManager(VM):
                 {
                     'public_ip': str(self.ip_address),
                     'private_ip': str(self.private_ip_address),
+                    'hostname': str(self.server_id),
                     'security': {
                         'admin_username': self._attributes.cloudify_username,
                         'admin_password': self._attributes.cloudify_password,
