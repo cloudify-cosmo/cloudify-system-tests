@@ -37,7 +37,6 @@ from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
-SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-dev/master/scripts/rsync.sh'  # NOQA
 
 MANAGER_API_VERSIONS = {
@@ -255,26 +254,6 @@ class _CloudifyManager(VM):
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
-            self.enter_sanity_mode()
-
-    def enter_sanity_mode(self):
-        """
-        Test Managers should be in sanity mode to skip Cloudify license
-        validations.
-        """
-        with self.ssh() as fabric_ssh:
-
-            fabric_ssh.sudo('mkdir -p "{}"'.format(
-                os.path.dirname(SANITY_MODE_FILE_PATH)))
-
-            fabric_ssh.sudo('echo sanity >> "{0}"'.format(
-                SANITY_MODE_FILE_PATH))
-            fabric_ssh.sudo('chown cfyuser:cfyuser {sanity_mode}'.format(
-                sanity_mode=SANITY_MODE_FILE_PATH,
-            ))
-            fabric_ssh.sudo('chmod 440 {sanity_mode}'.format(
-                sanity_mode=SANITY_MODE_FILE_PATH,
-            ))
 
     def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
         all_plugins = util.get_plugin_wagon_urls()
@@ -431,8 +410,11 @@ class _CloudifyManager(VM):
             fabric_ssh.run('cfy_manager remove --force')
             fabric_ssh.sudo('yum remove -y cloudify-manager-install')
 
-    def _create_config_file(self):
+    def _create_config_file(self, upload_license=False):
         config_file = self._tmpdir / 'config_{0}.yaml'.format(self.index)
+        cloudify_license_path = \
+            util.get_resource_path(
+                'test_valid_paying_license.yaml') if upload_license else ''
         install_config = {
             'manager':
                 {
@@ -442,7 +424,8 @@ class _CloudifyManager(VM):
                     'security': {
                         'admin_username': self._attributes.cloudify_username,
                         'admin_password': self._attributes.cloudify_password,
-                    }
+                    },
+                    'cloudify_license_path': cloudify_license_path
                 }
         }
 
@@ -455,12 +438,12 @@ class _CloudifyManager(VM):
         config_file.write_text(install_config_str)
         return config_file
 
-    def bootstrap(self, enter_sanity_mode=True):
+    def bootstrap(self, upload_license=False):
         manager_install_rpm = \
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
 
-        install_config = self._create_config_file()
+        install_config = self._create_config_file(upload_license)
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
             fabric_ssh.run(
@@ -475,8 +458,6 @@ class _CloudifyManager(VM):
                 '/etc/cloudify/config.yaml'
             )
             fabric_ssh.run('cfy_manager install')
-        if enter_sanity_mode:
-            self.enter_sanity_mode()
 
     def _create_openstack_config_file(self):
         openstack_config_file = self._tmpdir / 'openstack_config.json'
@@ -571,8 +552,8 @@ class _CloudifyDatabaseOnly(_CloudifyManager):
                     'PostgreSQL is not in an active state, Error: {0}.'
                     ' Retrying...'.format(e.message))
 
-    def bootstrap(self, enter_sanity_mode=False):
-        super(_CloudifyDatabaseOnly, self).bootstrap(enter_sanity_mode)
+    def bootstrap(self, upload_license=False):
+        super(_CloudifyDatabaseOnly, self).bootstrap(upload_license)
 
     def api_version(self):
         pass
@@ -659,8 +640,8 @@ class _CloudifyMessageQueueOnly(_CloudifyManager):
                     'RabbitMQ is not in an active state, Error: {0}.'
                     ' Retrying...'.format(e.message))
 
-    def bootstrap(self, enter_sanity_mode=False):
-        super(_CloudifyMessageQueueOnly, self).bootstrap(enter_sanity_mode)
+    def bootstrap(self, upload_license=False):
+        super(_CloudifyMessageQueueOnly, self).bootstrap(upload_license)
 
     def api_version(self):
         pass
