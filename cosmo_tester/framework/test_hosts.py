@@ -48,10 +48,6 @@ MANAGER_API_VERSIONS = {
     '4.4': 'v3.1',
     '4.3.1': 'v3',
     '4.2': 'v3',
-    '4.1': 'v3',
-    '4.0.1': 'v3',
-    '4.0': 'v3',
-    '3.4.2': 'v2',
 }
 
 ATTRIBUTES = util.get_attributes()
@@ -715,57 +711,6 @@ def get_latest_manager_image_name():
     return image_name
 
 
-class Cloudify3_4Manager(_CloudifyManager):
-    branch_name = '3.4.2'
-    tenant_name = restore_tenant_name = 'restore_tenant'
-
-    def upload_necessary_files(self):
-        self._logger.info('Uploading necessary files to %s', self)
-        openstack_config_file = self._create_openstack_config_file()
-        with self.ssh() as fabric_ssh:
-            openstack_json_path = '/root/openstack_config.json'
-            fabric_ssh.put(openstack_config_file,
-                           openstack_json_path,
-                           use_sudo=True)
-            fabric_ssh.sudo('mkdir -p "{}"'.format(
-                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
-            fabric_ssh.put(self._ssh_key.private_key_path,
-                           REMOTE_PRIVATE_KEY_PATH,
-                           use_sudo=True)
-            fabric_ssh.sudo('chmod 440 {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
-
-
-class Cloudify4_0Manager(_CloudifyManager):
-    branch_name = '4.0'
-
-    def upload_necessary_files(self):
-        self._logger.info('Uploading necessary files to %s', self)
-        openstack_config_file = self._create_openstack_config_file()
-        with self.ssh() as fabric_ssh:
-            openstack_json_path = '/root/openstack_config.json'
-            fabric_ssh.put(openstack_config_file,
-                           openstack_json_path,
-                           use_sudo=True)
-            fabric_ssh.sudo('mkdir -p "{}"'.format(
-                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
-            fabric_ssh.put(self._ssh_key.private_key_path,
-                           REMOTE_PRIVATE_KEY_PATH,
-                           use_sudo=True)
-            fabric_ssh.sudo('chmod 440 {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
-
-
-class Cloudify4_0_1Manager(_CloudifyManager):
-    branch_name = '4.0.1'
-
-
-class Cloudify4_1Manager(_CloudifyManager):
-    branch_name = '4.1'
-
-
 class Cloudify4_2Manager(_CloudifyManager):
     branch_name = '4.2'
 
@@ -866,10 +811,6 @@ class CloudifyDistributed_MessageQueue(_CloudifyMessageQueueOnly):
 
 
 IMAGES = {
-    '3.4.2': Cloudify3_4Manager,
-    '4.0': Cloudify4_0Manager,
-    '4.0.1': Cloudify4_0_1Manager,
-    '4.1': Cloudify4_1Manager,
     '4.2': Cloudify4_2Manager,
     '4.3.1': Cloudify4_3_1Manager,
     '4.4': Cloudify4_4Manager,
