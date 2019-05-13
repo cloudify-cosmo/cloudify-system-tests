@@ -39,9 +39,6 @@ from cloudify_rest_client.exceptions import UserUnauthorizedError
 
 
 HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/master.zip'  # noqa
-# We need this because 3.4 (and 4.0!) snapshots don't handle agent_config,
-# but 3.4 example blueprints use it instead of cloudify_agent
-OLD_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/3.3.1.zip'  # noqa
 BASE_ID = 'helloworld'
 BLUEPRINT_ID = '{base}_bp'.format(base=BASE_ID)
 DEPLOYMENT_ID = '{base}_dep'.format(base=BASE_ID)
@@ -162,19 +159,18 @@ def create_helloworld_just_deployment(manager, logger, tenant=None):
 
 def upload_helloworld(manager, blueprint, blueprint_id, tenant, logger):
     version = manager.branch_name
-    url = OLD_WORLD_URL if version in ('3.4.2', '4.0') else HELLO_WORLD_URL
     logger.info(
         'Uploading blueprint {blueprint} from archive {archive} as {name} '
         'for manager version {version}'.format(
             blueprint=blueprint,
-            archive=url,
+            archive=HELLO_WORLD_URL,
             name=blueprint_id,
             version=version,
         )
     )
     with set_client_tenant(manager, tenant):
         manager.client.blueprints.publish_archive(
-            url,
+            HELLO_WORLD_URL,
             blueprint_id,
             blueprint,
         )
@@ -393,13 +389,8 @@ def create_snapshot(manager, snapshot_id, attributes, logger):
 
 
 def manager_supports_users_in_snapshot_creation(manager):
-    # You probably don't want to change this, unless somebody broke snapshots
-    # for users in a recent manager version and we decided to release anyway
-    return (
-        manager.branch_name not in ('3.4.2', '4.0', '4.0.1', '4.1',
-                                    '4.1.1')
-        and not is_community()
-    )
+    """Premium managers starting 4.2 support users in snapshot creation."""
+    return not is_community()
 
 
 def download_snapshot(manager, local_path, snapshot_id, logger):
@@ -725,18 +716,6 @@ def hosts(
         cfy, ssh_key, module_tmpdir,
         attributes, logger, instances=instances, request=request)
     hosts.create()
-
-    if request.param == '4.0.1':
-        with instances[0].ssh() as fabric_ssh:
-            fabric_ssh.sudo('yum -y -q install wget')
-            fabric_ssh.sudo(
-                'cd /tmp && '
-                'mkdir patch && '
-                'cd patch && '
-                'wget http://repository.cloudifysource.org/cloudify/old-version/4.0.1/patch3/cloudify-401-te-patch-3.tar.gz && '  # noqa
-                'tar --strip-components=1 -xzf *.tar.gz && '
-                './apply-patch.sh'
-            )
 
     # gcc and python-devel are needed to build most of our infrastructure
     # plugins.
