@@ -13,6 +13,7 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import re
 import time
 import pytest
 
@@ -69,17 +70,17 @@ def test_distributed_installation_ha_remove_from_cluster(
 
     _test_hellos(distributed_ha_hello_worlds)
 
-    manager_1 = distributed_installation.instances[0]
     nodes_to_check = list(distributed_installation.instances)
     for manager in distributed_installation.instances[1:]:
         logger.info('Removing the manager %s from HA cluster',
                     manager.ip_address)
         # The hostname of the machine should be the same as in the managers
         # table
-        cfy.cluster.remove(manager.hostname)
+        cfy.cluster.remove(manager.server_id)
         nodes_to_check.remove(manager)
 
-    manager_1.use()
+    result = cfy.cluster.status()
+    assert len(re.findall('Active', result.stdout)) == len(nodes_to_check)
 
     _test_hellos(distributed_ha_hello_worlds, delete_blueprint=True)
 
@@ -98,6 +99,11 @@ def test_distributed_installation_delete_from_cluster(
         manager.delete()
 
     logger.info('Remaining manager %s', manager_1)
+
+    result = cfy.cluster.status()
+    assert len(re.findall('Active', result.stdout)) == 1
+    assert len(re.findall('Offline', result.stdout)) == len(
+        distributed_installation.instances) - 1
 
     _test_hellos(distributed_ha_hello_worlds, delete_blueprint=True)
 
@@ -123,7 +129,8 @@ def test_distributed_installation_sanity(distributed_installation,
     cfy('--version')
 
     logger.info('Cfy status')
-    cfy.status()
+    result = cfy.cluster.status()
+    assert len(re.findall('Active', result.stdout)) == 3
 
     create_and_add_user_to_tenant(cfy, logger)
 

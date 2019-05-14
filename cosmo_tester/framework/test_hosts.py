@@ -427,17 +427,21 @@ class _CloudifyManager(VM):
             fabric_ssh.run('cfy_manager remove --force')
             fabric_ssh.sudo('yum remove -y cloudify-manager-install')
 
-    def _create_config_file(self):
+    def _create_config_file(self, upload_license=True):
         config_file = self._tmpdir / 'config_{0}.yaml'.format(self.index)
+        cloudify_license_path = \
+            '/tmp/test_valid_paying_license.yaml' if upload_license else ''
         install_config = {
             'manager':
                 {
                     'public_ip': str(self.ip_address),
                     'private_ip': str(self.private_ip_address),
+                    'hostname': str(self.server_id),
                     'security': {
                         'admin_username': self._attributes.cloudify_username,
                         'admin_password': self._attributes.cloudify_password,
-                    }
+                    },
+                    'cloudify_license_path': cloudify_license_path
                 }
         }
 
@@ -450,12 +454,12 @@ class _CloudifyManager(VM):
         config_file.write_text(install_config_str)
         return config_file
 
-    def bootstrap(self, enter_sanity_mode=True):
+    def bootstrap(self, enter_sanity_mode=True, upload_license=False):
         manager_install_rpm = \
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
 
-        install_config = self._create_config_file()
+        install_config = self._create_config_file(upload_license)
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
             fabric_ssh.run(
@@ -469,6 +473,11 @@ class _CloudifyManager(VM):
                 install_config,
                 '/etc/cloudify/config.yaml'
             )
+            if upload_license:
+                fabric_ssh.put(
+                    util.get_resource_path('test_valid_paying_license.yaml'),
+                    '/tmp/test_valid_paying_license.yaml'
+                )
             fabric_ssh.run('cfy_manager install')
         if enter_sanity_mode:
             self.enter_sanity_mode()
@@ -566,8 +575,9 @@ class _CloudifyDatabaseOnly(_CloudifyManager):
                     'PostgreSQL is not in an active state, Error: {0}.'
                     ' Retrying...'.format(e.message))
 
-    def bootstrap(self, enter_sanity_mode=False):
-        super(_CloudifyDatabaseOnly, self).bootstrap(enter_sanity_mode)
+    def bootstrap(self, enter_sanity_mode=False, upload_license=False):
+        super(_CloudifyDatabaseOnly, self).bootstrap(enter_sanity_mode,
+                                                     upload_license)
 
     def api_version(self):
         pass
@@ -653,9 +663,6 @@ class _CloudifyMessageQueueOnly(_CloudifyManager):
                 self._logger.warn(
                     'RabbitMQ is not in an active state, Error: {0}.'
                     ' Retrying...'.format(e.message))
-
-    def bootstrap(self, enter_sanity_mode=False):
-        super(_CloudifyMessageQueueOnly, self).bootstrap(enter_sanity_mode)
 
     def api_version(self):
         pass
@@ -1257,12 +1264,12 @@ class DistributedInstallationCloudifyManager(TestHosts):
         super(DistributedInstallationCloudifyManager, self).\
             _bootstrap_managers()
         self._create_ssl_certificates_on_instances()
-        self.database.bootstrap()
-        self.message_queue.bootstrap()
-        self.manager.bootstrap()
+        self.database.bootstrap(enter_sanity_mode=False)
+        self.message_queue.bootstrap(enter_sanity_mode=False)
+        self.manager.bootstrap(enter_sanity_mode=False, upload_license=True)
         if self.cluster:
             self.manager.use()
             for joining_manager in self.joining_managers:
-                joining_manager.bootstrap()
+                joining_manager.bootstrap(enter_sanity_mode=False)
             if self.sanity:
                 self.sanity_manager.bootstrap()
