@@ -29,8 +29,7 @@ from ..ha.ha_helper import (
     fail_and_recover_cluster,
     reverse_cluster_test,
     toggle_cluster_node,
-    _test_hellos,
-    wait_nodes_online
+    _test_hellos
 )
 from cosmo_tester.framework.cfy_helper import (
     create_and_add_user_to_tenant,
@@ -101,6 +100,11 @@ def test_distributed_installation_delete_from_cluster(
 
     logger.info('Remaining manager %s', manager_1)
 
+    result = cfy.cluster.status()
+    assert len(re.findall('Active', result.stdout)) == 1
+    assert len(re.findall('Offline', result.stdout)) == len(
+        distributed_installation.instances) - 1
+
     _test_hellos(distributed_ha_hello_worlds, delete_blueprint=True)
 
 
@@ -125,7 +129,8 @@ def test_distributed_installation_sanity(distributed_installation,
     cfy('--version')
 
     logger.info('Cfy status')
-    cfy.status()
+    result = cfy.cluster.status()
+    assert len(re.findall('Active', result.stdout)) == 3
 
     create_and_add_user_to_tenant(cfy, logger)
 
