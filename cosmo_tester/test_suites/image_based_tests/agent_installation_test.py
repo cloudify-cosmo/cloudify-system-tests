@@ -59,40 +59,6 @@ def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
                                    suffix='windows_2012_reboot')
 
 
-# Two different tests for ubuntu/centos
-# because of different disable requiretty logic
-def test_centos_7_userdata_agent(cfy, manager, attributes):
-    os_name = 'centos_7'
-    tenant = prepare_and_get_test_tenant(
-        'userdata_{}'.format(os_name),
-        manager,
-        cfy,
-    )
-    _test_linux_userdata_agent(
-        cfy,
-        manager,
-        attributes,
-        os_name=os_name,
-        tenant=tenant,
-    )
-
-
-def test_ubuntu_trusty_userdata_agent(cfy, manager, attributes):
-    os_name = 'ubuntu_14_04'
-    tenant = prepare_and_get_test_tenant(
-        'userdata_{}'.format(os_name),
-        manager,
-        cfy,
-    )
-    _test_linux_userdata_agent(
-        cfy,
-        manager,
-        attributes,
-        os_name=os_name,
-        tenant=tenant,
-    )
-
-
 def test_ubuntu_trusty_provided_userdata_agent(cfy,
                                                manager,
                                                attributes,
@@ -148,46 +114,12 @@ def test_windows_provided_userdata_agent(cfy,
         logger=logger,
         tenant=tenant,
     )
-    test_windows_userdata_agent(
-        cfy,
-        manager,
-        attributes,
-        install_method='provided',
-        name=name,
-        install_userdata=install_userdata,
-        tenant=tenant,
-    )
-
-
-def test_windows_userdata_agent(cfy,
-                                manager,
-                                attributes,
-                                install_method='init_script',
-                                name=None,
-                                install_userdata=None,
-                                os_name='windows_2012',
-                                tenant=None):
     user = attributes.windows_2012_username
     file_path = 'C:\\Users\\{0}\\test_file'.format(user)
     userdata = '#ps1_sysnative\n' \
                'Set-Content {1} "{0}"'.format(EXPECTED_FILE_CONTENT, file_path)
-    if install_userdata:
-        userdata = create_multi_mimetype_userdata([userdata,
-                                                   install_userdata])
-        if not tenant:
-            tenant = prepare_and_get_test_tenant(
-                'inst_userdata_{}'.format(os_name),
-                manager,
-                cfy,
-            )
-    else:
-        if not tenant:
-            tenant = prepare_and_get_test_tenant(
-                'userdata_{}'.format(os_name),
-                manager,
-                cfy,
-            )
-
+    userdata = create_multi_mimetype_userdata([userdata,
+                                               install_userdata])
     inputs = {
         'image': attributes.windows_2012_image_name,
         'user': user,
@@ -195,7 +127,7 @@ def test_windows_userdata_agent(cfy,
         'os_family': 'windows',
         'userdata': userdata,
         'file_path': file_path,
-        'install_method': install_method,
+        'install_method': 'provided',
         'name': name,
         'keypair_name': attributes.keypair_name,
         'private_key_path': manager.remote_private_key_path,
@@ -479,6 +411,9 @@ def _install_script(name, windows, user, manager, attributes, tmpdir, logger,
                                                defaults.INTERNAL_REST_PORT)
         ),
         constants.MANAGER_FILE_SERVER_ROOT_KEY: str(tmpdir),
+        constants.MANAGER_NAME: (
+            manager.client.manager.get_managers()[0].hostname
+        ),
     }
     (tmpdir / 'cloudify_agent').mkdir()
 
@@ -486,12 +421,12 @@ def _install_script(name, windows, user, manager, attributes, tmpdir, logger,
         node_id='node',
         tenant={'name': tenant},
         rest_token=manager.client.tokens.get().value,
+        managers=manager.client.manager.get_managers(),
+        brokers=manager.client.manager.get_brokers(),
         properties={'agent_config': {
             'user': user,
             'windows': windows,
             'install_method': 'init_script',
-            'rest_host': manager.private_ip_address,
-            'broker_ip': manager.private_ip_address,
             'name': name
         }})
     try:
