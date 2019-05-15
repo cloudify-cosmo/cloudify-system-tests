@@ -118,6 +118,8 @@ def test_distributed_installation_sanity(distributed_installation,
                                          attributes,
                                          distributed_nodecellar):
     logger.info('Running Sanity check for cluster with an external database')
+    rabbitmq = distributed_installation.message_queue
+
     manager1 = distributed_installation.manager
     manager2, manager3 = distributed_installation.joining_managers
     manager_aio = distributed_installation.sanity_manager
@@ -169,7 +171,7 @@ def test_distributed_installation_sanity(distributed_installation,
     # Upgrade agents
     logger.info('Upgrading agents')
     copy_ssl_cert_from_manager_to_tmpdir(manager2, tmpdir)
-    args = ['--manager-ip', manager2.private_ip_address,
+    args = ['--manager-ip', rabbitmq.private_ip_address,
             '--manager_certificate', str(tmpdir + 'new_manager_cert.txt'),
             '--all-tenants']
     cfy.agents.install(args)
