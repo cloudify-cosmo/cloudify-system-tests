@@ -67,12 +67,44 @@ def test_inplace_upgrade(cfy,
     manager.wait_for_all_executions()
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
     manager.teardown()
+    with manager.ssh() as fabric_ssh:
+        # The teardown doesn't properly clean up rabbitmq
+        fabric_ssh.sudo('pkill -f rabbitmq')
+        fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
     manager.bootstrap()
     manager.use()
     manager.upload_necessary_files()
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
     cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
     manager.wait_for_all_executions()
+
+    with manager.ssh() as fabric_ssh:
+        retry_delay = 1
+        max_attempts = 240
+        reboot_triggered = False
+        reboot_performed = False
+        for attempt in range(0, max_attempts):
+            try:
+                if fabric_ssh.run(
+                    'ps aux | grep shutdown | grep -v grep || true'
+                ).strip():
+                    # Still waiting for post-restore reboot
+                    sleep(retry_delay)
+                    reboot_triggered = True
+                    print('Reboot trigger has been set.')
+                    continue
+                elif reboot_triggered:
+                    reboot_performed = True
+                    print('Reboot has been performed, continuing.')
+                    break
+                else:
+                    sleep(retry_delay)
+            except Exception as err:
+                if attempt == max_attempts - 1:
+                    raise(err)
+                sleep(retry_delay)
+        if not reboot_performed:
+            raise RuntimeError('Expected reboot did not happen.')
 
     # we need to give the agents enough time to reconnect to the manager;
     # celery retries with a backoff of up to 32 seconds
