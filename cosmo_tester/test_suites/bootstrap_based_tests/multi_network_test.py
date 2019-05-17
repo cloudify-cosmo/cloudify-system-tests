@@ -166,7 +166,7 @@ def _add_new_network(manager, logger, restart=True):
     old_networks = deepcopy(manager.networks)
     network2_ip = old_networks.pop(NETWORK_2)
     networks_json = (
-        '{{ "{0}": {{ "manager": "{1}", "brokers": ["{1}"] }} }}'
+        '{{ "{0}": "{1}" }}'
     ).format(NETWORK_2, network2_ip)
     with manager.ssh() as fabric_ssh:
         fabric_ssh.sudo(
