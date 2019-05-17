@@ -634,20 +634,20 @@ def test_cli_blueprints_summary_subfield(prepared_manager, cfy):
             'tenant_name', 'visibility', '--json', '--all-tenants',
         ).stdout
     )
-    # N/A values are totals
+    # None values are totals
     expected = [
         {u'tenant_name': u'test1', u'blueprints': 3,
          u'visibility': u'tenant'},
         {u'tenant_name': u'test1', u'blueprints': 3,
-         u'visibility': "N/A"},
+         u'visibility': None},
         {u'tenant_name': u'test2', u'blueprints': 3,
          u'visibility': u'tenant'},
         {u'tenant_name': u'test2', u'blueprints': 3,
-         u'visibility': "N/A"},
+         u'visibility': None},
         {u'tenant_name': u'default_tenant', u'blueprints': 3,
          u'visibility': u'tenant'},
         {u'tenant_name': u'default_tenant', u'blueprints': 3,
-         u'visibility': "N/A"}
+         u'visibility': None}
     ]
     _assert_cli_results(results, expected, 'tenant_name')
 
@@ -684,7 +684,7 @@ def test_cli_deployments_summary_subfield(prepared_manager, cfy):
             'tenant_name', 'blueprint_id', '--json', '--all-tenants',
         ).stdout
     )
-    # N/A values are totals
+    # None values are totals
     expected = [
         {"tenant_name": "test1", "deployments": 3,
          "blueprint_id": "multivm"},
@@ -693,7 +693,7 @@ def test_cli_deployments_summary_subfield(prepared_manager, cfy):
         {"tenant_name": "test1", "deployments": 2,
          "blueprint_id": "relations"},
         {"tenant_name": "test1", "deployments": 6,
-         "blueprint_id": "N/A"},
+         "blueprint_id": None},
         {"tenant_name": "test2", "deployments": 2,
          "blueprint_id": "multivm"},
         {"tenant_name": "test2", "deployments": 1,
@@ -701,7 +701,7 @@ def test_cli_deployments_summary_subfield(prepared_manager, cfy):
         {"tenant_name": "test2", "deployments": 3,
          "blueprint_id": "small"},
         {"tenant_name": "test2", "deployments": 6,
-         "blueprint_id": "N/A"},
+         "blueprint_id": None},
         {"tenant_name": "default_tenant", "deployments": 1,
          "blueprint_id": "multivm"},
         {"tenant_name": "default_tenant", "deployments": 3,
@@ -709,7 +709,7 @@ def test_cli_deployments_summary_subfield(prepared_manager, cfy):
         {"tenant_name": "default_tenant", "deployments": 2,
          "blueprint_id": "small"},
         {"tenant_name": "default_tenant", "deployments": 6,
-         "blueprint_id": "N/A"}
+         "blueprint_id": None}
     ]
     _assert_cli_results(results, expected, 'blueprint_id')
 
@@ -745,26 +745,26 @@ def test_cli_executions_summary_subfield(prepared_manager, cfy):
             'tenant_name', 'workflow_id', '--json', '--all-tenants',
         ).stdout
     )
-    # N/A values are totals
+    # None values are totals
     expected = [
         {"tenant_name": "test1",
          "workflow_id": "create_deployment_environment", "executions": 6},
         {"tenant_name": "test1",
          "workflow_id": "install", "executions": 6},
         {"tenant_name": "test1",
-         "workflow_id": "N/A", "executions": 12},
+         "workflow_id": None, "executions": 12},
         {"tenant_name": "test2",
          "workflow_id": "create_deployment_environment", "executions": 6},
         {"tenant_name": "test2",
          "workflow_id": "install", "executions": 6},
         {"tenant_name": "test2",
-         "workflow_id": "N/A", "executions": 12},
+         "workflow_id": None, "executions": 12},
         {"tenant_name": "default_tenant",
          "workflow_id": "create_deployment_environment", "executions": 6},
         {"tenant_name": "default_tenant",
          "workflow_id": "install", "executions": 6},
         {"tenant_name": "default_tenant",
-         "workflow_id": "N/A", "executions": 12}
+         "workflow_id": None, "executions": 12}
     ]
     _assert_cli_results(results, expected, 'workflow_id')
 
@@ -804,7 +804,7 @@ def test_cli_nodes_summary_subfield(prepared_manager, cfy):
             'tenant_name', 'deployment_id', '--json', '--all-tenants',
         ).stdout
     )
-    # N/A values are totals
+    # None values are totals
     expected = [
         {"tenant_name": "test1", "deployment_id": "relations1",
          "nodes": 5},
@@ -818,7 +818,7 @@ def test_cli_nodes_summary_subfield(prepared_manager, cfy):
          "nodes": 5},
         {"tenant_name": "test1", "deployment_id": "small0",
          "nodes": 1},
-        {"tenant_name": "test1", "deployment_id": "N/A",
+        {"tenant_name": "test1", "deployment_id": None,
          "nodes": 17},
         {"tenant_name": "test2", "deployment_id": "small0",
          "nodes": 1},
@@ -832,7 +832,7 @@ def test_cli_nodes_summary_subfield(prepared_manager, cfy):
          "nodes": 1},
         {"tenant_name": "test2", "deployment_id": "multivm1",
          "nodes": 2},
-        {"tenant_name": "test2", "deployment_id": "N/A",
+        {"tenant_name": "test2", "deployment_id": None,
          "nodes": 12},
         {"tenant_name": "default_tenant", "deployment_id": "multivm0",
          "nodes": 2},
@@ -846,7 +846,7 @@ def test_cli_nodes_summary_subfield(prepared_manager, cfy):
          "nodes": 1},
         {"tenant_name": "default_tenant", "deployment_id": "relations0",
          "nodes": 5},
-        {"tenant_name": "default_tenant", "deployment_id": "N/A",
+        {"tenant_name": "default_tenant", "deployment_id": None,
          "nodes": 19}
     ]
     _assert_cli_results(results, expected, 'deployment_id')
@@ -887,7 +887,7 @@ def test_cli_node_instances_summary_subfield(prepared_manager, cfy):
             'tenant_name', 'node_id', '--json', '--all-tenants',
         ).stdout
     )
-    # N/A values are totals
+    # None values are totals
     expected = [
         {"tenant_name": "test1", "node_id": "fakeapp1",
          "node_instances": 4},
@@ -899,7 +899,7 @@ def test_cli_node_instances_summary_subfield(prepared_manager, cfy):
          "node_instances": 8},
         {"tenant_name": "test1", "node_id": "fakevm2",
          "node_instances": 5},
-        {"tenant_name": "test1", "node_id": "N/A",
+        {"tenant_name": "test1", "node_id": None,
          "node_instances": 21},
         {"tenant_name": "test2", "node_id": "fakeapp1",
          "node_instances": 2},
@@ -911,7 +911,7 @@ def test_cli_node_instances_summary_subfield(prepared_manager, cfy):
          "node_instances": 7},
         {"tenant_name": "test2", "node_id": "fakevm2",
          "node_instances": 3},
-        {"tenant_name": "test2", "node_id": "N/A",
+        {"tenant_name": "test2", "node_id": None,
          "node_instances": 14},
         {"tenant_name": "default_tenant", "node_id": "fakeapp1",
          "node_instances": 6},
@@ -923,7 +923,7 @@ def test_cli_node_instances_summary_subfield(prepared_manager, cfy):
          "node_instances": 9},
         {"tenant_name": "default_tenant", "node_id": "fakevm2",
          "node_instances": 4},
-        {"tenant_name": "default_tenant", "node_id": "N/A",
+        {"tenant_name": "default_tenant", "node_id": None,
          "node_instances": 25}
     ]
     _assert_cli_results(results, expected, 'node_id')
