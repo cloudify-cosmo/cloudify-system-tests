@@ -463,7 +463,7 @@ class _CloudifyManager(VM):
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
             fabric_ssh.run(
-                'curl -S {0} -o {1}'.format(
+                'curl -sS {0} -o {1}'.format(
                     manager_install_rpm,
                     install_rpm_file
                 )
@@ -822,15 +822,15 @@ class CloudifyDistributed_MessageQueue(_CloudifyMessageQueueOnly):
     image_name = get_latest_manager_image_name()
 
 
-class CloudifyDistributed5_0Manager(CloudifyDistributed_Manager):
+class CloudifyDistributed5_0_0Manager(CloudifyDistributed_Manager):
     branch_name = 'master'
 
 
-class CloudifyDistributed5_0Database(CloudifyDistributed_Database):
+class CloudifyDistributed5_0_0Database(CloudifyDistributed_Database):
     branch_name = 'master'
 
 
-class CloudifyDistributed5_0MessageQueue(CloudifyDistributed_MessageQueue):
+class CloudifyDistributed5_0_0MessageQueue(CloudifyDistributed_MessageQueue):
     branch_name = 'master'
 
 
@@ -842,9 +842,9 @@ IMAGES = {
     '4.5.5': Cloudify4_5_5Manager,
     '4.6': Cloudify4_6Manager,
     '4.6_CLUSTER_JOINED': Cloudify4_6Manager_ClusterJoined,
-    '5.0_DB': CloudifyDistributed5_0Database,
-    '5.0_RMQ': CloudifyDistributed5_0MessageQueue,
-    '5.0_MGR_WRKR': CloudifyDistributed5_0Manager,
+    '5.0.0_DB': CloudifyDistributed5_0_0Database,
+    '5.0.0_RMQ': CloudifyDistributed5_0_0MessageQueue,
+    '5.0.0_MGR_WRKR': CloudifyDistributed5_0_0Manager,
     'master': CloudifyMasterManager,
     'master_DB': CloudifyDistributed_Database,
     'master_RMQ': CloudifyDistributed_MessageQueue,
@@ -1101,18 +1101,18 @@ class DistributedInstallationCloudifyManager(TestHosts):
     ROOT_CERT_NAME = 'root.crt'
     ROOT_KEY_NAME = 'root.key'
 
-    def __init__(self, cluster=False, sanity=False, cluster_upgrade=False,
+    def __init__(self, cluster=False, sanity=False, upgrade_cluster=False,
                  cluster_version=None, *args, **kwargs):
         self.cluster = cluster
         self.sanity = sanity
 
         # The environment to upgrade to
-        database_to_use = IMAGES[cluster_version + '_DB'] if cluster_upgrade \
+        database_to_use = IMAGES[cluster_version + '_DB'] if upgrade_cluster \
             else CURRENT_DISTRIBUTED_DATABASE
         message_queue_to_use = IMAGES[cluster_version + '_RMQ'] if \
-            cluster_upgrade else CURRENT_DISTRIBUTED_MESSAGE_QUEUE
+            upgrade_cluster else CURRENT_DISTRIBUTED_MESSAGE_QUEUE
         manager_to_use = IMAGES[cluster_version + '_MGR_WRKR'] if \
-            cluster_upgrade else CURRENT_DISTRIBUTED_MANAGER
+            upgrade_cluster else CURRENT_DISTRIBUTED_MANAGER
 
         instances = [
             database_to_use(),
@@ -1128,7 +1128,7 @@ class DistributedInstallationCloudifyManager(TestHosts):
                 instances += [
                     CURRENT_MANAGER()
                 ]
-            if cluster_upgrade:
+            if upgrade_cluster:
                 # The environment to upgrade from
                 instances += [
                     IMAGES['4.6'](),
@@ -1147,7 +1147,7 @@ class DistributedInstallationCloudifyManager(TestHosts):
             self.joining_managers = self.instances[3:5]
             if sanity:
                 self.sanity_manager = self.instances[5]
-            elif cluster_upgrade:
+            elif upgrade_cluster:
                 self.old_cluster = self.instances[5:8]
 
         for manager in self.instances[:5]:
@@ -1366,10 +1366,8 @@ class DistributedInstallationCloudifyManager(TestHosts):
             self.manager.use()
             for joining_manager in self.joining_managers:
                 joining_manager.bootstrap(enter_sanity_mode=False)
-            # if self.sanity:
-            #    self.sanity_manager.bootstrap()
+            # Sanity and old cluster managers already created using
+            # image-based hosts
             if self.old_cluster:
-            #    for old_cluster_manager in self.old_cluster:
-            #        old_cluster_manager.bootstrap(upload_license=True)
                 self._old_cluster_start(self.old_cluster[0],
                                         self.old_cluster[1:])

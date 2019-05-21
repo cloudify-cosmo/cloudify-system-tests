@@ -182,22 +182,22 @@ def test_distributed_installation_sanity(distributed_installation,
 
 
 cluster_to_cluster_versions = [
-    '5.0',
+    '5.0.0',
     'master'
 ]
-cluster_upgrade_tests_runs_params = []
+upgrade_cluster_tests_runs_params = []
 for version in cluster_to_cluster_versions:
-    cluster_upgrade_tests_runs_params.append({
+    upgrade_cluster_tests_runs_params.append({
         'cluster': True,
-        'cluster_upgrade': True,
+        'upgrade_cluster': True,
         'cluster_version': version
     })
 
 
 @pytest.mark.parametrize('distributed_installation',
-                         cluster_upgrade_tests_runs_params,
+                         upgrade_cluster_tests_runs_params,
                          indirect=True)
-def test_cluster_to_cluster_upgrade(distributed_installation,
+def test_cluster_to_upgrade_cluster(distributed_installation,
                                     cfy,
                                     logger,
                                     tmpdir,
