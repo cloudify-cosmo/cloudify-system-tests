@@ -27,7 +27,7 @@ from cosmo_tester.framework.examples.hello_world import get_hello_worlds
 @pytest.fixture(scope='module', params=['4.3.1', 'master'])
 def image_based_manager(request, cfy, ssh_key, module_tmpdir, attributes,
                         logger):
-    instances = [IMAGES[request.param](upload_plugins=False)]
+    instances = [IMAGES[request.param](upload_plugins=True)]
     hosts = TestHosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                       instances=instances, request=request)
     try:
