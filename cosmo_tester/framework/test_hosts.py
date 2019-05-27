@@ -463,7 +463,7 @@ class _CloudifyManager(VM):
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
             fabric_ssh.run(
-                'curl -sS {0} -o {1}'.format(
+                'curl -S {0} -o {1}'.format(
                     manager_install_rpm,
                     install_rpm_file
                 )
@@ -1200,6 +1200,9 @@ class DistributedInstallationCloudifyManager(TestHosts):
                     self.POSTGRESQL_SERVER_CERT_NAME),
                 'postgresql_server_key_path': '/tmp/{0}'.format(
                     self.POSTGRESQL_SERVER_KEY_NAME),
+                'postgresql_ca_cert_path': '/tmp/{0}'.format(
+                    self.ROOT_CERT_NAME
+                ),
                 'ca_cert_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
                 'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME)
             }
@@ -1268,6 +1271,8 @@ class DistributedInstallationCloudifyManager(TestHosts):
                         '/tmp/{0}'.format(
                             self.POSTGRESQL_CLIENT_KEY_NAME.format(
                                 str(instance.index))),
+                    'postgresql_ca_cert_path':
+                        '/tmp/{0}'.format(self.ROOT_CERT_NAME),
                     'ca_cert_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
                     'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME)
                 }
