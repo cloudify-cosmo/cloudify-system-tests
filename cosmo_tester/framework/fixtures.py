@@ -89,27 +89,19 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
     If request.param has a 'sanity' value: 6 nodes are built (1 DB 1 Queue
     3 managers and an AIO manager)
 
-    If request.param has a 'upgrade_cluster' value: 8 nodes are built (1 DB 1
-    Queue 3 managers and 3 old AIO managers will be sent multiple times with...
-    ...'cluster_version' testing the cluster upgrade from 4.6 to later versions
-    simulating a "old cluster to new cluster" upgrade
-
     With every call 'template_inputs' and 'tf_template' can be passed in when
     creating the TestHosts object
 
     If you need to have your own preconfigure_callback it can be supplied and
     will run before the cluster one
     """
-    cluster, sanity, upgrade_cluster, cluster_version = \
-        False, False, False, False
+    cluster, sanity = False, False
     template_inputs, tf_template = None, None
     supplied_preconfigure_callback = None
     # request isn't created with a 'param' attribute if no params are sent
     if hasattr(request, 'param'):
         cluster = 'cluster' in request.param
         sanity = 'sanity' in request.param
-        upgrade_cluster = 'upgrade_cluster' in request.param
-        cluster_version = request.param.get('cluster_version', None)
         template_inputs = request.param.get('template_inputs', None)
         tf_template = request.param.get('tf_template', None)
         supplied_preconfigure_callback =\
@@ -213,9 +205,7 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
         cluster=cluster,
         sanity=sanity,
         template_inputs=template_inputs,
-        tf_template=tf_template,
-        upgrade_cluster=upgrade_cluster,
-        cluster_version=cluster_version
+        tf_template=tf_template
     )
 
     hosts.preconfigure_callback = _preconfigure_callback_cluster
