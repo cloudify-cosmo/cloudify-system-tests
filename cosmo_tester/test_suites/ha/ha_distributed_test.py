@@ -117,7 +117,8 @@ def test_distributed_installation_sanity(distributed_installation,
                                          tmpdir,
                                          attributes,
                                          distributed_nodecellar):
-    logger.info('Running Sanity check for cluster with an external database')
+    logger.info('Running Sanity check for cluster with an external database '
+                'and an external message queue')
     rabbitmq = distributed_installation.message_queue
 
     manager1 = distributed_installation.manager
@@ -177,80 +178,6 @@ def test_distributed_installation_sanity(distributed_installation,
     cfy.agents.install(args)
 
     set_sanity_user(cfy, manager_aio, logger)
-    # Verify `agents install` worked as expected
-    distributed_nodecellar.uninstall()
-
-
-cluster_to_cluster_versions = [
-    '5.0.0',
-    'master'
-]
-upgrade_cluster_tests_runs_params = []
-for version in cluster_to_cluster_versions:
-    upgrade_cluster_tests_runs_params.append({
-        'cluster': True,
-        'upgrade_cluster': True,
-        'cluster_version': version
-    })
-
-
-@pytest.mark.parametrize('distributed_installation',
-                         upgrade_cluster_tests_runs_params,
-                         indirect=True)
-def test_cluster_to_upgrade_cluster(distributed_installation,
-                                    cfy,
-                                    logger,
-                                    tmpdir,
-                                    attributes,
-                                    distributed_nodecellar):
-    logger.info('Running Sanity check for cluster with an external database')
-    rabbitmq = distributed_installation.message_queue
-
-    manager1 = distributed_installation.manager
-    old_manager_1 = distributed_installation.old_cluster[0]
-
-    old_manager_1.use()
-
-    create_and_add_user_to_tenant(cfy, logger)
-
-    set_sanity_user(cfy, old_manager_1, logger)
-
-    # Creating secrets with 'tenant' visibility
-    create_secrets(cfy, logger, attributes, old_manager_1)
-
-    distributed_nodecellar.upload_and_verify_install()
-
-    set_admin_user(cfy, old_manager_1, logger)
-
-    # Create and download a snapshot
-    snapshot_id = 'SNAPSHOT_ID'
-    local_snapshot_path = str(tmpdir / 'snap.zip')
-    logger.info('Creating snapshot')
-    create_snapshot(old_manager_1, snapshot_id, attributes, logger)
-    download_snapshot(old_manager_1, local_snapshot_path, snapshot_id, logger)
-
-    set_admin_user(cfy, manager1, logger)
-
-    # Upload and restore snapshot to the external AIO manager
-    logger.info('Uploading and restoring snapshot')
-    upload_snapshot(manager1, local_snapshot_path, snapshot_id, logger)
-    restore_snapshot(manager1, snapshot_id, cfy, logger,
-                     change_manager_password=False)
-    time.sleep(7)
-    verify_services_status(manager1, logger)
-
-    # wait for agents reconnection
-    time.sleep(30)
-
-    # Upgrade agents
-    logger.info('Upgrading agents')
-    copy_ssl_cert_from_manager_to_tmpdir(old_manager_1, tmpdir)
-    args = ['--manager-ip', rabbitmq.private_ip_address,
-            '--manager_certificate', str(tmpdir + 'new_manager_cert.txt'),
-            '--all-tenants']
-    cfy.agents.install(args)
-
-    set_sanity_user(cfy, manager1, logger)
     # Verify `agents install` worked as expected
     distributed_nodecellar.uninstall()
 

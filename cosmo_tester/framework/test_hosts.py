@@ -823,15 +823,15 @@ class CloudifyDistributed_MessageQueue(_CloudifyMessageQueueOnly):
 
 
 class CloudifyDistributed5_0_0Manager(CloudifyDistributed_Manager):
-    branch_name = 'master'
+    branch_name = '5.0.0'
 
 
 class CloudifyDistributed5_0_0Database(CloudifyDistributed_Database):
-    branch_name = 'master'
+    branch_name = '5.0.0'
 
 
 class CloudifyDistributed5_0_0MessageQueue(CloudifyDistributed_MessageQueue):
-    branch_name = 'master'
+    branch_name = '5.0.0'
 
 
 IMAGES = {
@@ -841,7 +841,6 @@ IMAGES = {
     '4.5': Cloudify4_5Manager,
     '4.5.5': Cloudify4_5_5Manager,
     '4.6': Cloudify4_6Manager,
-    '4.6_CLUSTER_JOINED': Cloudify4_6Manager_ClusterJoined,
     '5.0.0_DB': CloudifyDistributed5_0_0Database,
     '5.0.0_RMQ': CloudifyDistributed5_0_0MessageQueue,
     '5.0.0_MGR_WRKR': CloudifyDistributed5_0_0Manager,
@@ -1101,39 +1100,23 @@ class DistributedInstallationCloudifyManager(TestHosts):
     ROOT_CERT_NAME = 'root.crt'
     ROOT_KEY_NAME = 'root.key'
 
-    def __init__(self, cluster=False, sanity=False, upgrade_cluster=False,
-                 cluster_version=None, *args, **kwargs):
+    def __init__(self, cluster=False, sanity=False, *args, **kwargs):
         self.cluster = cluster
         self.sanity = sanity
 
-        # The environment to upgrade to
-        database_to_use = IMAGES[cluster_version + '_DB'] if upgrade_cluster \
-            else CURRENT_DISTRIBUTED_DATABASE
-        message_queue_to_use = IMAGES[cluster_version + '_RMQ'] if \
-            upgrade_cluster else CURRENT_DISTRIBUTED_MESSAGE_QUEUE
-        manager_to_use = IMAGES[cluster_version + '_MGR_WRKR'] if \
-            upgrade_cluster else CURRENT_DISTRIBUTED_MANAGER
-
         instances = [
-            database_to_use(),
-            message_queue_to_use(),
-            manager_to_use()
+            CURRENT_DISTRIBUTED_DATABASE(),
+            CURRENT_DISTRIBUTED_MESSAGE_QUEUE(),
+            CURRENT_DISTRIBUTED_MANAGER()
         ]
         if cluster:
             instances += [
-                manager_to_use(upload_plugins=False),
-                manager_to_use(upload_plugins=False)
+                CURRENT_DISTRIBUTED_MANAGER(upload_plugins=False),
+                CURRENT_DISTRIBUTED_MANAGER(upload_plugins=False)
             ]
             if sanity:
                 instances += [
                     CURRENT_MANAGER()
-                ]
-            if upgrade_cluster:
-                # The environment to upgrade from
-                instances += [
-                    IMAGES['4.6'](),
-                    IMAGES['4.6_CLUSTER_JOINED'](upload_plugins=False),
-                    IMAGES['4.6_CLUSTER_JOINED'](upload_plugins=False)
                 ]
         super(DistributedInstallationCloudifyManager, self).__init__(
             instances=instances,
@@ -1143,12 +1126,11 @@ class DistributedInstallationCloudifyManager(TestHosts):
         self.database = self.instances[0]
         self.message_queue = self.instances[1]
         self.manager = self.instances[2]
+        self.sanity_manager = None
         if cluster:
             self.joining_managers = self.instances[3:5]
             if sanity:
                 self.sanity_manager = self.instances[5]
-            elif upgrade_cluster:
-                self.old_cluster = self.instances[5:8]
 
         for manager in self.instances[:5]:
             manager.image_name = self._attributes.default_linux_image_name
@@ -1303,63 +1285,6 @@ class DistributedInstallationCloudifyManager(TestHosts):
     def _get_server_flavor(self):
         return self._attributes.medium_flavor_name
 
-    def _old_cluster_start(self, master_manager, joining_managers):
-        """
-        The old cluster establishment mechanism no longer exists in the CLI.
-        We need to run the commands directly on the old manager with the old
-        CLI
-        """
-        profile_use_cmd = 'cfy profiles use {0} -u {1} -p {2} -t {3}'
-        cluster_cmd = 'cfy cluster {0} --cluster-host-ip {1} ' \
-                      '--cluster-node-name {2} {3}'
-
-        master_manager.run_command(
-            profile_use_cmd.format(
-                master_manager.private_ip_address,
-                self._attributes.cloudify_username,
-                self._attributes.cloudify_password,
-                self._attributes.cloudify_tenant
-            )
-        )
-        master_manager.run_command(
-            cluster_cmd.format('start',
-                               master_manager.private_ip_address,
-                               master_manager.ip_address,
-                               '')
-        )
-
-        master_manager.run_command(
-            profile_use_cmd.format(
-                joining_managers[0].private_ip_address,
-                self._attributes.cloudify_username,
-                self._attributes.cloudify_password,
-                self._attributes.cloudify_tenant
-            )
-        )
-        master_manager.run_command(
-            cluster_cmd.format('join',
-                               joining_managers[0].private_ip_address,
-                               joining_managers[0].ip_address,
-                               master_manager.private_ip_address)
-        )
-
-        master_manager.run_command(
-            profile_use_cmd.format(
-                joining_managers[1].private_ip_address,
-                self._attributes.cloudify_username,
-                self._attributes.cloudify_password,
-                self._attributes.cloudify_tenant
-            )
-        )
-        master_manager.run_command(
-            cluster_cmd.format('join',
-                               joining_managers[1].private_ip_address,
-                               joining_managers[1].ip_address,
-                               master_manager.private_ip_address)
-        )
-
-        return master_manager
-
     def _bootstrap_managers(self):
         super(DistributedInstallationCloudifyManager, self).\
             _bootstrap_managers()
@@ -1371,8 +1296,4 @@ class DistributedInstallationCloudifyManager(TestHosts):
             self.manager.use()
             for joining_manager in self.joining_managers:
                 joining_manager.bootstrap(enter_sanity_mode=False)
-            # Sanity and old cluster managers already created using
-            # image-based hosts
-            if self.old_cluster:
-                self._old_cluster_start(self.old_cluster[0],
-                                        self.old_cluster[1:])
+            # Sanity manager already created using
