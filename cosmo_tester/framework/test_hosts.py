@@ -18,6 +18,7 @@ from abc import ABCMeta, abstractproperty
 
 import json
 import os
+import time
 import uuid
 import yaml
 from retrying import retry
@@ -432,17 +433,16 @@ class _CloudifyManager(VM):
         cloudify_license_path = \
             '/tmp/test_valid_paying_license.yaml' if upload_license else ''
         install_config = {
-            'manager':
-                {
-                    'public_ip': str(self.ip_address),
-                    'private_ip': str(self.private_ip_address),
-                    'hostname': str(self.server_id),
-                    'security': {
-                        'admin_username': self._attributes.cloudify_username,
-                        'admin_password': self._attributes.cloudify_password,
-                    },
-                    'cloudify_license_path': cloudify_license_path
-                }
+            'manager': {
+                'public_ip': str(self.ip_address),
+                'private_ip': str(self.private_ip_address),
+                'hostname': str(self.server_id),
+                'security': {
+                    'admin_username': self._attributes.cloudify_username,
+                    'admin_password': self._attributes.cloudify_password,
+                },
+                'cloudify_license_path': cloudify_license_path,
+            },
         }
 
         # Add any additional bootstrap inputs passed from the test
@@ -454,7 +454,8 @@ class _CloudifyManager(VM):
         config_file.write_text(install_config_str)
         return config_file
 
-    def bootstrap(self, enter_sanity_mode=True, upload_license=False):
+    def bootstrap(self, enter_sanity_mode=True, upload_license=False,
+                  blocking=True):
         manager_install_rpm = \
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
@@ -462,25 +463,80 @@ class _CloudifyManager(VM):
         install_config = self._create_config_file(upload_license)
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
-            fabric_ssh.run(
-                'curl -S {0} -o {1}'.format(
-                    manager_install_rpm,
-                    install_rpm_file
-                )
-            )
-            fabric_ssh.sudo('yum install -y {0}'.format(install_rpm_file))
+            fabric_ssh.run('mkdir /tmp/bs_logs')
             fabric_ssh.put(
                 install_config,
-                '/etc/cloudify/config.yaml'
+                '/tmp/cloudify.conf'
             )
             if upload_license:
                 fabric_ssh.put(
                     util.get_resource_path('test_valid_paying_license.yaml'),
                     '/tmp/test_valid_paying_license.yaml'
                 )
-            fabric_ssh.run('cfy_manager install')
-        if enter_sanity_mode:
-            self.enter_sanity_mode()
+
+            commands = [
+                'curl -S {0} -o {1} > /tmp/bs_logs/1_download 2>&1'.format(
+                    manager_install_rpm,
+                    install_rpm_file,
+                ),
+                'sudo yum install -y {0} > /tmp/bs_logs/2_yum 2>&1'.format(
+                    install_rpm_file,
+                ),
+                'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
+                'cfy_manager install > /tmp/bs_logs/3_install 2>&1',
+                'touch /tmp/bootstrap_complete'
+            ]
+
+            install_command = ' && '.join(commands)
+            install_command = (
+                '( ' + install_command + ') '
+                '|| touch /tmp/bootstrap_failed &'
+            )
+
+            install_file = self._tmpdir / 'install_{0}.yaml'.format(self.index)
+            install_file.write_text(install_command)
+            fabric_ssh.put(install_file, '/tmp/bootstrap_script')
+
+            fabric_ssh.run('nohup bash /tmp/bootstrap_script')
+
+        if blocking:
+            while True:
+                if self.bootstrap_is_complete():
+                    break
+                else:
+                    time.sleep(5)
+            if enter_sanity_mode:
+                self.enter_sanity_mode()
+
+    def bootstrap_is_complete(self):
+        with self.ssh() as fabric_ssh:
+            # Using a bash construct because fabric seems to change its mind
+            # about how non-zero exit codes should be handled frequently
+            result = fabric_ssh.run(
+                'if [[ -f /tmp/bootstrap_complete ]]; then'
+                '  echo done; '
+                'elif [[ -f /tmp/bootstrap_failed ]]; then '
+                '  echo failed; '
+                'else '
+                '  echo not done; '
+                'fi'
+            ).strip()
+
+            if result == 'done':
+                self._logger.info('Bootstrap complete.')
+                return True
+            else:
+                # To aid in troubleshooting (e.g. where a VM runs commands too
+                # slowly)
+                fabric_ssh.run('date > /tmp/cfy_mgr_last_check_time')
+                fabric_ssh.run(
+                    'tail /tmp/bs_logs/* || echo Waiting for logs'
+                )
+                if result == 'failed':
+                    raise RuntimeError('Bootstrap failed.')
+                else:
+                    self._logger.info('Bootstrap in progress...')
+                    return False
 
     def _create_openstack_config_file(self):
         openstack_config_file = self._tmpdir / 'openstack_config.json'
@@ -977,7 +1033,8 @@ class TestHosts(object):
             self._logger.info('Destroying test hosts..')
             with self._tmpdir:
                 self._terraform.destroy(
-                        ['-var-file', self._terraform_inputs_file, '-force'])
+                    ['-var-file', self._terraform_inputs_file, '-force']
+                )
 
     def _update_instances_list(self, outputs):
         for i, instance in enumerate(self.instances):
@@ -1245,18 +1302,21 @@ class DistributedInstallationCloudifyManager(TestHosts):
             })
             instance.additional_install_config.update({
                 'ssl_inputs': {
-                    'postgresql_client_cert_path':
+                    'postgresql_client_cert_path': (
                         '/tmp/{0}'.format(
                             self.POSTGRESQL_CLIENT_CERT_NAME.format(
-                                str(instance.index))),
-                    'postgresql_client_key_path':
+                                str(instance.index)))
+                    ),
+                    'postgresql_client_key_path': (
                         '/tmp/{0}'.format(
                             self.POSTGRESQL_CLIENT_KEY_NAME.format(
-                                str(instance.index))),
-                    'postgresql_ca_cert_path':
-                        '/tmp/{0}'.format(self.ROOT_CERT_NAME),
+                                str(instance.index)))
+                    ),
+                    'postgresql_ca_cert_path': (
+                        '/tmp/{0}'.format(self.ROOT_CERT_NAME)
+                    ),
                     'ca_cert_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
-                    'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME)
+                    'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME),
                 }
             })
 
