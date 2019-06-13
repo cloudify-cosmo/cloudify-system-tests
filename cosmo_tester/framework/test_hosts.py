@@ -1124,19 +1124,19 @@ class TestHosts(object):
         self._cfy.logs.purge(force=True)
 
 
-class BootstrapBasedCloudifyManagers(TestHosts):
-    """
-    Bootstraps a Cloudify manager using manager install RPM.
-    """
-
+class BootstrappableHosts(TestHosts):
+    """Creates a medium linux image that can be bootstrapped later."""
     def __init__(self, *args, **kwargs):
-        super(BootstrapBasedCloudifyManagers, self).__init__(*args, **kwargs)
+        super(BootstrappableHosts, self).__init__(*args, **kwargs)
         for manager in self.instances:
             manager.image_name = self._attributes.default_linux_image_name
 
     def _get_server_flavor(self):
         return self._attributes.medium_flavor_name
 
+
+class BootstrapBasedCloudifyManagers(BootstrappableHosts):
+    """Bootstraps a Cloudify manager using manager install RPM."""
     def _bootstrap_managers(self):
         super(BootstrapBasedCloudifyManagers, self)._bootstrap_managers()
 
