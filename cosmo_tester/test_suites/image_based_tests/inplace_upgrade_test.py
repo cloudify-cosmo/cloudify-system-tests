@@ -22,9 +22,15 @@ import pytest
 from cosmo_tester.framework import git_helper
 from cosmo_tester.framework.test_hosts import TestHosts, IMAGES
 from cosmo_tester.framework.examples.hello_world import get_hello_worlds
+from cosmo_tester.framework.util import is_community
+
+if is_community():
+    VERSIONS = ['master']
+else:
+    VERSIONS = ['4.3.1', 'master']
 
 
-@pytest.fixture(scope='module', params=['4.3.1', 'master'])
+@pytest.fixture(scope='module', params=VERSIONS)
 def image_based_manager(request, cfy, ssh_key, module_tmpdir, attributes,
                         logger):
     instances = [IMAGES[request.param](upload_plugins=True)]
