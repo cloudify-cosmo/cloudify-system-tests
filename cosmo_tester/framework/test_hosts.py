@@ -459,7 +459,8 @@ class _CloudifyManager(VM):
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
 
-        install_config = self._create_config_file(upload_license)
+        install_config = self._create_config_file(
+            upload_license and not util.is_community())
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
             fabric_ssh.run(
