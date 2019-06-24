@@ -157,10 +157,6 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
                         }
                     }
                 },
-                'cluster': {
-                    'active_manager_ip':
-                        str(distributed_installation[2].private_ip_address)
-                },
                 'postgresql_client': {
                     'host':
                         str(distributed_installation[0].private_ip_address),
@@ -178,10 +174,6 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
                             ),
                         }
                     }
-                },
-                'cluster': {
-                    'active_manager_ip':
-                        str(distributed_installation[2].private_ip_address)
                 },
                 'postgresql_client': {
                     'host':
