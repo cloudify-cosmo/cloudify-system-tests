@@ -37,6 +37,7 @@ from cosmo_tester.framework import util
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
+REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-dev/master/scripts/rsync.sh'  # NOQA
@@ -246,11 +247,20 @@ class _CloudifyManager(VM):
             fabric_ssh.put(self._ssh_key.private_key_path,
                            REMOTE_PRIVATE_KEY_PATH,
                            use_sudo=True)
+            fabric_ssh.put(self._ssh_key.public_key_path,
+                           REMOTE_PUBLIC_KEY_PATH,
+                           use_sudo=True)
             fabric_ssh.sudo('chown root:cfyuser {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
+            fabric_ssh.sudo('chown root:cfyuser {key_file}'.format(
+                key_file=REMOTE_PUBLIC_KEY_PATH,
+            ))
             fabric_ssh.sudo('chmod 440 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
+            ))
+            fabric_ssh.sudo('chmod 440 {key_file}'.format(
+                key_file=REMOTE_PUBLIC_KEY_PATH,
             ))
             self.enter_sanity_mode()
 
@@ -322,6 +332,11 @@ class _CloudifyManager(VM):
     def remote_private_key_path(self):
         """Returns the private key path on the manager."""
         return REMOTE_PRIVATE_KEY_PATH
+
+    @property
+    def remote_public_key_path(self):
+        """Returns the public key path on the manager."""
+        return REMOTE_PUBLIC_KEY_PATH
 
     def __str__(self):
         return 'Cloudify manager [{}:{}]'.format(self.index, self.ip_address)
