@@ -13,8 +13,8 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import json
 import os
+import json
 from abc import ABCMeta
 
 import testtools
@@ -163,7 +163,7 @@ class AbstractExample(testtools.TestCase):
         self._cleanup_required = True
         try:
             self.cfy.executions.start.install(['-d', self.deployment_id,
-                                               '-t', self.tenant])
+                                               '-t', self.tenant, '-vv'])
         except Exception as e:
             if 'if there is a running system-wide' in e.message:
                 self.logger.error('Error on deployment execution: %s', e)
