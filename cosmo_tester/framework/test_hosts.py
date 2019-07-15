@@ -246,10 +246,10 @@ class _CloudifyManager(VM):
             fabric_ssh.put(self._ssh_key.private_key_path,
                            REMOTE_PRIVATE_KEY_PATH,
                            use_sudo=True)
-            fabric_ssh.sudo('chown root:cfyuser {key_file}'.format(
+            fabric_ssh.sudo('chown cfyuser:cfyuser {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
-            fabric_ssh.sudo('chmod 440 {key_file}'.format(
+            fabric_ssh.sudo('chmod 400 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
             self.enter_sanity_mode()
