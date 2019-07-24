@@ -1,5 +1,5 @@
 ########
-# Copyright (c) 2013 GigaSpaces Technologies Ltd. All rights reserved
+# Copyright (c) 2013-2019 Cloudify Platform Ltd. All rights reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,11 +27,10 @@ setup(
     install_requires=[
         'paramiko==1.18.3',
         'fabric==1.13.1',
-        'PyYAML==3.10',
+        'PyYAML==3.12',
         'requests>=2.7.0,<3.0.0',
         'sh==1.11',
         'path.py==8.1.2',
-        'nose',
         'retrying==1.3.3',
         'Jinja2==2.10',
         'pywinrm==0.3.0',
@@ -39,7 +38,7 @@ setup(
         # Wagon version has been left out since it better reflects the user
         # use-case
         'wagon[venv]==0.6.3',
-        'pytest==3.0.4',
+        'pytest==4.6.4',
         'testtools==2.2.0',
         'openstacksdk==0.13.0'
     ],
