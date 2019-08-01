@@ -217,7 +217,6 @@ class AbstractRegionalCluster(AbstractExample):
             'manager_admin_password': self.attributes.cloudify_password,
 
             'num_of_instances': 1,
-            'cfy_manager_workers': 1,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later
@@ -763,7 +762,6 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'manager_admin_password': self.attributes.cloudify_password,
 
             'num_of_instances': 1,
-            'cfy_manager_workers': 1,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later

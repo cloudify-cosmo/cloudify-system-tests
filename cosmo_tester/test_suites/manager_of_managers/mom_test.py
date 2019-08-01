@@ -150,8 +150,6 @@ def floating_ip_2_regional_clusters(cfy,
             FloatingIpRegionalCluster,
             cfy, logger, module_tmpdir, attributes, ssh_key, central_manager
         )
-    _upload_resources_to_central_manager(
-        cfy, central_manager, logger)
 
     yield floating_ip_clusters
 
@@ -277,7 +275,6 @@ def test_central_upgrade(floating_ip_2_regional_clusters, central_manager,
     central_manager.teardown()
     central_manager.bootstrap()
     central_manager.use()
-    _upload_resources_to_central_manager(cfy, central_manager, logger)
     cfy.snapshots.upload(
         [local_snapshot_path, '-s', constants.CENTRAL_MANAGER_SNAP_ID])
     restore_snapshot(
