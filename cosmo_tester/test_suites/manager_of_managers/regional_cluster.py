@@ -25,9 +25,10 @@ from . import constants
 
 
 class AbstractRegionalCluster(AbstractExample):
-    REPOSITORY_URL = 'https://{0}@github.com/' \
+    REPOSITORY_URL = 'https://{0}:{1}@github.com/' \
                      'cloudify-cosmo/cloudify-spire-plugin.git'.format(
-                         os.environ['GITHUB_TOKEN'])
+                         os.environ['GITHUB_USERNAME'],
+                         os.environ['GITHUB_PASSWORD'])
     TRANSFER_AGENTS = None
 
     def __init__(self, *args, **kwargs):
