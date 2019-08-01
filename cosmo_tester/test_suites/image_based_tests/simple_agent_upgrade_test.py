@@ -14,7 +14,6 @@
 #    * limitations under the License.
 
 import pytest
-from sh import ErrorReturnCode
 
 from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
@@ -81,20 +80,26 @@ def test_old_agent_stopped_after_agent_upgrade(
     new_manager.use()
     cfy.agents.install('--stop-old-agent')
 
-    # We now expect the old agent to be stopped, and thus unresponsive. So,
-    # calling `cfy agents validate` on the old manager should fail
-    try:
-        logger.info('Validating the old agent is indeed down')
-        old_manager.use()
-        cfy.agents.validate()
-    except ErrorReturnCode:
-        logger.info('Old agent unresponsive, as expected')
-    else:
-        raise StandardError('Old agent is still responsive')
-
+    logger.info('Validating the old agent is indeed down')
+    _assert_agent_not_running(old_manager, 'nodejs_host')
     old_manager.delete()
 
     new_manager.use()
     nodecellar.manager = new_manager
     nodecellar.verify_installation()
     nodecellar.uninstall()
+
+
+def _assert_agent_not_running(manager, node_name):
+    node = manager.client.node_instances.list(node_name=node_name)[0]
+    agent = node.runtime_properties['cloudify_agent']
+    ssh_command = ('sudo ssh -o StrictHostKeyChecking=no '
+                   '{user}@{ip} -i {key} '
+                   '"sudo service cloudify-worker-{name} status"'
+                   .format(user=agent['user'],
+                           ip=node.runtime_properties['ip'],
+                           key=agent['key'],
+                           name=agent['name']))
+    with manager.ssh() as fabric:
+        response = fabric.run(ssh_command, warn_only=True)
+        assert('not running' in response)
