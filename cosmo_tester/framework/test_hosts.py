@@ -14,7 +14,9 @@
 #    * limitations under the License.
 
 import textwrap
-from abc import ABCMeta, abstractproperty
+from abc import (
+    ABCMeta,
+    abstractproperty)
 
 import json
 import os
@@ -256,7 +258,10 @@ class _CloudifyManager(VM):
             fabric_ssh.sudo('chown root:cfyuser {key_file}'.format(
                 key_file=REMOTE_PUBLIC_KEY_PATH,
             ))
-            fabric_ssh.sudo('chmod 440 {key_file}'.format(
+            fabric_ssh.sudo('chown cfyuser:cfyuser {key_file}'.format(
+                key_file=REMOTE_PRIVATE_KEY_PATH,
+            ))
+            fabric_ssh.sudo('chmod 400 {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
             fabric_ssh.sudo('chmod 440 {key_file}'.format(

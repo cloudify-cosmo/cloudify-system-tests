@@ -27,7 +27,7 @@ from . import constants
 class AbstractRegionalCluster(AbstractExample):
     REPOSITORY_URL = 'https://{0}@github.com/' \
                      'cloudify-cosmo/cloudify-spire-plugin.git'.format(
-                         os.environ['GITHUB_USERNAME'])
+                         os.environ['GITHUB_TOKEN'])
     TRANSFER_AGENTS = None
 
     def __init__(self, *args, **kwargs):
@@ -216,7 +216,6 @@ class AbstractRegionalCluster(AbstractExample):
             'manager_admin_password': self.attributes.cloudify_password,
 
             'num_of_instances': 1,
-            'cfy_manager_workers': 1,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later
@@ -328,7 +327,9 @@ class AbstractRegionalCluster(AbstractExample):
                     },
                     {
                         'key': 'openstack_tenant_name',
-                        'string': os.environ.get('OS_TENANT_NAME'),
+                        'string': os.environ.get(
+                            util.OS_TENANT_NAME_ENV,
+                            os.environ[util.OS_PROJECT_NAME_ENV]),
                         'visibility': 'global'
                     },
                     {
@@ -760,7 +761,6 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'manager_admin_password': self.attributes.cloudify_password,
 
             'num_of_instances': 1,
-            'cfy_manager_workers': 1,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later
