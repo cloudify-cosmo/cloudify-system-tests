@@ -329,7 +329,7 @@ class AbstractRegionalCluster(AbstractExample):
                     },
                     {
                         'key': 'openstack_tenant_name',
-                        'string': os.environ.get('OS_TENANT_NAME'),
+                        'string': os.environ.get('OS_PROJECT_NAME'),
                         'visibility': 'global'
                     },
                     {
