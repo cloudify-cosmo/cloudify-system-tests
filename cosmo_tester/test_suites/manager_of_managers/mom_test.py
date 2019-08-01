@@ -85,18 +85,14 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
         os.environ.get('SPIRE_GIT_TOKEN')
     )
 
-    try:
-        cfy.plugins.upload(
-            wagon_save_path,
-            '-y', plugin_yaml_save_path
-        )
-        cfy.plugins.upload(
-            constants.OS_PLUGIN_WGN_URL,
-            '-y', constants.OS_PLUGIN_YAML_URL
-        )
-    except Exception as e:
-        logger.error('Skipping error: {0}'.format(e))
-        pass
+    cfy.plugins.upload(
+        wagon_save_path,
+        '-y', plugin_yaml_save_path
+    )
+    cfy.plugins.upload(
+        constants.OS_PLUGIN_WGN_URL,
+        '-y', constants.OS_PLUGIN_YAML_URL
+    )
 
     manager_install_rpm = \
         ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
