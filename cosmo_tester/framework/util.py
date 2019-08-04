@@ -246,14 +246,15 @@ def get_manager_install_rpm_url():
     return yaml.load(_get_package_url('manager-install-rpm.yaml'))
 
 
-def _get_contents_from_github(repo, path, auth=None):
+def _get_contents_from_github(repo, resource_path):
     branch = os.environ.get('BRANCH_NAME_CORE', 'master')
     url = (
         'https://raw.githubusercontent.com/cloudify-cosmo/'
-        '{repo}/{branch}/{path}'
-    ).format(repo=repo, branch=branch, path=path)
-    r = requests.get(url, auth=auth)
-    if r.status_code != 200:
+        '{repo}/{branch}/{resource_path}'
+    ).format(repo=repo, branch=branch, resource_path=resource_path)
+    session = get_authenticated_git_session()
+    r = session.get(url)
+    if not r.ok:
         raise RuntimeError(
             'Error retrieving github content from {url}'.format(url=url)
         )
@@ -265,22 +266,17 @@ def _get_package_url(filename):
     and GITHUB_PASSWORD exists in env) or locally if the cloudify-premium
     repository is checked out under the same folder the cloudify-system-tests
     repo is checked out."""
-    auth = None
     if is_community():
         return _get_contents_from_github(
             repo='cloudify-versions',
-            path='packages-urls/{filename}'.format(filename=filename),
+            resource_path='packages-urls/{filename}'.format(filename=filename),
         )
-
-    if 'GITHUB_USERNAME' in os.environ:
-        auth = (os.environ['GITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
-    if auth:
+    try:
         return _get_contents_from_github(
             repo='cloudify-premium',
-            path='packages-urls/{filename}'.format(filename=filename),
-            auth=auth,
+            resource_path='packages-urls/{filename}'.format(filename=filename),
         )
-    else:
+    except RuntimeError:
         package_url_file = Path(
             os.path.abspath(os.path.join(
                 os.path.dirname(cosmo_tester.__file__),
@@ -755,12 +751,8 @@ def _get_release_dict_by_name(
             item_name, dict_or_list))
 
 
-def download_asset(repository_path,
-                   release_name,
-                   asset_name,
-                   save_location,
-                   git_token=None):
-
+def get_authenticated_git_session(git_token=None):
+    git_token = git_token or os.environ.get('GITHUB_TOKEN')
     session = requests.Session()
     if git_token:
         session.headers['Authorization'] = 'token %s' % git_token
@@ -768,11 +760,21 @@ def download_asset(repository_path,
         username = os.environ['GITHUB_USERNAME']
         password = os.environ['GITHUB_PASSWORD']
         session.auth = (username, password)
+    return session
+
+
+def download_asset(repository_path,
+                   release_name,
+                   asset_name,
+                   save_location,
+                   git_token=None):
+
+    session = get_authenticated_git_session(git_token)
     releases = session.get(
         'https://api.github.com/repos/{0}/releases'.format(
             repository_path))
     if not releases.ok:
-        raise Exception(
+        raise RuntimeError(
             'Failed to authenticate to {0}, reason: {1}'.format(
                 releases.url, releases.reason))
 
