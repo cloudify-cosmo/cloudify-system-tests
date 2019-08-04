@@ -216,6 +216,8 @@ def test_regional_cluster_staged_upgrade(floating_ip_2_regional_clusters):
     finally:
         # Uninstall hello world deployment from Regional cluster
         second_cluster.execute_hello_world_workflow('uninstall')
+    first_cluster.uninstall()
+    second_cluster.uninstall()
 
 
 @pytest.mark.skipif(util.is_redhat(),
@@ -252,6 +254,7 @@ def test_regional_cluster_inplace_upgrade(fixed_ip_2_regional_clusters):
 
     # Deploy & validate the second cluster
     second_cluster.deploy_and_validate()
+    second_cluster.uninstall()
 
 
 @pytest.mark.skipif(util.is_redhat(),
