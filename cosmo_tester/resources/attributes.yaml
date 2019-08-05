@@ -58,6 +58,7 @@ rhel_6_image_name: rhel-guest-image-6.9-120.x86_64.qcow2
 
 ubuntu_14_04_username: ubuntu
 ubuntu_14_04_image_name: 'Ubuntu 14.04.1 LTS Trusty Tahr (cloudimg)'
+ubuntu_14_04_image_id: e41430f7-9131-495b-927f-e7dc4b8994c8
 
 ubuntu_16_04_username: ubuntu
 ubuntu_16_04_image_name: ubuntu_16.04_xenial_with_python

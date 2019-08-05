@@ -13,24 +13,24 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import base64
-from contextlib import contextmanager
-import json
-import logging
 import os
 import re
 import sys
-import subprocess
-import requests
-import retrying
+import glob
+import json
 import yaml
 import errno
-import platform
 import shlex
-import glob
+import base64
 import socket
+import logging
+import platform
+import requests
+import retrying
+import subprocess
 from os import makedirs
 from tempfile import mkstemp
+from contextlib import contextmanager
 
 from openstack import connection as openstack_connection
 from path import path, Path
@@ -246,14 +246,15 @@ def get_manager_install_rpm_url():
     return yaml.load(_get_package_url('manager-install-rpm.yaml'))
 
 
-def _get_contents_from_github(repo, path, auth=None):
+def _get_contents_from_github(repo, resource_path):
     branch = os.environ.get('BRANCH_NAME_CORE', 'master')
     url = (
         'https://raw.githubusercontent.com/cloudify-cosmo/'
-        '{repo}/{branch}/{path}'
-    ).format(repo=repo, branch=branch, path=path)
-    r = requests.get(url, auth=auth)
-    if r.status_code != 200:
+        '{repo}/{branch}/{resource_path}'
+    ).format(repo=repo, branch=branch, resource_path=resource_path)
+    session = get_authenticated_git_session()
+    r = session.get(url)
+    if not r.ok:
         raise RuntimeError(
             'Error retrieving github content from {url}'.format(url=url)
         )
@@ -265,22 +266,17 @@ def _get_package_url(filename):
     and GITHUB_PASSWORD exists in env) or locally if the cloudify-premium
     repository is checked out under the same folder the cloudify-system-tests
     repo is checked out."""
-    auth = None
     if is_community():
         return _get_contents_from_github(
             repo='cloudify-versions',
-            path='packages-urls/{filename}'.format(filename=filename),
+            resource_path='packages-urls/{filename}'.format(filename=filename),
         )
-
-    if 'GITHUB_USERNAME' in os.environ:
-        auth = (os.environ['GITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
-    if auth:
+    try:
         return _get_contents_from_github(
             repo='cloudify-premium',
-            path='packages-urls/{filename}'.format(filename=filename),
-            auth=auth,
+            resource_path='packages-urls/{filename}'.format(filename=filename),
         )
-    else:
+    except RuntimeError:
         package_url_file = Path(
             os.path.abspath(os.path.join(
                 os.path.dirname(cosmo_tester.__file__),
@@ -741,3 +737,55 @@ def wait_for_execution(manager, execution, logger):
         )
     logger.info('Execution complete')
     return execution
+
+
+def _get_release_dict_by_name(
+        item_name, dict_or_list):
+    if isinstance(dict_or_list, dict):
+        return dict_or_list.get(item_name)
+    elif isinstance(dict_or_list, list):
+        for item in dict_or_list:
+            if item['name'] == item_name:
+                return item
+    raise Exception('No item named {0} in {1}'.format(
+            item_name, dict_or_list))
+
+
+def get_authenticated_git_session(git_token=None):
+    git_token = git_token or os.environ.get('GITHUB_TOKEN')
+    session = requests.Session()
+    if git_token:
+        session.headers['Authorization'] = 'token %s' % git_token
+    else:
+        username = os.environ['GITHUB_USERNAME']
+        password = os.environ['GITHUB_PASSWORD']
+        session.auth = (username, password)
+    return session
+
+
+def download_asset(repository_path,
+                   release_name,
+                   asset_name,
+                   save_location,
+                   git_token=None):
+
+    session = get_authenticated_git_session(git_token)
+    releases = session.get(
+        'https://api.github.com/repos/{0}/releases'.format(
+            repository_path))
+    if not releases.ok:
+        raise RuntimeError(
+            'Failed to authenticate to {0}, reason: {1}'.format(
+                releases.url, releases.reason))
+
+    release = _get_release_dict_by_name(release_name, releases.json())
+    asset = _get_release_dict_by_name(asset_name, release['assets'])
+    session.headers['Accept'] = 'application/octet-stream'
+
+    with session.get(asset['url'], stream=True) as response:
+        if not response.ok:
+            raise Exception(
+                'Failed to download {0}'.format(asset['url']))
+        with open(save_location, 'wb') as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
