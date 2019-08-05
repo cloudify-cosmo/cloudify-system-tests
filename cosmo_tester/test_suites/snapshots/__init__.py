@@ -755,5 +755,5 @@ def _assert_restore_status(manager):
     """
     Assert the snapshot-status REST endpoint is working properly
     """
-    restore_status = manager.client.snapshots.get_snapshot_status()
+    restore_status = manager.client.snapshots.get_status()
     assert 'Snapshot restore in progress' in restore_status['status']
