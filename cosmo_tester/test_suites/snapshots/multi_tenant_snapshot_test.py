@@ -111,6 +111,10 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
                      wait_for_post_restore_commands=False,
                      change_manager_password=should_change_pswd)
 
+    # Assert the snapshot-status endpoint is working properly
+    restore_status = new_manager.client.snapshots.get_snapshot_status()
+    assert 'No `restore_snapshot` workflow' in restore_status['status']
+
     if manager_supports_users_in_snapshot_creation(old_manager):
         update_credentials(cfy, logger, new_manager)
 

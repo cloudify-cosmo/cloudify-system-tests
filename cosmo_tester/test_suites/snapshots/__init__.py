@@ -422,6 +422,9 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
         restore_certificates=restore_certificates,
         force=force
     )
+
+    _assert_restore_status(manager, logger)
+
     try:
         wait_for_execution(
             manager,
@@ -742,3 +745,15 @@ def _log(message, logger, tenant=None):
     if tenant:
         message += ' for {tenant}'.format(tenant=tenant)
     logger.info(message)
+
+
+@retrying.retry(
+    stop_max_attempt_number=10,
+    wait_fixed=1000
+)
+def _assert_restore_status(manager):
+    """
+    Assert the snapshot-status REST endpoint is working properly
+    """
+    restore_status = manager.client.snapshots.get_snapshot_status()
+    assert 'Snapshot restore in progress' in restore_status['status']
