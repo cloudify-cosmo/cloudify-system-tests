@@ -423,7 +423,7 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
         force=force
     )
 
-    _assert_restore_status(manager, logger)
+    _assert_restore_status(manager)
 
     try:
         wait_for_execution(
