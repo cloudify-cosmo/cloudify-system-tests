@@ -1260,17 +1260,19 @@ class DistributedInstallationCloudifyManager(TestHosts):
         # Required instead of implementing a deep-copy function with huge
         # overhead
         self.database.additional_install_config['postgresql_server'].update({
-            'ssl_enabled': 'true'
+            'ssl_enabled': 'true',
+            'cert_path': '/tmp/{0}'.format(
+                self.POSTGRESQL_SERVER_CERT_NAME
+            ),
+            'key_path': '/tmp/{0}'.format(
+                self.POSTGRESQL_SERVER_KEY_NAME
+            ),
+            'ca_path':  '/tmp/{0}'.format(
+                self.ROOT_CERT_NAME
+            ),
         })
         self.database.additional_install_config.update({
             'ssl_inputs': {
-                'postgresql_server_cert_path': '/tmp/{0}'.format(
-                    self.POSTGRESQL_SERVER_CERT_NAME),
-                'postgresql_server_key_path': '/tmp/{0}'.format(
-                    self.POSTGRESQL_SERVER_KEY_NAME),
-                'postgresql_ca_cert_path': '/tmp/{0}'.format(
-                    self.ROOT_CERT_NAME
-                ),
                 'ca_cert_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
                 'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME)
             }
@@ -1326,6 +1328,9 @@ class DistributedInstallationCloudifyManager(TestHosts):
             instance.additional_install_config['postgresql_client'].update({
                 'ssl_enabled': 'true'
             })
+            instance.additional_install_config['postgresql_server'].update({
+                'ca_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
+            })
             instance.additional_install_config['rabbitmq'].update({
                 'ca_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME)
             })
@@ -1340,9 +1345,6 @@ class DistributedInstallationCloudifyManager(TestHosts):
                         '/tmp/{0}'.format(
                             self.POSTGRESQL_CLIENT_KEY_NAME.format(
                                 str(instance.index)))
-                    ),
-                    'postgresql_ca_cert_path': (
-                        '/tmp/{0}'.format(self.ROOT_CERT_NAME)
                     ),
                     'ca_cert_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
                     'ca_key_path': '/tmp/{0}'.format(self.ROOT_KEY_NAME),
