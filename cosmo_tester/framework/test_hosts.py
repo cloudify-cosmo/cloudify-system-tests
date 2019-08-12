@@ -1328,9 +1328,9 @@ class DistributedInstallationCloudifyManager(TestHosts):
             instance.additional_install_config['postgresql_client'].update({
                 'ssl_enabled': 'true'
             })
-            instance.additional_install_config['postgresql_server'].update({
+            instance.additional_install_config['postgresql_server'] = {
                 'ca_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME),
-            })
+            }
             instance.additional_install_config['rabbitmq'].update({
                 'ca_path': '/tmp/{0}'.format(self.ROOT_CERT_NAME)
             })
