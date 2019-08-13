@@ -419,7 +419,7 @@ def _install_script(name, windows, user, manager, attributes, tmpdir, logger,
 
     ctx = MockCloudifyContext(
         node_id='node',
-        tenant={'name': tenant},
+        tenant=manager.client.tenants.get(tenant),
         rest_token=manager.client.tokens.get().value,
         managers=manager.client.manager.get_managers(),
         brokers=manager.client.manager.get_brokers(),
