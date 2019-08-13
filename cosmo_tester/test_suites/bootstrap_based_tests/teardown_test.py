@@ -31,7 +31,7 @@ def test_teardown(manager, hello_worlds):  # noqa # (pytest fixture, not redefin
     for key in 'os users', 'os groups':
         # Fetch the new users and groups created during the bootstrap
         expected_diffs[key] = (
-                set(bootstrapped_state[key]) - set(pre_bootstrap_state[key]))
+            set(bootstrapped_state[key]) - set(pre_bootstrap_state[key]))
     expected_diffs['folders in /etc'] = {'cloudify'}
 
     manager.teardown()
@@ -54,7 +54,7 @@ def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
     # The preconfigure callback populates the files structure prior to the BS
     hosts = BootstrapBasedCloudifyManagers(
-            cfy, ssh_key, module_tmpdir, attributes, logger)
+        cfy, ssh_key, module_tmpdir, attributes, logger)
     hosts.preconfigure_callback = _preconfigure_callback
     try:
         hosts.create()
@@ -94,7 +94,7 @@ def _get_system_state(mgr):
         sysconfig = fabric.run('ls /etc/sysconfig').split()
         opt_dirs = fabric.run('ls /opt').split()
         etc_dirs = fabric.run('ls /etc').split()
-        var_log_dirs = fabric.run('ls /var/log').split()
+        var_log_dirs = _skip_system_logs(fabric.run('ls /var/log').split())
 
         packages = fabric.run('rpm -qa').split()
         # Prettify the packages output
@@ -102,7 +102,6 @@ def _get_system_state(mgr):
 
         users = fabric.run('cut -d: -f1 /etc/passwd').split()
         groups = fabric.run('cut -d: -f1 /etc/group').split()
-
     return {
         'systemd service files (/usr/lib/systemd/system)': systemd,
         'init_d service files (/etc/rc.d/init.d/)': init_d,
@@ -114,3 +113,24 @@ def _get_system_state(mgr):
         'os users': users,
         'os groups': groups,
     }
+
+
+def _skip_system_logs(var_log_dirs):
+    """Omit log dirs that are created by the system.
+
+    We're not interested in directories from /var/log that were created
+    by the OS (eg. snapshots of logs from the previous day created at midnight)
+
+    Example OS log directories:
+        btmp-20190812
+        cron-20190812
+        maillog-20190812
+        messages-20190812
+        secure-20190812
+        spooler-20190812
+    """
+    os_logs = {'btmp', 'cron', 'maillog', 'messages', 'secure', 'spooler'}
+    return [
+        log_dir for log_dir in var_log_dirs
+        if not any(log_dir.startswith(os_dir) for os_dir in os_logs)
+    ]
