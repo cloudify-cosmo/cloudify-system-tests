@@ -42,8 +42,8 @@ class AbstractTier1Cluster(AbstractExample):
         device_mapping_config = {
             'boot_index': '0',
             'uuid': self.attributes.default_linux_image_id,
-            'volume_size': 30,
             'source_type': 'image',
+            'volume_size': 30,
             'destination_type': 'volume',
             'delete_on_termination': True
         }
