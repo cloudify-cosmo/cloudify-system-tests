@@ -217,8 +217,7 @@ class AbstractTier1Cluster(AbstractExample):
             assert service['status'] == 'running'
 
         for tier_1_manager in cluster_status['cluster_status']:
-            for check in ('cloudify services', 'consul',
-                          'database', 'heartbeat'):
+            for check in ('cloudify services', 'database', 'heartbeat'):
                 assert tier_1_manager[check] == 'OK'
 
     def deploy_and_validate(self):
