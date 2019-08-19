@@ -429,6 +429,11 @@ class AbstractRegionalCluster(AbstractExample):
         super(AbstractRegionalCluster, self).install()
         self._populate_status_output()
 
+    def clean_blueprints(self):
+        if self.first_deployment:
+            self.delete_blueprint()
+            self.manager.client.blueprints.delete('infra', force=True)
+
     def _populate_status_output(self):
         # This workflow populates the deployment outputs with status info
         self.cfy.executions.start('get_status', '-d', self.deployment_id)
@@ -533,7 +538,7 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
     RESOURCE_POOL1 = [
         {
             'ip_address': '10.0.0.50',
-            'hostname': 'db_worker_'
+            'hostname': 'db_worker_1'
         },
         {
             'ip_address': '10.0.0.51',

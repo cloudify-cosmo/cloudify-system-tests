@@ -192,78 +192,9 @@ def _get_regional_clusters(resource_id, number_of_deps, cluster_class,
     return clusters
 
 
-@pytest.mark.skipif(util.is_redhat(),
-                    reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
-                    reason='Cloudify Community version does '
-                           'not support clustering')
-def test_regional_cluster_staged_upgrade(floating_ip_2_regional_clusters):
-    """
-    In this scenario the second cluster is created _alongside_ the first one
-    with different floating IPs
-    """
-    first_cluster = floating_ip_2_regional_clusters[0]
-    second_cluster = floating_ip_2_regional_clusters[1]
+def _do_central_upgrade(floating_ip_2_regional_clusters, central_manager,
+                        cfy, tmpdir, logger):
 
-    first_cluster.deploy_and_validate()
-
-    # Install hello world deployment on Regional manager cluster
-    first_cluster.execute_hello_world_workflow('install')
-    first_cluster.backup()
-
-    try:
-        second_cluster.deploy_and_validate()
-    finally:
-        # Uninstall hello world deployment from Regional cluster
-        second_cluster.execute_hello_world_workflow('uninstall')
-    first_cluster.uninstall()
-    second_cluster.uninstall()
-
-
-@pytest.mark.skipif(util.is_redhat(),
-                    reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
-                    reason='Cloudify Community version does '
-                           'not support clustering')
-def test_regional_cluster_inplace_upgrade(fixed_ip_2_regional_clusters):
-    """
-    In this scenario the second cluster is created _instead_ of the first one
-    with the same fixed private IPs
-    """
-    first_cluster = fixed_ip_2_regional_clusters[0]
-    second_cluster = fixed_ip_2_regional_clusters[1]
-
-    # Note that we can't easily validate that resources were created on the
-    # Regional clusters here, because they're using a fixed private IP, which
-    # would not be accessible by a REST client from here. This is why we're
-    # only testing that the upgrade has succeeded, and that the IPs were the
-    # same for both Regional deployments
-    first_cluster.deploy_and_validate()
-
-    # Install hello world deployment on Regional first cluster
-    first_cluster.execute_hello_world_workflow('install')
-
-    # Uninstall hello world deployment from Regional first cluster
-    first_cluster.execute_hello_world_workflow('uninstall')
-
-    # Take a backup from the first cluster
-    first_cluster.backup()
-
-    # Teardown the first cluster
-    first_cluster.uninstall()
-
-    # Deploy & validate the second cluster
-    second_cluster.deploy_and_validate()
-    second_cluster.uninstall()
-
-
-@pytest.mark.skipif(util.is_redhat(),
-                    reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
-                    reason='Cloudify Community version does '
-                           'not support clustering')
-def test_central_upgrade(floating_ip_2_regional_clusters, central_manager,
-                         cfy, tmpdir, logger):
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     regional_cluster = floating_ip_2_regional_clusters[0]
@@ -287,9 +218,117 @@ def test_central_upgrade(floating_ip_2_regional_clusters, central_manager,
 
     cfy.agents.install()
 
-    # This will only work properly if the
-    # Central manager was restored correctly
-    regional_cluster.uninstall()
+
+def _do_regional_scale(floating_ip_2_regional_clusters):
+    regional_cluster = floating_ip_2_regional_clusters[0]
+    regional_cluster.deploy_and_validate()
+    regional_cluster.scale()
+
+
+def _do_regional_heal(fixed_ip_2_regional_clusters):
+    regional_cluster = fixed_ip_2_regional_clusters[0]
+    regional_cluster.deploy_and_validate()
+    regional_cluster.execute_hello_world_workflow('install')
+    worker_instance = regional_cluster.manager.client.node_instances.list(
+        node_name='additional_workers')[0]
+    regional_cluster.heal(worker_instance.id)
+    regional_cluster.execute_hello_world_workflow('uninstall')
+
+
+@pytest.mark.skipif(util.is_redhat(),
+                    reason='MoM plugin is only available on Centos')
+@pytest.mark.skipif(util.is_community(),
+                    reason='Cloudify Community version does '
+                           'not support clustering')
+def test_regional_cluster_with_floating_ip(
+        floating_ip_2_regional_clusters,
+        central_manager,
+        cfy, tmpdir, logger):
+    """
+    In this scenario the second cluster is created _alongside_ the first one
+    with different floating IPs
+    """
+    first_cluster = floating_ip_2_regional_clusters[0]
+    second_cluster = floating_ip_2_regional_clusters[1]
+
+    first_cluster.deploy_and_validate()
+
+    # Install hello world deployment on Regional manager cluster
+    first_cluster.execute_hello_world_workflow('install')
+    first_cluster.backup()
+
+    try:
+        second_cluster.deploy_and_validate()
+    finally:
+        # Uninstall hello world deployment from Regional cluster
+        second_cluster.execute_hello_world_workflow('uninstall')
+
+    # Upgrade central manager
+    _do_central_upgrade(floating_ip_2_regional_clusters,
+                        central_manager,
+                        cfy,
+                        tmpdir,
+                        logger)
+
+    # Run Scale workflow against one of the regional clusters
+    _do_regional_scale(floating_ip_2_regional_clusters)
+
+    first_cluster.uninstall()
+    second_cluster.uninstall()
+
+    # Clean deployments for both clusters
+    first_cluster.delete_deployment(use_cfy=True)
+    second_cluster.delete_deployment(use_cfy=True)
+
+    # Clean blueprint resource
+    first_cluster.clean_blueprints()
+
+
+@pytest.mark.skipif(util.is_redhat(),
+                    reason='MoM plugin is only available on Centos')
+@pytest.mark.skipif(util.is_community(),
+                    reason='Cloudify Community version does '
+                           'not support clustering')
+def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
+    """
+    In this scenario the second cluster is created _instead_ of the first one
+    with the same fixed private IPs
+    """
+    first_cluster = fixed_ip_2_regional_clusters[0]
+    second_cluster = fixed_ip_2_regional_clusters[1]
+
+    # Note that we can't easily validate that resources were created on the
+    # Regional clusters here, because they're using a fixed private IP, which
+    # would not be accessible by a REST client from here. This is why we're
+    # only testing that the upgrade has succeeded, and that the IPs were the
+    # same for both Regional deployments
+    first_cluster.deploy_and_validate()
+
+    # Install hello world deployment on Regional first cluster
+    first_cluster.execute_hello_world_workflow('install')
+
+    # Uninstall hello world deployment from Regional first cluster
+    first_cluster.execute_hello_world_workflow('uninstall')
+
+    # Take a backup from the first cluster
+    first_cluster.backup()
+
+    # Deploy & validate the second cluster
+    second_cluster.deploy_and_validate()
+
+    # Run Heal workflow against one of the regional clusters
+    _do_regional_heal(fixed_ip_2_regional_clusters)
+
+    # Uninstall clusters
+    first_cluster.uninstall()
+    second_cluster.uninstall()
+
+    # Clean deployments for both clusters
+    first_cluster.delete_deployment(use_cfy=True)
+    second_cluster.delete_deployment(use_cfy=True)
+
+    # Clean blueprint resource
+    first_cluster.clean_blueprints()
 
 
 def teardown_module():
@@ -328,39 +367,3 @@ def teardown_module():
     ]
     for file_to_delete in files_to_delete:
         os.remove(file_to_delete)
-
-
-@pytest.mark.skipif(util.is_redhat(),
-                    reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
-                    reason='Cloudify Community version does '
-                           'not support clustering')
-def test_regional_scale(floating_ip_2_regional_clusters):
-    """
-    In this scenario the second cluster is created _alongside_ the first one
-    with different floating IPs
-    """
-    regional_cluster = floating_ip_2_regional_clusters[0]
-    regional_cluster.deploy_and_validate()
-    regional_cluster.scale()
-    regional_cluster.uninstall()
-
-
-@pytest.mark.skipif(util.is_redhat(),
-                    reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
-                    reason='Cloudify Community version does '
-                           'not support clustering')
-def test_regional_heal(fixed_ip_2_regional_clusters):
-    """
-    In this scenario the second cluster is created _alongside_ the first one
-    with different floating IPs
-    """
-    regional_cluster = fixed_ip_2_regional_clusters[0]
-    regional_cluster.deploy_and_validate()
-    regional_cluster.execute_hello_world_workflow('install')
-    worker_instance = regional_cluster.manager.client.node_instances.list(
-        node_name='additional_workers')[0]
-    regional_cluster.heal(worker_instance.id)
-    regional_cluster.execute_hello_world_workflow('uninstall')
-    regional_cluster.uninstall()

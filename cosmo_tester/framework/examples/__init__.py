@@ -95,12 +95,18 @@ class AbstractExample(testtools.TestCase):
         self.install()
         self.verify_installation()
 
-    def delete_deployment(self):
-        self.logger.info('Deleting deployment...')
-        with set_client_tenant(self.manager, self.tenant):
-            self.manager.client.deployments.delete(
-                self.deployment_id,
-            )
+    def delete_deployment(self, use_cfy):
+        self.logger.info('Deleting deployment: {0}'.format(self.deployment_id))
+        if use_cfy:
+            self.cfy.profile.set([
+                '-t', self.tenant,
+            ])
+            self.cfy.deployments.delete(self.deployment_id)
+        else:
+            with set_client_tenant(self.manager, self.tenant):
+                self.manager.client.deployments.delete(
+                    self.deployment_id,
+                )
 
     def uninstall(self):
         self.logger.info('Uninstalling deployment...')
