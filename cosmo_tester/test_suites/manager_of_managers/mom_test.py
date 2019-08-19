@@ -225,9 +225,7 @@ def _do_regional_scale(floating_ip_2_regional_clusters):
     regional_cluster.scale()
 
 
-def _do_regional_heal(fixed_ip_2_regional_clusters):
-    regional_cluster = fixed_ip_2_regional_clusters[0]
-    regional_cluster.deploy_and_validate()
+def _do_regional_heal(regional_cluster):
     regional_cluster.execute_hello_world_workflow('install')
     worker_instance = regional_cluster.manager.client.node_instances.list(
         node_name='additional_workers')[0]
@@ -313,14 +311,16 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     # Take a backup from the first cluster
     first_cluster.backup()
 
+    # Teardown the first cluster
+    first_cluster.uninstall()
+
     # Deploy & validate the second cluster
     second_cluster.deploy_and_validate()
 
     # Run Heal workflow against one of the regional clusters
-    _do_regional_heal(fixed_ip_2_regional_clusters)
+    _do_regional_heal(second_cluster)
 
     # Uninstall clusters
-    first_cluster.uninstall()
     second_cluster.uninstall()
 
     # Clean deployments for both clusters
