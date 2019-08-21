@@ -169,7 +169,7 @@ class AbstractExample(testtools.TestCase):
         self._cleanup_required = True
         try:
             self.cfy.executions.start.install(['-d', self.deployment_id,
-                                               '-t', self.tenant, '-vv'])
+                                               '-t', self.tenant])
         except Exception as e:
             if 'if there is a running system-wide' in e.message:
                 self.logger.error('Error on deployment execution: %s', e)
