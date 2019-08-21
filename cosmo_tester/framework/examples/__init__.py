@@ -95,7 +95,7 @@ class AbstractExample(testtools.TestCase):
         self.install()
         self.verify_installation()
 
-    def delete_deployment(self, use_cfy):
+    def delete_deployment(self, use_cfy=False):
         self.logger.info('Deleting deployment: {0}'.format(self.deployment_id))
         if use_cfy:
             self.cfy.profile.set([
