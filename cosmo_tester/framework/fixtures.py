@@ -140,7 +140,7 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
             },
             'postgresql_client': {
                 'host': str(distributed_installation[0].private_ip_address),
-                'postgres_password': 'postgres'
+                'server_password': 'postgres'
             },
             'services_to_install': MANAGER_SERVICES_TO_INSTALL
         })
@@ -160,7 +160,7 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
                 'postgresql_client': {
                     'host':
                         str(distributed_installation[0].private_ip_address),
-                    'postgres_password': 'postgres'
+                    'server_password': 'postgres'
                 },
                 'services_to_install': MANAGER_SERVICES_TO_INSTALL
             })
@@ -178,7 +178,7 @@ def distributed_installation(cfy, ssh_key, module_tmpdir, attributes, logger,
                 'postgresql_client': {
                     'host':
                         str(distributed_installation[0].private_ip_address),
-                    'postgres_password': 'postgres'
+                    'server_password': 'postgres'
                 },
                 'services_to_install': MANAGER_SERVICES_TO_INSTALL
             })
