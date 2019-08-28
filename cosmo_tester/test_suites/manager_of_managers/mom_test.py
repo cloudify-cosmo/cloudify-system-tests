@@ -251,6 +251,8 @@ def test_regional_cluster_with_floating_ip(
 
     first_cluster.deploy_and_validate()
 
+    sleep(3600)
+
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
     first_cluster.backup()
