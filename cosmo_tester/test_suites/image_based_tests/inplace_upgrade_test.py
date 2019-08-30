@@ -81,10 +81,12 @@ def test_inplace_upgrade(cfy,
     manager.use()
     manager.upload_necessary_files()
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
-    cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
-    manager.wait_for_all_executions()
 
     with manager.ssh() as fabric_ssh:
+        # Perform the restore after opening the ssh session and don't wait for
+        # the execution to finish to avoid a race condition that occasionally
+        # causes test failures when we don't ssh in before the shutdown.
+        cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
         retry_delay = 1
         max_attempts = 240
         reboot_triggered = False
@@ -97,11 +99,11 @@ def test_inplace_upgrade(cfy,
                     # Still waiting for post-restore reboot
                     sleep(retry_delay)
                     reboot_triggered = True
-                    print('Reboot trigger has been set.')
+                    logger.info('Reboot trigger has been set.')
                     continue
                 elif reboot_triggered:
                     reboot_performed = True
-                    print('Reboot has been performed, continuing.')
+                    logger.info('Reboot has been performed, continuing.')
                     break
                 else:
                     sleep(retry_delay)
@@ -109,6 +111,9 @@ def test_inplace_upgrade(cfy,
                 if attempt == max_attempts - 1:
                     raise(err)
                 sleep(retry_delay)
+        if not reboot_triggered:
+            raise RuntimeError('Did not see reboot trigger. '
+                               'Did the manager already reboot?')
         if not reboot_performed:
             raise RuntimeError('Expected reboot did not happen.')
 
