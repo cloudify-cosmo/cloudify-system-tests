@@ -4,7 +4,9 @@ from cloudify_cli.utils import get_deployment_environment_execution
 from cloudify_cli.constants import CREATE_DEPLOYMENT
 import retrying
 
-from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.fixtures import (
+    image_based_manager_without_plugins,
+)
 
 
 NODES_BLUEPRINT_PATH = os.path.abspath(
@@ -21,7 +23,7 @@ SCALING_TEST_BLUEPRINTS = {
 }
 
 
-manager = image_based_manager
+manager = image_based_manager_without_plugins
 
 
 class ExecutionWaiting(Exception):
@@ -55,8 +57,8 @@ def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
 
     logger.info('Creating deployment for {dep}'.format(dep=entity_id))
     manager.client.deployments.create(
-       blueprint_id=entity_id,
-       deployment_id=entity_id,
+        blueprint_id=entity_id,
+        deployment_id=entity_id,
     )
 
     logger.info('Waiting for deployment env creation for '
@@ -302,21 +304,23 @@ def test_scale_down_target_node_instance(manager, logger):
                              entity_id=entity_id)
     nodes_instances = _get_deployed_instances(entity_id, manager, logger)
 
+    delta = 3
+    targets = nodes_instances[:delta]
+    expected = nodes_instances[delta:]
     execution = manager.client.executions.start(
         entity_id,
         'scale',
         parameters={
             'scalable_entity_name': 'fakevm',
-            'delta': '-3',
-            'include_instances': nodes_instances[0:2],
+            'delta': '-{}'.format(delta),
+            'include_instances': targets,
         },
     )
     wait_for_execution(manager, execution, logger)
 
     after_nodes_instances = _get_deployed_instances(entity_id, manager,
                                                     logger)
-
-    assert sorted(nodes_instances[3:]) == sorted(after_nodes_instances)
+    assert set(expected) == set(after_nodes_instances)
 
 
 def test_do_not_scale_down_excluded_node_instance(manager, logger):
