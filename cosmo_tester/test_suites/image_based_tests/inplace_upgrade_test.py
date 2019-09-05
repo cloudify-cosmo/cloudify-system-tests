@@ -112,8 +112,16 @@ def test_inplace_upgrade(cfy,
                     raise(err)
                 sleep(retry_delay)
         if not reboot_triggered:
-            raise RuntimeError('Did not see reboot trigger. '
-                               'Did the manager already reboot?')
+            log_tail = fabric_ssh.run(
+                'sudo tail -n30 '
+                '/var/log/cloudify/mgmtworker/logs/__system__.log'
+            ).strip()
+            raise RuntimeError(
+                'Did not see reboot trigger. '
+                'Did the manager already reboot?\n'
+                'End of snapshot log:\n'
+                '{log_tail}'.format(log_tail=log_tail)
+            )
         if not reboot_performed:
             raise RuntimeError('Expected reboot did not happen.')
 
