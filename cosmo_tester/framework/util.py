@@ -77,14 +77,17 @@ def get_openstack_server_password(server_id, private_key_path=None):
     conn = create_openstack_client()
     compute_endpoint = conn.session.get_endpoint(service_type='compute')
     url = '{}/servers/{}/os-server-password'.format(
-            compute_endpoint, server_id)
+        compute_endpoint, server_id
+    )
     headers = conn.session.get_auth_headers()
     headers['Content-Type'] = 'application/json'
     r = requests.get(url, headers=headers)
     if r.status_code != 200:
         raise RuntimeError(
-                'OpenStack get password response status (%d) != 200: {}'
-                .format(r.status_code, r.text))
+            'OpenStack get password response status (%d) != 200: {}'.format(
+                r.status_code, r.text
+            )
+        )
     password = r.json()['password']
     if private_key_path:
         return _decrypt_password(password, private_key_path)
@@ -121,10 +124,11 @@ def get_openstack_config():
 
 def create_openstack_client():
     conn = openstack_connection.Connection(
-            auth_url=os.environ[OS_AUTH_URL_ENV],
-            project_name=os.environ[OS_PROJECT_NAME_ENV],
-            username=os.environ[OS_USERNAME_ENV],
-            password=os.environ[OS_PASSWORD_ENV])
+        auth_url=os.environ[OS_AUTH_URL_ENV],
+        project_name=os.environ[OS_PROJECT_NAME_ENV],
+        username=os.environ[OS_USERNAME_ENV],
+        password=os.environ[OS_PASSWORD_ENV]
+    )
     return conn
 
 
@@ -262,26 +266,30 @@ def _get_contents_from_github(repo, resource_path):
 
 
 def _get_package_url(filename):
-    """Gets the package URL(s) from either GitHub (if GITHUB_USERNAME
-    and GITHUB_PASSWORD exists in env) or locally if the cloudify-premium
-    repository is checked out under the same folder the cloudify-system-tests
-    repo is checked out."""
+    """Gets the package URL(s).
+    They will be retrieved either from GitHub (if (GITHUB_USERNAME and
+    GITHUB_PASSWORD) or GITHUB_TOKEN exists in env) or locally if the
+    cloudify-premium or cloudify-versions repository is checked out under the
+    same folder the cloudify-system-tests repo is checked out.
+    """
     if is_community():
+        repo = 'cloudify-versions'
+    else:
+        repo = 'cloudify-premium'
+
+    if any(var in os.environ
+           for var in ['GITHUB_USERNAME', 'GITHUB_PASSWORD', 'GITHUB_TOKEN']):
         return _get_contents_from_github(
-            repo='cloudify-versions',
-            resource_path='packages-urls/{filename}'.format(filename=filename),
+            repo=repo,
+            resource_path='packages-urls/{filename}'.format(
+                filename=filename,
+            ),
         )
-    try:
-        return _get_contents_from_github(
-            repo='cloudify-premium',
-            resource_path='packages-urls/{filename}'.format(filename=filename),
-        )
-    except RuntimeError:
-        package_url_file = Path(
-            os.path.abspath(os.path.join(
-                os.path.dirname(cosmo_tester.__file__),
-                '../..',
-                os.path.join('cloudify-premium/packages-urls', filename))))
+    else:
+        package_url_file = (
+            Path(cosmo_tester.__file__).dirname() /
+            '..' / '..' / repo / 'packages-urls' / filename
+        ).abspath()
         if not package_url_file.exists():
             raise IOError('File containing {0} URL not '
                           'found: {1}'.format(filename, package_url_file))
@@ -748,7 +756,8 @@ def _get_release_dict_by_name(
             if item['name'] == item_name:
                 return item
     raise Exception('No item named {0} in {1}'.format(
-            item_name, dict_or_list))
+        item_name, dict_or_list)
+    )
 
 
 def get_authenticated_git_session(git_token=None):
