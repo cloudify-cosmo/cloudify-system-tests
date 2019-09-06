@@ -210,9 +210,12 @@ class AbstractExample(testtools.TestCase):
             executions = self.manager.client.executions.list(
                 deployment_id=self.deployment_id,
             )
-            events, total_events = self.manager.client.events.get(
-                executions[0].id,
-            )
+            events = self.manager.client.events.list(
+                execution_id=executions[0].id,
+                _offset=0,
+                _size=100,
+                _sort='@timestamp',
+            ).items
         self.assertGreater(len(events), 0,
                            'There are no events for deployment: {0}'.format(
                                    self.deployment_id))
