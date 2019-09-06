@@ -33,7 +33,7 @@ from tempfile import mkstemp
 from contextlib import contextmanager
 
 from openstack import connection as openstack_connection
-from path import path, Path
+from path import Path
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
@@ -158,7 +158,7 @@ def get_resource_path(resource, resources_dir=None):
 
 
 def get_yaml_as_dict(yaml_path):
-    return yaml.load(path(yaml_path).text())
+    return yaml.load(Path(yaml_path).text())
 
 
 def create_rest_client(
@@ -302,7 +302,7 @@ class YamlPatcher(object):
     set_pattern = re.compile(r'(.+)\[(\d+|append)\]')
 
     def __init__(self, yaml_path, is_json=False, default_flow_style=True):
-        self.yaml_path = path(yaml_path)
+        self.yaml_path = Path(yaml_path)
         self.obj = yaml.load(self.yaml_path.text()) or {}
         self.is_json = is_json
         self.default_flow_style = default_flow_style

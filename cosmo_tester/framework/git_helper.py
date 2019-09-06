@@ -18,7 +18,7 @@ import os
 import logging
 
 import sh
-from path import path
+from path import Path
 
 from cosmo_tester.framework.util import sh_bake
 
@@ -32,7 +32,7 @@ git = sh_bake(sh.git)
 def clone(url, basedir, branch=None):
     repo_name = url.split('.git')[0].split('/')[-1]
 
-    target = path(os.path.join(basedir, 'git', repo_name, branch))
+    target = Path(os.path.join(basedir, 'git', repo_name, branch))
 
     if not target.exists():
         logger.info("Cloning {0} to {1}".format(url, target))
@@ -52,6 +52,6 @@ def clone(url, basedir, branch=None):
 def checkout(repo_path, branch, force=False):
     logger.info('Checking out to {0} branch in repo {1}'
                 .format(branch, repo_path))
-    target = path(repo_path)
+    target = Path(repo_path)
     with target:
         git.checkout(branch, force=force).wait()
