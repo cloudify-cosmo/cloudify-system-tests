@@ -33,6 +33,7 @@ class AbstractRegionalCluster(AbstractExample):
     def __init__(self, *args, **kwargs):
         super(AbstractRegionalCluster, self).__init__(*args, **kwargs)
         self._deployed = False
+        self.branch = 'CY-1595-3.0.1-test-branch'
 
     @property
     def inputs(self):
@@ -215,7 +216,7 @@ class AbstractRegionalCluster(AbstractExample):
             'install_rpm_path': constants.INSTALL_RPM_PATH,
             'manager_admin_password': self.attributes.cloudify_password,
 
-            'num_of_instances': 1,
+            'num_of_worker_instances': 1,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later
@@ -582,9 +583,9 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             # Only relevant when working with the Private Fixed IP paradigm.
             # See more in private_fixed_ip.yaml
             'queue-infrastructure--'
-            'resource_pool': self.RESOURCE_POOL1,
-            'database-infrastructure--'
             'resource_pool': self.RESOURCE_POOL2,
+            'database-infrastructure--'
+            'resource_pool': self.RESOURCE_POOL1,
             'seed-worker-infrastructure--'
             'resource_pool': self.RESOURCE_POOL3,
             'additional-workers-infrastructure--'
@@ -765,7 +766,7 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'install_rpm_path': constants.INSTALL_RPM_PATH,
             'manager_admin_password': self.attributes.cloudify_password,
 
-            'num_of_instances': 1,
+            'num_of_worker_instances': 1,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later

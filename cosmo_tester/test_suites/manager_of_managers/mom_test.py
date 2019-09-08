@@ -301,10 +301,8 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     # only testing that the upgrade has succeeded, and that the IPs were the
     # same for both Regional deployments
     first_cluster.deploy_and_validate()
-
     # Install hello world deployment on Regional first cluster
     first_cluster.execute_hello_world_workflow('install')
-
     # Uninstall hello world deployment from Regional first cluster
     first_cluster.execute_hello_world_workflow('uninstall')
 
