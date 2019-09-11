@@ -45,6 +45,7 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
         subprocess.call(['npm', 'run', 'upload'],
                         cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
 
+    logger.info('Uploading license...')
     license_path = util.get_resource_path('test_valid_paying_license.yaml')
     manager.client.license.upload(license_path)
 
