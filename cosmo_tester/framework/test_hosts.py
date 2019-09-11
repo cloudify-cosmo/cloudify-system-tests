@@ -524,8 +524,11 @@ class _CloudifyManager(VM):
 
             install_file = self._tmpdir / 'install_{0}.yaml'.format(self.index)
             install_file.write_text(install_command)
-            fabric_ssh.put(install_file, '/tmp/bootstrap_script')
 
+            self._logger.info("install_command")
+            self._logger.info("{}".format(install_command))
+
+            fabric_ssh.put(install_file, '/tmp/bootstrap_script')
             fabric_ssh.run('nohup bash /tmp/bootstrap_script')
 
         if blocking:
