@@ -228,7 +228,8 @@ def _do_regional_scale(floating_ip_2_regional_clusters):
 def _do_regional_heal(regional_cluster):
     regional_cluster.execute_hello_world_workflow('install')
     worker_instance = regional_cluster.manager.client.node_instances.list(
-        node_name='additional_workers')[1]
+        deployment_id=regional_cluster.deployment_id,
+        node_name='cloudify_manager_worker')[1]
     regional_cluster.heal(worker_instance.id)
     regional_cluster.execute_hello_world_workflow('uninstall')
 
@@ -249,7 +250,10 @@ def test_regional_cluster_with_floating_ip(
     first_cluster = floating_ip_2_regional_clusters[0]
     second_cluster = floating_ip_2_regional_clusters[1]
 
-    first_cluster.deploy_and_validate()
+    try:
+        first_cluster.deploy_and_validate()
+    finally:
+        first_cluster.uninstall()
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
@@ -301,6 +305,7 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     # only testing that the upgrade has succeeded, and that the IPs were the
     # same for both Regional deployments
     first_cluster.deploy_and_validate()
+
     # Install hello world deployment on Regional first cluster
     first_cluster.execute_hello_world_workflow('install')
     # Uninstall hello world deployment from Regional first cluster

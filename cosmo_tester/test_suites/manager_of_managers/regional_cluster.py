@@ -33,7 +33,7 @@ class AbstractRegionalCluster(AbstractExample):
     def __init__(self, *args, **kwargs):
         super(AbstractRegionalCluster, self).__init__(*args, **kwargs)
         self._deployed = False
-        self.branch = 'CY-1595-3.0.1-test-branch'
+        self.branch = 'CY-1596-3.1.0-postgres-cluster'
 
     @property
     def inputs(self):
@@ -43,6 +43,7 @@ class AbstractRegionalCluster(AbstractExample):
         openstack_config = util.get_openstack_config()
 
         inputs = {
+            'endpoint_ip_property': 'public_ip_address',
             'database-infrastructure--'
             'os_password': openstack_config['password'],
             'database-infrastructure--'
@@ -127,88 +128,46 @@ class AbstractRegionalCluster(AbstractExample):
             'queue-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_password': openstack_config['password'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_username': openstack_config['username'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_tenant': openstack_config['tenant_name'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_auth_url': openstack_config['auth_url'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_region': os.environ['OS_REGION_NAME'],
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'agent_installation_method': 'remote',
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'use_existing_openstack_resources': True,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'use_public_ip': False,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'manager_agent_broker': 'default',
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_image': self.attributes.centos_7_image_id,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_flavor': '3',
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_device_mapping': [],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_network': self.attributes.network_name,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_floating_network': 'GATEWAY_NET',
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_subnet': self.attributes.subnet_name,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_keypair': self.attributes.keypair_name,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_security_group': self.attributes.security_group_name,
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'ssh_user': self.attributes.default_linux_username,
-            'seed-worker-infrastructure--'
-            'ssh_private_key_path': self.manager.remote_private_key_path,
-
-            'additional-workers-infrastructure--'
-            'os_password': openstack_config['password'],
-            'additional-workers-infrastructure--'
-            'os_username': openstack_config['username'],
-            'additional-workers-infrastructure--'
-            'os_tenant': openstack_config['tenant_name'],
-            'additional-workers-infrastructure--'
-            'os_auth_url': openstack_config['auth_url'],
-            'additional-workers-infrastructure--'
-            'os_region': os.environ['OS_REGION_NAME'],
-
-            'additional-workers-infrastructure--'
-            'agent_installation_method': 'remote',
-            'additional-workers-infrastructure--'
-            'use_existing_openstack_resources': True,
-            'additional-workers-infrastructure--'
-            'use_public_ip': False,
-            'additional-workers-infrastructure--'
-            'manager_agent_broker': 'default',
-
-            'additional-workers-infrastructure--'
-            'os_image': self.attributes.centos_7_image_id,
-            'additional-workers-infrastructure--'
-            'os_flavor': '3',
-            'additional-workers-infrastructure--'
-            'os_device_mapping': [],
-            'additional-workers-infrastructure--'
-            'os_network': self.attributes.network_name,
-            'additional-workers-infrastructure--'
-            'os_floating_network': 'GATEWAY_NET',
-            'additional-workers-infrastructure--'
-            'os_subnet': self.attributes.subnet_name,
-            'additional-workers-infrastructure--'
-            'os_keypair': self.attributes.keypair_name,
-            'additional-workers-infrastructure--'
-            'os_security_group': self.attributes.security_group_name,
-
-            'additional-workers-infrastructure--'
-            'ssh_user': self.attributes.default_linux_username,
-            'additional-workers-infrastructure--'
+            'worker-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
             'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
@@ -216,7 +175,7 @@ class AbstractRegionalCluster(AbstractExample):
             'install_rpm_path': constants.INSTALL_RPM_PATH,
             'manager_admin_password': self.attributes.cloudify_password,
 
-            'num_of_worker_instances': 1,
+            'num_of_worker_instances': 2,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later
@@ -270,6 +229,13 @@ class AbstractRegionalCluster(AbstractExample):
         )
         return {
                 'restore': True,
+                'restore_params': {
+                    'force': True,
+                    'recreate_deployments_envs': True,
+                    'restore_certificates': True,
+                    'no_reboot': True,
+                    'ignore_plugin_failure': True
+                },
                 'old_deployment_id': old_deployment_id,
                 'snapshot_id': old_deployment_id,
                 'transfer_agents': self.TRANSFER_AGENTS
@@ -389,7 +355,7 @@ class AbstractRegionalCluster(AbstractExample):
 
     @property
     def master_ip(self):
-        return self.outputs['cluster_ips']['seed_worker']
+        return self.outputs['endpoint']
 
     def upload_blueprint(self, use_cfy=False):
         self.clone_example()
@@ -538,42 +504,44 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
     TRANSFER_AGENTS = False
     RESOURCE_POOL1 = [
         {
+            'ip_address': '10.0.0.47',
+            'hostname': 'db_0'
+        },
+        {
+            'ip_address': '10.0.0.48',
+            'hostname': 'db_1'
+        },
+        {
+            'ip_address': '10.0.0.49',
+            'hostname': 'db_2'
+        },
+        {
             'ip_address': '10.0.0.50',
-            'hostname': 'db_worker_1'
+            'hostname': 'db_3'
         },
         {
             'ip_address': '10.0.0.51',
-            'hostname': 'db_worker_2'
+            'hostname': 'db_4'
         }
     ]
     RESOURCE_POOL2 = [
         {
             'ip_address': '10.0.0.52',
-            'hostname': 'queue_worker_1'
+            'hostname': 'queue_0'
         },
         {
             'ip_address': '10.0.0.53',
-            'hostname': 'queue_worker_2'
+            'hostname': 'queue_1'
         }
     ]
     RESOURCE_POOL3 = [
         {
             'ip_address': '10.0.0.54',
-            'hostname': 'seed_worker_1'
+            'hostname': 'worker_0'
         },
         {
             'ip_address': '10.0.0.55',
-            'hostname': 'seed_worker_2'
-        }
-    ]
-    RESOURCE_POOL4 = [
-        {
-            'ip_address': '10.0.0.56',
-            'hostname': 'additional_worker_1'
-        },
-        {
-            'ip_address': '10.0.0.57',
-            'hostname': 'additional_worker_2'
+            'hostname': 'worker_1'
         }
     ]
 
@@ -586,10 +554,8 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'resource_pool': self.RESOURCE_POOL2,
             'database-infrastructure--'
             'resource_pool': self.RESOURCE_POOL1,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'resource_pool': self.RESOURCE_POOL3,
-            'additional-workers-infrastructure--'
-            'resource_pool': self.RESOURCE_POOL4,
         }
 
     @property
@@ -600,7 +566,7 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
         openstack_config = util.get_openstack_config()
 
         inputs = {
-            'endpoint_ip_property': 'ip',
+            'endpoint_ip_property': 'private_ip',
             'database-infrastructure--'
             'os_password': openstack_config['password'],
             'database-infrastructure--'
@@ -681,92 +647,52 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'queue-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_password': openstack_config['password'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_username': openstack_config['username'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_tenant': openstack_config['tenant_name'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_auth_url': openstack_config['auth_url'],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_region': os.environ['OS_REGION_NAME'],
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'agent_installation_method': 'remote',
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'use_existing_openstack_resources': True,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'use_public_ip': False,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'manager_agent_broker': 'default',
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_image': self.attributes.centos_7_image_id,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_flavor': '3',
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_device_mapping': [],
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_network': self.attributes.network_name,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_subnet': self.attributes.subnet_name,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_keypair': self.attributes.keypair_name,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'os_security_group': self.attributes.security_group_name,
 
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'ssh_user': self.attributes.default_linux_username,
-            'seed-worker-infrastructure--'
+            'worker-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
-
-            'additional-workers-infrastructure--'
-            'os_password': openstack_config['password'],
-            'additional-workers-infrastructure--'
-            'os_username': openstack_config['username'],
-            'additional-workers-infrastructure--'
-            'os_tenant': openstack_config['tenant_name'],
-            'additional-workers-infrastructure--'
-            'os_auth_url': openstack_config['auth_url'],
-            'additional-workers-infrastructure--'
-            'os_region': os.environ['OS_REGION_NAME'],
-
-            'additional-workers-infrastructure--'
-            'agent_installation_method': 'remote',
-            'additional-workers-infrastructure--'
-            'use_existing_openstack_resources': True,
-            'additional-workers-infrastructure--'
-            'use_public_ip': False,
-            'additional-workers-infrastructure--'
-            'manager_agent_broker': 'default',
-
-            'additional-workers-infrastructure--'
-            'os_image': self.attributes.centos_7_image_id,
-            'additional-workers-infrastructure--'
-            'os_flavor': '3',
-            'additional-workers-infrastructure--'
-            'os_device_mapping': [],
-            'additional-workers-infrastructure--'
-            'os_network': self.attributes.network_name,
-            'additional-workers-infrastructure--'
-            'os_subnet': self.attributes.subnet_name,
-            'additional-workers-infrastructure--'
-            'os_keypair': self.attributes.keypair_name,
-            'additional-workers-infrastructure--'
-            'os_security_group': self.attributes.security_group_name,
-
-            'additional-workers-infrastructure--ssh_user':
-                self.attributes.default_linux_username,
-            'additional-workers-infrastructure--ssh_private_key_path':
-                self.manager.remote_private_key_path,
 
             'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
             'ca_key': self.attributes.LOCAL_REST_KEY_FILE,
             'install_rpm_path': constants.INSTALL_RPM_PATH,
             'manager_admin_password': self.attributes.cloudify_password,
 
-            'num_of_worker_instances': 1,
+            'num_of_worker_instances': 2,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later
@@ -868,11 +794,10 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
         # Only relevant when working with the Floating IP paradigm.
         # See more in floating_ip.yaml
         network_inputs = {}
-        NET_1 = 'additional-workers-infrastructure--os_floating_network'
-        NET_2 = 'seed-worker-infrastructure--os_floating_network'
+        NET_2 = 'worker-infrastructure--os_floating_network'
         NET_3 = 'queue-infrastructure--os_floating_network'
         NET_4 = 'database-infrastructure--os_floating_network'
-        ofn_keys = [NET_1, NET_2, NET_3, NET_4]
+        ofn_keys = [NET_2, NET_3, NET_4]
         for ofn_key in ofn_keys:
             network_inputs.update(
                 {ofn_key: self.attributes.floating_network_id})
