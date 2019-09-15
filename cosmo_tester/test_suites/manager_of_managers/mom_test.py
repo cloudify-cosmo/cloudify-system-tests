@@ -250,20 +250,16 @@ def test_regional_cluster_with_floating_ip(
     first_cluster = floating_ip_2_regional_clusters[0]
     second_cluster = floating_ip_2_regional_clusters[1]
 
-    try:
-        first_cluster.deploy_and_validate()
-    finally:
-        first_cluster.uninstall()
+    first_cluster.deploy_and_validate()
+    first_cluster.uninstall()
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
     first_cluster.backup()
 
-    try:
-        second_cluster.deploy_and_validate()
-    finally:
-        # Uninstall hello world deployment from Regional cluster
-        second_cluster.execute_hello_world_workflow('uninstall')
+    second_cluster.deploy_and_validate()
+    # Uninstall hello world deployment from Regional cluster
+    second_cluster.execute_hello_world_workflow('uninstall')
 
     # Upgrade central manager
     _do_central_upgrade(floating_ip_2_regional_clusters,
