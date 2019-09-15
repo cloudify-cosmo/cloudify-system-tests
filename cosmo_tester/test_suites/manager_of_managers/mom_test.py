@@ -251,7 +251,6 @@ def test_regional_cluster_with_floating_ip(
     second_cluster = floating_ip_2_regional_clusters[1]
 
     first_cluster.deploy_and_validate()
-    first_cluster.uninstall()
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
