@@ -407,7 +407,7 @@ def test_scale_down_target_group_member(manager, logger):
     after_groups_instances = _get_deployed_instances(entity_id, manager,
                                                      logger)
 
-    assert len(after_groups_instances) == 34
+    assert len(after_groups_instances) == 34*20
     assert groups_instances[0] not in after_groups_instances
 
 
@@ -431,5 +431,5 @@ def test_scale_down_do_not_target_excluded_group_member(manager, logger):
     after_groups_instances = _get_deployed_instances(entity_id, manager,
                                                      logger)
 
-    assert len(after_groups_instances) == 2
+    assert len(after_groups_instances) == 2*20
     assert groups_instances[0] in after_groups_instances
