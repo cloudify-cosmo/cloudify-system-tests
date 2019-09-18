@@ -33,7 +33,6 @@ class AbstractRegionalCluster(AbstractExample):
     def __init__(self, *args, **kwargs):
         super(AbstractRegionalCluster, self).__init__(*args, **kwargs)
         self._deployed = False
-        self.branch = 'CY-1712-update-haproxy-for-ha-cluster'
 
     @property
     def inputs(self):
