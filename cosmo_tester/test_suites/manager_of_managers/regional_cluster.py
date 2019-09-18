@@ -33,7 +33,7 @@ class AbstractRegionalCluster(AbstractExample):
     def __init__(self, *args, **kwargs):
         super(AbstractRegionalCluster, self).__init__(*args, **kwargs)
         self._deployed = False
-        self.branch = 'CY-1596-3.1.0-postgres-cluster'
+        self.branch = 'CY-1712-update-haproxy-for-ha-cluster'
 
     @property
     def inputs(self):
@@ -168,6 +168,48 @@ class AbstractRegionalCluster(AbstractExample):
             'worker-infrastructure--'
             'ssh_user': self.attributes.default_linux_username,
             'worker-infrastructure--'
+            'ssh_private_key_path': self.manager.remote_private_key_path,
+
+            'haproxy-infrastructure--'
+            'os_password': openstack_config['password'],
+            'haproxy-infrastructure--'
+            'os_username': openstack_config['username'],
+            'haproxy-infrastructure--'
+            'os_tenant': openstack_config['tenant_name'],
+            'haproxy-infrastructure--'
+            'os_auth_url': openstack_config['auth_url'],
+            'haproxy-infrastructure--'
+            'os_region': os.environ['OS_REGION_NAME'],
+
+            'haproxy-infrastructure--'
+            'agent_installation_method': 'remote',
+            'haproxy-infrastructure--'
+            'use_existing_openstack_resources': True,
+            'haproxy-infrastructure--'
+            'use_public_ip': False,
+            'haproxy-infrastructure--'
+            'manager_agent_broker': 'default',
+
+            'haproxy-infrastructure--'
+            'os_image': self.attributes.centos_7_image_id,
+            'haproxy-infrastructure--'
+            'os_flavor': '2',
+            'haproxy-infrastructure--'
+            'os_device_mapping': [],
+            'haproxy-infrastructure--'
+            'os_network': self.attributes.network_name,
+            'haproxy-infrastructure--'
+            'os_floating_network': 'GATEWAY_NET',
+            'haproxy-infrastructure--'
+            'os_subnet': self.attributes.subnet_name,
+            'haproxy-infrastructure--'
+            'os_keypair': self.attributes.keypair_name,
+            'haproxy-infrastructure--'
+            'os_security_group': self.attributes.security_group_name,
+
+            'haproxy-infrastructure--'
+            'ssh_user': self.attributes.default_linux_username,
+            'haproxy-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
             'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
@@ -502,6 +544,16 @@ class AbstractRegionalCluster(AbstractExample):
 
 class FixedIpRegionalCluster(AbstractRegionalCluster):
     TRANSFER_AGENTS = False
+    RESOURCE_POOL0 = [
+        {
+            'ip_address': '10.0.0.45',
+            'hostname': 'haproxy_0'
+        },
+        {
+            'ip_address': '10.0.0.46',
+            'hostname': 'haproxy_1'
+        }
+    ]
     RESOURCE_POOL1 = [
         {
             'ip_address': '10.0.0.47',
@@ -556,6 +608,9 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'resource_pool': self.RESOURCE_POOL1,
             'worker-infrastructure--'
             'resource_pool': self.RESOURCE_POOL3,
+            'haproxy-infrastructure--'
+            'resource_pool': self.RESOURCE_POOL0,
+
         }
 
     @property
@@ -687,6 +742,46 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'worker-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
+            'haproxy-infrastructure--'
+            'os_password': openstack_config['password'],
+            'haproxy-infrastructure--'
+            'os_username': openstack_config['username'],
+            'haproxy-infrastructure--'
+            'os_tenant': openstack_config['tenant_name'],
+            'haproxy-infrastructure--'
+            'os_auth_url': openstack_config['auth_url'],
+            'haproxy-infrastructure--'
+            'os_region': os.environ['OS_REGION_NAME'],
+
+            'haproxy-infrastructure--'
+            'agent_installation_method': 'remote',
+            'haproxy-infrastructure--'
+            'use_existing_openstack_resources': True,
+            'haproxy-infrastructure--'
+            'use_public_ip': False,
+            'haproxy-infrastructure--'
+            'manager_agent_broker': 'default',
+
+            'haproxy-infrastructure--'
+            'os_image': self.attributes.centos_7_image_id,
+            'haproxy-infrastructure--'
+            'os_flavor': '2',
+            'haproxy-infrastructure--'
+            'os_device_mapping': [],
+            'haproxy-infrastructure--'
+            'os_network': self.attributes.network_name,
+            'haproxy-infrastructure--'
+            'os_subnet': self.attributes.subnet_name,
+            'haproxy-infrastructure--'
+            'os_keypair': self.attributes.keypair_name,
+            'haproxy-infrastructure--'
+            'os_security_group': self.attributes.security_group_name,
+
+            'haproxy-infrastructure--'
+            'ssh_user': self.attributes.default_linux_username,
+            'haproxy-infrastructure--'
+            'ssh_private_key_path': self.manager.remote_private_key_path,
+
             'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
             'ca_key': self.attributes.LOCAL_REST_KEY_FILE,
             'install_rpm_path': constants.INSTALL_RPM_PATH,
@@ -794,10 +889,11 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
         # Only relevant when working with the Floating IP paradigm.
         # See more in floating_ip.yaml
         network_inputs = {}
+        NET_1 = 'haproxy-infrastructure--os_floating_network'
         NET_2 = 'worker-infrastructure--os_floating_network'
         NET_3 = 'queue-infrastructure--os_floating_network'
         NET_4 = 'database-infrastructure--os_floating_network'
-        ofn_keys = [NET_2, NET_3, NET_4]
+        ofn_keys = [NET_1, NET_2, NET_3, NET_4]
         for ofn_key in ofn_keys:
             network_inputs.update(
                 {ofn_key: self.attributes.floating_network_id})

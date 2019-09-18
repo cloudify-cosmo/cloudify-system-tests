@@ -14,6 +14,7 @@
 #    * limitations under the License.
 
 import os
+from time import sleep
 
 import pytest
 
@@ -129,8 +130,22 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
             'chown cfyuser:cfyuser {0}'.format(dst_path),
             use_sudo=True
         )
-
     logger.info('All permissions granted to `cfyuser`')
+    secrets_to_create = {
+        'etcd_cluster_token': ATTRIBUTES.cloudify_password,
+        'etcd_root_password': ATTRIBUTES.cloudify_password,
+        'etcd_patroni_password': ATTRIBUTES.cloudify_password,
+        'patroni_rest_password': ATTRIBUTES.cloudify_password,
+        'postgres_replicator_password': ATTRIBUTES.cloudify_password,
+        'postgres_password': ATTRIBUTES.cloudify_password,
+        'manager_admin_password': ATTRIBUTES.cloudify_password
+    }
+
+    for k, v in secrets_to_create.items():
+        while k not in cfy.secrets.list():
+            cfy.secrets.create(k, '-s', v)
+            sleep(0.5)
+    logger.info('Created all password secrets.')
 
 
 @pytest.fixture(scope='module')
