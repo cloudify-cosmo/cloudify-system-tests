@@ -14,14 +14,14 @@
 #    * limitations under the License.
 
 
-import time
 import os
+import time
 
 from requests.exceptions import ConnectionError
 from cloudify_rest_client.exceptions import CloudifyClientError
 
 
-def set_active(manager, cfy, logger):
+def set_active(manager, cfy, logger, wait=True):
     try:
         logger.info('Setting active manager %s',
                     manager.ip_address)
@@ -29,7 +29,8 @@ def set_active(manager, cfy, logger):
     except Exception as e:
         logger.info('Setting active manager error message: %s', e.message)
     finally:
-        wait_nodes_online([manager], logger)
+        if wait:
+            wait_nodes_online([manager], logger)
 
 
 def wait_leader_election(managers, logger, wait_before_check=None):
@@ -47,9 +48,11 @@ def wait_leader_election(managers, logger, wait_before_check=None):
     _wait_cluster_status(_is_there_a_leader, managers, logger)
 
 
-def wait_nodes_online(managers, logger):
+def wait_nodes_online(managers, logger, count=None):
     """Wait until all of the cluster nodes are online"""
     def _all_nodes_online(nodes):
+        if count:
+            return sum(node['online'] for node in nodes) == count
         return all(node['online'] for node in nodes)
     logger.info('Waiting for all nodes to be online...')
     _wait_cluster_status(_all_nodes_online, managers, logger)
@@ -84,17 +87,16 @@ def _wait_cluster_status(predicate, managers, logger, timeout=150,
     raise RuntimeError('Timeout when waiting for cluster status')
 
 
-def verify_nodes_status(manager, cfy, logger):
+def verify_nodes_status(manager, logger):
     logger.info('Verifying that manager %s is a leader '
                 'and others are replicas', manager.ip_address)
-    cfy.cluster.nodes.list()
     nodes = manager.client.cluster.nodes.list()
     for node in nodes:
         if node.name == str(manager.ip_address):
-            assert node.master is True
+            assert node.master
             logger.info('Manager %s is a leader ', node.name)
         else:
-            assert node.master is not True
+            assert not node.master
             logger.info('Manager %s is a replica ', node.name)
 
 

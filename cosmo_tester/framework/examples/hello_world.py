@@ -138,6 +138,20 @@ def centos_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir,
     return hello
 
 
+def windows_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir,
+                        tenant='default_tenant', suffix=''):
+    hello = HelloWorldExample(
+        cfy, manager, attributes, ssh_key, logger, tmpdir,
+        tenant=tenant, suffix=suffix)
+    hello.blueprint_file = 'openstack-windows-winrm-blueprint.yaml'
+    hello.inputs.update({
+        'agent_user': attributes.windows_2012_username,
+        'image': attributes.windows_2012_image_name,
+        'flavor': attributes.medium_flavor_name,
+    })
+    return hello
+
+
 @pytest.fixture(scope='function')
 def hello_worlds(cfy, manager, attributes, ssh_key, tmpdir,
                  logger):
