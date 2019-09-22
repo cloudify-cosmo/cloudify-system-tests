@@ -68,6 +68,8 @@ class AbstractRegionalCluster(AbstractExample):
             'database-infrastructure--'
             'os_flavor': '3',
             'database-infrastructure--'
+            'os_volume_size': 20,
+            'database-infrastructure--'
             'os_device_mapping': [],
             'database-infrastructure--'
             'os_network': self.attributes.network_name,
@@ -110,6 +112,8 @@ class AbstractRegionalCluster(AbstractExample):
             'queue-infrastructure--'
             'os_flavor': '3',
             'queue-infrastructure--'
+            'os_volume_size': 20,
+            'queue-infrastructure--'
             'os_device_mapping': [],
             'queue-infrastructure--'
             'os_network': self.attributes.network_name,
@@ -151,6 +155,8 @@ class AbstractRegionalCluster(AbstractExample):
             'os_image': self.attributes.centos_7_image_id,
             'worker-infrastructure--'
             'os_flavor': '3',
+            'worker-infrastructure--'
+            'os_volume_size': 20,
             'worker-infrastructure--'
             'os_device_mapping': [],
             'worker-infrastructure--'
@@ -193,6 +199,8 @@ class AbstractRegionalCluster(AbstractExample):
             'os_image': self.attributes.centos_7_image_id,
             'haproxy-infrastructure--'
             'os_flavor': '2',
+            'haproxy-infrastructure--'
+            'os_volume_size': 20,
             'haproxy-infrastructure--'
             'os_device_mapping': [],
             'haproxy-infrastructure--'
@@ -646,6 +654,8 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'database-infrastructure--'
             'os_flavor': '3',
             'database-infrastructure--'
+            'os_volume_size': 20,
+            'database-infrastructure--'
             'os_device_mapping': [],
             'database-infrastructure--'
             'os_network': self.attributes.network_name,
@@ -686,6 +696,8 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'queue-infrastructure--'
             'os_flavor': '3',
             'queue-infrastructure--'
+            'os_volume_size': 20,
+            'queue-infrastructure--'
             'os_device_mapping': [],
             'queue-infrastructure--'
             'os_network': self.attributes.network_name,
@@ -725,6 +737,8 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'os_image': self.attributes.centos_7_image_id,
             'worker-infrastructure--'
             'os_flavor': '3',
+            'worker-infrastructure--'
+            'os_volume_size': 20,
             'worker-infrastructure--'
             'os_device_mapping': [],
             'worker-infrastructure--'
@@ -765,6 +779,8 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
             'os_image': self.attributes.centos_7_image_id,
             'haproxy-infrastructure--'
             'os_flavor': '2',
+            'haproxy-infrastructure--'
+            'os_volume_size': 20,
             'haproxy-infrastructure--'
             'os_device_mapping': [],
             'haproxy-infrastructure--'

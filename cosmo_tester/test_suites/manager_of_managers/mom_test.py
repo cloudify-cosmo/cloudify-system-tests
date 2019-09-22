@@ -244,7 +244,7 @@ def _do_regional_heal(regional_cluster):
     regional_cluster.execute_hello_world_workflow('install')
     worker_instance = regional_cluster.manager.client.node_instances.list(
         deployment_id=regional_cluster.deployment_id,
-        node_name='cloudify_manager_worker')[1]
+        node_name='cloudify_manager_worker')[0]
     regional_cluster.heal(worker_instance.id)
     regional_cluster.execute_hello_world_workflow('uninstall')
 
