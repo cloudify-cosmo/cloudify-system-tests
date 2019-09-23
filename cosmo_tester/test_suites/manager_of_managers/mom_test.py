@@ -207,12 +207,11 @@ def _get_regional_clusters(resource_id, number_of_deps, cluster_class,
     return clusters
 
 
-def _do_central_upgrade(floating_ip_2_regional_clusters, central_manager,
+def _do_central_upgrade(regional_cluster, central_manager,
                         cfy, tmpdir, logger):
 
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
-    regional_cluster = floating_ip_2_regional_clusters[0]
     regional_cluster.deploy_and_validate()
 
     cfy.snapshots.create([constants.CENTRAL_MANAGER_SNAP_ID])
@@ -234,8 +233,7 @@ def _do_central_upgrade(floating_ip_2_regional_clusters, central_manager,
     cfy.agents.install()
 
 
-def _do_regional_scale(floating_ip_2_regional_clusters):
-    regional_cluster = floating_ip_2_regional_clusters[0]
+def _do_regional_scale(regional_cluster):
     regional_cluster.deploy_and_validate()
     regional_cluster.scale()
 
@@ -269,6 +267,10 @@ def test_regional_cluster_with_floating_ip(
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
+
+    # Run Scale workflow against one of the regional clusters
+    _do_regional_scale(first_cluster)
+
     first_cluster.backup()
 
     second_cluster.deploy_and_validate()
@@ -276,14 +278,11 @@ def test_regional_cluster_with_floating_ip(
     second_cluster.execute_hello_world_workflow('uninstall')
 
     # Upgrade central manager
-    _do_central_upgrade(floating_ip_2_regional_clusters,
+    _do_central_upgrade(first_cluster,
                         central_manager,
                         cfy,
                         tmpdir,
                         logger)
-
-    # Run Scale workflow against one of the regional clusters
-    _do_regional_scale(floating_ip_2_regional_clusters)
 
     first_cluster.uninstall()
     second_cluster.uninstall()
