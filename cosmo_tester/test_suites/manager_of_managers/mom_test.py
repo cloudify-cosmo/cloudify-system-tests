@@ -14,7 +14,7 @@
 #    * limitations under the License.
 
 import os
-import time
+from time import sleep
 
 import pytest
 
@@ -130,8 +130,22 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
             'chown cfyuser:cfyuser {0}'.format(dst_path),
             use_sudo=True
         )
-
     logger.info('All permissions granted to `cfyuser`')
+    secrets_to_create = {
+        'etcd_cluster_token': ATTRIBUTES.cloudify_password,
+        'etcd_root_password': ATTRIBUTES.cloudify_password,
+        'etcd_patroni_password': ATTRIBUTES.cloudify_password,
+        'patroni_rest_password': ATTRIBUTES.cloudify_password,
+        'postgres_replicator_password': ATTRIBUTES.cloudify_password,
+        'postgres_password': ATTRIBUTES.cloudify_password,
+        'manager_admin_password': ATTRIBUTES.cloudify_password
+    }
+
+    for k, v in secrets_to_create.items():
+        while k not in cfy.secrets.list():
+            cfy.secrets.create(k, '-s', v)
+            sleep(0.5)
+    logger.info('Created all password secrets.')
 
 
 @pytest.fixture(scope='module')
@@ -193,12 +207,11 @@ def _get_regional_clusters(resource_id, number_of_deps, cluster_class,
     return clusters
 
 
-def _do_central_upgrade(floating_ip_2_regional_clusters, central_manager,
+def _do_central_upgrade(regional_cluster, central_manager,
                         cfy, tmpdir, logger):
 
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
-    regional_cluster = floating_ip_2_regional_clusters[0]
     regional_cluster.deploy_and_validate()
 
     cfy.snapshots.create([constants.CENTRAL_MANAGER_SNAP_ID])
@@ -220,8 +233,7 @@ def _do_central_upgrade(floating_ip_2_regional_clusters, central_manager,
     cfy.agents.install()
 
 
-def _do_regional_scale(floating_ip_2_regional_clusters):
-    regional_cluster = floating_ip_2_regional_clusters[0]
+def _do_regional_scale(regional_cluster):
     regional_cluster.deploy_and_validate()
     regional_cluster.scale()
 
@@ -229,7 +241,8 @@ def _do_regional_scale(floating_ip_2_regional_clusters):
 def _do_regional_heal(regional_cluster):
     regional_cluster.execute_hello_world_workflow('install')
     worker_instance = regional_cluster.manager.client.node_instances.list(
-        node_name='additional_workers')[1]
+        deployment_id=regional_cluster.deployment_id,
+        node_name='cloudify_manager_worker')[0]
     regional_cluster.heal(worker_instance.id)
     regional_cluster.execute_hello_world_workflow('uninstall')
 
@@ -252,27 +265,26 @@ def test_regional_cluster_with_floating_ip(
 
     first_cluster.deploy_and_validate()
 
-    time.sleep(3600)
+    sleep(3600)
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
+
+    # Run Scale workflow against one of the regional clusters
+    _do_regional_scale(first_cluster)
+
     first_cluster.backup()
 
-    try:
-        second_cluster.deploy_and_validate()
-    finally:
-        # Uninstall hello world deployment from Regional cluster
-        second_cluster.execute_hello_world_workflow('uninstall')
+    second_cluster.deploy_and_validate()
+    # Uninstall hello world deployment from Regional cluster
+    second_cluster.execute_hello_world_workflow('uninstall')
 
     # Upgrade central manager
-    _do_central_upgrade(floating_ip_2_regional_clusters,
+    _do_central_upgrade(first_cluster,
                         central_manager,
                         cfy,
                         tmpdir,
                         logger)
-
-    # Run Scale workflow against one of the regional clusters
-    _do_regional_scale(floating_ip_2_regional_clusters)
 
     first_cluster.uninstall()
     second_cluster.uninstall()
@@ -307,7 +319,6 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
 
     # Install hello world deployment on Regional first cluster
     first_cluster.execute_hello_world_workflow('install')
-
     # Uninstall hello world deployment from Regional first cluster
     first_cluster.execute_hello_world_workflow('uninstall')
 

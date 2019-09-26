@@ -20,8 +20,8 @@ from cosmo_tester.framework.test_hosts import (
 )
 
 MOM_PLUGIN_REPO_PATH = 'cloudify-cosmo/cloudify-spire-plugin'
-MOM_PLUGIN_VERSION = '3.0.0'
-MOM_PLUGIN_RELEASE_NAME = 'v{0}'.format(MOM_PLUGIN_VERSION)
+MOM_PLUGIN_VERSION = '3.1.0'
+MOM_PLUGIN_RELEASE_NAME = '{0}'.format(MOM_PLUGIN_VERSION)
 MOM_PLUGIN_WGN_NAME = 'cloudify_spire_plugin-{0}-py27-none-' \
                       'linux_x86_64-centos-Core.wgn'.format(
                            MOM_PLUGIN_VERSION)
@@ -54,7 +54,7 @@ UTIL_PLUGIN_YAML_URL = 'http://www.getcloudify.org/spec/' \
                        'utilities-plugin/{0}/plugin.yaml'.format(
                            UTILITIES_PLUGIN_VERSION)
 
-ANSIBLE_PLUGIN_VERSION = '2.4.0'
+ANSIBLE_PLUGIN_VERSION = '2.6.0'
 ANSIBLE_PLUGIN_WGN_URL = 'http://repository.cloudifysource.org/cloudify/' \
                          'wagons/cloudify-ansible-plugin/{0}/' \
                          'cloudify_ansible_plugin-{0}-py27-' \
@@ -71,7 +71,7 @@ HW_OS_PLUGIN_WGN_URL = OS_WGN_URL_TEMPLATE.format(HW_OS_PLUGIN_VERSION,
                                                   HW_OS_WGN_FILENAME)
 HW_OS_PLUGIN_YAML_URL = OS_YAML_URL_TEMPLATE.format(HW_OS_PLUGIN_VERSION)
 
-HELLO_WORLD_URL = 'https://github.com/cloudify-community/blueprint-examples/releases/download/4.5.5-18/hello-world-example.zip'  # NOQA
+HELLO_WORLD_URL = 'https://github.com/cloudify-community/blueprint-examples/releases/download/4.5.5-19/hello-world-example.zip'  # NOQA
 HELLO_WORLD_BP = 'hello_world_bp'
 HELLO_WORLD_DEP = 'hello_world_dep'
 

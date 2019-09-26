@@ -16,6 +16,7 @@
 # import pytest
 
 from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework import util
 
 import subprocess
 import os
@@ -43,6 +44,10 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
         logger.info('Uploading Stage package...')
         subprocess.call(['npm', 'run', 'upload'],
                         cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
+
+    logger.info('Uploading license...')
+    license_path = util.get_resource_path('test_valid_paying_license.yaml')
+    manager.client.license.upload(license_path)
 
     logger.info('Starting Stage system tests...')
     os.environ["STAGE_E2E_SELENIUM_HOST"] = '10.239.0.203'
