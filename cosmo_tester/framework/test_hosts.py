@@ -38,6 +38,7 @@ from cosmo_tester.framework import util
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
+HEALTHY_STATE = 'OK'
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
@@ -388,14 +389,15 @@ class _CloudifyManager(VM):
 
         self._logger.info('Verifying all services are running on manager%d..',
                           self.index)
-        status = self.client.manager.get_status()
-        for service in status['services']:
-            for instance in service['instances']:
-                if all(service not in instance['Id'] for
-                       service in ['postgresql', 'rabbitmq']):
-                    assert instance['SubState'] == 'running', \
-                        'service {0} is in {1} state'.format(
-                            service['display_name'], instance['SubState'])
+
+        manager_status = self.client.manager.get_status()
+        if manager_status['status'] == HEALTHY_STATE:
+            return
+
+        for display_name, service in manager_status['services'].items():
+            assert service['status'] == 'Active', \
+                'service {0} is in {1} state'.format(
+                    display_name, service['status'])
 
     @abstractproperty
     def branch_name(Self):
@@ -588,15 +590,11 @@ class _CloudifyManager(VM):
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
     def wait_for_manager(self):
-        status = self.client.manager.get_status()
-        for service in status['services']:
-            for instance in service['instances']:
-                if any(service not in instance['Id'] for
-                       service in ['postgresql', 'rabbitmq']):
-                    if instance['state'] != 'running':
-                        raise StandardError(
-                            'Timed out: Reboot did not complete successfully'
-                        )
+        manager_status = self.client.manager.get_status()
+        if manager_status['status'] != HEALTHY_STATE:
+            raise StandardError(
+                'Timed out: Reboot did not complete successfully'
+            )
 
 
 class _CloudifyDatabaseOnly(_CloudifyManager):
