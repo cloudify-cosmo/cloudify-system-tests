@@ -870,7 +870,7 @@ class Cloudify4_6Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.6'
 
 
-class Cloudify4_6Manager_ClusterJoined(_OldStatusFormat, Cloudify4_6Manager):
+class Cloudify4_6Manager_ClusterJoined(Cloudify4_6Manager):
     def verify_services_are_running(self):
         pass
 
