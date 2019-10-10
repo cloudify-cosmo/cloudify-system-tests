@@ -506,9 +506,17 @@ class _CloudifyManager(VM):
                 )
 
             commands = [
-                'curl -S {0} -o {1} > /tmp/bs_logs/1_download 2>&1'.format(
-                    manager_install_rpm,
-                    install_rpm_file,
+                'echo "Downloading RPM..." >/tmp/bs_logs/1_download',
+                (
+                    'curl -S {0} -o {1} --silent --write-out "'
+                    'Response code: %{{response_code}}\n'
+                    'Downloaded bytes: %{{size_download}}\n'
+                    'Download duration: %{{time_total}}\n'
+                    'Speed bytes/second: %{{speed_download}}\n'
+                    '" 2>&1 >>/tmp/bs_logs/1_download'.format(
+                        manager_install_rpm,
+                        install_rpm_file,
+                    )
                 ),
                 'sudo yum install -y {0} > /tmp/bs_logs/2_yum 2>&1'.format(
                     install_rpm_file,
@@ -561,7 +569,7 @@ class _CloudifyManager(VM):
                 # slowly)
                 fabric_ssh.run('date > /tmp/cfy_mgr_last_check_time')
                 fabric_ssh.run(
-                    'tail /tmp/bs_logs/* || echo Waiting for logs'
+                    'tail -n5 /tmp/bs_logs/* || echo Waiting for logs'
                 )
                 if result == 'failed':
                     raise RuntimeError('Bootstrap failed.')
