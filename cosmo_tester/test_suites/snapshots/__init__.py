@@ -410,9 +410,10 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
 def restore_snapshot(manager, snapshot_id, cfy, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
-                     wait_timeout=20, change_manager_password=True):
+                     wait_timeout=20, change_manager_password=True,
+                     cert_path=None):
     # Show the snapshots, to aid troubleshooting on failures
-    manager.use()
+    manager.use(cert_path=cert_path)
     cfy.snapshots.list()
 
     logger.info('Restoring snapshot on latest manager..')
