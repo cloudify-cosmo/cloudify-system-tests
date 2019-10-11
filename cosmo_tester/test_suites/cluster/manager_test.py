@@ -5,23 +5,6 @@ def test_broker_management(brokers_and_manager, logger):
     # All in one test for speed until such time as complexity of these
     # operations increases to the point that extra tests are needed.
     broker1, broker2, manager = brokers_and_manager
-    manager.put_remote_file(
-        local_path=broker1.ca_path,
-        remote_path='/tmp/rabbit.ca',
-    )
-
-    manager.additional_install_config = {
-        'rabbitmq': {
-            'ca_path': '/tmp/rabbit.ca',
-            'cluster_members': {
-                broker1.hostname: {
-                    'default': str(broker1.private_ip_address),
-                }
-            }
-        },
-        'services_to_install': ['database_service', 'manager_service'],
-    }
-    manager.bootstrap()
 
     manager.enter_sanity_mode()
 
