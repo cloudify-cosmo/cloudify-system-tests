@@ -356,10 +356,12 @@ class _CloudifyManager(VM):
         return 'Cloudify manager [{}:{}]'.format(self.index, self.ip_address)
 
     @retrying.retry(stop_max_attempt_number=3, wait_fixed=3000)
-    def use(self, tenant=None, profile_name=None):
+    def use(self, tenant=None, profile_name=None, cert_path=None):
         kwargs = {}
         if profile_name is not None:
             kwargs['profile_name'] = profile_name
+        if cert_path:
+            kwargs['rest_certificate'] = cert_path
         self._cfy.profiles.use([
             self.ip_address,
             '-u', self._attributes.cloudify_username,
@@ -494,7 +496,7 @@ class _CloudifyManager(VM):
             upload_license and not util.is_community())
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
-            fabric_ssh.run('mkdir /tmp/bs_logs')
+            fabric_ssh.run('mkdir -p /tmp/bs_logs')
             fabric_ssh.put(
                 install_config,
                 '/tmp/cloudify.conf'
@@ -568,12 +570,17 @@ class _CloudifyManager(VM):
                 # To aid in troubleshooting (e.g. where a VM runs commands too
                 # slowly)
                 fabric_ssh.run('date > /tmp/cfy_mgr_last_check_time')
-                fabric_ssh.run(
-                    'tail -n5 /tmp/bs_logs/* || echo Waiting for logs'
-                )
                 if result == 'failed':
+                    self._logger.error('BOOTSTRAP FAILED!')
+                    # Get all the logs on failure
+                    fabric_ssh.run(
+                        'cat /tmp/bs_logs/*'
+                    )
                     raise RuntimeError('Bootstrap failed.')
                 else:
+                    fabric_ssh.run(
+                        'tail -n5 /tmp/bs_logs/* || echo Waiting for logs'
+                    )
                     self._logger.info('Bootstrap in progress...')
                     return False
 
