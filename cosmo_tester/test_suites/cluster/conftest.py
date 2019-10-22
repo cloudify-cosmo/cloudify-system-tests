@@ -43,6 +43,16 @@ def full_cluster(cfy, ssh_key, module_tmpdir, attributes,
         yield _vms
 
 
+@pytest.fixture()
+def cluster_with_single_db(cfy, ssh_key, module_tmpdir, attributes,
+                           logger):
+    for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
+                           attributes, logger,
+                           broker_count=3, db_count=1, manager_count=2,
+                           pre_cluster_rabbit=True):
+        yield _vms
+
+
 def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                broker_count=3, manager_count=0, db_count=0,
                # Pre-cluster rabbit determines whether to cluster rabbit
@@ -128,7 +138,6 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 join_target = brokers[0].hostname
 
             if pre_cluster_rabbit:
-                print(dir(brokers[0]))
                 rabbit_nodes = {
                     broker.hostname: {
                         'default': str(broker.private_ip_address),
@@ -195,7 +204,7 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 remote_path='/tmp/db.ca',
             )
 
-            node.pg_password = 'xsqkopcdsogjedsubnosz ,poqe'
+            node.pg_password = 'xsqkopcdsog\'je"d<sub;n>osz ,po#qe'
 
             node.additional_install_config = {
                 'postgresql_server': {
@@ -203,29 +212,33 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                     'cert_path': '/tmp/db.crt',
                     'key_path': '/tmp/db.key',
                     'ca_path': '/tmp/db.ca',
-                    'cluster': {
-                        'nodes': [str(db.private_ip_address) for db in dbs],
-                        'etcd': {
-                            'cluster_token': 'jsdiogjdsiogjdiaogjdioagjiodsa',
-                            'root_password': 'fgiosagjisoagjiosagjiosajgios',
-                            'patroni_password': 'jgiosagjiosagjsaiogjsio',
-                        },
-                        'patroni': {
-                            'rest_user': 'patroni',
-                            'rest_password': 'dfsjuiogjisdgjiosdjgiodsjiogsd',
-                        },
-                        'postgres': {
-                            'replicator_password': 'fdsiogjiaohdjkpahsiophe',
-                        },
-                    }
                 },
                 'services_to_install': ['database_service']
             }
+
+            server_conf = node.additional_install_config['postgresql_server']
+            if len(dbs) > 1:
+                server_conf['cluster'] = {
+                    'nodes': [str(db.private_ip_address) for db in dbs],
+                    'etcd': {
+                        'cluster_token': 'jsdiogjdsiogjdiaogjdioagjiodsa',
+                        'root_password': 'fgiosagjisoagjiosagjiosajgios',
+                        'patroni_password': 'jgiosagjiosagjsaiogjsio',
+                    },
+                    'patroni': {
+                        'rest_user': 'patroni',
+                        'rest_password': 'dfsjuiogjisdgjiosdjgiodsjiogsd',
+                    },
+                    'postgres': {
+                        'replicator_password': 'fdsiogjiaohdjkpahsiophe',
+                    },
+                }
+            else:
+                server_conf['enable_remote_connections'] = True
+
             if high_security:
-                node.additional_install_config['postgresql_server'][
-                    'ssl_client_verification'] = True
-                node.additional_install_config['postgresql_server'][
-                    'ssl_only_connections'] = True
+                server_conf['ssl_client_verification'] = True
+                server_conf['ssl_only_connections'] = True
 
             node.bootstrap(blocking=False, enter_sanity_mode=False)
 
@@ -317,17 +330,24 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 node.additional_install_config['manager']['security'][
                     'ssl_enabled'] = True
 
-            if len(dbs) > 1:
+            if dbs:
                 node.additional_install_config['postgresql_server'] = {
                     'ca_path': '/tmp/cluster.ca',
-                    'cluster': {
-                        'nodes': [str(db.private_ip_address) for db in dbs],
-                    },
+                    'cluster': {'nodes': []},
                 }
                 node.additional_install_config['postgresql_client'] = {
                     'server_username': 'postgres',
                     'server_password': dbs[0].pg_password,
                 }
+
+                if len(dbs) > 1:
+                    node.additional_install_config['postgresql_server'][
+                        'cluster'][
+                        'nodes'] = [str(db.private_ip_address) for db in dbs]
+                else:
+                    node.additional_install_config['postgresql_client'][
+                        'host'] = str(dbs[0].private_ip_address)
+
                 if high_security:
                     node.additional_install_config['postgresql_client'][
                         'ssl_client_verification'] = True
@@ -337,10 +357,6 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                         'postgresql_client_cert_path'] = '/tmp/node.crt'
                     node.additional_install_config['ssl_inputs'][
                         'postgresql_client_key_path'] = '/tmp/node.key'
-            elif len(dbs) == 1:
-                raise NotImplemented(
-                    'Cluster tests do not currently support a single DB'
-                )
             else:
                 # If we're installing no db nodes we must put the db on the
                 # manager (this only makes sense for testing external rabbit)
