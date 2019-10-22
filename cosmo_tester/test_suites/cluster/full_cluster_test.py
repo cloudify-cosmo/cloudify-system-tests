@@ -23,3 +23,27 @@ def test_full_cluster(full_cluster, logger, attributes, cfy):
     mgr1.run_command('sudo systemctl stop cloudify-mgmtworker')
     mgr2.run_command('cfy_manager sanity-check')
     mgr1.run_command('sudo systemctl start cloudify-mgmtworker')
+
+
+# This is to confirm that we work with a single DB endpoint set (e.g. on a
+# PaaS).
+# It is not intended that a single external DB be used in production.
+def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
+    broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
+
+    logger.info('Creating snapshot')
+    snapshot_id = 'cluster_test_snapshot'
+    create_snapshot(mgr1, snapshot_id, attributes, logger)
+
+    logger.info('Restoring snapshot')
+    restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
+                     cert_path=mgr2.ca_path)
+
+    # Run sanity checks on each manager independently to confirm they can
+    # independently run workflows
+    mgr2.run_command('sudo systemctl stop cloudify-mgmtworker')
+    mgr1.run_command('cfy_manager sanity-check')
+    mgr2.run_command('sudo systemctl start cloudify-mgmtworker')
+    mgr1.run_command('sudo systemctl stop cloudify-mgmtworker')
+    mgr2.run_command('cfy_manager sanity-check')
+    mgr1.run_command('sudo systemctl start cloudify-mgmtworker')
