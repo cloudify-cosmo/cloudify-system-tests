@@ -1,3 +1,4 @@
+from cosmo_tester.test_suites.cluster import check_managers
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     restore_snapshot,
@@ -15,14 +16,7 @@ def test_full_cluster(full_cluster, logger, attributes, cfy):
     restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
                      cert_path=mgr2.ca_path)
 
-    # Run sanity checks on each manager independently to confirm they can
-    # independently run workflows
-    mgr2.run_command('sudo systemctl stop cloudify-mgmtworker')
-    mgr1.run_command('cfy_manager sanity-check')
-    mgr2.run_command('sudo systemctl start cloudify-mgmtworker')
-    mgr1.run_command('sudo systemctl stop cloudify-mgmtworker')
-    mgr2.run_command('cfy_manager sanity-check')
-    mgr1.run_command('sudo systemctl start cloudify-mgmtworker')
+    check_managers(mgr1, mgr2)
 
 
 # This is to confirm that we work with a single DB endpoint set (e.g. on a
@@ -39,11 +33,4 @@ def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
     restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
                      cert_path=mgr2.ca_path)
 
-    # Run sanity checks on each manager independently to confirm they can
-    # independently run workflows
-    mgr2.run_command('sudo systemctl stop cloudify-mgmtworker')
-    mgr1.run_command('cfy_manager sanity-check')
-    mgr2.run_command('sudo systemctl start cloudify-mgmtworker')
-    mgr1.run_command('sudo systemctl stop cloudify-mgmtworker')
-    mgr2.run_command('cfy_manager sanity-check')
-    mgr1.run_command('sudo systemctl start cloudify-mgmtworker')
+    check_managers(mgr1, mgr2)
