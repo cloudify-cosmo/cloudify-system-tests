@@ -14,7 +14,7 @@ def skip(*args, **kwargs):
 @pytest.fixture()
 def brokers(cfy, ssh_key, module_tmpdir, attributes, logger):
     for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir,
-                               attributes, logger):
+                               attributes, logger, broker_count=3):
         yield _brokers
 
 
@@ -23,6 +23,13 @@ def broker(cfy, ssh_key, module_tmpdir, attributes, logger):
     for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir, attributes,
                                logger, broker_count=1):
         yield _brokers[0]
+
+
+@pytest.fixture()
+def dbs(cfy, ssh_key, module_tmpdir, attributes, logger):
+    for _dbs in _get_hosts(cfy, ssh_key, module_tmpdir, attributes,
+                           logger, db_count=3):
+        yield _dbs
 
 
 @pytest.fixture()
@@ -44,6 +51,17 @@ def full_cluster(cfy, ssh_key, module_tmpdir, attributes,
 
 
 @pytest.fixture()
+def cluster_missing_one_db(cfy, ssh_key, module_tmpdir, attributes,
+                           logger):
+    for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
+                           attributes, logger,
+                           skip_bootstrap=['db3'],
+                           broker_count=3, db_count=3, manager_count=2,
+                           pre_cluster_rabbit=True):
+        yield _vms
+
+
+@pytest.fixture()
 def cluster_with_single_db(cfy, ssh_key, module_tmpdir, attributes,
                            logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
@@ -54,12 +72,15 @@ def cluster_with_single_db(cfy, ssh_key, module_tmpdir, attributes,
 
 
 def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
-               broker_count=3, manager_count=0, db_count=0,
+               broker_count=0, manager_count=0, db_count=0,
+               skip_bootstrap=None,
                # Pre-cluster rabbit determines whether to cluster rabbit
                # during the bootstrap.
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
                pre_cluster_rabbit=False, high_security=True):
+    if skip_bootstrap is None:
+        skip_bootstrap = []
     hosts = BootstrappableHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=broker_count + db_count + manager_count,
@@ -94,7 +115,7 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
         dbs = hosts.instances[broker_count:broker_count + db_count]
         managers = hosts.instances[broker_count + db_count:]
 
-        for node_num, node in enumerate(brokers):
+        for node_num, node in enumerate(brokers, start=1):
             node.friendly_name = 'rabbit' + str(node_num)
             with node.ssh() as fabric_ssh:
                 fabric_ssh.run(
@@ -134,7 +155,7 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
             )
 
             join_target = ''
-            if pre_cluster_rabbit and node_num != 0:
+            if pre_cluster_rabbit and node_num != 1:
                 join_target = brokers[0].hostname
 
             if pre_cluster_rabbit:
@@ -160,12 +181,15 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 'services_to_install': ['queue_service'],
             }
 
-            if pre_cluster_rabbit and node_num == 0:
+            if node.friendly_name in skip_bootstrap:
+                continue
+
+            if pre_cluster_rabbit and node_num == 1:
                 node.bootstrap(blocking=True, enter_sanity_mode=False)
             else:
                 node.bootstrap(blocking=False, enter_sanity_mode=False)
 
-        for node_num, node in enumerate(dbs):
+        for node_num, node in enumerate(dbs, start=1):
             node.friendly_name = 'db' + str(node_num)
             with node.ssh() as fabric_ssh:
                 fabric_ssh.run(
@@ -240,15 +264,20 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 server_conf['ssl_client_verification'] = True
                 server_conf['ssl_only_connections'] = True
 
+            if node.friendly_name in skip_bootstrap:
+                continue
+
             node.bootstrap(blocking=False, enter_sanity_mode=False)
 
         # Ensure all backend nodes are up before installing managers
         for node in brokers + dbs:
+            if node.friendly_name in skip_bootstrap:
+                continue
             while not node.bootstrap_is_complete():
                 logger.info('Checking state of {}'.format(node.friendly_name))
                 time.sleep(5)
 
-        for node_num, node in enumerate(managers):
+        for node_num, node in enumerate(managers, start=1):
             logger.info('Preparing manager {}'.format(node.hostname))
             node.friendly_name = 'manager' + str(node_num)
             with node.ssh() as fabric_ssh:
@@ -343,7 +372,8 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 if len(dbs) > 1:
                     node.additional_install_config['postgresql_server'][
                         'cluster'][
-                        'nodes'] = [str(db.private_ip_address) for db in dbs]
+                        'nodes'] = [str(db.private_ip_address) for db in dbs
+                                    if db.friendly_name not in skip_bootstrap]
                 else:
                     node.additional_install_config['postgresql_client'][
                         'host'] = str(dbs[0].private_ip_address)
@@ -362,6 +392,9 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 # manager (this only makes sense for testing external rabbit)
                 node.additional_install_config[
                     'services_to_install'].append('database_service')
+
+            if node.friendly_name in skip_bootstrap:
+                continue
 
             # We have to block on every manager
             node.bootstrap(blocking=True)
