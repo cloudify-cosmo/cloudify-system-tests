@@ -38,6 +38,7 @@ from cosmo_tester.framework import util
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
+HEALTHY_STATE = 'OK'
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
@@ -388,17 +389,18 @@ class _CloudifyManager(VM):
 
         self._logger.info('Verifying all services are running on manager%d..',
                           self.index)
-        status = self.client.manager.get_status()
-        for service in status['services']:
-            for instance in service['instances']:
-                if all(service not in instance['Id'] for
-                       service in ['postgresql', 'rabbitmq']):
-                    assert instance['SubState'] == 'running', \
-                        'service {0} is in {1} state'.format(
-                            service['display_name'], instance['SubState'])
+
+        manager_status = self.client.manager.get_status()
+        if manager_status['status'] == HEALTHY_STATE:
+            return
+
+        for display_name, service in manager_status['services'].items():
+            assert service['status'] == 'Active', \
+                'service {0} is in {1} state'.format(
+                    display_name, service['status'])
 
     @abstractproperty
-    def branch_name(Self):
+    def branch_name(self):
         raise NotImplementedError()
 
     @property
@@ -504,9 +506,17 @@ class _CloudifyManager(VM):
                 )
 
             commands = [
-                'curl -S {0} -o {1} > /tmp/bs_logs/1_download 2>&1'.format(
-                    manager_install_rpm,
-                    install_rpm_file,
+                'echo "Downloading RPM..." >/tmp/bs_logs/1_download',
+                (
+                    'curl -S {0} -o {1} --silent --write-out "'
+                    'Response code: %{{response_code}}\n'
+                    'Downloaded bytes: %{{size_download}}\n'
+                    'Download duration: %{{time_total}}\n'
+                    'Speed bytes/second: %{{speed_download}}\n'
+                    '" 2>&1 >>/tmp/bs_logs/1_download'.format(
+                        manager_install_rpm,
+                        install_rpm_file,
+                    )
                 ),
                 'sudo yum install -y {0} > /tmp/bs_logs/2_yum 2>&1'.format(
                     install_rpm_file,
@@ -559,7 +569,7 @@ class _CloudifyManager(VM):
                 # slowly)
                 fabric_ssh.run('date > /tmp/cfy_mgr_last_check_time')
                 fabric_ssh.run(
-                    'tail /tmp/bs_logs/* || echo Waiting for logs'
+                    'tail -n5 /tmp/bs_logs/* || echo Waiting for logs'
                 )
                 if result == 'failed':
                     raise RuntimeError('Bootstrap failed.')
@@ -585,6 +595,47 @@ class _CloudifyManager(VM):
                 raise StandardError(
                     'Timed out: An execution did not terminate'
                 )
+
+    @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
+    def wait_for_manager(self):
+        manager_status = self.client.manager.get_status()
+        if manager_status['status'] != HEALTHY_STATE:
+            raise StandardError(
+                'Timed out: Reboot did not complete successfully'
+            )
+
+
+class _OldStatusFormat(object):
+    """Mixin for a CloudifyManager class, making it use pre-5.0.5 status
+
+    In 5.0.5, the format of the status response changed, so VM classes
+    that represent a pre-5.0.5 manager must use this to use the old way
+    of getting status.
+    """
+    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
+    def verify_services_are_running(self):
+        with self.ssh() as fabric_ssh:
+            # the manager-ip-setter script creates the `touched` file when it
+            # is done.
+            try:
+                # will fail on bootstrap based managers
+                fabric_ssh.run('systemctl | grep manager-ip-setter')
+            except Exception:
+                pass
+            else:
+                self._logger.info('Verify manager-ip-setter is done..')
+                fabric_ssh.run('cat /opt/cloudify/manager-ip-setter/touched')
+
+        self._logger.info('Verifying all services are running on manager%d..',
+                          self.index)
+        status = self.client.manager.get_status()
+        for service in status['services']:
+            for instance in service['instances']:
+                if all(service not in instance['Id'] for
+                       service in ['postgresql', 'rabbitmq']):
+                    assert instance['SubState'] == 'running', \
+                        'service {0} is in {1} state'.format(
+                            service['display_name'], instance['SubState'])
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
     def wait_for_manager(self):
@@ -803,27 +854,27 @@ def get_latest_manager_image_name():
     return image_name
 
 
-class Cloudify4_2Manager(_CloudifyManager):
+class Cloudify4_2Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.2'
 
 
-class Cloudify4_3_1Manager(_CloudifyManager):
+class Cloudify4_3_1Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.3.1'
 
 
-class Cloudify4_4Manager(_CloudifyManager):
+class Cloudify4_4Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.4'
 
 
-class Cloudify4_5Manager(_CloudifyManager):
+class Cloudify4_5Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.5'
 
 
-class Cloudify4_5_5Manager(_CloudifyManager):
+class Cloudify4_5_5Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.5.5'
 
 
-class Cloudify4_6Manager(_CloudifyManager):
+class Cloudify4_6Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.6'
 
 
@@ -907,7 +958,8 @@ class CloudifyDistributed_MessageQueue(_CloudifyMessageQueueOnly):
     image_name = get_latest_manager_image_name()
 
 
-class CloudifyDistributed5_0_0Manager(CloudifyDistributed_Manager):
+class CloudifyDistributed5_0_0Manager(_OldStatusFormat,
+                                      CloudifyDistributed_Manager):
     branch_name = '5.0.0'
 
 
@@ -1267,7 +1319,7 @@ class DistributedInstallationCloudifyManager(TestHosts):
             'key_path': '/tmp/{0}'.format(
                 self.POSTGRESQL_SERVER_KEY_NAME
             ),
-            'ca_path':  '/tmp/{0}'.format(
+            'ca_path': '/tmp/{0}'.format(
                 self.ROOT_CERT_NAME
             ),
         })

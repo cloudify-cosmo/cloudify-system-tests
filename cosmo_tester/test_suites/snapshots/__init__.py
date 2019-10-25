@@ -653,17 +653,23 @@ def check_deployments(manager, old_deployments, logger,
 )
 def verify_services_status(manager, logger):
     logger.info('Verifying services status...')
-    status = manager.client.manager.get_status()
-    for service in status['services']:
-        for instance in service['instances']:
-            if instance['state'] != 'running':
-                with manager.ssh() as fabric:
-                    logs = fabric.sudo('journalctl -u {0} -n 20 --no-pager'
-                                       .format(instance['Id']))
-                logger.info('Journald logs of the failing service:')
-                logger.info(logs)
-                raise Exception('Service {0} is in status {1}'.
-                                format(instance, instance['state']))
+    manager_status = manager.client.manager.get_status()
+    if manager_status['status'] == 'OK':
+        return
+
+    for display_name, service in manager_status['services'].items():
+        if service['status'] == 'Active':
+            continue
+        extra_info = service.get('extra_info', {})
+        systemd = extra_info.get('systemd', {})
+        for instance in systemd.get('instances', []):
+            with manager.ssh() as fabric:
+                logs = fabric.sudo('journalctl -u {0} -n 20 --no-pager'
+                                   .format(instance['Id']))
+            logger.info('Journald logs of the failing service:')
+            logger.info(logs)
+            raise Exception('Service {0} is in status {1}'.
+                            format(instance, instance['state']))
 
 
 def upload_test_plugin(manager, logger, tenant=None):
