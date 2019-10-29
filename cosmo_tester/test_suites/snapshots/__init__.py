@@ -376,7 +376,6 @@ def create_snapshot(manager, snapshot_id, attributes, logger):
                 .format(image_name=manager.image_name))
     manager.client.snapshots.create(
         snapshot_id=snapshot_id,
-        include_metrics=False,
         include_credentials=True,
         include_logs=True,
         include_events=True
