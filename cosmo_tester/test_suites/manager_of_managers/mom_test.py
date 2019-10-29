@@ -94,6 +94,10 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
         constants.OS_PLUGIN_WGN_URL,
         '-y', constants.OS_PLUGIN_YAML_URL
     )
+    cfy.plugins.upload(
+        constants.ANSIBLE_PLUGIN_WGN_URL,
+        '-y', constants.ANSIBLE_PLUGIN_YAML_URL
+    )
 
     manager_install_rpm = \
         ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
