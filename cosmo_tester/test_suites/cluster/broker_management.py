@@ -23,6 +23,8 @@ def get_broker_listing(broker, prefix='rabbit@'):
 def manager_list_brokers(manager):
     return json.loads(
         manager.run_command(
+            # We pipe through cat to get rid of unhelpful shell escape
+            # characters that cfy adds
             'cfy cluster brokers list --json 2>/dev/null | cat'
         )
     )
