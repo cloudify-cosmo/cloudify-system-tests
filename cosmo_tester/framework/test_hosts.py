@@ -90,12 +90,20 @@ class VM(object):
         self._openstack = util.create_openstack_client()
         self._tmpdir = os.path.join(tmpdir, str(index))
 
+    @property
+    def private_key_path(self):
+        return self._ssh_key.private_key_path
+
+    @property
+    def linux_username(self):
+        return self._attributes.default_linux_username
+
     @contextmanager
     def ssh(self, **kwargs):
         with fabric_context_managers.settings(
                 host_string=self.ip_address,
-                user=self._attributes.default_linux_username,
-                key_filename=self._ssh_key.private_key_path,
+                user=self.linux_username,
+                key_filename=self.private_key_path,
                 abort_exception=Exception,
                 **kwargs):
             yield fabric_api
