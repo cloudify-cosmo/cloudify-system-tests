@@ -47,6 +47,7 @@ RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-de
 
 MANAGER_API_VERSIONS = {
     'master': 'v3.1',
+    '5.0.5': 'v3.1',
     '4.6': 'v3.1',
     '4.5.5': 'v3.1',
     '4.5': 'v3.1',
@@ -899,9 +900,8 @@ class Cloudify4_6Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.6'
 
 
-class Cloudify4_6Manager_ClusterJoined(Cloudify4_6Manager):
-    def verify_services_are_running(self):
-        pass
+class Cloudify5_0_5Manager(_CloudifyManager):
+    branch_name = '5.0.5'
 
 
 class CloudifyMasterManager(_CloudifyManager):
@@ -965,6 +965,7 @@ IMAGES = {
     '4.5': Cloudify4_5Manager,
     '4.5.5': Cloudify4_5_5Manager,
     '4.6': Cloudify4_6Manager,
+    '5.0.5': Cloudify5_0_5Manager,
     'master': CloudifyMasterManager,
     'centos': VM,
 }
