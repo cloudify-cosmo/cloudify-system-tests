@@ -45,7 +45,7 @@ def wait_leader_election(managers, logger, wait_before_check=None):
                     all(node['checks'].values()):
                 return True
     logger.info('Waiting for a leader election...')
-    _wait_cluster_status(_is_there_a_leader, managers, logger)
+    return _wait_cluster_status(_is_there_a_leader, managers, logger)
 
 
 def wait_nodes_online(managers, logger, count=None):
@@ -76,7 +76,7 @@ def _wait_cluster_status(predicate, managers, logger, timeout=150,
             try:
                 nodes = manager.client.cluster.nodes.list()
                 if predicate(nodes):
-                    return
+                    return manager
             except (ConnectionError, CloudifyClientError):
                 logger.debug('_wait_cluster_status: manager {0} did not '
                              'respond'.format(manager))

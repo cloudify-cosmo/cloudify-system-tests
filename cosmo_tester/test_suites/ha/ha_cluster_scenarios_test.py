@@ -179,7 +179,7 @@ def test_sync_disconnect(cfy, hosts, logger):
     current_master = hosts.instances[0]
     for manager in hosts.instances[1:] + hosts.instances * REPEAT_COUNT:
         _iptables(current_master, hosts.instances)
-        ha_helper.wait_leader_election(
+        new_master = ha_helper.wait_leader_election(
             [n for n in hosts.instances if n is not current_master],
             logger)
         sync_replicas = {
@@ -187,9 +187,7 @@ def test_sync_disconnect(cfy, hosts, logger):
             if v.get('state') == 'sync'}
         assert len(sync_replicas) == 1
         previous_master = current_master
-        current_master = [
-            n for n in hosts.instances if n.private_ip_address in sync_replicas
-        ][0]
+        current_master = new_master
         ha_helper.verify_nodes_status(current_master, logger)
         _iptables(previous_master, hosts.instances, flag='-D')
         ha_helper.wait_nodes_online(hosts.instances, logger)
