@@ -250,7 +250,7 @@ def test_partition_replica(cfy, hosts, logger):
     assert replicas[sync_ip] == 'sync'
     _iptables(async_replica, hosts.instances, flag='-D')
 
-    time.sleep(20)
+    time.sleep(60)
     with hosts.instances[0].ssh() as ssh:
         replicas = _get_replicas(ssh)
     assert len(replicas) == 2
@@ -263,7 +263,7 @@ def test_partition_replica(cfy, hosts, logger):
     assert replicas[async_ip] == 'sync'
     _iptables(sync_replica, hosts.instances, flag='-D')
 
-    time.sleep(20)
+    time.sleep(60)
     with hosts.instances[0].ssh() as ssh:
         replicas = _get_replicas(ssh)
     assert len(replicas) == 2
