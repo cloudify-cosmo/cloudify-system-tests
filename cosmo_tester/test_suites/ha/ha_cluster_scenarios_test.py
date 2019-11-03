@@ -327,14 +327,17 @@ def test_failover_while_disconnected(cfy, hosts, logger):
         ha_helper.set_active(manager3, cfy, logger, wait=False)
         ha_helper.wait_nodes_online(hosts.instances, logger, count=2)
         _iptables(manager2, [manager1, manager3], flag='-D')
+
+        ha_helper.wait_leader_election(hosts.instances, logger)
         ha_helper.wait_nodes_online(hosts.instances, logger)
-        ha_helper.verify_nodes_status(manager3, logger)
+
         _iptables(manager2, [manager1, manager3])
         ha_helper.set_active(manager1, cfy, logger, wait=False)
         ha_helper.wait_nodes_online(hosts.instances, logger, count=2)
         _iptables(manager2, [manager1, manager3], flag='-D')
+
+        ha_helper.wait_leader_election(hosts.instances, logger)
         ha_helper.wait_nodes_online(hosts.instances, logger)
-        ha_helper.verify_nodes_status(manager1, logger)
 
 
 def _get_follow_count(ssh):
