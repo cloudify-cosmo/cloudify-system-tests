@@ -299,10 +299,11 @@ def test_sync_failover(cfy, hosts, logger):
     time.sleep(20)
 
     _iptables(async_replica, [sync_replica], flag='-D')
-    ha_helper.wait_leader_election([sync_replica, async_replica], logger)
-    ha_helper.verify_nodes_status(sync_replica, logger)
+    new_leader = ha_helper.wait_leader_election(
+        [sync_replica, async_replica], logger)
+    ha_helper.verify_nodes_status(new_leader, logger)
 
-    with sync_replica.ssh() as ssh:
+    with new_leader.ssh() as ssh:
         replicas = _get_replicas(ssh)
     assert replicas == {async_ip: 'sync'}
 
@@ -310,7 +311,7 @@ def test_sync_failover(cfy, hosts, logger):
     _iptables(first_master, hosts.instances, flag='-D')
     time.sleep(60)
 
-    with sync_replica.ssh() as ssh:
+    with new_leader.ssh() as ssh:
         replicas = _get_replicas(ssh)
     assert len(replicas) == 2
 
