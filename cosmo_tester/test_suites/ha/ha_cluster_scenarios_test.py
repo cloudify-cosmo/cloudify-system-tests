@@ -308,7 +308,7 @@ def test_sync_failover(cfy, hosts, logger):
 
     _iptables(async_replica, [first_master], flag='-D')
     _iptables(first_master, hosts.instances, flag='-D')
-    time.sleep(20)
+    time.sleep(60)
 
     with sync_replica.ssh() as ssh:
         replicas = _get_replicas(ssh)
