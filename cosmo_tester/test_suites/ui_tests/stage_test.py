@@ -50,7 +50,8 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
     manager.client.license.upload(license_path)
 
     logger.info('Starting Stage system tests...')
-    os.environ["STAGE_E2E_SELENIUM_HOST"] = '10.239.0.203'
+    logger.info('Using test host at {0}'.format(
+        os.environ["STAGE_E2E_SELENIUM_HOST"]))
     os.environ["STAGE_E2E_MANAGER_URL"] = manager.ip_address
     subprocess.call(['npm', 'run', 'e2e'],
                     cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
