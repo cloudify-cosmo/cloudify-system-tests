@@ -456,8 +456,8 @@ class AbstractRegionalCluster(AbstractExample):
                     self.manager.client.blueprints.upload(
                         blueprint_file, self.blueprint_id)
 
-    def install(self):
-        super(AbstractRegionalCluster, self).install()
+    def install(self, timeout=3600):
+        super(AbstractRegionalCluster, self).install(timeout)
         self._populate_status_output()
 
     def clean_blueprints(self):
@@ -474,7 +474,7 @@ class AbstractRegionalCluster(AbstractExample):
         super(AbstractRegionalCluster, self).verify_installation()
         assert self.cluster_endpoint
 
-    def deploy_and_validate(self):
+    def deploy_and_validate(self, timeout=3600):
         if self._deployed:
             self.logger.info('Regional cluster was already deployed')
             return
@@ -484,7 +484,7 @@ class AbstractRegionalCluster(AbstractExample):
             )
         )
         self._deployed = True
-        self.upload_and_verify_install()
+        self.upload_and_verify_install(timeout)
         self.validate()
 
     def backup(self):

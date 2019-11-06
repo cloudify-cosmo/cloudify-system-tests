@@ -267,7 +267,7 @@ def test_regional_cluster_with_floating_ip(
     first_cluster = floating_ip_2_regional_clusters[0]
     second_cluster = floating_ip_2_regional_clusters[1]
 
-    first_cluster.deploy_and_validate()
+    first_cluster.deploy_and_validate(timeout=5000)
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
@@ -277,7 +277,7 @@ def test_regional_cluster_with_floating_ip(
 
     first_cluster.backup()
 
-    second_cluster.deploy_and_validate()
+    second_cluster.deploy_and_validate(timeout=5000)
     # Uninstall hello world deployment from Regional cluster
     second_cluster.execute_hello_world_workflow('uninstall')
 
@@ -288,8 +288,8 @@ def test_regional_cluster_with_floating_ip(
                         tmpdir,
                         logger)
 
-    first_cluster.uninstall()
-    second_cluster.uninstall()
+    first_cluster.uninstall(timeout=3600)
+    second_cluster.uninstall(timeout=3600)
 
     # Clean deployments for both clusters
     first_cluster.delete_deployment(use_cfy=True)
@@ -317,7 +317,7 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     # would not be accessible by a REST client from here. This is why we're
     # only testing that the upgrade has succeeded, and that the IPs were the
     # same for both Regional deployments
-    first_cluster.deploy_and_validate()
+    first_cluster.deploy_and_validate(timeout=5000)
 
     # Install hello world deployment on Regional first cluster
     first_cluster.execute_hello_world_workflow('install')
@@ -328,16 +328,16 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     first_cluster.backup()
 
     # Teardown the first cluster
-    first_cluster.uninstall()
+    first_cluster.uninstall(timeout=3600)
 
     # Deploy & validate the second cluster
-    second_cluster.deploy_and_validate()
+    second_cluster.deploy_and_validate(timeout=5000)
 
     # Run Heal workflow against one of the regional clusters
     _do_regional_heal(second_cluster)
 
     # Uninstall clusters
-    second_cluster.uninstall()
+    second_cluster.uninstall(timeout=3600)
 
     # Clean deployments for both clusters
     first_cluster.delete_deployment(use_cfy=True)

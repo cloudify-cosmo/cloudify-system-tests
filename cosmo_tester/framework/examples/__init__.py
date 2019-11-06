@@ -89,10 +89,10 @@ class AbstractExample(testtools.TestCase):
     def verify_installation(self):
         self.assert_deployment_events_exist()
 
-    def upload_and_verify_install(self):
+    def upload_and_verify_install(self, timeout=900):
         self.upload_blueprint()
         self.create_deployment()
-        self.install()
+        self.install(timeout)
         self.verify_installation()
 
     def delete_deployment(self, use_cfy=False):
@@ -108,10 +108,11 @@ class AbstractExample(testtools.TestCase):
                     self.deployment_id,
                 )
 
-    def uninstall(self):
+    def uninstall(self, timeout=900):
         self.logger.info('Uninstalling deployment...')
         self.cfy.executions.start.uninstall(['-d', self.deployment_id,
-                                             '-t', self.tenant])
+                                             '-t', self.tenant,
+                                             '--timeout', timeout])
         self._cleanup_required = False
 
     def _patch_blueprint(self):
@@ -164,12 +165,13 @@ class AbstractExample(testtools.TestCase):
                 skip_plugins_validation=self.skip_plugins_validation)
         self.cfy.deployments.list(tenant_name=self.tenant)
 
-    def install(self):
+    def install(self, timeout=900):
         self.logger.info('Installing deployment...')
         self._cleanup_required = True
         try:
             self.cfy.executions.start.install(['-d', self.deployment_id,
-                                               '-t', self.tenant])
+                                               '-t', self.tenant,
+                                               '--timeout', timeout])
         except Exception as e:
             if 'if there is a running system-wide' in e.message:
                 self.logger.error('Error on deployment execution: %s', e)
