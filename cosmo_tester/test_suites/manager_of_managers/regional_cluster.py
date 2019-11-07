@@ -744,7 +744,7 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
         with fabric_context_managers.settings(
                 host_string=self.cluster_endpoint,
                 user=self.manager.linux_username,
-                key_filename=self.manager.private_key_path,
+                key_filename=self.ssh_key.private_key_path,
                 abort_exception=Exception):
             yield fabric_api
 
