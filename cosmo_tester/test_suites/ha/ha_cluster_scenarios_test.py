@@ -149,8 +149,19 @@ def test_sync_set_active(cfy, hosts, ha_hello_worlds, logger):
                 replica_promote_count = _get_promote_count(replica_ssh)
                 replica_db_replicas = _get_replicas(replica_ssh)
             replica_data = nodes_data[replica.private_ip_address]
-            # assert replica_follow_count == replica_data['follow_count'] + 1
-            # assert replica_promote_count == replica_data['promote_count']
+
+            # replica should only run follow once, but it's possible that
+            # it takes longer and runs it multiple times, but let's still
+            # check that it is run only a few times at most
+            if replica_follow_count != replica_data['follow_count'] + 1:
+                logger.warning(
+                    'Replica %s follow count expected to be %s but was %s',
+                    replica,
+                    replica_data['follow_count'] + 1,
+                    replica_follow_count
+                )
+                assert replica_follow_count < replica_data['follow_count'] + 5
+            assert replica_promote_count == replica_data['promote_count']
             assert not replica_db_replicas
             replica_data['follow_count'] = replica_follow_count
         time.sleep(30)
@@ -172,25 +183,18 @@ def test_sync_disconnect(cfy, hosts, logger):
                 'follow_count': _get_follow_count(ssh),
                 'promote_count': _get_promote_count(ssh),
             }
-    with hosts.instances[0].ssh() as ssh:
-        replicas = _get_replicas(ssh)
-        for ip, state in replicas.items():
-            nodes_data[ip]['state'] = state
     current_master = hosts.instances[0]
     for manager in hosts.instances[1:] + hosts.instances * REPEAT_COUNT:
+        previous_master = current_master
+
         _iptables(current_master, hosts.instances)
-        new_master = ha_helper.wait_leader_election(
+        current_master = ha_helper.wait_leader_election(
             [n for n in hosts.instances if n is not current_master],
             logger)
-        sync_replicas = {
-            private_ip for private_ip, v in nodes_data.items()
-            if v.get('state') == 'sync'}
-        assert len(sync_replicas) == 1
-        previous_master = current_master
-        current_master = new_master
         ha_helper.verify_nodes_status(current_master, logger)
         _iptables(previous_master, hosts.instances, flag='-D')
         ha_helper.wait_nodes_online(hosts.instances, logger)
+
         with current_master.ssh() as ssh:
             follow_count = _get_follow_count(ssh)
             promote_count = _get_promote_count(ssh)
@@ -201,10 +205,7 @@ def test_sync_disconnect(cfy, hosts, logger):
         assert len(db_replicas) == 2
         assert set(db_replicas.values()) == {'sync', 'potential'}
         previous['promote_count'] = promote_count
-        for v in nodes_data.values():
-            v.pop('state', None)
-        for ip, state in db_replicas.items():
-            nodes_data[ip]['state'] = state
+
         for replica in hosts.instances:
             if replica is current_master:
                 continue
@@ -213,8 +214,20 @@ def test_sync_disconnect(cfy, hosts, logger):
                 replica_promote_count = _get_promote_count(replica_ssh)
                 replica_db_replicas = _get_replicas(replica_ssh)
             replica_data = nodes_data[replica.private_ip_address]
-#            assert replica_follow_count == replica_data['follow_count'] + 1
-#            assert replica_promote_count == replica_data['promote_count']
+
+            # replica should only run follow once, but it's possible that
+            # it takes longer and runs it multiple times, but let's still
+            # check that it is run only a few times at most
+            if replica_follow_count != replica_data['follow_count'] + 1:
+                logger.warning(
+                    'Replica %s follow count expected to be %s but was %s',
+                    replica,
+                    replica_data['follow_count'] + 1,
+                    replica_follow_count
+                )
+                assert replica_follow_count < replica_data['follow_count'] + 5
+            assert replica_promote_count == replica_data['promote_count']
+
             assert not replica_db_replicas
             replica_data['follow_count'] = replica_follow_count
 
