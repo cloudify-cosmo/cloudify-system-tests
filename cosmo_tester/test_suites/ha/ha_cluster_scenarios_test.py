@@ -78,7 +78,7 @@ def ha_hello_worlds(cfy, hosts, attributes, ssh_key, tmpdir, logger):
         cfy, manager, attributes, ssh_key, logger, tmpdir,
         tenant=win_tenant, suffix='win',
     )
-    hws.append(win_hw)
+    # hws.append(win_hw)
     yield hws
     for hw in hws:
         if hw.cleanup_required:
