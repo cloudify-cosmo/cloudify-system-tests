@@ -71,14 +71,14 @@ def ha_hello_worlds(cfy, hosts, attributes, ssh_key, tmpdir, logger):
         cfy, manager, attributes, ssh_key, logger, tmpdir,
         tenant=tenant, suffix='centos',
     )
-    hws.append(hw)
+    # hws.append(hw)
     win_tenant = prepare_and_get_test_tenant(
         'clusterhello_win', manager, cfy,)
     win_hw = windows_hello_world(
         cfy, manager, attributes, ssh_key, logger, tmpdir,
         tenant=win_tenant, suffix='win',
     )
-    # hws.append(win_hw)
+    hws.append(win_hw)
     yield hws
     for hw in hws:
         if hw.cleanup_required:
