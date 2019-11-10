@@ -271,24 +271,24 @@ def test_regional_cluster_with_floating_ip(
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
-
-    # Run Scale workflow against one of the regional clusters
-    _do_regional_scale(first_cluster)
+    first_cluster.execute_hello_world_workflow('uninstall')
 
     first_cluster.backup()
 
+    first_cluster.uninstall(timeout=3600)
+
     second_cluster.deploy_and_validate(timeout=5000)
-    # Uninstall hello world deployment from Regional cluster
-    second_cluster.execute_hello_world_workflow('uninstall')
+
+    # Run Scale workflow against one of the regional clusters
+    _do_regional_scale(second_cluster)
 
     # Upgrade central manager
-    _do_central_upgrade(first_cluster,
+    _do_central_upgrade(second_cluster,
                         central_manager,
                         cfy,
                         tmpdir,
                         logger)
 
-    first_cluster.uninstall(timeout=3600)
     second_cluster.uninstall(timeout=3600)
 
     # Clean deployments for both clusters

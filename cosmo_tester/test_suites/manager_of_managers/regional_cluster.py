@@ -37,6 +37,14 @@ class AbstractRegionalCluster(AbstractExample):
         self._deployed = False
 
     @property
+    def deployed(self):
+        return self._deployed
+
+    @deployed.setter
+    def deployed(self, value):
+        self._deployed = value
+
+    @property
     def _base_inputs(self):
 
         openstack_config = util.get_openstack_config()
