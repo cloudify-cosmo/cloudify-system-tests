@@ -215,7 +215,9 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
     if pre_cluster_rabbit:
         rabbit_nodes = {
             broker.hostname: {
-                'default': str(broker.private_ip_address),
+                'networks': {
+                    'default': str(broker.private_ip_address)
+                }
             }
             for broker in brokers
         }
@@ -266,8 +268,10 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
     server_conf = node.additional_install_config['postgresql_server']
     if len(dbs) > 1:
+        db_nodes = {db.hostname: {'ip': str(db.private_ip_address)}
+                    for db in dbs}
         server_conf['cluster'] = {
-            'nodes': [str(db.private_ip_address) for db in dbs],
+            'nodes': db_nodes,
             'etcd': {
                 'cluster_token': 'jsdiogjdsiogjdiaogjdioagjiodsa',
                 'root_password': 'fgiosagjisoagjiosagjiosajgios',
@@ -306,7 +310,10 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     if pre_cluster_rabbit:
         rabbit_nodes = {
             broker.hostname: {
-                'default': str(broker.private_ip_address),
+                'node_id': broker.get_node_id(),
+                'networks': {
+                    'default': str(broker.private_ip_address)
+                }
             }
             for broker in brokers
         }
@@ -314,7 +321,9 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         broker = brokers[0]
         rabbit_nodes = {
             broker.hostname: {
-                'default': str(broker.private_ip_address),
+                'networks': {
+                    'default': str(broker.private_ip_address)
+                }
             }
         }
 
@@ -348,7 +357,7 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     if dbs:
         node.additional_install_config['postgresql_server'] = {
             'ca_path': node.remote_ca,
-            'cluster': {'nodes': []},
+            'cluster': {'nodes': {}},
         }
         node.additional_install_config['postgresql_client'] = {
             'server_username': 'postgres',
@@ -356,10 +365,16 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         }
 
         if len(dbs) > 1:
-            node.additional_install_config['postgresql_server'][
-                'cluster'][
-                'nodes'] = [str(db.private_ip_address) for db in dbs
-                            if db.friendly_name not in skip_bootstrap_list]
+            db_nodes = {
+                db.hostname: {
+                    'ip': str(db.private_ip_address),
+                    'node_id': db.get_node_id()
+                }
+                for db in dbs
+                if db.friendly_name not in skip_bootstrap_list
+            }
+            node.additional_install_config['postgresql_server']['cluster'][
+                'nodes'] = db_nodes
         else:
             node.additional_install_config['postgresql_client'][
                 'host'] = str(dbs[0].private_ip_address)
