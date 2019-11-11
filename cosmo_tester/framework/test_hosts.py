@@ -198,6 +198,12 @@ class VM(object):
             else:
                 return fabric_ssh.run(command)
 
+    def get_node_id(self):
+        node_id_parts = self.run_command('cfy_manager node get-id').split(': ')
+        if len(node_id_parts) < 2:
+            raise RuntimeError('Status reporter is not installed')
+        return node_id_parts[1]
+
     image_name = ATTRIBUTES['default_linux_image_name']
     username = ATTRIBUTES['default_linux_username']
     branch_name = 'master'
