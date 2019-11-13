@@ -19,16 +19,18 @@ def test_remove_db_node(full_cluster, logger, attributes, cfy):
             db1.private_ip_address,
         )
     )
+    db3_node_id = db3.get_node_id()
     db3.run_command('cfy_manager remove --force')
 
-    db1.run_command('cfy_manager db-node-remove -a {}'.format(
+    db1.run_command('cfy_manager dbs remove -a {}'.format(
         db3.private_ip_address,
     ))
-    mgr1.run_command('cfy_manager db-node-remove -a {}'.format(
-        db3.private_ip_address,
+
+    mgr1.run_command('cfy_manager dbs remove -a {0} -i {1}'.format(
+        db3.private_ip_address, db3_node_id
     ))
-    mgr2.run_command('cfy_manager db-node-remove -a {}'.format(
-        db3.private_ip_address,
+    mgr2.run_command('cfy_manager dbs remove -a {0} -i {1}'.format(
+        db3.private_ip_address, db3_node_id
     ))
 
     _check_db_count(mgr1, mgr2, db3, all_present=False)
@@ -52,11 +54,12 @@ def test_add_db_node(cluster_missing_one_db, logger, attributes, cfy):
 
     logger.info('Adding extra DB')
     db3.bootstrap(blocking=True, enter_sanity_mode=False)
-    mgr1.run_command('cfy_manager db-node-add -a {}'.format(
-        db3.private_ip_address,
+    db3_node_id = db3.get_node_id()
+    mgr1.run_command('cfy_manager dbs add -a {0} -i {1}'.format(
+        db3.private_ip_address, db3_node_id
     ))
-    mgr2.run_command('cfy_manager db-node-add -a {}'.format(
-        db3.private_ip_address,
+    mgr2.run_command('cfy_manager dbs add -a {0} -i {1}'.format(
+        db3.private_ip_address, db3_node_id
     ))
 
     _check_db_count(mgr1, mgr2)
@@ -104,7 +107,7 @@ def test_fail_to_remove_db_leader(dbs, logger, attributes, cfy):
     listing = _get_db_listing([db1])[0]
 
     result = db1.run_command(
-        'cfy_manager db-node-remove -a {} || echo Failed.'.format(
+        'cfy_manager dbs remove -a {} || echo Failed.'.format(
             _get_leader(listing),
         )
     )
@@ -190,7 +193,7 @@ def _get_db_listing(nodes):
     for node in nodes:
         result = [
             line for line in
-            node.run_command('cfy_manager db-node-list').splitlines()[4:-1]
+            node.run_command('cfy_manager dbs list').splitlines()[4:-1]
         ]
         results.append(_structure_db_listing(result))
 
