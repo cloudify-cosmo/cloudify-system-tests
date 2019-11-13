@@ -38,7 +38,7 @@ OS_YAML_URL_TEMPLATE = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudif
 OS_WGN_URL_TEMPLATE = 'http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/{0}/{1}'  # NOQA
 
 # This version of the plugin is used by the mom blueprint
-OS_PLUGIN_VERSION = '3.2.2'
+OS_PLUGIN_VERSION = '3.2.8'
 OS_PLUGIN_WGN_FILENAME = OS_WGN_FILENAME_TEMPLATE.format(OS_PLUGIN_VERSION)
 OS_PLUGIN_WGN_URL = OS_WGN_URL_TEMPLATE.format(OS_PLUGIN_VERSION,
                                                OS_PLUGIN_WGN_FILENAME)
@@ -65,13 +65,13 @@ ANSIBLE_PLUGIN_YAML_URL = 'http://www.getcloudify.org/spec/' \
                               ANSIBLE_PLUGIN_VERSION)
 
 # The version of the OS plugin used by Hello World Example
-HW_OS_PLUGIN_VERSION = '3.2.2'
+HW_OS_PLUGIN_VERSION = '3.2.8'
 HW_OS_WGN_FILENAME = OS_WGN_FILENAME_TEMPLATE.format(HW_OS_PLUGIN_VERSION)
 HW_OS_PLUGIN_WGN_URL = OS_WGN_URL_TEMPLATE.format(HW_OS_PLUGIN_VERSION,
                                                   HW_OS_WGN_FILENAME)
 HW_OS_PLUGIN_YAML_URL = OS_YAML_URL_TEMPLATE.format(HW_OS_PLUGIN_VERSION)
 
-HELLO_WORLD_URL = 'https://github.com/cloudify-community/blueprint-examples/releases/download/4.5.5-19/hello-world-example.zip'  # NOQA
+HELLO_WORLD_URL = 'https://github.com/cloudify-community/blueprint-examples/releases/download/5.0.0-1/hello-world-example.zip'  # NOQA
 HELLO_WORLD_BP = 'hello_world_bp'
 HELLO_WORLD_DEP = 'hello_world_dep'
 
