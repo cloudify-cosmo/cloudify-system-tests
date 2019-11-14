@@ -15,7 +15,7 @@ def test_remove_db_node(full_cluster, logger, attributes, cfy):
     # Make sure the node we're about to remove isn't the leader
     db3.run_command(
         # || true in case this node is already the leader
-        'cfy_manager db-node-set-master -a {} || true'.format(
+        'cfy_manager dbs set-master -a {} || true'.format(
             db1.private_ip_address,
         )
     )
@@ -77,7 +77,7 @@ def test_db_set_master(dbs, logger, attributes, cfy):
     next_master = _get_non_leader(before_change)
 
     db1.run_command(
-        'cfy_manager db-node-set-master -a {}'.format(next_master)
+        'cfy_manager dbs set-master -a {}'.format(next_master)
     )
 
     after_change = _get_db_listing([db1])[0]
@@ -95,7 +95,7 @@ def test_db_reinit(dbs, logger, attributes, cfy):
     listing = _get_db_listing([db1])[0]
     reinit_target = _get_non_leader(listing)
 
-    db1.run_command('cfy_manager db-node-reinit -a {}'.format(reinit_target))
+    db1.run_command('cfy_manager dbs reinit -a {}'.format(reinit_target))
 
     listing = _get_db_listing([db1])[0]
     _check_cluster(listing)
@@ -121,7 +121,7 @@ def test_fail_to_reinit(dbs, logger, attributes, cfy):
     listing = _get_db_listing([db1])[0]
 
     result = db1.run_command(
-        'cfy_manager db-node-reinit -a {} || echo Failed.'.format(
+        'cfy_manager dbs reinit -a {} || echo Failed.'.format(
             _get_leader(listing),
         )
     )
