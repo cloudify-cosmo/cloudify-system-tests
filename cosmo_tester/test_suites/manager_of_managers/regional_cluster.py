@@ -18,6 +18,7 @@ import json
 from contextlib import contextmanager
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
+
 from fabric import api as fabric_api
 from fabric import context_managers as fabric_context_managers
 
