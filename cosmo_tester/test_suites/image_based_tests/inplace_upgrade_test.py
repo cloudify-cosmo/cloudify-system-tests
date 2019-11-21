@@ -41,7 +41,7 @@ def image_based_manager(request, cfy, ssh_key, module_tmpdir, attributes,
         hosts.instances[0].use()
         yield hosts.instances[0]
     finally:
-        hosts.destroy()
+        pass
 
 
 manager = image_based_manager
