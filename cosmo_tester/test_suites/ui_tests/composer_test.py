@@ -41,7 +41,8 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
 
     logger.info('Starting Composer system tests...')
-    os.environ["COMPOSER_E2E_SELENIUM_HOST"] = '10.239.0.203'
+    logger.info('Using test host at {0}'.format(
+        os.environ["COMPOSER_E2E_SELENIUM_HOST"]))
     os.environ["COMPOSER_E2E_MANAGER_URL"] = manager.ip_address
     subprocess.call(['npm', 'run', 'e2e'],
                     cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])

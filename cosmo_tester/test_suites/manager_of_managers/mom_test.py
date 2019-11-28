@@ -94,6 +94,10 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
         constants.OS_PLUGIN_WGN_URL,
         '-y', constants.OS_PLUGIN_YAML_URL
     )
+    cfy.plugins.upload(
+        constants.ANSIBLE_PLUGIN_WGN_URL,
+        '-y', constants.ANSIBLE_PLUGIN_YAML_URL
+    )
 
     manager_install_rpm = \
         ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
@@ -263,31 +267,31 @@ def test_regional_cluster_with_floating_ip(
     first_cluster = floating_ip_2_regional_clusters[0]
     second_cluster = floating_ip_2_regional_clusters[1]
 
-    first_cluster.deploy_and_validate()
+    first_cluster.deploy_and_validate(timeout=6000)
 
     sleep(3600)
 
     # Install hello world deployment on Regional manager cluster
     first_cluster.execute_hello_world_workflow('install')
-
-    # Run Scale workflow against one of the regional clusters
-    _do_regional_scale(first_cluster)
+    first_cluster.execute_hello_world_workflow('uninstall')
 
     first_cluster.backup()
 
-    second_cluster.deploy_and_validate()
-    # Uninstall hello world deployment from Regional cluster
-    second_cluster.execute_hello_world_workflow('uninstall')
+    first_cluster.uninstall(timeout=6000)
+
+    second_cluster.deploy_and_validate(timeout=6000)
+
+    # Run Scale workflow against one of the regional clusters
+    _do_regional_scale(second_cluster)
 
     # Upgrade central manager
-    _do_central_upgrade(first_cluster,
+    _do_central_upgrade(second_cluster,
                         central_manager,
                         cfy,
                         tmpdir,
                         logger)
 
-    first_cluster.uninstall()
-    second_cluster.uninstall()
+    second_cluster.uninstall(timeout=6000)
 
     # Clean deployments for both clusters
     first_cluster.delete_deployment(use_cfy=True)
@@ -315,7 +319,7 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     # would not be accessible by a REST client from here. This is why we're
     # only testing that the upgrade has succeeded, and that the IPs were the
     # same for both Regional deployments
-    first_cluster.deploy_and_validate()
+    first_cluster.deploy_and_validate(timeout=6000)
 
     # Install hello world deployment on Regional first cluster
     first_cluster.execute_hello_world_workflow('install')
@@ -326,16 +330,16 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     first_cluster.backup()
 
     # Teardown the first cluster
-    first_cluster.uninstall()
+    first_cluster.uninstall(timeout=6000)
 
     # Deploy & validate the second cluster
-    second_cluster.deploy_and_validate()
+    second_cluster.deploy_and_validate(timeout=6000)
 
     # Run Heal workflow against one of the regional clusters
     _do_regional_heal(second_cluster)
 
     # Uninstall clusters
-    second_cluster.uninstall()
+    second_cluster.uninstall(timeout=6000)
 
     # Clean deployments for both clusters
     first_cluster.delete_deployment(use_cfy=True)

@@ -1,9 +1,10 @@
+import json
 import time
 
 
 def get_broker_listing(broker, prefix='rabbit@'):
     with broker.ssh() as broker_ssh:
-        brokers_list_output = broker_ssh.run('cfy_manager brokers-list')
+        brokers_list_output = broker_ssh.run('cfy_manager brokers list')
     broker_lines = [line for line in brokers_list_output.splitlines()
                     if prefix in line]
     brokers = {}
@@ -19,6 +20,16 @@ def get_broker_listing(broker, prefix='rabbit@'):
     return brokers
 
 
+def manager_list_brokers(manager):
+    return json.loads(
+        manager.run_command(
+            # We pipe through cat to get rid of unhelpful shell escape
+            # characters that cfy adds
+            'cfy cluster brokers list --json 2>/dev/null | cat'
+        )
+    )
+
+
 def add_to_hosts(target_broker, new_entry_brokers):
     new_entry = 'echo "{ip} {hostname}" | sudo tee -a /etc/hosts'
     with target_broker.ssh() as target_ssh:
@@ -31,7 +42,7 @@ def add_to_hosts(target_broker, new_entry_brokers):
 
 def join_cluster(new_broker, cluster_member):
     with new_broker.ssh() as broker_ssh:
-        broker_ssh.run('cfy_manager brokers-add -j {cluster_node}'.format(
+        broker_ssh.run('cfy_manager brokers add -j {cluster_node}'.format(
             cluster_node=cluster_member.hostname,
         ))
 
@@ -113,7 +124,7 @@ def test_list(brokers, logger):
     kill_node(brokers[1])
     with brokers[0].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-list 2>&1 || true'
+            'cfy_manager brokers list 2>&1 || true'
         ).lower()
         # Make sure we make some indication of possible cluster failure in the
         # output
@@ -129,7 +140,7 @@ def test_auth_fail(broker, logger):
             "/etc/cloudify/config.yaml"
         )
         result = broker_ssh.run(
-            'cfy_manager brokers-list 2>&1 || true'
+            'cfy_manager brokers list 2>&1 || true'
         ).lower()
         # Make sure we indicate something about auth failure in the output
         assert 'login' in result
@@ -149,7 +160,7 @@ def test_add(brokers, logger):
         broker_ssh.sudo('rabbitmqctl stop_app')
     with brokers[0].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-add -j {node} || true'.format(
+            'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[2].hostname,
             )
         ).lower()
@@ -162,7 +173,7 @@ def test_add(brokers, logger):
 
     logger.info('Adding node to cluster.')
     with brokers[0].ssh() as broker_ssh:
-        broker_ssh.run('cfy_manager brokers-add -j {node}'.format(
+        broker_ssh.run('cfy_manager brokers add -j {node}'.format(
             node=brokers[1].hostname,
         ))
     get_cluster_listing([brokers[0], brokers[1]])
@@ -171,7 +182,7 @@ def test_add(brokers, logger):
     logger.info('Attempting to add from clustered node.')
     with brokers[0].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-add -j {node} || true'.format(
+            'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[2].hostname,
             )
         ).lower()
@@ -186,7 +197,7 @@ def test_add(brokers, logger):
     logger.info('Attempting to add unresolvable node.')
     with brokers[2].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-add -j {node} || true'.format(
+            'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[0].hostname,
             )
         ).lower()
@@ -202,7 +213,7 @@ def test_add(brokers, logger):
         )
         broker_ssh.run('cfy_manager install')
         result = broker_ssh.run(
-            'cfy_manager brokers-add -j {node} || true'.format(
+            'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[1].hostname,
             )
         ).lower()
@@ -214,7 +225,7 @@ def test_add(brokers, logger):
     kill_node(brokers[1])
     with brokers[2].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-add -j {node} || true'.format(
+            'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[1].hostname,
             )
         ).lower()
@@ -235,7 +246,7 @@ def test_remove(brokers, logger):
     logger.info('Attempting to remove active node.')
     with brokers[0].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-remove -r {node} 2>&1 || true'.format(
+            'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
                 node=brokers[1].hostname,
             )
         ).lower()
@@ -248,7 +259,7 @@ def test_remove(brokers, logger):
     get_cluster_listing(brokers, down=[brokers[1].hostname])
     with brokers[0].ssh() as broker_ssh:
         broker_ssh.run(
-            'cfy_manager brokers-remove -r {node} 2>&1 || true'.format(
+            'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
                 node=brokers[1].hostname,
             )
         )
@@ -258,7 +269,7 @@ def test_remove(brokers, logger):
     logger.info('Attempting to remove dead node... again.')
     with brokers[0].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-remove -r {node} 2>&1 || true'.format(
+            'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
                 node=brokers[1].hostname,
             )
         ).lower()
@@ -272,7 +283,7 @@ def test_remove(brokers, logger):
     kill_node(brokers[2])
     with brokers[0].ssh() as broker_ssh:
         result = broker_ssh.run(
-            'cfy_manager brokers-remove -r {node} 2>&1 || true'.format(
+            'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
                 node=brokers[2].hostname,
             )
         ).lower()
@@ -282,9 +293,59 @@ def test_remove(brokers, logger):
         # Expected result, now we will recover
         broker_ssh.sudo('systemctl restart cloudify-rabbitmq')
         broker_ssh.run(
-            'cfy_manager brokers-remove -r {node}'.format(
+            'cfy_manager brokers remove -r {node}'.format(
                 node=brokers[2].hostname,
             )
         )
     get_cluster_listing([brokers[0]])
     logger.info('Cluster failure recovery successful.')
+
+
+def test_broker_management(brokers_and_manager, logger):
+    # All in one test for speed until such time as complexity of these
+    # operations increases to the point that extra tests are needed.
+    broker1, broker2, manager = brokers_and_manager
+
+    manager.enter_sanity_mode()
+
+    expected_1 = {
+        'port': 5671,
+        'networks': {'default': str(broker1.private_ip_address)},
+        'name': broker1.hostname,
+    }
+    broker_2_nets = {'default': str(broker2.private_ip_address),
+                     'testnet': '192.0.2.4'}
+    expected_2 = {
+        'port': 5671,
+        'networks': broker_2_nets,
+        'name': broker2.hostname,
+    }
+
+    logger.info('Confirming list functionality.')
+    brokers_list = manager_list_brokers(manager)
+    assert brokers_list == [expected_1]
+    logger.info('Listing check passed.')
+
+    logger.info('Confirming add functionality.')
+    manager.run_command(
+        'cfy cluster brokers add {name} {ip} -n "{net}"'.format(
+            name=broker2.hostname,
+            ip=str(broker2.private_ip_address),
+            net=json.dumps(broker_2_nets),
+        )
+    )
+    brokers_list = manager_list_brokers(manager)
+    assert len(brokers_list) == 2
+    assert expected_1 in brokers_list
+    assert expected_2 in brokers_list
+    logger.info('Adding broker succeeded.')
+
+    logger.info('Confirming removal functionality.')
+    manager.run_command(
+        'cfy cluster brokers remove {name}'.format(
+            name=broker1.hostname,
+        )
+    )
+    brokers_list = manager_list_brokers(manager)
+    assert brokers_list == [expected_2]
+    logger.info('Removing broker succeeded.')
