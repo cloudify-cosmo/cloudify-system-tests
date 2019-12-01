@@ -135,6 +135,7 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
             use_sudo=True
         )
     logger.info('All permissions granted to `cfyuser`')
+    openstack_config = util.get_openstack_config()
     secrets_to_create = {
         'etcd_cluster_token': ATTRIBUTES.cloudify_password,
         'etcd_root_password': ATTRIBUTES.cloudify_password,
@@ -143,6 +144,11 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
         'postgres_replicator_password': ATTRIBUTES.cloudify_password,
         'postgres_password': ATTRIBUTES.cloudify_password,
         'manager_admin_password': ATTRIBUTES.cloudify_password,
+        'openstack_auth_url': openstack_config['auth_url'],
+        'openstack_username': openstack_config['username'],
+        'openstack_password': openstack_config['password'],
+        'openstack_tenant_name': openstack_config['tenant_name'],
+        'openstack_region': os.environ['OS_REGION_NAME'],
         'manager_admin_username': ATTRIBUTES.cloudify_username
     }
 

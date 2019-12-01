@@ -44,38 +44,11 @@ class AbstractRegionalCluster(AbstractExample):
     @property
     def _base_inputs(self):
 
-        openstack_config = util.get_openstack_config()
-
         inputs = {
             'endpoint_ip_property': 'private_ip',
-            'database-infrastructure--'
-            'os_password': openstack_config['password'],
-            'database-infrastructure--'
-            'os_username': openstack_config['username'],
-            'database-infrastructure--'
-            'os_tenant': openstack_config['tenant_name'],
-            'database-infrastructure--'
-            'os_auth_url': openstack_config['auth_url'],
-            'database-infrastructure--'
-            'os_region': os.environ['OS_REGION_NAME'],
-
-            'database-infrastructure--'
-            'agent_installation_method': 'remote',
-            'database-infrastructure--'
-            'use_existing_openstack_resources': True,
-            'database-infrastructure--'
-            'use_public_ip': False,
-            'database-infrastructure--'
-            'manager_agent_broker': 'default',
 
             'database-infrastructure--'
             'os_image': self.attributes.centos_7_image_id,
-            'database-infrastructure--'
-            'os_flavor': '3',
-            'database-infrastructure--'
-            'os_volume_size': 20,
-            'database-infrastructure--'
-            'os_device_mapping': [],
             'database-infrastructure--'
             'os_network': self.attributes.network_name,
             'database-infrastructure--'
@@ -91,33 +64,7 @@ class AbstractRegionalCluster(AbstractExample):
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
             'queue-infrastructure--'
-            'os_password': openstack_config['password'],
-            'queue-infrastructure--'
-            'os_username': openstack_config['username'],
-            'queue-infrastructure--'
-            'os_tenant': openstack_config['tenant_name'],
-            'queue-infrastructure--'
-            'os_auth_url': openstack_config['auth_url'],
-            'queue-infrastructure--'
-            'os_region': os.environ['OS_REGION_NAME'],
-
-            'queue-infrastructure--'
-            'agent_installation_method': 'remote',
-            'queue-infrastructure--'
-            'use_existing_openstack_resources': True,
-            'queue-infrastructure--'
-            'use_public_ip': False,
-            'queue-infrastructure--'
-            'manager_agent_broker': 'default',
-
-            'queue-infrastructure--'
             'os_image': self.attributes.centos_7_image_id,
-            'queue-infrastructure--'
-            'os_flavor': '3',
-            'queue-infrastructure--'
-            'os_volume_size': 20,
-            'queue-infrastructure--'
-            'os_device_mapping': [],
             'queue-infrastructure--'
             'os_network': self.attributes.network_name,
             'queue-infrastructure--'
@@ -133,33 +80,7 @@ class AbstractRegionalCluster(AbstractExample):
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
             'worker-infrastructure--'
-            'os_password': openstack_config['password'],
-            'worker-infrastructure--'
-            'os_username': openstack_config['username'],
-            'worker-infrastructure--'
-            'os_tenant': openstack_config['tenant_name'],
-            'worker-infrastructure--'
-            'os_auth_url': openstack_config['auth_url'],
-            'worker-infrastructure--'
-            'os_region': os.environ['OS_REGION_NAME'],
-
-            'worker-infrastructure--'
-            'agent_installation_method': 'remote',
-            'worker-infrastructure--'
-            'use_existing_openstack_resources': True,
-            'worker-infrastructure--'
-            'use_public_ip': False,
-            'worker-infrastructure--'
-            'manager_agent_broker': 'default',
-
-            'worker-infrastructure--'
             'os_image': self.attributes.centos_7_image_id,
-            'worker-infrastructure--'
-            'os_flavor': '3',
-            'worker-infrastructure--'
-            'os_volume_size': 20,
-            'worker-infrastructure--'
-            'os_device_mapping': [],
             'worker-infrastructure--'
             'os_network': self.attributes.network_name,
             'worker-infrastructure--'
@@ -173,35 +94,11 @@ class AbstractRegionalCluster(AbstractExample):
             'ssh_user': self.attributes.default_linux_username,
             'worker-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
-
-            'haproxy-infrastructure--'
-            'os_password': openstack_config['password'],
-            'haproxy-infrastructure--'
-            'os_username': openstack_config['username'],
-            'haproxy-infrastructure--'
-            'os_tenant': openstack_config['tenant_name'],
-            'haproxy-infrastructure--'
-            'os_auth_url': openstack_config['auth_url'],
-            'haproxy-infrastructure--'
-            'os_region': os.environ['OS_REGION_NAME'],
-
-            'haproxy-infrastructure--'
-            'agent_installation_method': 'remote',
-            'haproxy-infrastructure--'
-            'use_existing_openstack_resources': True,
-            'haproxy-infrastructure--'
-            'use_public_ip': False,
-            'haproxy-infrastructure--'
-            'manager_agent_broker': 'default',
 
             'haproxy-infrastructure--'
             'os_image': self.attributes.centos_7_image_id,
             'haproxy-infrastructure--'
             'os_flavor': '2',
-            'haproxy-infrastructure--'
-            'os_volume_size': 20,
-            'haproxy-infrastructure--'
-            'os_device_mapping': [],
             'haproxy-infrastructure--'
             'os_network': self.attributes.network_name,
             'haproxy-infrastructure--'
@@ -219,8 +116,6 @@ class AbstractRegionalCluster(AbstractExample):
             'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
             'ca_key': self.attributes.LOCAL_REST_KEY_FILE,
             'install_rpm_path': constants.INSTALL_RPM_PATH,
-
-            'num_of_worker_instances': 2,
 
             # We're uploading the private SSH key and OS config from
             # the Central manager to the Regional managers, to be used later
