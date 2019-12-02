@@ -286,14 +286,16 @@ def test_regional_cluster_with_floating_ip(
 @pytest.mark.skipif(util.is_community(),
                     reason='Cloudify Community version does '
                            'not support clustering')
-def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
+def test_regional_cluster_with_fixed_ip(
+        floating_ip_2_regional_clusters,
+        central_manager,
+        cfy, tmpdir, logger):
     """
     In this scenario the second cluster is created _instead_ of the first one
     with the same fixed private IPs
     """
 
-    logger.info('Not running test...')
-
+    logger.info('Not running.')
 
 def teardown_module():
     """
