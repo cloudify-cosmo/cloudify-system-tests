@@ -281,6 +281,20 @@ def test_regional_cluster_with_floating_ip(
     first_cluster.clean_blueprints()
 
 
+@pytest.mark.skipif(util.is_redhat(),
+                    reason='MoM plugin is only available on Centos')
+@pytest.mark.skipif(util.is_community(),
+                    reason='Cloudify Community version does '
+                           'not support clustering')
+def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
+    """
+    In this scenario the second cluster is created _instead_ of the first one
+    with the same fixed private IPs
+    """
+
+    logger.info('Not running test...')
+
+
 def teardown_module():
     """
     First destroy any Regional clusters, then destroy the Central manager.
