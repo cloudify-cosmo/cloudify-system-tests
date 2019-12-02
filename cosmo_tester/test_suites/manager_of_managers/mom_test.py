@@ -265,85 +265,17 @@ def test_regional_cluster_with_floating_ip(
     with different floating IPs
     """
     first_cluster = floating_ip_2_regional_clusters[0]
-    second_cluster = floating_ip_2_regional_clusters[1]
 
     first_cluster.deploy_and_validate(timeout=6000)
 
     sleep(3600)
 
-    # Install hello world deployment on Regional manager cluster
-    first_cluster.execute_hello_world_workflow('install')
-    first_cluster.execute_hello_world_workflow('uninstall')
-
     first_cluster.backup()
 
     first_cluster.uninstall(timeout=6000)
 
-    second_cluster.deploy_and_validate(timeout=6000)
-
-    # Run Scale workflow against one of the regional clusters
-    _do_regional_scale(second_cluster)
-
-    # Upgrade central manager
-    _do_central_upgrade(second_cluster,
-                        central_manager,
-                        cfy,
-                        tmpdir,
-                        logger)
-
-    second_cluster.uninstall(timeout=6000)
-
     # Clean deployments for both clusters
     first_cluster.delete_deployment(use_cfy=True)
-    second_cluster.delete_deployment(use_cfy=True)
-
-    # Clean blueprint resource
-    first_cluster.clean_blueprints()
-
-
-@pytest.mark.skipif(util.is_redhat(),
-                    reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
-                    reason='Cloudify Community version does '
-                           'not support clustering')
-def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
-    """
-    In this scenario the second cluster is created _instead_ of the first one
-    with the same fixed private IPs
-    """
-    first_cluster = fixed_ip_2_regional_clusters[0]
-    second_cluster = fixed_ip_2_regional_clusters[1]
-
-    # Note that we can't easily validate that resources were created on the
-    # Regional clusters here, because they're using a fixed private IP, which
-    # would not be accessible by a REST client from here. This is why we're
-    # only testing that the upgrade has succeeded, and that the IPs were the
-    # same for both Regional deployments
-    first_cluster.deploy_and_validate(timeout=6000)
-
-    # Install hello world deployment on Regional first cluster
-    first_cluster.execute_hello_world_workflow('install')
-    # Uninstall hello world deployment from Regional first cluster
-    first_cluster.execute_hello_world_workflow('uninstall')
-
-    # Take a backup from the first cluster
-    first_cluster.backup()
-
-    # Teardown the first cluster
-    first_cluster.uninstall(timeout=6000)
-
-    # Deploy & validate the second cluster
-    second_cluster.deploy_and_validate(timeout=6000)
-
-    # Run Heal workflow against one of the regional clusters
-    _do_regional_heal(second_cluster)
-
-    # Uninstall clusters
-    second_cluster.uninstall(timeout=6000)
-
-    # Clean deployments for both clusters
-    first_cluster.delete_deployment(use_cfy=True)
-    second_cluster.delete_deployment(use_cfy=True)
 
     # Clean blueprint resource
     first_cluster.clean_blueprints()
