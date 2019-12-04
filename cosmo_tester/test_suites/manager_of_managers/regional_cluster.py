@@ -763,13 +763,15 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
 
     def _get_lb_cert(self):
         local_cert = str(self.tmpdir / 'ca_cert.pem')
+
         with self.ssh() as fabric_ssh:
-            with fabric_ssh.show('debug'):
-                fabric_ssh.get(
-                    self.remote_lb_crt_path,
-                    local_cert,
-                    use_sudo=True
-                )
+            fabric_ssh.output['exceptions'] = True
+            fabric_ssh.output['debug'] = True
+            fabric_ssh.get(
+                self.remote_lb_crt_path,
+                local_cert,
+                use_sudo=True
+            )
         return local_cert
 
     def validate(self):
