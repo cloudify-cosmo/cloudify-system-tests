@@ -750,21 +750,26 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
 
     @contextmanager
     def ssh(self):
-        with fabric_context_managers.settings(
-                host_string=self.cluster_endpoint,
-                user=self.manager.linux_username,
-                key_filename=self.ssh_key.private_key_path,
-                abort_exception=Exception):
+        env = {
+            'abort_exception': Exception,
+            'disable_known_hosts': True,
+            'host_string': self.cluster_endpoint,
+            'gateway': self.cluster_endpoint,
+            'user': self.manager.linux_username,
+            'key_filename': self.ssh_key.private_key_path
+        }
+        with fabric_context_managers.settings(**env):
             yield fabric_api
 
     def _get_lb_cert(self):
         local_cert = str(self.tmpdir / 'ca_cert.pem')
         with self.ssh() as fabric_ssh:
-            fabric_ssh.get(
-                self.remote_lb_crt_path,
-                local_cert,
-                use_sudo=True
-            )
+            with fabric_ssh.show('debug'):
+                fabric_ssh.get(
+                    self.remote_lb_crt_path,
+                    local_cert,
+                    use_sudo=True
+                )
         return local_cert
 
     def validate(self):
