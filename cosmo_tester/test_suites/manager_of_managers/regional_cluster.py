@@ -15,12 +15,8 @@
 
 import os
 import json
-from contextlib import contextmanager
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
-
-from fabric import api as fabric_api
-from fabric import context_managers as fabric_context_managers
 
 from cosmo_tester.framework import util
 from cosmo_tester.framework.examples import AbstractExample
@@ -223,7 +219,6 @@ class AbstractRegionalCluster(AbstractExample):
             'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
             'ca_key': self.attributes.LOCAL_REST_KEY_FILE,
             'install_rpm_path': constants.INSTALL_RPM_PATH,
-            'manager_admin_password': self.attributes.cloudify_password,
 
             'num_of_worker_instances': 2,
 
@@ -429,6 +424,10 @@ class AbstractRegionalCluster(AbstractExample):
     @property
     def cluster_endpoint(self):
         return self.outputs['endpoint']
+
+    @property
+    def cluster_endpoint_certificate(self):
+        return self.outputs['endpoint_certificate']
 
     def upload_blueprint(self, use_cfy=False):
         self.clone_example()
@@ -742,36 +741,10 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
 
         return self._central_client
 
-    @property
-    def remote_lb_crt_path(self):
-        # The location where the cert of the HAProxy saved after the HAProxy
-        # configured to forward requests to cluster backend managers
-        return '/etc/haproxy/cert.crt'
-
-    @contextmanager
-    def ssh(self):
-        env = {
-            'abort_exception': Exception,
-            'disable_known_hosts': True,
-            'host_string': self.cluster_endpoint,
-            'gateway': self.cluster_endpoint,
-            'user': self.manager.linux_username,
-            'key_filename': self.ssh_key.private_key_path
-        }
-        with fabric_context_managers.settings(**env):
-            yield fabric_api
-
     def _get_lb_cert(self):
-        local_cert = str(self.tmpdir / 'ca_cert.pem')
-
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.output['exceptions'] = True
-            fabric_ssh.output['debug'] = True
-            fabric_ssh.get(
-                self.remote_lb_crt_path,
-                local_cert,
-                use_sudo=True
-            )
+        local_cert = str(self.tmpdir / 'lb_cert.crt')
+        with open(local_cert, 'w') as cert_file:
+            cert_file.write(self.cluster_endpoint_certificate)
         return local_cert
 
     def validate(self):
