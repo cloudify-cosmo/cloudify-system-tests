@@ -20,7 +20,7 @@ from cosmo_tester.framework.test_hosts import (
 )
 
 MOM_PLUGIN_REPO_PATH = 'cloudify-cosmo/cloudify-spire-plugin'
-MOM_PLUGIN_VERSION = '3.2.0'
+MOM_PLUGIN_VERSION = '3.2.2'
 MOM_PLUGIN_RELEASE_NAME = '{0}'.format(MOM_PLUGIN_VERSION)
 MOM_PLUGIN_WGN_NAME = 'cloudify_spire_plugin-{0}-py27-none-' \
                       'linux_x86_64-centos-Core.wgn'.format(
