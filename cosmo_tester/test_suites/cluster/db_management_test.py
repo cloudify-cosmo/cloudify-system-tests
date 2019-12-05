@@ -178,8 +178,8 @@ def _structure_db_listing(listing):
 
 
 # After db changes the dbs can be out of sync, usually this will be resolved
-# within 30 seconds, but we will allow a minute in case of slow test platform
-@retrying.retry(stop_max_attempt_number=20, wait_fixed=3000)
+# within 30 seconds, but we will allow 2 minutes in case of slow test platform
+@retrying.retry(stop_max_attempt_number=20, wait_fixed=6000)
 def _get_db_listing(nodes):
     # Expected listing output:
     # 2019-10-23 10:43:53,790 - [MAIN] - INFO - DB cluster is healthy.
