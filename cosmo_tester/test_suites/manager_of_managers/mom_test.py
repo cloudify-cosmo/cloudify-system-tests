@@ -142,7 +142,8 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
         'patroni_rest_password': ATTRIBUTES.cloudify_password,
         'postgres_replicator_password': ATTRIBUTES.cloudify_password,
         'postgres_password': ATTRIBUTES.cloudify_password,
-        'manager_admin_password': ATTRIBUTES.cloudify_password
+        'manager_admin_password': ATTRIBUTES.cloudify_password,
+        'manager_admin_username': ATTRIBUTES.cloudify_username
     }
 
     for k, v in secrets_to_create.items():
