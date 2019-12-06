@@ -266,17 +266,20 @@ def test_regional_cluster_with_floating_ip(
     with different floating IPs
     """
     first_cluster = floating_ip_2_regional_clusters[0]
+    second_cluster = floating_ip_2_regional_clusters[1]
 
     first_cluster.deploy_and_validate(timeout=6000)
+    second_cluster.deploy_and_validate(timeout=6000)
 
-    sleep(3600)
+    sleep(7200)
 
-    first_cluster.backup()
 
     first_cluster.uninstall(timeout=6000)
+    second_cluster.uninstall(timeout=6000)
 
     # Clean deployments for both clusters
     first_cluster.delete_deployment(use_cfy=True)
+    second_cluster.delete_deployment(use_cfy=True)
 
     # Clean blueprint resource
     first_cluster.clean_blueprints()
