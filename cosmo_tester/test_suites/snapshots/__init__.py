@@ -13,11 +13,13 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import base64
-import hashlib
+import os
+import sys
 import hmac
 import json
-import os
+import base64
+import hashlib
+import traceback
 from time import sleep
 
 from passlib.context import CryptContext
@@ -432,9 +434,16 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
             logger,
             change_manager_password=change_manager_password)
     except ExecutionFailed:
-        # See any errors
-        cfy.executions.list(['--include-system-workflows'])
-        raise
+        execution_exception_info = sys.exc_info()
+        try:
+            logger.error('Execution failed, trying to list all executions '
+                         'including system workflows...')
+            # See any errors
+            cfy.executions.list(['--include-system-workflows'])
+        except Exception as e:
+            logger.error('Failed listing all executions, due to error "{0}".'
+                         ''.format(e))
+        traceback.print_exception(*execution_exception_info)
 
     # wait a while to allow the restore-snapshot post-workflow commands to run
     if wait_for_post_restore_commands:
