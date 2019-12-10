@@ -54,7 +54,7 @@ UTIL_PLUGIN_YAML_URL = 'http://www.getcloudify.org/spec/' \
                        'utilities-plugin/{0}/plugin.yaml'.format(
                            UTILITIES_PLUGIN_VERSION)
 
-ANSIBLE_PLUGIN_VERSION = '2.6.0'
+ANSIBLE_PLUGIN_VERSION = '2.7.0'
 ANSIBLE_PLUGIN_WGN_URL = 'http://repository.cloudifysource.org/cloudify/' \
                          'wagons/cloudify-ansible-plugin/{0}/' \
                          'cloudify_ansible_plugin-{0}-py27-' \
