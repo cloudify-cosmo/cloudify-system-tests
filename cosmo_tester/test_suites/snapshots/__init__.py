@@ -20,9 +20,10 @@ import json
 import os
 from time import sleep
 
-from passlib.context import CryptContext
 import retrying
+from passlib.context import CryptContext
 
+from cloudify.snapshots import STATES
 from cosmo_tester.framework.test_hosts import (
     TestHosts,
     IMAGES,
@@ -762,4 +763,4 @@ def _assert_restore_status(manager):
     Assert the snapshot-status REST endpoint is working properly
     """
     restore_status = manager.client.snapshots.get_status()
-    assert restore_status['status'] == 'running'
+    assert restore_status['status'] == STATES.RUNNING
