@@ -72,13 +72,30 @@ def test_add_db_node(cluster_missing_one_db, logger, attributes, cfy):
 def test_db_set_master(dbs, logger, attributes, cfy):
     db1, db2, db3 = dbs
 
-    before_change = _get_db_listing([db1])[0]
+    for attempt in range(3):
+        _wait_for_healthy_db([db1], logger)
 
-    next_master = _get_non_leader(before_change)
+        before_change = _get_db_listing([db1])[0]
 
-    db1.run_command(
-        'cfy_manager dbs set-master -a {}'.format(next_master)
-    )
+        next_master = _get_non_leader(before_change)
+
+        try:
+            db1.run_command(
+                'cfy_manager dbs set-master -a {}'.format(next_master)
+            )
+            break
+        except Exception as err:
+            if attempt < 2:
+                logger.warning(
+                    'Failed to switch DB master. This can happen due to sync '
+                    'replica promotion issues, so will be retried. '
+                    'Error was: {err}'.format(err=err)
+                )
+            else:
+                raise AssertionError(
+                    'Failed to switch DB master with retries. Error was: '
+                    '{err}'.format(err=err)
+                )
 
     after_change = _get_db_listing([db1])[0]
 
@@ -198,6 +215,20 @@ def _get_db_listing(nodes):
         results.append(_structure_db_listing(result))
 
     return results
+
+
+# Allow a minute for the cluster to become fully healthy
+# (though this will actually allow up to 21 minutes if the underlying
+# _get_db_listing hits its max retries every time)
+@retrying.retry(stop_max_attempt_number=20, wait_fixed=3000)
+def _wait_for_healthy_db(node, logger):
+    try:
+        _check_cluster(_get_db_listing(node)[0])
+    except Exception as err:
+        logger.warning(
+            'DB not yet healthy: {err}'.format(err=err)
+        )
+        raise
 
 
 def _check_db_count(mgr1, mgr2, missing_db=None, all_present=True):
