@@ -14,6 +14,7 @@
 #    * limitations under the License.
 
 import pytest
+import retrying
 
 from cloudify.snapshots import STATES
 
@@ -113,9 +114,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
                      wait_for_post_restore_commands=False,
                      change_manager_password=should_change_pswd)
 
-    # Assert the snapshot-status endpoint is working properly
-    restore_status = new_manager.client.snapshots.get_status()
-    assert STATES.NOT_RUNNING == restore_status['status']
+    _check_snapshot_status(new_manager)
 
     if manager_supports_users_in_snapshot_creation(old_manager):
         update_credentials(cfy, logger, new_manager)
@@ -148,6 +147,17 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     remove_and_check_deployments(hello_vms, new_manager, logger,
                                  hello_tenants, with_prefixes=True)
+
+
+# There is a short delay after the snapshot finishes restoring before the
+# post-restore commands finish running, so we'll give it time
+# If it doesn't happen within a minute on a reasonably quiet platform then
+# that probably is a problem
+@retrying.retry(stop_max_attempt_number=20, wait_fixed=3000)
+def _check_snapshot_status(manager):
+    # Assert the snapshot-status endpoint is working properly
+    restore_status = manager.client.snapshots.get_status()
+    assert STATES.NOT_RUNNING == restore_status['status']
 
 
 @pytest.fixture(
