@@ -17,7 +17,7 @@ from setuptools import setup
 
 setup(
     name='cloudify-system-tests',
-    version='5.0.5.dev1',
+    version='5.0.5',
     author='Cloudify',
     author_email='cosmo-admin@cloudify.co',
     packages=['cosmo_tester'],
