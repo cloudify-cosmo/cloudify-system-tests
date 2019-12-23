@@ -64,6 +64,14 @@ def kill_node(broker):
         broker_ssh.run('sudo shutdown -h now &')
 
 
+def prepare_cluster_for_removal_tests(brokers):
+    add_to_hosts(brokers[0], brokers[1:])
+    add_to_hosts(brokers[1], [brokers[0], brokers[2]])
+    add_to_hosts(brokers[2], brokers[:2])
+    join_cluster(brokers[1], brokers[0])
+    join_cluster(brokers[2], brokers[0])
+
+
 def test_list(brokers, logger):
     # Testing multiple lists in one test because each deploy of brokers takes
     # several minutes
@@ -236,11 +244,7 @@ def test_add(brokers, logger):
 
 def test_remove(brokers, logger):
     logger.info('Preparing cluster.')
-    add_to_hosts(brokers[0], brokers[1:])
-    add_to_hosts(brokers[1], [brokers[0], brokers[2]])
-    add_to_hosts(brokers[2], brokers[:2])
-    join_cluster(brokers[1], brokers[0])
-    join_cluster(brokers[2], brokers[0])
+    prepare_cluster_for_removal_tests(brokers)
     logger.info('Cluster prepared.')
 
     logger.info('Attempting to remove active node.')
@@ -299,6 +303,50 @@ def test_remove(brokers, logger):
         )
     get_cluster_listing([brokers[0]])
     logger.info('Cluster failure recovery successful.')
+
+
+def test_remove_broker_from_manager(brokers3_and_manager, logger):
+    logger.info('Preparing cluster.')
+    brokers, manager = brokers3_and_manager[:3], brokers3_and_manager[3]
+    prepare_cluster_for_removal_tests(brokers)
+    logger.info('Cluster prepared.')
+
+    logger.info('Adding broker to manager.')
+    manager.run_command(
+        'cfy cluster brokers add {name} {ip} -n "{net}"'.format(
+            name=brokers[1].hostname,
+            ip=str(brokers[1].private_ip_address),
+            net=json.dumps({'default': str(brokers[1].private_ip_address)}),
+        )
+    )
+    logger.info('Target broker added to the manager.')
+
+    logger.info('Attempting to remove a dead node.')
+    kill_node(brokers[1])
+    get_cluster_listing(brokers, down=[brokers[1].hostname])
+    with brokers[0].ssh() as broker_ssh:
+        broker_ssh.run(
+            'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
+                node=brokers[1].hostname,
+            )
+        )
+    get_cluster_listing([brokers[0], brokers[2]])
+    logger.info('Dead node removed successfully.')
+
+    logger.info('Attempting to remove a dead broker from the manager.')
+    with manager.ssh() as manager_ssh:
+        result = manager_ssh.run(
+            'cfy cluster brokers remove {node} 2>&1 || true'.format(
+                node=brokers[1].hostname)
+        ).lower()
+        assert 'removed successfully' in result
+    logger.info('Dead broker removed successfully from the manager.')
+
+    logger.info('Manager status test with one dead rabbit.')
+    with manager.ssh() as manager_ssh:
+        result = manager_ssh.run('cfy status --json 2>&1 || true')
+        assert json.loads(result.strip('\033[0m'))['status'] == 'OK'
+    logger.info('Manager status OK.')
 
 
 def test_broker_management(brokers_and_manager, logger):
