@@ -41,6 +41,14 @@ def brokers_and_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
 
 
 @pytest.fixture()
+def brokers3_and_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
+    for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
+                           attributes, logger,
+                           broker_count=3, manager_count=1):
+        yield _vms
+
+
+@pytest.fixture()
 def full_cluster(cfy, ssh_key, module_tmpdir, attributes,
                  logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
