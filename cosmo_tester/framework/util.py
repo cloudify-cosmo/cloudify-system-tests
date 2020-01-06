@@ -267,23 +267,22 @@ def _get_contents_from_github(repo, resource_path):
 
 def _get_package_url(filename):
     """Gets the package URL(s).
-    They will be retrieved either from GitHub (if (GITHUB_USERNAME and
-    GITHUB_PASSWORD) or GITHUB_TOKEN exists in env) or locally if the
-    cloudify-premium or cloudify-versions repository is checked out under the
-    same folder the cloudify-system-tests repo is checked out.
+    They will be retrieved either from GitHub (if (GITHUB_TOKEN exists in env)
+    or locally if the cloudify-premium or cloudify-versions repository is
+    checked out under the same folder the cloudify-system-tests repo is
+    checked out.
     """
     if is_community():
         repo = 'cloudify-versions'
     else:
         repo = 'cloudify-premium'
 
-    if any(var in os.environ
-           for var in ['GITHUB_USERNAME', 'GITHUB_PASSWORD', 'GITHUB_TOKEN']):
+    if os.environ['GITHUB_TOKEN']:
         return _get_contents_from_github(
             repo=repo,
             resource_path='packages-urls/{filename}'.format(
                 filename=filename,
-            ),
+            )
         )
     else:
         package_url_file = (
@@ -765,10 +764,6 @@ def get_authenticated_git_session(git_token=None):
     session = requests.Session()
     if git_token:
         session.headers['Authorization'] = 'token %s' % git_token
-    else:
-        username = os.environ['GITHUB_USERNAME']
-        password = os.environ['GITHUB_PASSWORD']
-        session.auth = (username, password)
     return session
 
 
