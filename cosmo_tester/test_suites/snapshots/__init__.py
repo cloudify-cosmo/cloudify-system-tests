@@ -415,8 +415,7 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
                      wait_timeout=20, change_manager_password=True,
                      cert_path=None):
     # Show the snapshots, to aid troubleshooting on failures
-    manager.use(cert_path=cert_path)
-    cfy.snapshots.list()
+    manager.client.snapshots.list()
 
     logger.info('Restoring snapshot on latest manager..')
     restore_execution = manager.client.snapshots.restore(
@@ -435,7 +434,7 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
             change_manager_password=change_manager_password)
     except ExecutionFailed:
         # See any errors
-        cfy.executions.list(['--include-system-workflows'])
+        manager.client.executions.list(include_system_workflows=True)
         raise
 
     # wait a while to allow the restore-snapshot post-workflow commands to run
