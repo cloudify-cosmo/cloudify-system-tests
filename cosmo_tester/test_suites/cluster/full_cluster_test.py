@@ -45,6 +45,8 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                              module_tmpdir, attributes, ssh_key, cfy):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
 
+    _configure_status_reporter([mgr1, mgr2], [db], [broker1, broker2, broker3])
+
     logger.info('Installing a deployment with agents')
     hello_world = centos_hello_world(cfy, mgr1, attributes, ssh_key,
                                      logger, module_tmpdir)
@@ -141,11 +143,9 @@ def _validate_cluster_and_agents(mgr_node):
     assert 'Task succeeded' in validate_agents
 
     manager_status = mgr_node.run_command('cfy status --json')
-    # cluster_status = mgr_node.run_command('cfy cluster status --json')
+    cluster_status = mgr_node.run_command('cfy cluster status --json')
     assert json.loads(manager_status.strip('\033[0m'))['status'] == 'OK'
-    # assert json.loads(cluster_status.strip('\033[0m'))['status'] == 'OK'
-    # --- all brokers status @ 'Fail' [Sandy hasn't included it in the
-    # fixtures yet]    # TODO: Awaiting a fix from Sandy
+    assert json.loads(cluster_status.strip('\033[0m'))['status'] == 'OK'
 
 
 def _verify_agent_broker_connection_and_get_broker_ip(mgr_node):
@@ -162,3 +162,28 @@ def _verify_agent_broker_connection_and_get_broker_ip(mgr_node):
             connection_established = True
             return line.split(':')[-2].split(' ')[-1]
     assert connection_established   # error if no connection on rabbit port
+
+
+def _configure_status_reporter(managers, db_nodes, brokers):
+    manager_ips = ' '.join([mgr.private_ip_address for mgr in managers])
+    tokens = managers[0].run_command(
+        'cfy_manager status-reporter get-tokens --json')
+    tokens = json.loads(tokens.strip('\033[0m'))
+    db_token = tokens['db_status_reporter']
+    broker_token = tokens['broker_status_reporter']
+
+    status_config_command = \
+        'cfy_manager status-reporter configure --token {token} ' \
+        '--ca-path {ca_path} --managers-ip {manager_ips}'
+    for broker in brokers:
+        broker.run_command(status_config_command.format(
+            token=broker_token,
+            manager_ips=manager_ips,
+            ca_path=broker.remote_ca
+        ))
+    for db_node in db_nodes:
+        db_node.run_command(status_config_command.format(
+            token=db_token,
+            manager_ips=manager_ips,
+            ca_path=broker.remote_ca
+        ))
