@@ -1,4 +1,5 @@
 import json
+import time
 
 from cosmo_tester.test_suites.cluster import check_managers
 from cosmo_tester.test_suites.snapshots import (
@@ -43,35 +44,11 @@ def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
 
 def test_queue_node_failover(cluster_with_single_db, logger,
                              module_tmpdir, attributes, ssh_key, cfy):
+    hello_world = _prepare_cluster_with_agent(
+        cluster_with_single_db, logger,
+        module_tmpdir, attributes, ssh_key, cfy
+    )
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
-
-    _configure_status_reporter([mgr1, mgr2], [db], [broker1, broker2, broker3])
-
-    logger.info('Installing a deployment with agents')
-    hello_world = centos_hello_world(cfy, mgr1, attributes, ssh_key,
-                                     logger, module_tmpdir)
-
-    _CloudifyManager.upload_necessary_files(mgr1)
-    _CloudifyManager.upload_necessary_files(mgr2)
-    _CloudifyManager.upload_plugin(mgr1,
-                                   mgr1._attributes.default_openstack_plugin)
-
-    # Install a hello world deployment.
-    # The test cluster has no outer network access so mgr1.use() won't do, so I
-    # use a workaround to run the following functions with the manager's client
-    hello_world.cfy = mgr1.client
-    hello_world.upload_blueprint()
-    hello_world.create_deployment()
-    mgr1.run_command(
-        'cfy executions start install -d {deployment_id} -t {tenant} '
-        '--timeout 900'.format(deployment_id=hello_world.deployment_id,
-                               tenant=hello_world.tenant))
-    hello_world.verify_installation()
-
-    import pydevd
-    pydevd.settrace('192.168.9.43', port=53200, stdoutToServer=True,
-                    stderrToServer=True)
-
     _validate_cluster_and_agents(mgr1)
     agent_broker_ip = _verify_agent_broker_connection_and_get_broker_ip(mgr1)
 
@@ -85,7 +62,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         broker_ssh.run('sudo service cloudify-rabbitmq stop')
 
     # the agent should now pick another broker
-    _validate_cluster_and_agents(mgr1)
+    _validate_cluster_and_agents(mgr1, expected_broker_status='Degraded')
     new_agent_broker_ip = \
         _verify_agent_broker_connection_and_get_broker_ip(mgr1)
     assert new_agent_broker_ip != agent_broker_ip
@@ -96,9 +73,9 @@ def test_queue_node_failover(cluster_with_single_db, logger,
             new_agent_broker = broker
             break
 
-    import pydevd
-    pydevd.settrace('192.168.9.43', port=53200, stdoutToServer=True,
-                    stderrToServer=True)
+    # import pydevd
+    # pydevd.settrace('192.168.9.43', port=53200, stdoutToServer=True,
+    #                 stderrToServer=True)
 
     # spin up 3 deployments
     for i in range(3):
@@ -138,14 +115,99 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                                    tenant=hello_world.tenant))
 
 
-def _validate_cluster_and_agents(mgr_node):
+def test_manager_node_failover(cluster_with_single_db, logger,
+                             module_tmpdir, attributes, ssh_key, cfy):
+    hello_world = _prepare_cluster_with_agent(
+        cluster_with_single_db, logger,
+        module_tmpdir, attributes, ssh_key, cfy
+    )
+    broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
+    _validate_cluster_and_agents(mgr1)
+
+    # get agent's manager ip
+    agent_host = mgr1.client.agents.list().items[0].host_id
+    node_instances = mgr1.client.node_instances.list().items
+    agent_manager_ip = None
+    for instance in node_instances:
+        if instance.id == agent_host:
+            agent_manager_ip = instance.runtime_properties['cloudify_agent'][
+                'file_server_url'].split('/')[2].split(':')[0]
+            break
+
+    # stop the rest service in the manager node connected to the agent
+    agent_mgr = None
+    spare_mgr = None
+    for manager in [mgr1, mgr2]:
+        if manager.private_ip_address == agent_manager_ip:
+            agent_mgr = manager
+        else:
+            spare_mgr = manager
+
+    with agent_mgr.ssh() as manager_ssh:
+        manager_ssh.run('sudo service cloudify-restservice stop')
+        manager_ssh.run('sudo shutdown -h now &')
+
+    # wait till the machine shuts down
+    for _ in range(60):
+        try:
+            time.sleep(1)
+            spare_mgr.run_command('ping -c 1 {0}'.format(agent_manager_ip))
+        except Exception:
+            break
+
+    # cluster status should be degraded, since we're left with only one manager
+    _validate_cluster_and_agents(spare_mgr, expected_manager_status='Degraded')
+
+    # finally, uninstall the hello world deployment
+    spare_mgr.run_command(
+        'cfy executions start uninstall -d {deployment_id} -t {tenant} '
+        '--timeout 900'.format(deployment_id=hello_world.deployment_id,
+                               tenant=hello_world.tenant))
+
+
+def _prepare_cluster_with_agent(cluster_with_single_db, logger,
+                                module_tmpdir, attributes, ssh_key, cfy):
+    broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
+
+    _configure_brokers_status_reporter([mgr1, mgr2],
+                                       [broker1, broker2, broker3])
+
+    logger.info('Installing a deployment with agents')
+    hello_world = centos_hello_world(cfy, mgr1, attributes, ssh_key,
+                                     logger, module_tmpdir)
+
+    _CloudifyManager.upload_necessary_files(mgr1)
+    _CloudifyManager.upload_necessary_files(mgr2)
+    _CloudifyManager.upload_plugin(mgr1,
+                                   mgr1._attributes.default_openstack_plugin)
+
+    # Install a hello world deployment.
+    # The test cluster has no outer network access so mgr1.use() won't do, so I
+    # use a workaround to run the following functions with the manager's client
+    hello_world.cfy = mgr1.client
+    hello_world.upload_blueprint()
+    hello_world.create_deployment()
+    mgr1.run_command(
+        'cfy executions start install -d {deployment_id} -t {tenant} '
+        '--timeout 900'.format(deployment_id=hello_world.deployment_id,
+                               tenant=hello_world.tenant))
+    hello_world.verify_installation()
+    return hello_world
+
+
+def _validate_cluster_and_agents(mgr_node,
+                                 expected_manager_status='OK',
+                                 expected_broker_status='OK'):
     validate_agents = mgr_node.run_command('cfy agents validate')
     assert 'Task succeeded' in validate_agents
 
     manager_status = mgr_node.run_command('cfy status --json')
     cluster_status = mgr_node.run_command('cfy cluster status --json')
+    cluster_status = json.loads(cluster_status.strip('\033[0m'))['services']
     assert json.loads(manager_status.strip('\033[0m'))['status'] == 'OK'
-    assert json.loads(cluster_status.strip('\033[0m'))['status'] == 'OK'
+    assert cluster_status['manager']['status'] == expected_manager_status
+    assert cluster_status['db']['status'] == 'OK'
+    assert cluster_status['broker']['status'] == expected_broker_status
 
 
 def _verify_agent_broker_connection_and_get_broker_ip(mgr_node):
@@ -164,12 +226,11 @@ def _verify_agent_broker_connection_and_get_broker_ip(mgr_node):
     assert connection_established   # error if no connection on rabbit port
 
 
-def _configure_status_reporter(managers, db_nodes, brokers):
+def _configure_brokers_status_reporter(managers, brokers):
     manager_ips = ' '.join([mgr.private_ip_address for mgr in managers])
     tokens = managers[0].run_command(
         'cfy_manager status-reporter get-tokens --json')
     tokens = json.loads(tokens.strip('\033[0m'))
-    db_token = tokens['db_status_reporter']
     broker_token = tokens['broker_status_reporter']
 
     status_config_command = \
@@ -178,12 +239,6 @@ def _configure_status_reporter(managers, db_nodes, brokers):
     for broker in brokers:
         broker.run_command(status_config_command.format(
             token=broker_token,
-            manager_ips=manager_ips,
-            ca_path=broker.remote_ca
-        ))
-    for db_node in db_nodes:
-        db_node.run_command(status_config_command.format(
-            token=db_token,
             manager_ips=manager_ips,
             ca_path=broker.remote_ca
         ))
