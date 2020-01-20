@@ -1,6 +1,8 @@
 import json
 import time
 
+from cloudify.exceptions import CommandExecutionException
+
 from cosmo_tester.test_suites.cluster import check_managers
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
@@ -100,7 +102,6 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                 'sudo -u rabbitmq rabbitmqctl -n rabbit@{0} list_queues'
                 ' | wc -l'.format(broker.hostname))
             assert num_queues > 0
-    # TODO: should happen IN PARALLEL to the above. verify that
 
     # finally, uninstall all the hello worlds
     mgr1.run_command(
@@ -116,7 +117,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
 
 
 def test_manager_node_failover(cluster_with_single_db, logger,
-                             module_tmpdir, attributes, ssh_key, cfy):
+                               module_tmpdir, attributes, ssh_key, cfy):
     hello_world = _prepare_cluster_with_agent(
         cluster_with_single_db, logger,
         module_tmpdir, attributes, ssh_key, cfy
@@ -152,7 +153,7 @@ def test_manager_node_failover(cluster_with_single_db, logger,
         try:
             time.sleep(1)
             spare_mgr.run_command('ping -c 1 {0}'.format(agent_manager_ip))
-        except Exception:
+        except CommandExecutionException:
             break
 
     # cluster status should be degraded, since we're left with only one manager
