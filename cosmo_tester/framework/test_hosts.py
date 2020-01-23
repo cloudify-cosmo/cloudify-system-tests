@@ -53,7 +53,6 @@ MANAGER_API_VERSIONS = {
     '4.5': 'v3.1',
     '4.4': 'v3.1',
     '4.3.1': 'v3',
-    '4.2': 'v3',
 }
 
 ATTRIBUTES = util.get_attributes()
@@ -876,10 +875,6 @@ def get_latest_manager_image_name():
     return image_name
 
 
-class Cloudify4_2Manager(_OldStatusFormat, _CloudifyManager):
-    branch_name = '4.2'
-
-
 class Cloudify4_3_1Manager(_OldStatusFormat, _CloudifyManager):
     branch_name = '4.3.1'
 
@@ -959,7 +954,6 @@ class CloudifyMasterManager(_CloudifyManager):
 
 
 IMAGES = {
-    '4.2': Cloudify4_2Manager,
     '4.3.1': Cloudify4_3_1Manager,
     '4.4': Cloudify4_4Manager,
     '4.5': Cloudify4_5Manager,
