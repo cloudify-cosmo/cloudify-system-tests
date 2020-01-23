@@ -277,7 +277,7 @@ def _get_package_url(filename):
     else:
         repo = 'cloudify-premium'
 
-    if os.environ['GITHUB_TOKEN']:
+    if os.environ.get('GITHUB_TOKEN'):
         return _get_contents_from_github(
             repo=repo,
             resource_path='packages-urls/{filename}'.format(
