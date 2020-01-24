@@ -382,10 +382,12 @@ def test_broker_management(brokers_and_manager, logger):
 
     logger.info('Confirming add functionality.')
     manager.run_command(
-        'cfy cluster brokers add {name} {ip} -n "{net}"'.format(
+        'cfy cluster brokers add {name} {ip} -n "{net}" '
+        '--node-id "{node_id}"'.format(
             name=broker2.hostname,
             ip=str(broker2.private_ip_address),
             net=json.dumps(broker_2_nets),
+            node_id=broker2.get_node_id()
         )
     )
     brokers_list = manager_list_brokers(manager)
