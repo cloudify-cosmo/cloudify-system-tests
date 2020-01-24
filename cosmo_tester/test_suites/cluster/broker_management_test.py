@@ -360,6 +360,9 @@ def test_broker_management(brokers_and_manager, logger):
         'port': 5671,
         'networks': {'default': str(broker1.private_ip_address)},
         'name': broker1.hostname,
+        'is_external': False,
+        'host': broker1.private_ip_address,
+        'node_id': broker1.get_node_id()
     }
     broker_2_nets = {'default': str(broker2.private_ip_address),
                      'testnet': '192.0.2.4'}
@@ -367,6 +370,9 @@ def test_broker_management(brokers_and_manager, logger):
         'port': 5671,
         'networks': broker_2_nets,
         'name': broker2.hostname,
+        'is_external': False,
+        'host': broker2.private_ip_address,
+        'node_id': broker2.get_node_id()
     }
 
     logger.info('Confirming list functionality.')
