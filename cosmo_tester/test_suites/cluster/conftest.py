@@ -329,6 +329,7 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         broker = brokers[0]
         rabbit_nodes = {
             broker.hostname: {
+                'node_id': broker.get_node_id(),
                 'networks': {
                     'default': str(broker.private_ip_address)
                 }
