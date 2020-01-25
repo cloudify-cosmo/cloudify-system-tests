@@ -14,12 +14,12 @@ image_type: 'premium'
 
 # If the manager install rpm name is not set, the latest image name will be taken from
 # (cloudify-premium|cloudify-versions)/packages-urls/manager-install-rpm.yaml
-cloudify_manager_install_rpm_url: ''
+cloudify_manager_install_rpm_url: http://repository.cloudifysource.org/cloudify/5.0.5/ga-release/cloudify-manager-install-5.0.5ga.rpm
 
 # If the latest image name is not set, the latest image name will be generated
 # based on the image name prefix and the currently installed CLI version
 # e.g. cloudify-manager-premium-4.3.1.dev1
-cloudify_manager_latest_image: ''
+cloudify_manager_latest_image: cloudify-manager-premium-5.0.5
 cloudify_manager_image_name_prefix: cloudify-manager-premium
 cloudify_manager_5_0_5_image_name: cloudify-manager-premium-5.0.5
 cloudify_manager_4_6_image_name: cloudify-manager-premium-4.6
