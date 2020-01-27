@@ -1163,19 +1163,29 @@ class TestHosts(object):
         self._logger.info('Attempting to download logs for Cloudify Manager '
                           'with ID: {}...'.format(instance.server_id))
         self._logger.info('Switching profiles...')
-        instance.use()
-        logs_filename = '{}__{}_logs.tar.gz'.format(_generate_prefix(),
-                                                    instance.server_id)
-        target = os.path.join(logs_dir, logs_filename)
-        self._logger.info('Force updating the profile...')
-        self._cfy.profiles.set(
-            ssh_key=instance.ssh_key.private_key_path,
-            ssh_user=instance.username,
-            skip_credentials_validation=True)
-        self._logger.info('Starting to download the logs...')
-        self._cfy.logs.download(output_path=target)
-        self._logger.info('Purging the logs...')
-        self._cfy.logs.purge(force=True)
+        try:
+            instance.use()
+            logs_filename = '{}__{}_logs.tar.gz'.format(_generate_prefix(),
+                                                        instance.server_id)
+            target = os.path.join(logs_dir, logs_filename)
+            self._logger.info('Force updating the profile...')
+            self._cfy.profiles.set(
+                ssh_key=instance.ssh_key.private_key_path,
+                ssh_user=instance.username,
+                skip_credentials_validation=True)
+            self._logger.info('Starting to download the logs...')
+            self._cfy.logs.download(output_path=target)
+            self._logger.info('Purging the logs...')
+            self._cfy.logs.purge(force=True)
+        except Exception as err:
+            self._logger.warning(
+                'Failed to download logs for node with ID %(id)s, due to '
+                'error: %(err)s',
+                {
+                    'id': instance.server_id,
+                    'err': str(err),
+                },
+            )
 
 
 class BootstrappableHosts(TestHosts):
