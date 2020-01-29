@@ -3,6 +3,7 @@ import time
 from os import path
 
 import sh
+import retrying
 
 from cloudify.constants import BROKER_PORT_SSL
 from cloudify.exceptions import TimeoutException
@@ -219,15 +220,10 @@ def _verify_status_when_syncthing_inactive(mgr1, mgr2, cert_path, logger, cfy):
 def _verify_status_when_postgres_inactive(db1, db2, logger, cfy):
     logger.info('Stopping one of the db nodes')
     db1.run_command('systemctl stop patroni etcd', use_sudo=True)
-    time.sleep(10)
-
-    cluster_status = _get_cluster_status(cfy)
-    db_service = cluster_status['services']['db']
-    assert cluster_status['status'] == ServiceStatus.DEGRADED
-    assert db_service['status'] == ServiceStatus.DEGRADED
+    db_service = _assert_cluster_status_after_db_changes(
+        ServiceStatus.DEGRADED, logger, cfy
+    )
     assert db_service['nodes'][db1.hostname]['status'] == ServiceStatus.FAIL
-    manager_status = _get_manager_status(cfy)
-    assert manager_status['status'] == ServiceStatus.HEALTHY
 
     logger.info('Stopping another db node')
     db2.run_command('systemctl stop patroni etcd', use_sudo=True)
@@ -241,8 +237,7 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, cfy):
     logger.info('Starting Patroni and Etcd on the failed db nodes')
     db1.run_command('systemctl start patroni etcd', use_sudo=True)
     db2.run_command('systemctl start patroni etcd', use_sudo=True)
-    time.sleep(10)
-    _assert_cluster_status(cfy)
+    _assert_cluster_status_after_db_changes(ServiceStatus.HEALTHY, logger, cfy)
 
 
 def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
@@ -286,3 +281,16 @@ def _get_cluster_status(cfy):
 
 def _get_manager_status(cfy):
     return json.loads(cfy.status('--json').stdout[4:-8])
+
+
+@retrying.retry(stop_max_attempt_number=4, wait_fixed=10000)
+def _assert_cluster_status_after_db_changes(status, logger, cfy):
+    logger.info('Check cluster status after DB changes')
+    cluster_status = _get_cluster_status(cfy)
+    db_service = cluster_status['services']['db']
+    assert cluster_status['status'] == status
+    assert db_service['status'] == status
+    manager_status = _get_manager_status(cfy)
+    assert manager_status['status'] == ServiceStatus.HEALTHY
+    logger.info('The cluster status is valid after DB changes')
+    return db_service
