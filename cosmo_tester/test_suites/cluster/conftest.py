@@ -1,4 +1,5 @@
 import os
+import json
 import time
 
 import pytest
@@ -139,6 +140,7 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                                     high_security, tempdir, logger,
                                     attributes)
 
+        _configure_status_reporters(managers, brokers, dbs, logger)
         logger.info('All nodes are bootstrapped.')
 
         yield hosts.instances
@@ -418,4 +420,33 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         api_version=node.api_version,
         cert=node.local_ca,
         protocol='https',
+    )
+
+
+def _configure_status_reporters(managers, brokers, dbs, logger):
+    logger.info('Configuring status reporters')
+    reporters_tokens = json.loads(
+        managers[0].run_command(
+            # We pipe through cat to get rid of unhelpful shell escape
+            # characters that cfy adds
+            'cfy_manager status-reporter get-tokens --json 2>/dev/null | cat'
+        )
+    )
+    managers_ip = ' '.join([manager.private_ip_address
+                            for manager in managers])
+    for broker in brokers:
+        _configure_status_reporter(broker,
+                                   managers_ip,
+                                   reporters_tokens['broker_status_reporter'])
+
+    for db in dbs:
+        _configure_status_reporter(db,
+                                   managers_ip,
+                                   reporters_tokens['db_status_reporter'])
+
+
+def _configure_status_reporter(node, managers_ip, token):
+    node.run_command(
+        'cfy_manager status-reporter configure --managers-ip {0} '
+        '--token {1} --ca-path {2}'.format(managers_ip, token, node.remote_ca)
     )
