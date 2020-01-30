@@ -140,7 +140,9 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                                     high_security, tempdir, logger,
                                     attributes)
 
-        _configure_status_reporters(managers, brokers, dbs, logger)
+        if len(managers) > 1:
+            _configure_status_reporters(managers, brokers, dbs,
+                                        skip_bootstrap_list, logger)
         logger.info('All nodes are bootstrapped.')
 
         yield hosts.instances
@@ -423,7 +425,8 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     )
 
 
-def _configure_status_reporters(managers, brokers, dbs, logger):
+def _configure_status_reporters(managers, brokers, dbs, skip_bootstrap_list,
+                                logger):
     logger.info('Configuring status reporters')
     reporters_tokens = json.loads(
         managers[0].run_command(
@@ -434,15 +437,22 @@ def _configure_status_reporters(managers, brokers, dbs, logger):
     )
     managers_ip = ' '.join([manager.private_ip_address
                             for manager in managers])
-    for broker in brokers:
-        _configure_status_reporter(broker,
-                                   managers_ip,
-                                   reporters_tokens['broker_status_reporter'])
 
-    for db in dbs:
-        _configure_status_reporter(db,
-                                   managers_ip,
-                                   reporters_tokens['db_status_reporter'])
+    if len(brokers) > 1:
+        for broker in brokers:
+            if broker.friendly_name in skip_bootstrap_list:
+                continue
+            _configure_status_reporter(
+                broker, managers_ip, reporters_tokens['broker_status_reporter']
+            )
+
+    if len(dbs) > 1:
+        for db in dbs:
+            if db.friendly_name in skip_bootstrap_list:
+                continue
+            _configure_status_reporter(db,
+                                       managers_ip,
+                                       reporters_tokens['db_status_reporter'])
 
 
 def _configure_status_reporter(node, managers_ip, token):
