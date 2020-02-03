@@ -1,4 +1,5 @@
 import os
+import json
 import time
 
 import pytest
@@ -59,6 +60,16 @@ def full_cluster(cfy, ssh_key, module_tmpdir, attributes,
 
 
 @pytest.fixture()
+def full_cluster_with_lb(cfy, ssh_key, module_tmpdir, attributes,
+                         logger):
+    for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
+                           attributes, logger,
+                           broker_count=3, db_count=3, manager_count=2,
+                           use_load_balancer=True, pre_cluster_rabbit=True):
+        yield _vms
+
+
+@pytest.fixture()
 def cluster_missing_one_db(cfy, ssh_key, module_tmpdir, attributes,
                            logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
@@ -81,7 +92,7 @@ def cluster_with_single_db(cfy, ssh_key, module_tmpdir, attributes,
 
 def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                broker_count=0, manager_count=0, db_count=0,
-               skip_bootstrap_list=None,
+               use_load_balancer=False, skip_bootstrap_list=None,
                # Pre-cluster rabbit determines whether to cluster rabbit
                # during the bootstrap.
                # High security will pre-set all certs (not just required ones)
@@ -91,8 +102,9 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
         skip_bootstrap_list = []
     hosts = BootstrappableHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
-        number_of_instances=broker_count + db_count + manager_count,
-    )
+        number_of_instances=broker_count + db_count + manager_count + (
+            1 if use_load_balancer else 0
+        ))
 
     tempdir = hosts._tmpdir
 
@@ -114,7 +126,10 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
 
         brokers = hosts.instances[:broker_count]
         dbs = hosts.instances[broker_count:broker_count + db_count]
-        managers = hosts.instances[broker_count + db_count:]
+        managers = hosts.instances[broker_count + db_count:
+                                   broker_count + db_count + manager_count]
+        if use_load_balancer:
+            lb = hosts.instances[broker_count + db_count + manager_count]
 
         for node_num, node in enumerate(brokers, start=1):
             _bootstrap_rabbit_node(node, node_num, brokers,
@@ -138,6 +153,12 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                                     skip_bootstrap_list, pre_cluster_rabbit,
                                     high_security, tempdir, logger,
                                     attributes)
+
+        if len(managers) > 1:
+            _configure_status_reporters(managers, brokers, dbs,
+                                        skip_bootstrap_list, logger)
+        if use_load_balancer:
+            _bootstrap_lb_node(lb, managers, tempdir, logger)
 
         logger.info('All nodes are bootstrapped.')
 
@@ -419,3 +440,92 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         cert=node.local_ca,
         protocol='https',
     )
+
+
+def _configure_status_reporters(managers, brokers, dbs, skip_bootstrap_list,
+                                logger):
+    logger.info('Configuring status reporters')
+    reporters_tokens = json.loads(
+        managers[0].run_command(
+            # We pipe through cat to get rid of unhelpful shell escape
+            # characters that cfy adds
+            'cfy_manager status-reporter get-tokens --json 2>/dev/null | cat'
+        )
+    )
+    managers_ip = ' '.join([manager.private_ip_address
+                            for manager in managers])
+
+    if len(brokers) > 1:
+        for broker in brokers:
+            if broker.friendly_name in skip_bootstrap_list:
+                continue
+            _configure_status_reporter(
+                broker, managers_ip, reporters_tokens['broker_status_reporter']
+            )
+
+    if len(dbs) > 1:
+        for db in dbs:
+            if db.friendly_name in skip_bootstrap_list:
+                continue
+            _configure_status_reporter(db,
+                                       managers_ip,
+                                       reporters_tokens['db_status_reporter'])
+
+
+def _configure_status_reporter(node, managers_ip, token):
+    node.run_command(
+        'cfy_manager status-reporter configure --managers-ip {0} '
+        '--token {1} --ca-path {2}'.format(managers_ip, token, node.remote_ca)
+    )
+
+
+def _bootstrap_lb_node(node, managers, tempdir, logger):
+    node.friendly_name = 'haproxy'
+    _base_prep(node, tempdir)
+    logger.info('Preparing load balancer {}'.format(node.hostname))
+
+    # install haproxy and import certs
+    install_sh = """yum install -y haproxy
+    cat {cert} {key} > /tmp/cert.pem\n       mv /tmp/cert.pem /etc/haproxy
+    chown haproxy. /etc/haproxy/cert.pem\n   chmod 400 /etc/haproxy/cert.pem
+    cp {ca} /etc/haproxy\n                   chown haproxy. /etc/haproxy/ca.crt
+    restorecon /etc/haproxy/*""".format(
+        cert=node.remote_cert, key=node.remote_key, ca=node.remote_ca)
+    node.run_command('echo "{}" > /tmp/haproxy_install.sh'.format(install_sh))
+    node.run_command('chmod 700 /tmp/haproxy_install.sh')
+    node.run_command('sudo /tmp/haproxy_install.sh')
+
+    # configure haproxy
+    haproxy_config = """global
+    maxconn 100
+    tune.ssl.default-dh-param 2048
+defaults
+    log global
+    retries 2
+    timeout client 30m
+    timeout connect 4s
+    timeout server 30m
+    timeout check 5s
+listen manager
+    bind *:80
+    bind *:443 ssl crt /etc/haproxy/cert.pem
+    redirect scheme https if !{ ssl_fc }
+    mode http
+    option forwardfor
+    stick-table type ip size 1m expire 1h
+    stick on src
+    option httpchk GET /api/v3.1/status
+    http-check expect status 401
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    """
+
+    for manager in managers:
+        haproxy_config += '    server manager_{private} {public} maxconn ' \
+                          '100 ssl check-ssl port 443 ca-file /etc/haproxy/' \
+                          'ca.crt\n'.format(private=manager.private_ip_address,
+                                            public=manager.ip_address)
+    node.run_command('echo "{config}" | sudo tee '
+                     '/etc/haproxy/haproxy.cfg'.format(config=haproxy_config))
+
+    node.run_command('sudo systemctl enable haproxy')
+    node.run_command('sudo systemctl restart haproxy')
