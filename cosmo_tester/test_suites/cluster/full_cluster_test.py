@@ -51,16 +51,12 @@ def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
 
 def test_queue_node_failover(cluster_with_single_db, logger,
                              module_tmpdir, attributes, ssh_key, cfy):
-    hello_world = _prepare_cluster_with_agent(
-        cluster_with_single_db, logger,
-        module_tmpdir, attributes, ssh_key, cfy
-    )
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
-
+    hello_world = _prepare_cluster_with_agent(
+        [mgr1, mgr2], logger, module_tmpdir, attributes, ssh_key, cfy
+    )
     # cfy commands will use mgr1
-    cert_path = path.join(module_tmpdir, 'ca.crt')
-    mgr1.get_remote_file(mgr1.remote_ca, cert_path)
-    mgr1.use(cert_path=cert_path)
+    mgr1.use(cert_path=mgr1.local_ca)
 
     _validate_cluster_and_agents(cfy)
     agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(mgr1)
@@ -116,6 +112,77 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                                tenant=hello_world.tenant))
 
 
+def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
+                               attributes, ssh_key, cfy):
+    broker, db, mgr1, mgr2, mgr3, lb = cluster_with_lb
+
+    lb.use(cert_path=lb.local_ca)
+    _wait_for_cfy_node_to_start_serving(cfy)  # where the cfy node = the LB
+
+    hello_world = _prepare_cluster_with_agent(
+        [mgr1, mgr2, mgr3], logger, module_tmpdir, attributes, ssh_key, cfy
+    )
+    _validate_cluster_and_agents(cfy)
+
+    # get agent's manager node
+    agent_host = json.loads(cfy.agents.list('--json').stdout)[0]['id']
+    lb.client._client.cert = lb.local_ca
+    node_instances = lb.client.node_instances.list().items
+    agent_manager_ip = None
+    for instance in node_instances:
+        if instance.id == agent_host:
+            agent_manager_ip = instance.runtime_properties['cloudify_agent'][
+                'file_server_url'].split('/')[2].split(':')[0]
+            break
+    agent_mgr = None
+    for manager in [mgr1, mgr2, mgr3]:
+        if manager.private_ip_address == agent_manager_ip:
+            agent_mgr = manager
+            break
+
+    # stop the manager connected to the agent
+    with agent_mgr.ssh() as manager_ssh:
+        manager_ssh.run('cfy_manager stop')
+
+    _wait_for_cfy_node_to_start_serving(cfy)
+    time.sleep(5)  # wait 5 secs for status reporter to poll
+    _validate_cluster_and_agents(cfy, expected_managers_status='Degraded')
+
+    # restart the manager connected to the agent
+    with agent_mgr.ssh() as manager_ssh:
+        manager_ssh.run('cfy_manager start')
+
+    time.sleep(5)
+    _validate_cluster_and_agents(cfy)
+
+    # stop two managers
+    with mgr2.ssh() as manager_ssh:
+        manager_ssh.run('cfy_manager stop')
+    with mgr3.ssh() as manager_ssh:
+        manager_ssh.run('cfy_manager stop')
+
+    _wait_for_cfy_node_to_start_serving(cfy)
+    time.sleep(5)
+    _validate_cluster_and_agents(cfy, expected_managers_status='Degraded')
+
+    # finally, uninstall the hello world
+    mgr1.run_command(
+        'cfy executions start uninstall -d {deployment_id} -t {tenant} '
+        '--timeout 900'.format(deployment_id=hello_world.deployment_id,
+                               tenant=hello_world.tenant))
+
+
+def _wait_for_cfy_node_to_start_serving(cfy, timeout=15):
+    for _ in range(timeout):
+        time.sleep(1)
+        try:
+            cfy.status()
+            return
+        except Exception:
+            continue
+    raise TimeoutException
+
+
 def _wait_for_healthy_broker_cluster(cfy, timeout=15):
     for _ in range(timeout):
         time.sleep(1)
@@ -126,25 +193,23 @@ def _wait_for_healthy_broker_cluster(cfy, timeout=15):
     raise TimeoutException
 
 
-def _prepare_cluster_with_agent(cluster_with_single_db, logger,
-                                module_tmpdir, attributes, ssh_key, cfy):
-    broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
+def _prepare_cluster_with_agent(managers, logger, module_tmpdir, attributes,
+                                ssh_key, cfy):
     logger.info('Installing a deployment with agents')
-    hello_world = centos_hello_world(cfy, mgr1, attributes, ssh_key,
+    hello_world = centos_hello_world(cfy, managers[0], attributes, ssh_key,
                                      logger, module_tmpdir)
 
-    _CloudifyManager.upload_necessary_files(mgr1)
-    _CloudifyManager.upload_necessary_files(mgr2)
-    _CloudifyManager.upload_plugin(mgr1,
-                                   mgr1._attributes.default_openstack_plugin)
+    for manager in managers:
+        _CloudifyManager.upload_necessary_files(manager)
+    _CloudifyManager.upload_plugin(
+        managers[0], managers[0]._attributes.default_openstack_plugin)
 
     # Install a hello world deployment.
     # The test cluster has no outer network access so mgr1.use() won't do, so I
     # use a workaround to run the following functions with the manager's client
-    hello_world.cfy = mgr1.client
     hello_world.upload_blueprint()
     hello_world.create_deployment()
-    mgr1.run_command(
+    managers[0].run_command(
         'cfy executions start install -d {deployment_id} -t {tenant} '
         '--timeout 900'.format(deployment_id=hello_world.deployment_id,
                                tenant=hello_world.tenant))
@@ -152,15 +217,16 @@ def _prepare_cluster_with_agent(cluster_with_single_db, logger,
     return hello_world
 
 
-def _validate_cluster_and_agents(cfy, expected_broker_status='OK'):
+def _validate_cluster_and_agents(cfy,
+                                 expected_broker_status='OK',
+                                 expected_managers_status='OK'):
     validate_agents = cfy.agents.validate()
     assert 'Task succeeded' in validate_agents
 
     cluster_status = _get_cluster_status(cfy)['services']
     manager_status = _get_manager_status(cfy)
-
     assert manager_status['status'] == ServiceStatus.HEALTHY
-    assert cluster_status['manager']['status'] == ServiceStatus.HEALTHY
+    assert cluster_status['manager']['status'] == expected_managers_status
     assert cluster_status['db']['status'] == ServiceStatus.HEALTHY
     assert cluster_status['broker']['status'] == expected_broker_status
 
