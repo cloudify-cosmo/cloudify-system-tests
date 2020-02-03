@@ -51,13 +51,19 @@ def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
 
 def test_queue_node_failover(cluster_with_single_db, logger,
                              module_tmpdir, attributes, ssh_key, cfy):
-    hello_world = prepare_cluster_with_agent(
+    hello_world = _prepare_cluster_with_agent(
         cluster_with_single_db, logger,
         module_tmpdir, attributes, ssh_key, cfy
     )
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
-    validate_cluster_and_agents(mgr1)
-    agent_broker_ip1 = verify_agent_broker_connection_and_get_broker_ip(mgr1)
+
+    # cfy commands will use mgr1
+    cert_path = path.join(module_tmpdir, 'ca.crt')
+    mgr1.get_remote_file(mgr1.remote_ca, cert_path)
+    mgr1.use(cert_path=cert_path)
+
+    _validate_cluster_and_agents(cfy)
+    agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(mgr1)
 
     # stop the rabbitmq service in the agent's broker node
     agent_broker = None
@@ -69,9 +75,9 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         broker_ssh.run('sudo service cloudify-rabbitmq stop')
 
     # the agent should now pick another broker
-    validate_cluster_and_agents(mgr1, expected_broker_status='Degraded')
+    _validate_cluster_and_agents(cfy, expected_broker_status='Degraded')
     agent_broker_ip2 = \
-        verify_agent_broker_connection_and_get_broker_ip(mgr1)
+        _verify_agent_broker_connection_and_get_broker_ip(mgr1)
     assert agent_broker_ip2 != agent_broker_ip1
 
     # The following asserts that the agent will reconnect to a stopped and
@@ -91,12 +97,12 @@ def test_queue_node_failover(cluster_with_single_db, logger,
             if broker.private_ip_address == new_agent_broker_ip:
                 agent_broker = broker
                 break
-        wait_for_healthy_broker_cluster(mgr1)
+        _wait_for_healthy_broker_cluster(cfy)
         with agent_broker.ssh() as broker_ssh:
             broker_ssh.run('sudo service cloudify-rabbitmq stop')
         agent_broker_ip = new_agent_broker_ip
         new_agent_broker_ip = \
-            verify_agent_broker_connection_and_get_broker_ip(mgr1)
+            _verify_agent_broker_connection_and_get_broker_ip(mgr1)
         if new_agent_broker_ip in restarted_broker_ips:
             restarted_broker_connected = True
         assert len(restarted_broker_ips) < 3
@@ -110,18 +116,18 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                                tenant=hello_world.tenant))
 
 
-def wait_for_healthy_broker_cluster(mgr_node, timeout=15):
+def _wait_for_healthy_broker_cluster(cfy, timeout=15):
     for _ in range(timeout):
         time.sleep(1)
-        cluster_status = mgr_node.run_command('cfy cluster status --json')
-        cluster_status = json.loads(cluster_status.strip('\033[0m'))
-        if cluster_status['services']['broker']['status'] == 'OK':
+        cluster_status = _get_cluster_status(cfy)
+        if cluster_status['services']['broker']['status'] == \
+                ServiceStatus.HEALTHY:
             return
     raise TimeoutException
 
 
-def prepare_cluster_with_agent(cluster_with_single_db, logger,
-                               module_tmpdir, attributes, ssh_key, cfy):
+def _prepare_cluster_with_agent(cluster_with_single_db, logger,
+                                module_tmpdir, attributes, ssh_key, cfy):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
     logger.info('Installing a deployment with agents')
     hello_world = centos_hello_world(cfy, mgr1, attributes, ssh_key,
@@ -146,21 +152,20 @@ def prepare_cluster_with_agent(cluster_with_single_db, logger,
     return hello_world
 
 
-def validate_cluster_and_agents(mgr_node, expected_manager_status='OK',
-                                expected_broker_status='OK'):
-    validate_agents = mgr_node.run_command('cfy agents validate')
+def _validate_cluster_and_agents(cfy, expected_broker_status='OK'):
+    validate_agents = cfy.agents.validate()
     assert 'Task succeeded' in validate_agents
 
-    manager_status = mgr_node.run_command('cfy status --json')
-    cluster_status = mgr_node.run_command('cfy cluster status --json')
-    cluster_status = json.loads(cluster_status.strip('\033[0m'))['services']
-    assert json.loads(manager_status.strip('\033[0m'))['status'] == 'OK'
-    assert cluster_status['manager']['status'] == expected_manager_status
-    assert cluster_status['db']['status'] == 'OK'
+    cluster_status = _get_cluster_status(cfy)['services']
+    manager_status = _get_manager_status(cfy)
+
+    assert manager_status['status'] == ServiceStatus.HEALTHY
+    assert cluster_status['manager']['status'] == ServiceStatus.HEALTHY
+    assert cluster_status['db']['status'] == ServiceStatus.HEALTHY
     assert cluster_status['broker']['status'] == expected_broker_status
 
 
-def verify_agent_broker_connection_and_get_broker_ip(mgr_node):
+def _verify_agent_broker_connection_and_get_broker_ip(mgr_node):
     netstat_check_command = \
         'sudo ssh -i /etc/cloudify/key.pem -o StrictHostKeyChecking=no ' \
         'centos@{agent_ip} netstat -na | grep {broker_port}'
@@ -276,11 +281,13 @@ def _assert_cluster_status(cfy):
 
 
 def _get_cluster_status(cfy):
-    return json.loads(cfy.cluster.status('--json').stdout[4:-8])
+    cluster_status = cfy.cluster.status('--json').stdout
+    return json.loads(cluster_status.strip('\033[0m'))
 
 
 def _get_manager_status(cfy):
-    return json.loads(cfy.status('--json').stdout[4:-8])
+    manager_status = cfy.status('--json').stdout
+    return json.loads(manager_status.strip('\033[0m'))
 
 
 @retrying.retry(stop_max_attempt_number=4, wait_fixed=10000)
