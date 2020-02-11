@@ -14,8 +14,8 @@ from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     restore_snapshot,
 )
-from cosmo_tester.framework.examples.hello_world import centos_hello_world
 from cosmo_tester.framework.test_hosts import _CloudifyManager
+from cosmo_tester.framework.examples.hello_world import centos_hello_world
 
 
 def test_full_cluster(full_cluster, logger, attributes, cfy):
@@ -180,6 +180,67 @@ def _wait_for_cfy_node_to_start_serving(cfy, timeout=15):
             return
         except Exception:
             continue
+    raise TimeoutException
+
+
+def test_workflow_resume_manager_failover(minimal_cluster, cfy):
+    broker, db, mgr1, mgr2 = minimal_cluster
+    mgr1.use(cert_path=mgr1.local_ca)
+    plugin_name = 'waiting'
+    plugin_yaml = '{}-blueprint.yaml'.format(plugin_name)
+    plugin_wagon = 'testplugin-0.0.0-py27-none-any.wgn'
+
+    # upload a mock plugin which waits 1 minute, deploy and execute
+    tests_root = path.dirname(path.dirname(path.dirname(
+        path.realpath(__file__))))
+    blueprints_dir = path.join(tests_root, 'resources', 'blueprints', 'mocks')
+    cfy.blueprints.upload(path.join(blueprints_dir, plugin_yaml),
+                          '-b', plugin_name)
+    cfy.plugins.upload(path.join(blueprints_dir, plugin_wagon), '-y',
+                       path.join(blueprints_dir, plugin_yaml))
+    cfy.deployments.create(plugin_name, '-b', plugin_name)
+    _wait_for_deployment_creation(cfy, plugin_name)
+    execution_start_time = time.time()
+    mgr1.client.executions.start(plugin_name, 'install')
+
+    # check which management worker handles the execution
+    exec_node_id = mgr1.client.node_instances.list()[0].id
+    time.sleep(3)   # wait for mgmtworker to get the execution
+    executing_manager = None
+    other_manager = None
+    for manager in [mgr1, mgr2]:
+        try:
+            manager.run_command('grep {} /var/log/cloudify/mgmtworker/'
+                                'mgmtworker.log'.format(exec_node_id))
+        except Exception:
+            continue
+        executing_manager = manager
+        other_manager = ({mgr1, mgr2} - {executing_manager}).pop()
+
+    # kill the first manager and  wait for execution to finish
+    with executing_manager.ssh() as manager_ssh:
+        manager_ssh.run('cfy_manager stop')
+    manager_failover_time = time.time()
+    assert manager_failover_time - execution_start_time < 60
+    time.sleep(60)
+    other_manager.use(cert_path=other_manager.local_ca)
+
+    # verify on the second manager that the execution completed successfully
+    executions = json.loads(cfy.executions.list('--json').stdout)
+    installs = [execution for execution in executions
+                if execution['workflow_id'] == 'install']
+    assert len(installs) == 1
+    assert installs[0]['status'] == 'completed'
+
+
+def _wait_for_deployment_creation(cfy, deployment_id, timeout=15):
+    for _ in range(timeout):
+        time.sleep(1)
+        args = ['--json', '-d', deployment_id]
+        deployment_create_execs = json.loads(cfy.executions.list(args).stdout)
+        if (len(deployment_create_execs) > 0 and
+                deployment_create_execs[0]['status'] == 'completed'):
+            return
     raise TimeoutException
 
 
