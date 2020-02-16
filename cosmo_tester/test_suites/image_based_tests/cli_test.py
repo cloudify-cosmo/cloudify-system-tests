@@ -137,7 +137,7 @@ def test_cli_on_osx(package_tester, attributes):
         'osx_user': os.environ["MACINCLOUD_USERNAME"],
         'osx_password': os.environ["MACINCLOUD_PASSWORD"],
         'osx_ssh_key': os.environ["MACINCLOUD_SSH_KEY"],
-        'cli_package_url': get_cli_package_url('osx_cli_package_url'),
+        'cli_cloudify': os.environ["CLI_CLOUDIFY"],
     }
     package_tester.run_test(inputs)
 

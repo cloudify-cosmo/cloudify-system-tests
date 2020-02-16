@@ -6,7 +6,7 @@ variable "osx_public_ip" {}
 variable "osx_user" {}
 variable "osx_password" {}
 variable "osx_ssh_key" {}
-variable "cli_package_url" {}
+variable "cli_cloudify" {}
 
 # MANAGER
 output "manager_public_ip_address" { value = "${aws_instance.manager.public_ip}" }
@@ -101,7 +101,7 @@ resource "null_resource" "macincloud" {
       "chmod +x /tmp/osx-cli-test.sh && chmod 600 /tmp/key.pem",
       "export MACINCLOUD_PASSWORD=${var.osx_password}",
       "ssh -i /tmp/key.pem -o 'StrictHostKeychecking=no' centos@${aws_instance.manager.public_ip} 'sudo yum update openssl -y'",
-      "/tmp/osx-cli-test.sh ${var.cli_package_url} /tmp/key.pem ${aws_instance.manager.public_ip} ${aws_instance.manager.private_ip} ${var.manager_user}",
+      "/tmp/osx-cli-test.sh ${var.cli_cloudify} /tmp/key.pem ${aws_instance.manager.public_ip} ${aws_instance.manager.private_ip} ${var.manager_user}",
       "rm -rf /tmp/key.pem"
     ]
   }

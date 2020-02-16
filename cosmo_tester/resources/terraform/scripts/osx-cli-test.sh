@@ -1,20 +1,21 @@
 #!/bin/bash
 
-CLI_PACKAGE_URL=$1
+CLI_CLOUDIFY=$1
 AGENT_KEY_PATH=$2
 PUBLIC_IP=$3
 PRIVATE_IP=$4
 MANAGER_USER=$5
 
-echo "Using CLI package: ${CLI_PACKAGE_URL}"
-
-
-curl ${CLI_PACKAGE_URL} -o /tmp/package.pkg
-echo $MACINCLOUD_PASSWORD | sudo -S installer -pkg /tmp/package.pkg -target /
+env_dir=$HOME/cli-env
+rm -rf $env_dir
+virtualenv $env_dir
+source $env_dir/bin/activate
 
 set -e
 
-cfy=/usr/local/opt/cfy/bin/cfy
+echo "Installing cloudify cli using pip from: $CLI_CLOUDIFY"
+
+pip install $CLI_CLOUDIFY
 
 cfy profiles use ${PRIVATE_IP} -u admin -p admin -t default_tenant
 
