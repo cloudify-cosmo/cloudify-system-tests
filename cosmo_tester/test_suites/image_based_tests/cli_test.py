@@ -30,6 +30,7 @@ import winrm
 from cosmo_tester.framework.util import (
     AttributesDict,
     get_cli_package_url,
+    get_manager_install_rpm_url,
     get_openstack_server_password,
     get_resource_path,
     sh_bake,
@@ -138,6 +139,7 @@ def test_cli_on_osx(package_tester, attributes):
         'osx_password': os.environ["MACINCLOUD_PASSWORD"],
         'osx_ssh_key': os.environ["MACINCLOUD_SSH_KEY"],
         'cli_cloudify': os.environ["CLI_CLOUDIFY"],
+        'cloudify_rpm_url': get_manager_install_rpm_url()
     }
     package_tester.run_test(inputs)
 

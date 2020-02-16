@@ -7,6 +7,7 @@ variable "osx_user" {}
 variable "osx_password" {}
 variable "osx_ssh_key" {}
 variable "cli_cloudify" {}
+variable "cloudify_rpm_url" {}
 
 # MANAGER
 output "manager_public_ip_address" { value = "${aws_instance.manager.public_ip}" }
@@ -68,6 +69,14 @@ resource "aws_instance" "manager" {
   tags {
     "Name" = "system-test OSX cli-test"
   }
+
+  provisioner "remote-exec" {
+    inline = [
+        "sudo yum update openssl -y",
+        "sudo yum install ${var.cloudify_rpm_url} -y",
+        "cfy_manager install --public-ip ${aws_instance.manager.public_ip} -private-ip ${aws_instance.manager.private_ip} -a admin"
+        ]
+    }
 }
 
 # macincoud Dedicated server
@@ -100,7 +109,6 @@ resource "null_resource" "macincloud" {
     inline = [
       "chmod +x /tmp/osx-cli-test.sh && chmod 600 /tmp/key.pem",
       "export MACINCLOUD_PASSWORD=${var.osx_password}",
-      "ssh -i /tmp/key.pem -o 'StrictHostKeychecking=no' centos@${aws_instance.manager.public_ip} 'sudo yum update openssl -y'",
       "/tmp/osx-cli-test.sh ${var.cli_cloudify} /tmp/key.pem ${aws_instance.manager.public_ip} ${aws_instance.manager.private_ip} ${var.manager_user}",
       "rm -rf /tmp/key.pem"
     ]
