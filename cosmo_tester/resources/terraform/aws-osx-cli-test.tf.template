@@ -6,7 +6,9 @@ variable "osx_public_ip" {}
 variable "osx_user" {}
 variable "osx_password" {}
 variable "osx_ssh_key" {}
-variable "cli_package_url" {}
+variable "cli_cloudify" {}
+variable "cloudify_rpm_url" {}
+variable "cloudify_license" {}
 
 # MANAGER
 output "manager_public_ip_address" { value = "${aws_instance.manager.public_ip}" }
@@ -68,6 +70,37 @@ resource "aws_instance" "manager" {
   tags {
     "Name" = "system-test OSX cli-test"
   }
+
+  connection {
+     type = "ssh"
+     user = "${var.manager_user}"
+     private_key = "${file("/var/lib/jenkins/.ssh/macincloud/macincloud.pem")}"
+     timeout = "10m"
+     agent = "false"
+   }
+
+{% if cloudify_license %}
+  provisioner "file" {
+    source = "${var.cloudify_license}"
+    destination = "/tmp/license.yaml"
+  }
+{% endif %}
+
+  provisioner "file" {
+    source = "/var/lib/jenkins/.ssh/macincloud/macincloud.pem"
+    destination = "/tmp/key.pem"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+        "sudo yum install openssl-1.0.2k -y",
+        "sudo yum install ${var.cloudify_rpm_url} -y",
+        "cfy_manager install --public-ip ${aws_instance.manager.public_ip} --private-ip ${aws_instance.manager.private_ip} -a admin",
+        {% if cloudify_license %}
+          "cfy license upload /tmp/license.yaml",
+        {% endif %}
+        ]
+    }
 }
 
 # macincoud Dedicated server
@@ -90,18 +123,11 @@ resource "null_resource" "macincloud" {
 
   }
 
-  provisioner "file" {
-    source = "/var/lib/jenkins/.ssh/macincloud/macincloud.pem"
-    destination = "/tmp/key.pem"
-
-  }
-
   provisioner "remote-exec" {
     inline = [
-      "chmod +x /tmp/osx-cli-test.sh && chmod 600 /tmp/key.pem",
+      "chmod +x /tmp/osx-cli-test.sh",
       "export MACINCLOUD_PASSWORD=${var.osx_password}",
-      "ssh -i /tmp/key.pem -o 'StrictHostKeychecking=no' centos@${aws_instance.manager.public_ip} 'sudo yum update openssl -y'",
-      "/tmp/osx-cli-test.sh ${var.cli_package_url} /tmp/key.pem ${aws_instance.manager.public_ip} ${aws_instance.manager.private_ip} ${var.manager_user}",
+      "/tmp/osx-cli-test.sh ${var.cli_cloudify} /tmp/key.pem ${aws_instance.manager.public_ip} ${aws_instance.manager.private_ip} ${var.manager_user}",
       "rm -rf /tmp/key.pem"
     ]
   }
