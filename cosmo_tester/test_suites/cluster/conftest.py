@@ -3,9 +3,13 @@ import json
 import time
 
 import pytest
+from os.path import join, dirname
+from jinja2 import Environment, FileSystemLoader
 
 from cosmo_tester.framework.test_hosts import BootstrappableHosts
 from cosmo_tester.framework import util
+
+CONFIG_DIR = join(dirname(__file__), 'config')
 
 
 def skip(*args, **kwargs):
@@ -50,8 +54,7 @@ def brokers3_and_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
 
 
 @pytest.fixture()
-def full_cluster(cfy, ssh_key, module_tmpdir, attributes,
-                 logger):
+def full_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
                            attributes, logger,
                            broker_count=3, db_count=3, manager_count=2,
@@ -60,11 +63,10 @@ def full_cluster(cfy, ssh_key, module_tmpdir, attributes,
 
 
 @pytest.fixture()
-def full_cluster_with_lb(cfy, ssh_key, module_tmpdir, attributes,
-                         logger):
+def cluster_with_lb(cfy, ssh_key, module_tmpdir, attributes, logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
                            attributes, logger,
-                           broker_count=3, db_count=3, manager_count=2,
+                           broker_count=1, db_count=1, manager_count=3,
                            use_load_balancer=True, pre_cluster_rabbit=True):
         yield _vms
 
@@ -455,13 +457,12 @@ def _configure_status_reporters(managers, brokers, dbs, skip_bootstrap_list,
     managers_ip = ' '.join([manager.private_ip_address
                             for manager in managers])
 
-    if len(brokers) > 1:
-        for broker in brokers:
-            if broker.friendly_name in skip_bootstrap_list:
-                continue
-            _configure_status_reporter(
-                broker, managers_ip, reporters_tokens['broker_status_reporter']
-            )
+    for broker in brokers:
+        if broker.friendly_name in skip_bootstrap_list:
+            continue
+        _configure_status_reporter(
+            broker, managers_ip, reporters_tokens['broker_status_reporter']
+        )
 
     if len(dbs) > 1:
         for db in dbs:
@@ -489,36 +490,14 @@ def _bootstrap_lb_node(node, managers, tempdir, logger):
     node.run_command('sudo /tmp/haproxy_install.sh')
 
     # configure haproxy
-    haproxy_config = """global
-    maxconn 100
-    tune.ssl.default-dh-param 2048
-defaults
-    log global
-    retries 2
-    timeout client 30m
-    timeout connect 4s
-    timeout server 30m
-    timeout check 5s
-listen manager
-    bind *:80
-    bind *:443 ssl crt /etc/haproxy/cert.pem
-    redirect scheme https if !{ ssl_fc }
-    mode http
-    option forwardfor
-    stick-table type ip size 1m expire 1h
-    stick on src
-    option httpchk GET /api/v3.1/status
-    http-check expect status 401
-    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
-    """
-
-    for manager in managers:
-        haproxy_config += '    server manager_{private} {public} maxconn ' \
-                          '100 ssl check-ssl port 443 ca-file /etc/haproxy/' \
-                          'ca.crt\n'.format(private=manager.private_ip_address,
-                                            public=manager.ip_address)
-    node.run_command('echo "{config}" | sudo tee '
-                     '/etc/haproxy/haproxy.cfg'.format(config=haproxy_config))
+    template = Environment(
+        loader=FileSystemLoader(CONFIG_DIR)).get_template('haproxy.cfg')
+    config = template.render(managers=managers)
+    config_path = '/etc/haproxy/haproxy.cfg'
+    node.put_remote_file_content(config_path, config)
+    node.run_command('sudo chown root. {}'.format(config_path))
+    node.run_command('sudo chmod 644 {}'.format(config_path))
+    node.run_command('sudo restorecon {}'.format(config_path))
 
     node.run_command('sudo systemctl enable haproxy')
     node.run_command('sudo systemctl restart haproxy')
