@@ -136,7 +136,7 @@ def test_cli_on_osx(package_tester, attributes):
     inputs = {
         'manager_image': attributes.centos_7_AMI,
         'manager_flavor': attributes.large_AWS_type,
-        'manager_user': attributes.default_linux_username,
+        'manager_user': attributes.centos_7_username,
         'osx_public_ip': os.environ["MACINCLOUD_HOST"],
         'osx_user': os.environ["MACINCLOUD_USERNAME"],
         'osx_password': os.environ["MACINCLOUD_PASSWORD"],
