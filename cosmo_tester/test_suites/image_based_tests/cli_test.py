@@ -26,6 +26,8 @@ from path import Path
 import pytest
 import retrying
 import winrm
+import yaml
+import jinja2
 
 from cosmo_tester.framework.util import (
     AttributesDict,
@@ -34,6 +36,7 @@ from cosmo_tester.framework.util import (
     get_openstack_server_password,
     get_resource_path,
     sh_bake,
+    is_community,
 )
 from cosmo_tester.framework.test_hosts import get_latest_manager_image_name
 
@@ -139,8 +142,15 @@ def test_cli_on_osx(package_tester, attributes):
         'osx_password': os.environ["MACINCLOUD_PASSWORD"],
         'osx_ssh_key': os.environ["MACINCLOUD_SSH_KEY"],
         'cli_cloudify': os.environ["CLI_CLOUDIFY"],
-        'cloudify_rpm_url': get_manager_install_rpm_url()
+        'cloudify_rpm_url': get_manager_install_rpm_url(),
+        'cloudify_license': ''
     }
+    if not is_community():
+        inputs['cloudify_license'] = yaml.load(get_resource_path(
+            'test_valid_paying_license.yaml'
+        ))
+    package_tester.template_inputs['cloudify_license'] = \
+        inputs['cloudify_license']
     package_tester.run_test(inputs)
 
 
@@ -347,10 +357,23 @@ $url.ToString() | select-string "Hello, World"
 
 class _OSXCliPackageTester(_CliPackageTester):
 
+    def __init__(self, *args):
+        super(_OSXCliPackageTester, self).__init__(*args)
+        self.template_inputs = {}
+
     def _copy_terraform_files(self):
-        shutil.copy(get_resource_path(
-            'terraform/aws-osx-cli-test.tf'),
-            self.tmpdir / 'aws-osx-cli-test.tf')
+        self._generate_terraform_file()
         shutil.copy(get_resource_path(
             'terraform/scripts/osx-cli-test.sh'),
             self.tmpdir / 'scripts/osx-cli-test.sh')
+
+    def _generate_terraform_file(self):
+        terraform_template_file = self.tmpdir / 'aws-osx-cli-test.tf'
+        input_file = get_resource_path(
+            'terraform/{0}'.format('aws-osx-cli-test.tf.template')
+        )
+        with open(input_file, 'r') as f:
+            tf_template = f.read()
+
+        output = jinja2.Template(tf_template).render(self.template_inputs)
+        terraform_template_file.write_text(output)
