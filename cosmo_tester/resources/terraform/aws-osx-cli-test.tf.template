@@ -73,7 +73,7 @@ resource "aws_instance" "manager" {
 
   connection {
      type = "ssh"
-     user = "ec2-user"
+     user = "${var.manager_user}"
      private_key = "${file("/var/lib/jenkins/.ssh/macincloud/macincloud.pem")}"
      timeout = "10m"
      agent = "false"

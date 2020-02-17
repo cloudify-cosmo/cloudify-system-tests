@@ -44,7 +44,7 @@ default_openstack_plugin: openstack_redhat_maipo
 centos_7_username: centos
 centos_7_image_name: CentOS-7_6-x86_64-GenericCloud
 centos_7_image_id: a1a8b205-cadd-4907-aab4-05bc33e728af
-centos_7_AMI: ami-7abd0209
+centos_7_AMI: ami-07fa304d03840279f
 
 centos_6_username: centos
 centos_6_image_name: centos_6.6
