@@ -246,7 +246,7 @@ def _wait_for_deployment_creation(cfy, deployment_id, timeout=15):
 
 def _wait_for_healthy_broker_cluster(cfy, timeout=15):
     for _ in range(timeout):
-        time.sleep(1)
+        time.sleep(2)
         cluster_status = _get_cluster_status(cfy)
         if cluster_status['services']['broker']['status'] == \
                 ServiceStatus.HEALTHY:
