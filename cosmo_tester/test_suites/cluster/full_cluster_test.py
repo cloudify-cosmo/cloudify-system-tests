@@ -52,12 +52,12 @@ def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
 def test_queue_node_failover(cluster_with_single_db, logger,
                              module_tmpdir, attributes, ssh_key, cfy):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
+
+    # cfy commands will use mgr1
+    mgr1.use(cert_path=mgr1.local_ca)
     hello_world = _prepare_cluster_with_agent(
         [mgr1, mgr2], logger, module_tmpdir, attributes, ssh_key, cfy
     )
-    # cfy commands will use mgr1
-    mgr1.use(cert_path=mgr1.local_ca)
-
     _validate_cluster_and_agents(cfy)
     agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(mgr1)
 
