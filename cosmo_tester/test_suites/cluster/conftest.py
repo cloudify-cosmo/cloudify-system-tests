@@ -92,6 +92,14 @@ def cluster_with_single_db(cfy, ssh_key, module_tmpdir, attributes,
         yield _vms
 
 
+@pytest.fixture()
+def minimal_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
+    for _vms in _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
+                           broker_count=1, db_count=1, manager_count=2,
+                           pre_cluster_rabbit=True):
+        yield _vms
+
+
 def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,
