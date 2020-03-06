@@ -26,7 +26,7 @@ from passlib.context import CryptContext
 from cloudify.snapshots import STATES
 from cosmo_tester.framework.test_hosts import (
     TestHosts,
-    IMAGES,
+    get_image,
 )
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
@@ -718,13 +718,14 @@ def hosts(
     manager_types = [request.param, 'master']
     hello_vms = ['centos' for i in range(hello_count)]
     instances = [
-        IMAGES[mgr_type](upload_plugins=False)
+        get_image(mgr_type)
         for mgr_type in manager_types + hello_vms
     ]
 
     hosts = TestHosts(
         cfy, ssh_key, module_tmpdir,
-        attributes, logger, instances=instances, request=request)
+        attributes, logger, instances=instances, request=request,
+        upload_plugins=False)
     hosts.create()
 
     # gcc and python-devel are needed to build most of our infrastructure
