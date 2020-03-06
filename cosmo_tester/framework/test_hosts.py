@@ -40,16 +40,6 @@ REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 
-MANAGER_API_VERSIONS = {
-    'master': 'v3.1',
-    '5.0.5': 'v3.1',
-    '4.6': 'v3.1',
-    '4.5.5': 'v3.1',
-    '4.5': 'v3.1',
-    '4.4': 'v3.1',
-    '4.3.1': 'v3',
-}
-
 ATTRIBUTES = util.get_attributes()
 
 
@@ -462,7 +452,10 @@ class _CloudifyManager(VM):
 
     @property
     def api_version(self):
-        return MANAGER_API_VERSIONS[self.branch_name]
+        if self.branch_name == '4.3.1':
+            return 'v3'
+        else:
+            return 'v3.1'
 
     # passed to cfy. To be overridden in pre-4.0 versions
     restore_tenant_name = None
