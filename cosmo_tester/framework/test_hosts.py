@@ -24,7 +24,6 @@ import time
 import uuid
 import yaml
 from retrying import retry
-from urllib import urlretrieve
 from contextlib import contextmanager
 from distutils.version import LooseVersion
 
@@ -43,7 +42,6 @@ REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
-RSYNC_SCRIPT_URL = 'https://raw.githubusercontent.com/cloudify-cosmo/cloudify-dev/master/scripts/rsync.sh'  # NOQA
 
 MANAGER_API_VERSIONS = {
     'master': 'v3.1',
@@ -245,7 +243,6 @@ class _CloudifyManager(VM):
         self._cfy = cfy
         self._attributes = attributes
         self._logger = logger
-        self._rsync_path = None
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
         self._openstack = util.create_openstack_client()
@@ -431,15 +428,6 @@ class _CloudifyManager(VM):
     def api_version(self):
         return MANAGER_API_VERSIONS[self.branch_name]
 
-    @property
-    def rsync_path(self):
-        if not self._rsync_path:
-            self._rsync_path = os.path.join(self._tmpdir, 'rsync.sh')
-            urlretrieve(RSYNC_SCRIPT_URL, self._rsync_path)
-            os.chmod(self._rsync_path, 0o755)  # Make the script executable
-
-        return self._rsync_path
-
     # passed to cfy. To be overridden in pre-4.0 versions
     restore_tenant_name = None
     tenant_name = 'default_tenant'
@@ -457,17 +445,6 @@ class _CloudifyManager(VM):
                 key=self._ssh_key.private_key_path)
         )
         raw_input('You can now connect to the manager')
-
-    def sync_local_code_to_manager(self):
-        self._logger.info('Syncing local code to the manager')
-        cmd = ' '.join([
-            self.rsync_path,
-            self.ip_address,
-            self._attributes.default_linux_username,
-            self._ssh_key.private_key_path
-        ])
-        self._logger.info('Running command:\n{0}'.format(cmd))
-        os.system(cmd)
 
     def teardown(self):
         with self.ssh() as fabric_ssh:
