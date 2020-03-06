@@ -20,7 +20,7 @@ from os.path import join
 import pytest
 
 from cosmo_tester.framework import git_helper
-from cosmo_tester.framework.test_hosts import TestHosts, IMAGES
+from cosmo_tester.framework.test_hosts import TestHosts, get_image
 from cosmo_tester.framework.examples.hello_world import get_hello_worlds
 from cosmo_tester.framework.util import is_community
 
@@ -33,7 +33,7 @@ else:
 @pytest.fixture(scope='module', params=VERSIONS)
 def image_based_manager(request, cfy, ssh_key, module_tmpdir, attributes,
                         logger):
-    instances = [IMAGES[request.param](upload_plugins=True)]
+    instances = [get_image(request.param)]
     hosts = TestHosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                       instances=instances, request=request)
     try:

@@ -14,9 +14,6 @@
 #    * limitations under the License.
 
 import textwrap
-from abc import (
-    ABCMeta,
-    abstractproperty)
 
 import json
 import os
@@ -57,11 +54,11 @@ ATTRIBUTES = util.get_attributes()
 
 
 class VM(object):
-    __metaclass__ = ABCMeta
 
-    def __init__(self, upload_plugins=False):
-        """Mainly here for compatibility with other VM types"""
-        self.upload_plugins = upload_plugins
+    def __init__(self, branch_name):
+        self.branch_name = branch_name
+        self.upload_plugins = None
+        self._image_name = None
 
     def create(
             self,
@@ -75,6 +72,7 @@ class VM(object):
             attributes,
             logger,
             tmpdir,
+            upload_plugins,  # Ignored
     ):
         self.index = index
         self.ip_address = public_ip_address
@@ -217,9 +215,6 @@ class VM(object):
 
 class _CloudifyManager(VM):
 
-    def __init__(self, upload_plugins=True):
-        self.upload_plugins = upload_plugins
-
     def create(
             self,
             index,
@@ -231,7 +226,8 @@ class _CloudifyManager(VM):
             cfy,
             attributes,
             logger,
-            tmpdir
+            tmpdir,
+            upload_plugins,
     ):
         self.index = index
         self.ip_address = public_ip_address
@@ -247,6 +243,11 @@ class _CloudifyManager(VM):
         os.makedirs(self._tmpdir)
         self._openstack = util.create_openstack_client()
         self.additional_install_config = {}
+        # Only set this if it wasn't explicitly set elsewhere.
+        # (otherwise multiple test managers cannot have different settings for
+        # this value due to the way we deploy them)
+        if self.upload_plugins is None:
+            self.upload_plugins = upload_plugins
 
     def upload_necessary_files(self):
         self._logger.info('Uploading necessary files to %s', self)
@@ -386,8 +387,14 @@ class _CloudifyManager(VM):
         key = 'server_id_{}'.format(self.index)
         return self._attributes[key]
 
-    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
     def verify_services_are_running(self):
+        if self.branch_name.startswith('4'):
+            return self._old_verify_services_are_running()
+        else:
+            return self._new_verify_services_are_running()
+
+    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
+    def _new_verify_services_are_running(self):
         with self.ssh() as fabric_ssh:
             # the manager-ip-setter script creates the `touched` file when it
             # is done.
@@ -412,17 +419,46 @@ class _CloudifyManager(VM):
                 'service {0} is in {1} state'.format(
                     display_name, service['status'])
 
-    @abstractproperty
-    def branch_name(self):
-        raise NotImplementedError()
+    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
+    def _old_verify_services_are_running(self):
+        with self.ssh() as fabric_ssh:
+            # the manager-ip-setter script creates the `touched` file when it
+            # is done.
+            try:
+                # will fail on bootstrap based managers
+                fabric_ssh.run('systemctl | grep manager-ip-setter')
+            except Exception:
+                pass
+            else:
+                self._logger.info('Verify manager-ip-setter is done..')
+                fabric_ssh.run('cat /opt/cloudify/manager-ip-setter/touched')
+
+        self._logger.info('Verifying all services are running on manager%d..',
+                          self.index)
+        status = self.client.manager.get_status()
+        for service in status['services']:
+            for instance in service['instances']:
+                if all(service not in instance['Id'] for
+                       service in ['postgresql', 'rabbitmq']):
+                    assert instance['SubState'] == 'running', \
+                        'service {0} is in {1} state'.format(
+                            service['display_name'], instance['SubState'])
 
     @property
     def image_name(self):
-        image_name = ATTRIBUTES['cloudify_manager_{}_image_name'.format(
-            self.branch_name.replace('.', '_'))]
-        if ATTRIBUTES['default_manager_distro'] == 'rhel':
-            image_name += '-rhel'
-        return image_name
+        if self._image_name is None:
+            if self.branch_name == 'master':
+                self._image_name = get_latest_manager_image_name()
+            else:
+                self._image_name = ATTRIBUTES[
+                    'cloudify_manager_{}_image_name'.format(
+                        self.branch_name.replace('.', '_')
+                    )
+                ]
+                if ATTRIBUTES['default_manager_distro'] == 'rhel':
+                    self._image_name += '-rhel'
+
+        return self._image_name
 
     @property
     def api_version(self):
@@ -594,49 +630,22 @@ class _CloudifyManager(VM):
                     'Timed out: An execution did not terminate'
                 )
 
-    @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
     def wait_for_manager(self):
+        if self.branch_name.startswith('4'):
+            return self._old_wait_for_manager()
+        else:
+            return self._new_wait_for_manager()
+
+    @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
+    def _new_wait_for_manager(self):
         manager_status = self.client.manager.get_status()
         if manager_status['status'] != HEALTHY_STATE:
             raise StandardError(
                 'Timed out: Reboot did not complete successfully'
             )
 
-
-class _OldStatusFormat(object):
-    """Mixin for a CloudifyManager class, making it use pre-5.0.5 status
-
-    In 5.0.5, the format of the status response changed, so VM classes
-    that represent a pre-5.0.5 manager must use this to use the old way
-    of getting status.
-    """
-    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
-    def verify_services_are_running(self):
-        with self.ssh() as fabric_ssh:
-            # the manager-ip-setter script creates the `touched` file when it
-            # is done.
-            try:
-                # will fail on bootstrap based managers
-                fabric_ssh.run('systemctl | grep manager-ip-setter')
-            except Exception:
-                pass
-            else:
-                self._logger.info('Verify manager-ip-setter is done..')
-                fabric_ssh.run('cat /opt/cloudify/manager-ip-setter/touched')
-
-        self._logger.info('Verifying all services are running on manager%d..',
-                          self.index)
-        status = self.client.manager.get_status()
-        for service in status['services']:
-            for instance in service['instances']:
-                if all(service not in instance['Id'] for
-                       service in ['postgresql', 'rabbitmq']):
-                    assert instance['SubState'] == 'running', \
-                        'service {0} is in {1} state'.format(
-                            service['display_name'], instance['SubState'])
-
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
-    def wait_for_manager(self):
+    def _old_wait_for_manager(self):
         status = self.client.manager.get_status()
         for service in status['services']:
             for instance in service['instances']:
@@ -647,177 +656,51 @@ class _OldStatusFormat(object):
                             'Timed out: Reboot did not complete successfully'
                         )
 
+    def enable_nics(self):
+        """
+        Extra network interfaces need to be manually enabled on the manager
+        `manager.networks` is a dict that looks like this:
+        {
+            "network_0": "10.0.0.6",
+            "network_1": "11.0.0.6",
+            "network_2": "12.0.0.6"
+        }
+        """
+        # The MTU is set to 1450 because we're using a static BOOTPROTO here
+        # (as opposed to DHCP), which sets a lower default by default
+        template = textwrap.dedent("""
+            DEVICE="eth{0}"
+            BOOTPROTO="static"
+            ONBOOT="yes"
+            TYPE="Ethernet"
+            USERCTL="yes"
+            PEERDNS="yes"
+            IPV6INIT="no"
+            PERSISTENT_DHCLIENT="1"
+            IPADDR="{1}"
+            NETMASK="255.255.255.128"
+            DEFROUTE="no"
+            MTU=1450
+        """)
 
-class _CloudifyDatabaseOnly(_CloudifyManager):
-    """
-    This class represents an instance of a Cloudify Database only
+        self._logger.info('Adding extra NICs...')
 
-    Most of the inherited functions here are to avoid any incorrect usage of
-    the class since most of these functions rely on the manager existing on the
-    machine.
-    """
+        # Need to do this for each network except 0 (eth0 is already enabled)
+        for i in range(1, len(self.networks)):
+            network_file_path = self._tmpdir / 'network_cfg_{0}'.format(i)
+            ip_addr = self.networks['network_{0}'.format(i)]
+            config_content = template.format(i, ip_addr)
 
-    def __init__(self):
-        super(_CloudifyDatabaseOnly, self).__init__(upload_plugins=False)
-
-    def __str__(self):
-        return 'Cloudify Manager - database only VM ({image}) [{index}:{ip}]' \
-            .format(image=self.image_name,
-                    index=self.index,
-                    ip=self.ip_address, )
-
-    @property
-    def branch_name(self):
-        pass
-
-    def create(
-            self,
-            index,
-            public_ip_address,
-            private_ip_address,
-            networks,
-            rest_client,
-            ssh_key,
-            cfy,
-            attributes,
-            logger,
-            tmpdir
-    ):
-        self.index = index
-        self.ip_address = public_ip_address
-        self.private_ip_address = private_ip_address
-        self.client = rest_client
-        self.deleted = False
-        self._ssh_key = ssh_key
-        self._cfy = cfy
-        self._attributes = attributes
-        self._logger = logger
-        self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
-        os.makedirs(self._tmpdir)
-        self.additional_install_config = {}
-
-    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
-    def verify_services_are_running(self):
-        with self.ssh() as fabric_ssh:
-            # validate PostgreSQL server is running
-            try:
-                fabric_ssh.sudo('su -c "psql -l" postgres &> /dev/null')
-                self._logger.info('PostgreSQL active')
-                return True
-            except Exception as e:
-                self._logger.warn(
-                    'PostgreSQL is not in an active state, Error: {0}.'
-                    ' Retrying...'.format(e.message))
-
-    def bootstrap(self, enter_sanity_mode=False, upload_license=False):
-        super(_CloudifyDatabaseOnly, self).bootstrap(enter_sanity_mode,
-                                                     upload_license)
-
-    def api_version(self):
-        pass
-
-    def wait_for_manager(self):
-        pass
-
-    def stop_for_user_input(self):
-        pass
-
-    def remote_private_key_path(self):
-        pass
-
-    def use(self, tenant=None, profile_name=None):
-        pass
-
-    def upload_necessary_files(self):
-        pass
-
-    def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
-        pass
-
-
-class _CloudifyMessageQueueOnly(_CloudifyManager):
-    """
-    This class represents an instance of a Cloudify Message Queue only
-
-    Most of the inherited functions here are to avoid any incorrect usage of
-    the class since most of these functions rely on the manager existing on the
-    machine.
-    """
-
-    def __init__(self):
-        super(_CloudifyMessageQueueOnly, self).__init__(upload_plugins=False)
-
-    def __str__(self):
-        return 'Cloudify Manager - message queue only VM ({image}) ' \
-               '[{index}:{ip}]' \
-            .format(image=self.image_name,
-                    index=self.index,
-                    ip=self.ip_address, )
-
-    @property
-    def branch_name(self):
-        pass
-
-    def create(
-            self,
-            index,
-            public_ip_address,
-            private_ip_address,
-            networks,
-            rest_client,
-            ssh_key,
-            cfy,
-            attributes,
-            logger,
-            tmpdir
-    ):
-        self.index = index
-        self.ip_address = public_ip_address
-        self.private_ip_address = private_ip_address
-        self.client = rest_client
-        self.deleted = False
-        self._ssh_key = ssh_key
-        self._cfy = cfy
-        self._attributes = attributes
-        self._logger = logger
-        self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
-        os.makedirs(self._tmpdir)
-        self.additional_install_config = {'rabbitmq': {}}
-
-    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
-    def verify_services_are_running(self):
-        with self.ssh() as fabric_ssh:
-            # validate PostgreSQL server is running
-            try:
-                fabric_ssh.sudo('rabbitmqctl -n rabbit@localhost '
-                                'list_users &> /dev/null')
-                self._logger.info('RabbitMQ active')
-                return True
-            except Exception as e:
-                self._logger.warn(
-                    'RabbitMQ is not in an active state, Error: {0}.'
-                    ' Retrying...'.format(e.message))
-
-    def api_version(self):
-        pass
-
-    def wait_for_manager(self):
-        pass
-
-    def stop_for_user_input(self):
-        pass
-
-    def remote_private_key_path(self):
-        pass
-
-    def use(self, tenant=None, profile_name=None):
-        pass
-
-    def upload_necessary_files(self):
-        pass
-
-    def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
-        pass
+            # Create and copy the interface config
+            network_file_path.write_text(config_content)
+            with self.ssh() as fabric_ssh:
+                fabric_ssh.put(
+                    network_file_path,
+                    '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
+                    use_sudo=True
+                )
+                # Start the interface
+                fabric_ssh.sudo('ifup eth{0}'.format(i))
 
 
 def get_latest_manager_image_name():
@@ -852,100 +735,28 @@ def get_latest_manager_image_name():
     return image_name
 
 
-class Cloudify4_3_1Manager(_OldStatusFormat, _CloudifyManager):
-    branch_name = '4.3.1'
+def get_image(version):
+    supported = [
+        '4.3.1', '4.4', '4.5', '4.5.5', '4.6', '5.0.5', 'master',
+        'centos',
+    ]
+    if version not in supported:
+        raise ValueError(
+            '{ver} is not a supported image. Supported: {supported}'.format(
+                ver=version,
+                supported=','.join(supported),
+            )
+        )
 
+    if version == 'centos':
+        img_cls = VM
+    else:
+        img_cls = _CloudifyManager
 
-class Cloudify4_4Manager(_OldStatusFormat, _CloudifyManager):
-    branch_name = '4.4'
-
-
-class Cloudify4_5Manager(_OldStatusFormat, _CloudifyManager):
-    branch_name = '4.5'
-
-
-class Cloudify4_5_5Manager(_OldStatusFormat, _CloudifyManager):
-    branch_name = '4.5.5'
-
-
-class Cloudify4_6Manager(_OldStatusFormat, _CloudifyManager):
-    branch_name = '4.6'
-
-
-class Cloudify5_0_5Manager(_CloudifyManager):
-    branch_name = '5.0.5'
-
-
-class CloudifyMasterManager(_CloudifyManager):
-    branch_name = 'master'
-    image_name_attribute = 'cloudify_manager_image_name_prefix'
-
-    image_name = get_latest_manager_image_name()
-
-    # The MTU is set to 1450 because we're using a static BOOTPROTO here (as
-    # opposed to DHCP), which sets a lower default by default
-    NETWORK_CONFIG_TEMPLATE = textwrap.dedent("""
-        DEVICE="eth{0}"
-        BOOTPROTO="static"
-        ONBOOT="yes"
-        TYPE="Ethernet"
-        USERCTL="yes"
-        PEERDNS="yes"
-        IPV6INIT="no"
-        PERSISTENT_DHCLIENT="1"
-        IPADDR="{1}"
-        NETMASK="255.255.255.128"
-        DEFROUTE="no"
-        MTU=1450
-    """)
-
-    def enable_nics(self):
-        """
-        Extra network interfaces need to be manually enabled on the manager
-        `manager.networks` is a dict that looks like this:
-        {
-            "network_0": "10.0.0.6",
-            "network_1": "11.0.0.6",
-            "network_2": "12.0.0.6"
-        }
-        """
-
-        self._logger.info('Adding extra NICs...')
-
-        # Need to do this for each network except 0 (eth0 is already enabled)
-        for i in range(1, len(self.networks)):
-            network_file_path = self._tmpdir / 'network_cfg_{0}'.format(i)
-            ip_addr = self.networks['network_{0}'.format(i)]
-            config_content = self.NETWORK_CONFIG_TEMPLATE.format(i, ip_addr)
-
-            # Create and copy the interface config
-            network_file_path.write_text(config_content)
-            with self.ssh() as fabric_ssh:
-                fabric_ssh.put(
-                    network_file_path,
-                    '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
-                    use_sudo=True
-                )
-                # Start the interface
-                fabric_ssh.sudo('ifup eth{0}'.format(i))
-
-
-IMAGES = {
-    '4.3.1': Cloudify4_3_1Manager,
-    '4.4': Cloudify4_4Manager,
-    '4.5': Cloudify4_5Manager,
-    '4.5.5': Cloudify4_5_5Manager,
-    '4.6': Cloudify4_6Manager,
-    '5.0.5': Cloudify5_0_5Manager,
-    'master': CloudifyMasterManager,
-    'centos': VM,
-}
-
-CURRENT_MANAGER = IMAGES['master']
+    return img_cls(version)
 
 
 class TestHosts(object):
-    __metaclass__ = ABCMeta
 
     def __init__(self,
                  cfy,
@@ -980,10 +791,11 @@ class TestHosts(object):
             self.instances = instances
         else:
             self.instances = [
-                CURRENT_MANAGER(upload_plugins=upload_plugins)
+                get_image('master')
                 for _ in range(number_of_instances)]
         self._template_inputs = template_inputs or {'servers': self.instances}
         self._request = request
+        self.upload_plugins = upload_plugins
 
     def _bootstrap_managers(self):
         pass
@@ -1096,7 +908,8 @@ class TestHosts(object):
                 self._cfy,
                 self._attributes,
                 self._logger,
-                self._tmpdir
+                self._tmpdir,
+                self.upload_plugins,
             )
 
     def _save_manager_logs(self):

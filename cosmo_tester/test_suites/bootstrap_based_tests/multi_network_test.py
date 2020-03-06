@@ -21,8 +21,7 @@ from StringIO import StringIO
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 from cosmo_tester.framework.test_hosts import (
     BootstrapBasedCloudifyManagers,
-    CURRENT_MANAGER,
-    VM,
+    get_image,
 )
 from cosmo_tester.framework.examples.hello_world import (
     HelloWorldExample,
@@ -247,9 +246,9 @@ class _ProxyTestHosts(BootstrapBasedCloudifyManagers):
 def proxy_hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     # the convention for this test is that the proxy is instances[0] and
     # the manager is instances[1]
-    # note that even though we bootstrap, we need to use CURRENT_MANAGER
+    # note that even though we bootstrap, we need to use current manager
     # for the manager and not the VM to setup a manager correctly
-    instances = [VM(), CURRENT_MANAGER()]
+    instances = [get_image('centos'), get_image('master')]
     hosts = _ProxyTestHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger, instances=instances)
     hosts.preconfigure_callback = _proxy_preconfigure_callback
