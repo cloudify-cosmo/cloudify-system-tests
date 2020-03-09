@@ -53,14 +53,14 @@ def test_inplace_upgrade(cfy,
                          ssh_key,
                          module_tmpdir,
                          logger):
-    snapshot_name = 'inplace_upgrade_snapshot_{0}'.format(manager.branch_name)
+    snapshot_name = 'inplace_upgrade_snapshot_{0}'.format(manager.image_type)
     snapshot_path = join(str(module_tmpdir), snapshot_name) + '.zip'
 
-    if manager.branch_name == git_helper.MASTER_BRANCH:
-        os.environ['BRANCH_NAME_CORE'] = manager.branch_name
+    if manager.image_type == git_helper.MASTER_BRANCH:
+        os.environ['BRANCH_NAME_CORE'] = manager.image_type
     else:
         os.environ['BRANCH_NAME_CORE'] = '{0}-build'.format(
-            manager.branch_name)
+            manager.image_type)
 
     # We can't use the hello_worlds fixture here because this test has
     # multiple managers rather than just one (the hosts vs a single

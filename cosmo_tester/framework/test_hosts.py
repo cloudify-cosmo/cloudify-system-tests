@@ -45,8 +45,8 @@ ATTRIBUTES = util.get_attributes()
 
 class VM(object):
 
-    def __init__(self, branch_name):
-        self.branch_name = branch_name
+    def __init__(self, image_type):
+        self.image_type = image_type
         self.upload_plugins = None
         self._image_name = None
 
@@ -200,7 +200,7 @@ class VM(object):
 
     image_name = ATTRIBUTES['default_linux_image_name']
     username = ATTRIBUTES['default_linux_username']
-    branch_name = 'master'
+    image_type = 'centos'
 
 
 class _CloudifyManager(VM):
@@ -318,7 +318,7 @@ class _CloudifyManager(VM):
 
         # versions newer than 4.2 support passing yaml files
         yaml_snippet = ''
-        if LooseVersion(self.branch_name) > LooseVersion('4.2'):
+        if LooseVersion(self.image_type) > LooseVersion('4.2'):
             yaml_snippet = '--yaml-path {0}'.format(
                 plugin['plugin_yaml_url'])
         try:
@@ -378,7 +378,7 @@ class _CloudifyManager(VM):
         return self._attributes[key]
 
     def verify_services_are_running(self):
-        if self.branch_name.startswith('4'):
+        if self.image_type.startswith('4'):
             return self._old_verify_services_are_running()
         else:
             return self._new_verify_services_are_running()
@@ -437,12 +437,12 @@ class _CloudifyManager(VM):
     @property
     def image_name(self):
         if self._image_name is None:
-            if self.branch_name == 'master':
+            if self.image_type == 'master':
                 self._image_name = get_latest_manager_image_name()
             else:
                 self._image_name = ATTRIBUTES[
                     'cloudify_manager_{}_image_name'.format(
-                        self.branch_name.replace('.', '_')
+                        self.image_type.replace('.', '_')
                     )
                 ]
                 if ATTRIBUTES['default_manager_distro'] == 'rhel':
@@ -452,7 +452,7 @@ class _CloudifyManager(VM):
 
     @property
     def api_version(self):
-        if self.branch_name == '4.3.1':
+        if self.image_type == '4.3.1':
             return 'v3'
         else:
             return 'v3.1'
@@ -610,7 +610,7 @@ class _CloudifyManager(VM):
                 )
 
     def wait_for_manager(self):
-        if self.branch_name.startswith('4'):
+        if self.image_type.startswith('4'):
             return self._old_wait_for_manager()
         else:
             return self._new_wait_for_manager()
