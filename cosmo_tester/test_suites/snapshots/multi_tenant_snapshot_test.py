@@ -100,19 +100,14 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         for tenant in tenants
     }
 
-    # Credentials tests only apply to 4.2 and later
-    should_change_pswd = manager_supports_users_in_snapshot_creation(
-        old_manager)
-    if should_change_pswd:
-        prepare_credentials_tests(cfy, logger, old_manager)
+    prepare_credentials_tests(cfy, logger, old_manager)
 
     create_snapshot(old_manager, SNAPSHOT_ID, attributes, logger)
     download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)
     upload_snapshot(new_manager, local_snapshot_path, SNAPSHOT_ID, logger)
 
     restore_snapshot(new_manager, SNAPSHOT_ID, cfy, logger,
-                     wait_for_post_restore_commands=False,
-                     change_manager_password=should_change_pswd)
+                     wait_for_post_restore_commands=False)
 
     _check_snapshot_status(new_manager)
 
@@ -121,9 +116,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     verify_services_status(new_manager, logger)
 
-    # Credentials tests only apply to 4.2 and later
-    if manager_supports_users_in_snapshot_creation(old_manager):
-        check_credentials(cfy, logger, new_manager)
+    check_credentials(cfy, logger, new_manager)
 
     # Make sure we still have the hello worlds after the restore
     assert_hello_worlds(hello_vms, installed=True, logger=logger)

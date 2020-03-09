@@ -316,11 +316,8 @@ class _CloudifyManager(VM):
                           plugin['wgn_url'],
                           self)
 
-        # versions newer than 4.2 support passing yaml files
-        yaml_snippet = ''
-        if LooseVersion(self.image_type) > LooseVersion('4.2'):
-            yaml_snippet = '--yaml-path {0}'.format(
-                plugin['plugin_yaml_url'])
+        yaml_snippet = '--yaml-path {0}'.format(
+            plugin['plugin_yaml_url'])
         try:
             with self.ssh() as fabric_ssh:
                 # This will only work for images as cfy is pre-installed there.
