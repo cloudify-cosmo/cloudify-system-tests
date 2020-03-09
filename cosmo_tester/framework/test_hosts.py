@@ -461,20 +461,6 @@ class _CloudifyManager(VM):
     restore_tenant_name = None
     tenant_name = 'default_tenant'
 
-    def stop_for_user_input(self):
-        """
-        Print out a helpful ssh command to allow the user to connect to the
-        current manager, and then wait for user input to continue the test
-        """
-        self._logger.info('#' * 80)
-        self._logger.info(
-            '\nssh -o StrictHostKeyChecking=no {user}@{ip} -i {key}'.format(
-                user=self._attributes.default_linux_username,
-                ip=self.ip_address,
-                key=self._ssh_key.private_key_path)
-        )
-        raw_input('You can now connect to the manager')
-
     def teardown(self):
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('cfy_manager remove --force')
