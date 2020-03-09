@@ -1,0 +1,232 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.0.5/types.yaml
+  - plugin:cloudify-openstack-plugin
+
+inputs:
+  floating_network_id: {}
+  test_infrastructure_name: {}
+
+dsl_definitions:
+  openstack_config: &openstack_config
+    username: { get_secret: keystone_username }
+    password: { get_secret: keystone_password }
+    project_domain_name: default
+    user_domain_name: default
+    tenant_name: { get_secret: keystone_tenant_name }
+    auth_url: { get_secret: keystone_url }
+    region_name: { get_secret: region }
+
+node_templates:
+  test_keypair:
+    type: cloudify.nodes.openstack.KeyPair
+    properties:
+      resource_config:
+        name: { get_input: test_infrastructure_name }
+      client_config: *openstack_config
+
+  test_network:
+    type: cloudify.nodes.openstack.Network
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+      client_config: *openstack_config
+
+  test_network_2:
+    type: cloudify.nodes.openstack.Network
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+      client_config: *openstack_config
+
+  test_network_3:
+    type: cloudify.nodes.openstack.Network
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+      client_config: *openstack_config
+
+  test_subnet:
+    type: cloudify.nodes.openstack.Subnet
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+        cidr: 192.168.42.0/24
+        enable_dhcp: true
+        ip_version: 4
+        dns_nameservers: [8.8.4.4, 8.8.8.8]
+      client_config: *openstack_config
+    relationships:
+      - target: test_network
+        type: cloudify.relationships.contained_in
+      - target: test_router
+        type: cloudify.relationships.openstack.subnet_connected_to_router
+
+  test_subnet_2:
+    type: cloudify.nodes.openstack.Subnet
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+        cidr: 192.168.43.0/24
+        enable_dhcp: true
+        ip_version: 4
+        dns_nameservers: [8.8.4.4, 8.8.8.8]
+      client_config: *openstack_config
+    relationships:
+      - target: test_network_2
+        type: cloudify.relationships.contained_in
+      - target: test_router_2
+        type: cloudify.relationships.openstack.subnet_connected_to_router
+
+  test_subnet_3:
+    type: cloudify.nodes.openstack.Subnet
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+        cidr: 192.168.44.0/24
+        enable_dhcp: true
+        ip_version: 4
+        dns_nameservers: [8.8.4.4, 8.8.8.8]
+      client_config: *openstack_config
+    relationships:
+      - target: test_network_3
+        type: cloudify.relationships.contained_in
+      - target: test_router_3
+        type: cloudify.relationships.openstack.subnet_connected_to_router
+
+  test_router:
+    type: cloudify.nodes.openstack.Router
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+      client_config: *openstack_config
+    relationships:
+      - target: external_network
+        type: cloudify.relationships.connected_to
+
+  test_router_2:
+    type: cloudify.nodes.openstack.Router
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+      client_config: *openstack_config
+    relationships:
+      - target: external_network
+        type: cloudify.relationships.connected_to
+
+  test_router_3:
+    type: cloudify.nodes.openstack.Router
+    properties:
+      resource_config:
+        name: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+      client_config: *openstack_config
+    relationships:
+      - target: external_network
+        type: cloudify.relationships.connected_to
+
+  external_network:
+    type: cloudify.nodes.openstack.Network
+    properties:
+      client_config: *openstack_config
+      use_external_resource: true
+      resource_config:
+        id: { get_input: floating_network_id }
+        kwargs:
+          routing:
+            external: true
+
+  test_security_group:
+    type: cloudify.nodes.openstack.SecurityGroup
+    properties:
+      resource_config:
+        name: { get_input: test_infrastructure_name }
+        description: "Security group for system tests."
+      client_config: *openstack_config
+
+  rule_allow_ssh:
+    type: cloudify.nodes.openstack.SecurityGroupRule
+    properties:
+      client_config: *openstack_config
+      resource_config:
+        direction: ingress
+        protocol: tcp
+        port_range_max: 22
+        port_range_min: 22
+        security_group_id: { get_attribute: [ test_security_group, id ] }
+    relationships:
+      - target: test_security_group
+        type: cloudify.relationships.contained_in
+
+  rule_allow_http:
+    type: cloudify.nodes.openstack.SecurityGroupRule
+    properties:
+      client_config: *openstack_config
+      resource_config:
+        direction: ingress
+        protocol: tcp
+        port_range_max: 80
+        port_range_min: 80
+        security_group_id: { get_attribute: [ test_security_group, id ] }
+    relationships:
+      - target: test_security_group
+        type: cloudify.relationships.contained_in
+
+  rule_allow_https:
+    type: cloudify.nodes.openstack.SecurityGroupRule
+    properties:
+      client_config: *openstack_config
+      resource_config:
+        direction: ingress
+        protocol: tcp
+        port_range_max: 443
+        port_range_min: 443
+        security_group_id: { get_attribute: [ test_security_group, id ] }
+    relationships:
+      - target: test_security_group
+        type: cloudify.relationships.contained_in
+
+  rule_allow_internal_nets_a:
+    type: cloudify.nodes.openstack.SecurityGroupRule
+    properties:
+      client_config: *openstack_config
+      resource_config:
+        direction: ingress
+        protocol: tcp
+        port_range_max: 65535
+        port_range_min: 1
+        remote_ip_prefix: 10.0.0.0/8
+        security_group_id: { get_attribute: [ test_security_group, id ] }
+    relationships:
+      - target: test_security_group
+        type: cloudify.relationships.contained_in
+
+  rule_allow_internal_nets_b:
+    type: cloudify.nodes.openstack.SecurityGroupRule
+    properties:
+      client_config: *openstack_config
+      resource_config:
+        direction: ingress
+        protocol: tcp
+        port_range_max: 65535
+        port_range_min: 1
+        remote_ip_prefix: 192.168.0.0/16
+        security_group_id: { get_attribute: [ test_security_group, id ] }
+    relationships:
+      - target: test_security_group
+        type: cloudify.relationships.contained_in
+
+  rule_allow_internal_nets_c:
+    type: cloudify.nodes.openstack.SecurityGroupRule
+    properties:
+      client_config: *openstack_config
+      resource_config:
+        direction: ingress
+        protocol: tcp
+        port_range_max: 65535
+        port_range_min: 1
+        remote_ip_prefix: 172.16.0.0/12
+        security_group_id: { get_attribute: [ test_security_group, id ] }
+    relationships:
+      - target: test_security_group
+        type: cloudify.relationships.contained_in
