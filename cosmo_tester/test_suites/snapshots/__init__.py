@@ -126,7 +126,7 @@ def remove_and_check_deployments(hello_vms, manager, logger,
 
 def delete_manager(manager, logger):
     logger.info('Deleting {version} manager..'.format(
-        version=manager.branch_name))
+        version=manager.image_type))
     manager.delete()
 
 
@@ -159,7 +159,7 @@ def create_helloworld_just_deployment(manager, logger, tenant=None):
 
 
 def upload_helloworld(manager, blueprint, blueprint_id, tenant, logger):
-    version = manager.branch_name
+    version = manager.image_type
     logger.info(
         'Uploading blueprint {blueprint} from archive {archive} as {name} '
         'for manager version {version}'.format(
@@ -179,7 +179,7 @@ def upload_helloworld(manager, blueprint, blueprint_id, tenant, logger):
 
 def deploy_helloworld(manager, inputs, blueprint_id,
                       deployment_id, tenant, logger):
-    version = manager.branch_name
+    version = manager.image_type
     _log(
         'Deploying {deployment} on {version} manager'.format(
             deployment=deployment_id,
@@ -213,7 +213,7 @@ def upload_and_install_helloworld(attributes, logger, manager, target_vm,
     assert not is_hello_world(target_vm), (
         'Hello world blueprint already installed!'
     )
-    version = manager.branch_name
+    version = manager.image_type
     _log(
         'Uploading helloworld blueprint to {version} manager'.format(
             version=version,
