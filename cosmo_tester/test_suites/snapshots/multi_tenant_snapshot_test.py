@@ -29,7 +29,7 @@ from . import (
     confirm_manager_empty,
     create_helloworld_just_deployment,
     create_snapshot,
-    delete_manager,
+    stop_manager,
     download_snapshot,
     get_deployments_list,
     get_plugins_list,
@@ -132,7 +132,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     upgrade_agents(cfy, new_manager, logger)
 
     # The old manager needs to exist until the agents install is run
-    delete_manager(old_manager, logger)
+    stop_manager(old_manager, logger)
 
     # Make sure the agent upgrade and old manager removal didn't
     # damage the hello worlds
