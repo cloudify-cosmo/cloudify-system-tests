@@ -125,7 +125,7 @@ def get_openstack_config():
 
 def create_openstack_client():
     conn = openstack_connection.Connection(
-        auth_url=os.environ[OS_AUTH_URL_ENV],
+        auth_url=os.environ[OS_AUTH_URL_ENV].replace('v3', 'v2.0'),
         project_name=os.environ[OS_PROJECT_NAME_ENV],
         username=os.environ[OS_USERNAME_ENV],
         password=os.environ[OS_PASSWORD_ENV]

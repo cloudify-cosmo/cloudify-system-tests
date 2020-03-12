@@ -24,6 +24,7 @@ node_templates:
     properties:
       resource_config:
         name: { get_input: test_infrastructure_name }
+        public_key: { get_secret: ssh_public_key }
       client_config: *openstack_config
 
   test_network:

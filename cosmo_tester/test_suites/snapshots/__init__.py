@@ -124,10 +124,10 @@ def remove_and_check_deployments(hello_vms, manager, logger,
     assert_hello_worlds(hello_vms, installed=False, logger=logger)
 
 
-def delete_manager(manager, logger):
-    logger.info('Deleting {version} manager..'.format(
+def stop_manager(manager, logger):
+    logger.info('Stopping {version} manager..'.format(
         version=manager.image_type))
-    manager.delete()
+    manager.stop()
 
 
 def create_helloworld_just_deployment(manager, logger, tenant=None):
@@ -468,6 +468,7 @@ def check_credentials(cfy, logger, manager):
 
 def change_rest_client_password(manager, new_password):
     manager.client = create_rest_client(manager.ip_address,
+                                        tenant='default_tenant',
                                         password=new_password)
 
 

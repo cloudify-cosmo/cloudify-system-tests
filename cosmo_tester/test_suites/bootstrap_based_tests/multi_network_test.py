@@ -226,7 +226,7 @@ class _ProxyTestHosts(BootstrapBasedCloudifyManagers):
     """A BootstrapBasedCloudifyManagers that only bootstraps one manager.
 
     In the proxy test, we need a bootstrapped manager, and an additional
-    host for the proxy. We want both to be created in the same terraform
+    host for the proxy. We want both to be created in the same backend
     call so that they're on the same network, but we only want to bootstrap
     one of the machines - the manager, not the proxy.
 

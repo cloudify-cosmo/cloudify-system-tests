@@ -76,3 +76,9 @@ manager_server_flavor_name: m1.medium
 
 LOCAL_REST_CERT_FILE: '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
 LOCAL_REST_KEY_FILE: '/etc/cloudify/ssl/cloudify_internal_ca_key.pem'
+
+openstack_plugin_yaml_path: http://www.getcloudify.org/spec/openstack-plugin/3.2.10/plugin.yaml
+openstack_plugin_path: http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/3.2.10/cloudify_openstack_plugin-3.2.10-py27-none-linux_x86_64-centos-Core.wgn
+
+manager_admin_password: admin
+manager_address: 192.0.2.4
