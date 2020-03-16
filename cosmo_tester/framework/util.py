@@ -32,6 +32,7 @@ from os import makedirs
 from tempfile import mkstemp
 from contextlib import contextmanager
 
+import pkg_resources
 from openstack import connection as openstack_connection
 from path import Path
 
@@ -65,7 +66,7 @@ def get_attributes(logger=logging, resources_dir=None):
 
 
 def get_cli_version():
-    return cli_env.get_version_data()['version']
+    return pkg_resources.require('cloudify')[0].version
 
 
 def get_openstack_server_password(server_id, private_key_path=None):
@@ -489,7 +490,7 @@ def is_redhat():
 def run(command, retries=0, stdin=b'', ignore_failures=False,
         globx=False, shell=False, env=None, stdout=None, logger=logging):
     def subprocess_preexec():
-        cfy_umask = 0022
+        cfy_umask = 0o22
         os.umask(cfy_umask)
     if isinstance(command, str) and not shell:
         command = shlex.split(command)
