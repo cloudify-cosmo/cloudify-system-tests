@@ -494,7 +494,7 @@ class _CloudifyManager(VM):
         install_config_str = yaml.dump(install_config)
 
         self._logger.info(
-            'Install config:\n{0}'.format(install_config_str))
+            'Install config:\n%s', str(install_config_str))
         config_file.write_text(install_config_str)
         return config_file
 
@@ -846,8 +846,8 @@ class TestHosts(object):
                 instance.finalize_preparation()
         except Exception as err:
             self._logger.error(
-                "Encountered exception trying to create test resources: {}.\n"
-                "Attempting to tear down test resources.".format(err)
+                "Encountered exception trying to create test resources: %s.\n"
+                "Attempting to tear down test resources.", str(err)
             )
             self.destroy()
             raise err
@@ -858,15 +858,14 @@ class TestHosts(object):
             self._save_manager_logs()
         except Exception as e:
             self._logger.info(
-                "Unable to save logs due to exception: {}".format(str(e)))
+                "Unable to save logs due to exception: %s", str(e))
         finally:
             self._logger.info('Destroying test hosts..')
             if self.tenant:
                 self._logger.info(
-                    'Switching profile to {tenant} on {manager}'.format(
-                        tenant=self.tenant,
-                        manager=ATTRIBUTES['manager_address'],
-                    )
+                    'Switching profile to %s on %s',
+                    self.tenant,
+                    ATTRIBUTES['manager_address'],
                 )
                 self._cfy.profiles.use(
                     ATTRIBUTES["manager_address"],
@@ -880,20 +879,18 @@ class TestHosts(object):
                         'create_deployment_environment'
                     ):
                         self._logger.info(
-                            'Ensuring {wf} ({id}) is not running.'.format(
-                                id=execution['id'],
-                                wf=execution['workflow_id'],
-                            )
+                            'Ensuring %s (%s) is not running.',
+                            execution['id'],
+                            execution['workflow_id'],
                         )
                         self._cfy.executions.cancel(
                             '--force', '--kill', execution['id'],
                         )
                     else:
                         self._logger.info(
-                            'Skipping {wf} ({id}).'.format(
-                                id=execution['id'],
-                                wf=execution['workflow_id'],
-                            )
+                            'Skipping %s (%s).',
+                            execution['id'],
+                            execution['workflow_id'],
                         )
 
                 # Remove tenants in the opposite order to the order they were
@@ -901,33 +898,32 @@ class TestHosts(object):
                 # infrastructure before removing the VMs using it.
                 self._logger.info('Uninstalling and removing deployments.')
                 for deployment in reversed(self.deployments):
-                    self._logger.info('Uninstalling {}'.format(deployment))
+                    self._logger.info('Uninstalling %s', deployment)
                     self._cfy.executions.start(
                         "--deployment-id", deployment,
                         "uninstall",
                     )
-                    self._logger.info('Deleting {}'.format(deployment))
+                    self._logger.info('Deleting %s', deployment)
                     self._cfy.deployments.delete(deployment)
 
                 self._logger.info('Deleting blueprints.')
                 for blueprint in self.blueprints:
-                    self._logger.info('Deleting {}'.format(blueprint))
+                    self._logger.info('Deleting %s', blueprint)
                     self._cfy.blueprints.delete(blueprint)
 
                 self._logger.info('Deleting plugins.')
                 plugins = json.loads(self._cfy.plugins.list('--json').stdout)
                 for plugin in plugins:
                     self._logger.info(
-                        'Deleting {plugin} ({id})'.format(
-                            plugin=plugin['package_name'],
-                            id=plugin['id'],
-                        )
+                        'Deleting %s (%s)',
+                        plugin['package_name'],
+                        plugin['id'],
                     )
                     self._cfy.plugins.delete(plugin['id'])
 
                 self._logger.info('Switching back to default tenant.')
                 self._cfy.profiles.set('--manager-tenant', 'default_tenant')
-                self._logger.info('Deleting tenant {}'.format(self.tenant))
+                self._logger.info('Deleting tenant %s', self.tenant)
                 self._cfy.tenants.delete(self.tenant)
                 self.tenant = None
 
@@ -1037,19 +1033,16 @@ class TestHosts(object):
 
     def _deploy_test_vms(self, image_id, instances, test_identifier):
         self._logger.info(
-            'Preparing to deploy {count} instance of image {image}'.format(
-                count=len(instances),
-                image=image_id,
-            )
+            'Preparing to deploy %d instance of image %s',
+            len(instances),
+            image_id,
         )
 
         scale_count = max(len(instances) - 1, 0)
 
         vm_id = 'vm_{}'.format(image_id)
 
-        self._logger.info('Creating test VM inputs for {image}'.format(
-            image=image_id,
-        ))
+        self._logger.info('Creating test VM inputs for %s', image_id)
         vm_inputs = {
             'test_infrastructure_name': test_identifier,
             'floating_network_id': ATTRIBUTES['floating_network_id'],
@@ -1060,9 +1053,7 @@ class TestHosts(object):
         with open(vm_inputs_path, 'w') as inp_handle:
             inp_handle.write(json.dumps(vm_inputs))
 
-        self._logger.info('Deploying instance of {image}'.format(
-            image=image_id,
-        ))
+        self._logger.info('Deploying instance of %s', image_id)
         self._cfy.deployments.create(
             "--blueprint-id", "test_vm",
             "--inputs", vm_inputs_path,
@@ -1076,10 +1067,9 @@ class TestHosts(object):
 
         if scale_count:
             self._logger.info(
-                'Deploying {count} more instances of {image}'.format(
-                    count=scale_count,
-                    image=image_id,
-                )
+                'Deploying %d more instances of %s',
+                scale_count,
+                image_id,
             )
             self._cfy.executions.start(
                 "--deployment-id", vm_id,
@@ -1183,8 +1173,8 @@ class TestHosts(object):
             instance_deleted = getattr(instance, "deleted", None)
             if instance_deleted:
                 self._logger.info('Cannot save logs for server with index '
-                                  '{}, since server has been deleted or not '
-                                  'initialized.'.format(i))
+                                  '%d, since server has been deleted or not '
+                                  'initialized.', i)
             else:
                 self._save_logs_for_instance(instance, logs_dir, i)
 
@@ -1205,7 +1195,7 @@ class TestHosts(object):
             return prefix
 
         self._logger.info('Attempting to download logs for Cloudify Manager '
-                          'with ID: {}...'.format(instance.server_id))
+                          'with ID: %s...', instance.server_id)
         self._logger.info('Switching profiles...')
         try:
             instance.use()
