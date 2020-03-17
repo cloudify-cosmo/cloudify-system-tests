@@ -929,6 +929,7 @@ class TestHosts(object):
                 self._cfy.profiles.set('--manager-tenant', 'default_tenant')
                 self._logger.info('Deleting tenant {}'.format(self.tenant))
                 self._cfy.tenants.delete(self.tenant)
+                self.tenant = None
 
     def _upload_secrets_to_infrastructure_manager(self):
         # Used to maintain compatibility with current test framework config
