@@ -34,7 +34,7 @@ from cosmo_tester.test_suites.snapshots import (
     upload_snapshot,
     restore_snapshot,
     upgrade_agents,
-    delete_manager
+    stop_manager
 )
 
 NETWORK_2 = "network_2"
@@ -120,7 +120,7 @@ def test_multiple_networks(managers,
                      change_manager_password=False)
 
     upgrade_agents(cfy, new_manager, logger)
-    delete_manager(old_manager, logger)
+    stop_manager(old_manager, logger)
 
     for hello in multi_network_hello_worlds:
         hello.manager = new_manager
