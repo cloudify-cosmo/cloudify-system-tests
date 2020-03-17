@@ -82,7 +82,7 @@ def test_old_agent_stopped_after_agent_upgrade(
 
     logger.info('Validating the old agent is indeed down')
     _assert_agent_not_running(old_manager, 'nodejs_host')
-    old_manager.delete()
+    old_manager.stop()
 
     new_manager.use()
     nodecellar.manager = new_manager
