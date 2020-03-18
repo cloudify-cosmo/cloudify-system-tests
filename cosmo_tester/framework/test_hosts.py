@@ -48,6 +48,8 @@ class VM(object):
         self.image_type = image_type
         self.upload_plugins = None
         self._image_name = None
+        self.userdata = ""
+        self.enable_ssh_wait = True
 
     def assign(
             self,
@@ -83,8 +85,9 @@ class VM(object):
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=3000)
     def wait_for_ssh(self):
-        with self.ssh() as conn:
-            conn.run("echo SSH is up for {}".format(self.ip_address))
+        if self.enable_ssh_wait:
+            with self.ssh() as conn:
+                conn.run("echo SSH is up for {}".format(self.ip_address))
 
     @property
     def private_key_path(self):
@@ -1048,6 +1051,7 @@ class TestHosts(object):
             'floating_network_id': ATTRIBUTES['floating_network_id'],
             'image': image_id,
             'flavor': self._get_server_flavor(),
+            'userdata': instances[0].userdata,
         }
         vm_inputs_path = self._tmpdir / '{}.yaml'.format(vm_id)
         with open(vm_inputs_path, 'w') as inp_handle:

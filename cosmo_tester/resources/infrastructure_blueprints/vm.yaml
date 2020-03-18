@@ -9,6 +9,8 @@ inputs:
   image: {}
   flavor: {}
   test_infrastructure_name: {}
+  userdata:
+    default: ""
   use_net:
     default: "1"
 
@@ -33,6 +35,7 @@ node_templates:
       resource_config:
         image_id: { get_input: image }
         flavor_id: { get_input: flavor }
+        user_data: { get_input: userdata }
       client_config: *openstack_config
     relationships:
       - type: cloudify.relationships.openstack.server_connected_to_security_group

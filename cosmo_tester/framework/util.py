@@ -21,7 +21,6 @@ import json
 import yaml
 import errno
 import shlex
-import base64
 import socket
 import logging
 import platform
@@ -67,50 +66,6 @@ def get_attributes(logger=logging, resources_dir=None):
 
 def get_cli_version():
     return pkg_resources.require('cloudify')[0].version
-
-
-def get_openstack_server_password(server_id, private_key_path=None):
-    """Since openstacksdk does not contain this functionality and adding
-    python-novaclient as a dependency creates a dependencies hell, it is
-    easier to just call the relevant OpenStack REST API call for retrieving
-    the server's password."""
-
-    conn = create_openstack_client()
-    compute_endpoint = conn.session.get_endpoint(service_type='compute')
-    url = '{}/servers/{}/os-server-password'.format(
-        compute_endpoint, server_id
-    )
-    headers = conn.session.get_auth_headers()
-    headers['Content-Type'] = 'application/json'
-    r = requests.get(url, headers=headers)
-    if r.status_code != 200:
-        raise RuntimeError(
-            'OpenStack get password response status (%d) != 200: {}'.format(
-                r.status_code, r.text
-            )
-        )
-    password = r.json()['password']
-    if private_key_path:
-        return _decrypt_password(password, private_key_path)
-    else:
-        return password
-
-
-def _decrypt_password(password, private_key_path):
-    """Base64 decodes password and unencrypts it with private key.
-
-    Requires openssl binary available in the path.
-    """
-    unencoded = base64.b64decode(password)
-    cmd = ['openssl', 'rsautl', '-decrypt', '-inkey', private_key_path]
-    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    out, err = proc.communicate(unencoded)
-    proc.stdin.close()
-    if proc.returncode:
-        raise RuntimeError(err)
-    return out
 
 
 def get_openstack_config():
