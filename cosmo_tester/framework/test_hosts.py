@@ -1190,7 +1190,7 @@ class TestHosts(object):
             """
             :return: log tar file prefix in the following format:
                 <instance_class_name>__[<pytest_params_if_exist>__] +
-                    + <index_number_in_instances_list>__<terraform_id>__
+                    + <index_number_in_instances_list>__<server_id>__
             """
             prefix = '{}__'.format(instance.__class__.__name__)
             if self._request and hasattr(self._request, 'param'):
