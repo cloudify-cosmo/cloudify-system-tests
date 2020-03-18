@@ -15,7 +15,6 @@
 
 
 import json
-import os
 import time
 
 import shutil
@@ -24,22 +23,12 @@ from path import Path
 import pytest
 import retrying
 import winrm
-import yaml
-import jinja2
 
 from cosmo_tester.framework.util import (
     AttributesDict,
-    get_attributes,
     get_cli_package_url,
-    get_manager_install_rpm_url,
     get_openstack_server_password,
     get_resource_path,
-    is_community,
-)
-from cosmo_tester.framework.test_hosts import (
-    get_image,
-    REMOTE_PRIVATE_KEY_PATH,
-    TestHosts,
 )
 
 WINRM_PORT = 5985
@@ -48,7 +37,6 @@ WINRM_PORT = 5985
 @pytest.fixture(scope='function')
 def package_tester(request, ssh_key, attributes, tmpdir, logger):
     _package_tester_mapping = {
-        'osx': _OSXCliPackageTester,
         'windows': _WindowsCliPackageTester
     }
     platform = request.param
@@ -64,75 +52,6 @@ def package_tester(request, ssh_key, attributes, tmpdir, logger):
     tester.perform_cleanup()
 
 
-def get_linux_image_settings():
-    attrs = get_attributes()
-    return [
-        (attrs.centos_7_image_name, attrs.centos_7_username,
-         'rhel_centos_cli_package_url'),
-        (attrs.centos_6_image_name, attrs.centos_6_username,
-         'rhel_centos_cli_package_url'),
-        (attrs.ubuntu_14_04_image_name, attrs.ubuntu_14_04_username,
-         'debian_cli_package_url'),
-        (attrs.rhel_7_image_name, attrs.rhel_7_username,
-         'rhel_centos_cli_package_url'),
-        (attrs.rhel_6_image_name, attrs.rhel_6_username,
-         'rhel_centos_cli_package_url'),
-    ]
-
-
-@pytest.fixture(
-    scope='module',
-    params=get_linux_image_settings())
-def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
-                     logger, install_dev_tools=True):
-    instances = [
-        get_image('centos'),
-        get_image('master'),
-    ]
-
-    instances[0].image_name = request.param[0]
-
-    cli_hosts = TestHosts(
-        cfy, ssh_key, module_tmpdir,
-        attributes, logger, instances=instances, request=request,
-        upload_plugins=False,
-    )
-    cli_hosts.create()
-
-    yield {
-        'cli_hosts': cli_hosts,
-        'username': request.param[1],
-        'url_key': request.param[2],
-    }
-    cli_hosts.destroy()
-
-
-def test_cli_on_linux(linux_cli_tester, attributes):
-    cli_host, manager_host = linux_cli_tester['cli_hosts'].instances
-
-    local_script_path = get_resource_path(
-        'scripts/linux-cli-test'
-    )
-    remote_script_path = '/tmp/linux-cli-test'
-
-    cli_host.put_remote_file(
-        remote_path=remote_script_path,
-        local_path=local_script_path,
-    )
-    cli_host.run_command('chmod 500 {}'.format(remote_script_path))
-
-    cli_host.run_command(
-        '{script} {cli_url} {key} {mgr_pub} {mgr_priv} {mgr_os_user}'.format(
-            script=remote_script_path,
-            cli_url=get_cli_package_url(linux_cli_tester['url_key']),
-            key=REMOTE_PRIVATE_KEY_PATH,
-            mgr_pub=manager_host.ip_address,
-            mgr_priv=manager_host.private_ip_address,
-            mgr_os_user=linux_cli_tester['username'],
-        )
-    )
-
-
 @pytest.mark.parametrize('package_tester', ['windows'], indirect=True)
 def _test_cli_on_windows_2012(package_tester, attributes):
     inputs = {
@@ -141,29 +60,6 @@ def _test_cli_on_windows_2012(package_tester, attributes):
         'manager_user': attributes.default_linux_username,
         'cli_flavor': attributes.medium_flavor_name,
     }
-    package_tester.run_test(inputs)
-
-
-@pytest.mark.parametrize('package_tester', ['osx'], indirect=True)
-def _test_cli_on_osx(package_tester, attributes):
-    inputs = {
-        'manager_image': attributes.centos_7_AMI,
-        'manager_flavor': attributes.large_AWS_type,
-        'manager_user': attributes.centos_7_username,
-        'osx_public_ip': os.environ["MACINCLOUD_HOST"],
-        'osx_user': os.environ["MACINCLOUD_USERNAME"],
-        'osx_password': os.environ["MACINCLOUD_PASSWORD"],
-        'osx_ssh_key': os.environ["MACINCLOUD_SSH_KEY"],
-        'cli_cloudify': os.environ["CLI_CLOUDIFY"],
-        'cloudify_rpm_url': get_manager_install_rpm_url(),
-        'cloudify_license': ''
-    }
-    if not is_community():
-        inputs['cloudify_license'] = yaml.load(get_resource_path(
-            'test_valid_paying_license.yaml'
-        ))
-    package_tester.template_inputs['cloudify_license'] = \
-        inputs['cloudify_license']
     package_tester.run_test(inputs)
 
 
@@ -318,27 +214,3 @@ $url.ToString() | select-string "Hello, World"
         #  successfully, this might take a second or two
         time.sleep(4)
         self._run_cmd('{cfy} blueprints delete bp'.format(cfy=cfy_exe))
-
-
-class _OSXCliPackageTester(object):
-
-    def __init__(self, *args):
-        super(_OSXCliPackageTester, self).__init__(*args)
-        self.template_inputs = {}
-
-    def _copy_terraform_files(self):
-        self._generate_terraform_file()
-        shutil.copy(get_resource_path(
-            'terraform/scripts/osx-cli-test.sh'),
-            self.tmpdir / 'scripts/osx-cli-test.sh')
-
-    def _generate_terraform_file(self):
-        terraform_template_file = self.tmpdir / 'aws-osx-cli-test.tf'
-        input_file = get_resource_path(
-            'terraform/{0}'.format('aws-osx-cli-test.tf.template')
-        )
-        with open(input_file, 'r') as f:
-            tf_template = f.read()
-
-        output = jinja2.Template(tf_template).render(self.template_inputs)
-        terraform_template_file.write_text(output)
