@@ -13,6 +13,7 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import time
 import yaml
 import pytest
 from copy import deepcopy
@@ -20,7 +21,7 @@ from StringIO import StringIO
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 from cosmo_tester.framework.test_hosts import (
-    BootstrapBasedCloudifyManagers,
+    TestHosts,
     get_image,
 )
 from cosmo_tester.framework.examples.hello_world import (
@@ -44,41 +45,43 @@ NETWORK_2 = "network_2"
 def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack."""
 
-    hosts = BootstrapBasedCloudifyManagers(
+    hosts = TestHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=2,
-        tf_template='openstack-multi-network-test.tf.template',
-        template_inputs={
-            'num_of_networks': 3,
-            'num_of_managers': 2,
-            'image_name': attributes.default_linux_image_name,
-            'username': attributes.default_linux_username
-        })
-    hosts.preconfigure_callback = _preconfigure_callback
+        flavor=attributes.medium_flavor_name,
+        bootstrappable=True,
+        multi_net=True,
+    )
 
     try:
         hosts.create()
+        prepare_hosts(hosts.instances, logger)
         yield hosts.instances
     finally:
         hosts.destroy()
 
 
-def _preconfigure_callback(_managers):
-    # Calling the param `_managers` to avoid confusion with fixture
-
+def prepare_hosts(instances, logger):
     # The preconfigure callback populates the networks config prior to the BS
-    for mgr in _managers:
+    for instance in instances:
         # Remove one of the networks - it will be added post-bootstrap
-        all_networks = deepcopy(mgr.networks)
+        all_networks = deepcopy(instance.networks)
         all_networks.pop(NETWORK_2)
 
-        mgr.additional_install_config = {
+        instance.additional_install_config = {
             'networks': all_networks,
             'sanity': {'skip_sanity': 'true'}
         }
 
         # Configure NICs in order for networking to work properly
-        mgr.enable_nics()
+        instance.enable_nics()
+
+        instance.bootstrap(blocking=False, upload_license=True)
+
+    for instance in instances:
+        logger.info('Waiting for bootstrap of {}'.format(instance.server_id))
+        while not instance.bootstrap_is_complete():
+            time.sleep(3)
 
 
 def test_multiple_networks(managers,
@@ -189,7 +192,7 @@ def _make_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
             'agent_user': attributes.centos_7_username,
             'image': attributes.centos_7_image_name,
             'manager_network_name': network_name,
-            'network_name': network_id
+            'network_name': network_id,
         })
 
         # Make sure the post_bootstrap network is first
@@ -222,26 +225,6 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
         yield _x
 
 
-class _ProxyTestHosts(BootstrapBasedCloudifyManagers):
-    """A BootstrapBasedCloudifyManagers that only bootstraps one manager.
-
-    In the proxy test, we need a bootstrapped manager, and an additional
-    host for the proxy. We want both to be created in the same backend
-    call so that they're on the same network, but we only want to bootstrap
-    one of the machines - the manager, not the proxy.
-
-    By convention, the first instance is the proxy, and the second instance
-    is the manager.
-    """
-    def _bootstrap_managers(self):
-        original_instances = self.instances
-        self.instances = [self.instances[1]]
-        try:
-            return super(_ProxyTestHosts, self)._bootstrap_managers()
-        finally:
-            self.instances = original_instances
-
-
 @pytest.fixture(scope='function')
 def proxy_hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     # the convention for this test is that the proxy is instances[0] and
@@ -249,11 +232,12 @@ def proxy_hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     # note that even though we bootstrap, we need to use current manager
     # for the manager and not the VM to setup a manager correctly
     instances = [get_image('centos'), get_image('master')]
-    hosts = _ProxyTestHosts(
-        cfy, ssh_key, module_tmpdir, attributes, logger, instances=instances)
-    hosts.preconfigure_callback = _proxy_preconfigure_callback
+    hosts = TestHosts(
+        cfy, ssh_key, module_tmpdir, attributes, logger, instances=instances,
+        bootstrappable=True)
     hosts.create()
     try:
+        proxy_prepare_hosts(hosts.instances, logger)
         yield hosts.instances
     finally:
         hosts.destroy()
@@ -274,8 +258,8 @@ WantedBy=multi-user.target
 """
 
 
-def _proxy_preconfigure_callback(_managers):
-    proxy, manager = _managers
+def proxy_prepare_hosts(instances, logger):
+    proxy, manager = instances
     proxy_ip = proxy.private_ip_address
     manager_ip = manager.private_ip_address
     # on the manager, we override the default network ip, so that by default
@@ -299,6 +283,12 @@ def _proxy_preconfigure_callback(_managers):
                 filename, use_sudo=True)
             fabric.sudo('systemctl enable {0}'.format(service))
             fabric.sudo('systemctl start {0}'.format(service))
+
+    manager.bootstrap(blocking=False, upload_license=True)
+
+    logger.info('Waiting for bootstrap of {}'.format(manager.server_id))
+    while not manager.bootstrap_is_complete():
+        time.sleep(3)
 
 
 @pytest.fixture(scope='function')

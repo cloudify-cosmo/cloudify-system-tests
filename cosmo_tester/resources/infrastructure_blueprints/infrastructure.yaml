@@ -27,14 +27,14 @@ node_templates:
         public_key: { get_secret: ssh_public_key }
       client_config: *openstack_config
 
-  test_network:
+  test_network_1:
     type: cloudify.nodes.openstack.Network
     properties:
       resource_config:
         name: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
       client_config: *openstack_config
 
-  test_subnet:
+  test_subnet_1:
     type: cloudify.nodes.openstack.Subnet
     properties:
       resource_config:
@@ -45,12 +45,12 @@ node_templates:
         dns_nameservers: [8.8.4.4, 8.8.8.8]
       client_config: *openstack_config
     relationships:
-      - target: test_network
+      - target: test_network_1
         type: cloudify.relationships.contained_in
-      - target: test_router
+      - target: test_router_1
         type: cloudify.relationships.openstack.subnet_connected_to_router
 
-  test_router:
+  test_router_1:
     type: cloudify.nodes.openstack.Router
     properties:
       resource_config:

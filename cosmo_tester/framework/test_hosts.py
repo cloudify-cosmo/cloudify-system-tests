@@ -13,6 +13,7 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+from ipaddress import ip_address, ip_network
 import textwrap
 
 import json
@@ -50,6 +51,7 @@ class VM(object):
         self._image_name = None
         self.userdata = ""
         self.enable_ssh_wait = True
+        self.should_finalize = True
 
     def assign(
             self,
@@ -147,7 +149,7 @@ class VM(object):
     def wait_for_manager(self):
         return True
 
-    def upload_plugin(self, plugin_name):
+    def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
         return True
 
     def upload_necessary_files(self):
@@ -314,6 +316,7 @@ class _CloudifyManager(VM):
             ))
 
     def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
+        # Included in VM so that bootstrapped managers can use it
         all_plugins = util.get_plugin_wagon_urls()
         plugins = [p for p in all_plugins if p['name'] == plugin_name]
         if len(plugins) != 1:
@@ -342,16 +345,11 @@ class _CloudifyManager(VM):
                         plugin['wgn_url'], tenant_name, yaml_snippet
                     ))
         except Exception:
-            try:
-                self.use()
-                command = [plugin['wgn_url'], '-t', tenant_name]
-                if yaml_snippet:
-                    command += ['--yaml-path', plugin['plugin_yaml_url']]
-                self._cfy.plugins.upload(command)
-            except Exception:
-                # This is needed for 3.4 managers. local cfy isn't
-                # compatible and cfy isn't installed in the image
-                self.client.plugins.upload(plugin['wgn_url'])
+            self.use()
+            command = [plugin['wgn_url'], '-t', tenant_name]
+            if yaml_snippet:
+                command += ['--yaml-path', plugin['plugin_yaml_url']]
+            self._cfy.plugins.upload(command)
 
         self.wait_for_all_executions()
 
@@ -565,6 +563,7 @@ class _CloudifyManager(VM):
                     time.sleep(5)
             if enter_sanity_mode:
                 self.enter_sanity_mode()
+            self.finalize_preparation()
 
     def bootstrap_is_complete(self):
         with self.ssh() as fabric_ssh:
@@ -582,6 +581,7 @@ class _CloudifyManager(VM):
 
             if result == 'done':
                 self._logger.info('Bootstrap complete.')
+                self.finalize_preparation()
                 return True
             else:
                 # To aid in troubleshooting (e.g. where a VM runs commands too
@@ -759,7 +759,10 @@ class TestHosts(object):
                  tf_template=None,
                  template_inputs=None,
                  upload_plugins=True,
-                 request=None):
+                 request=None,
+                 flavor=None,
+                 multi_net=False,
+                 bootstrappable=True):
         """
         instances: supply a list of VM instances.
         This allows pre-configuration to happen before starting the hosts, or
@@ -774,24 +777,28 @@ class TestHosts(object):
         self._ssh_key = ssh_key
         self._cfy = cfy
         self.preconfigure_callback = None
-        if instances is not None:
-            self.instances = instances
-        else:
+        if instances is None:
             self.instances = [
                 get_image('master')
                 for _ in range(number_of_instances)]
+        else:
+            self.instances = instances
         self._template_inputs = template_inputs or {'servers': self.instances}
         self._request = request
         self.upload_plugins = upload_plugins
         self.tenant = None
         self.deployments = []
         self.blueprints = []
+        self.multi_net = multi_net
+        if flavor:
+            self.server_flavor = flavor
+        else:
+            self.server_flavor = self._attributes.manager_server_flavor_name
 
-    def _bootstrap_managers(self):
-        pass
-
-    def _get_server_flavor(self):
-        return self._attributes.manager_server_flavor_name
+        if bootstrappable:
+            for instance in self.instances:
+                instance._image_name = ATTRIBUTES['default_linux_image_name']
+                instance.should_finalize = False
 
     def create(self):
         """Creates the infrastructure for a Cloudify manager."""
@@ -828,9 +835,10 @@ class TestHosts(object):
         )
 
         try:
-            # Create a tenant for this test
+            self._logger.info('Creating test tenant')
             self._cfy.tenants.create(test_identifier)
             self.tenant = test_identifier
+            self._logger.info('Using test tenant')
             self._cfy.profiles.set(
                 "--manager-tenant", test_identifier,
             )
@@ -846,7 +854,8 @@ class TestHosts(object):
                 self._deploy_test_vms(image_id, instances, test_identifier)
 
             for instance in self.instances:
-                instance.finalize_preparation()
+                if instance.should_finalize:
+                    instance.finalize_preparation()
         except Exception as err:
             self._logger.error(
                 "Encountered exception trying to create test resources: %s.\n"
@@ -971,17 +980,22 @@ class TestHosts(object):
         self._logger.info(
             'Uploading test blueprints to infrastructure manager.'
         )
+        suffix = '-multi-net' if self.multi_net else ""
         self._cfy.blueprints.upload(
             "--blueprint-id", "infrastructure",
             util.get_resource_path(
-                'infrastructure_blueprints/infrastructure.yaml'
+                'infrastructure_blueprints/infrastructure{}.yaml'.format(
+                    suffix,
+                )
             ),
         )
         self.blueprints.append('infrastructure')
         self._cfy.blueprints.upload(
             "--blueprint-id", "test_vm",
             util.get_resource_path(
-                'infrastructure_blueprints/vm.yaml'
+                'infrastructure_blueprints/vm{}.yaml'.format(
+                    suffix,
+                )
             ),
         )
         self.blueprints.append('test_vm')
@@ -1019,12 +1033,12 @@ class TestHosts(object):
         self._attributes['keypair_name'] = infra_keypair[
             'runtime_properties']['id']
         infra_network = self._get_node_instances(
-            'test_network', 'infrastructure',
+            'test_network_1', 'infrastructure',
         )[0]
         self._attributes['network_name'] = infra_network[
             'runtime_properties']['name']
         infra_subnet = self._get_node_instances(
-            'test_subnet', 'infrastructure',
+            'test_subnet_1', 'infrastructure',
         )[0]
         self._attributes['subnet_name'] = infra_subnet[
             'runtime_properties']['name']
@@ -1033,6 +1047,27 @@ class TestHosts(object):
         )[0]
         self._attributes['security_group_name'] = infra_security_group[
             'runtime_properties']['name']
+        if self.multi_net:
+            network_names = {}
+            for net in range(1, 4):
+                net_details = self._get_node_instances(
+                    'test_network_{}'.format(net), 'infrastructure'
+                )[0]['runtime_properties']
+                network_names['network_{}'.format(net - 1)] = net_details[
+                    'name']
+            self._attributes.network_names = network_names
+
+            network_mappings = {}
+            for sn in range(1, 4):
+                subnet_details = self._get_node(
+                    'test_subnet_{}'.format(sn), 'infrastructure',
+                )['properties']['resource_config']
+                network_mappings['network_{}'.format(sn - 1)] = ip_network(
+                    # Has to be unicode for ipaddress library.
+                    # Converting like this for py3 compat
+                    u'{}'.format(subnet_details['cidr']),
+                )
+            self.network_mappings = network_mappings
 
     def _deploy_test_vms(self, image_id, instances, test_identifier):
         self._logger.info(
@@ -1050,7 +1085,7 @@ class TestHosts(object):
             'test_infrastructure_name': test_identifier,
             'floating_network_id': ATTRIBUTES['floating_network_id'],
             'image': image_id,
-            'flavor': self._get_server_flavor(),
+            'flavor': self.server_flavor,
             'userdata': instances[0].userdata,
         }
         vm_inputs_path = self._tmpdir / '{}.yaml'.format(vm_id)
@@ -1117,22 +1152,38 @@ class TestHosts(object):
 
         return node_instances
 
+    def _get_node(self, node_name, deployment_id):
+        return json.loads(self._cfy(
+            "nodes", "get", "--json",
+            "--deployment-id", deployment_id,
+            node_name,
+        ).stdout)
+
     def _update_instance(self, instance, node_instance):
-        public_ip_address = node_instance['runtime_properties'][
-            'public_ip_address']
-        private_ip_address = node_instance['runtime_properties']['ip']
+        runtime_props = node_instance['runtime_properties']
+
+        public_ip_address = runtime_props['public_ip_address']
+        private_ip_address = runtime_props['ip']
 
         node_instance_id = node_instance['id']
         deployment_id = node_instance['deployment_id']
-        server_id = node_instance['runtime_properties']['id']
+        server_id = runtime_props['id']
 
-        # TODO: Handle networks
-        # # Some templates don't expose networks as outputs
-        # networks = outputs.get('networks_{}'.format(i), {})
-        # # Convert unicode to strings, in order to avoid ruamel issues
-        # # when loading this dict into the config.yaml
-        # networks = {str(k): str(v) for k, v in networks.items()}
         networks = {}
+        if self.multi_net:
+            # Filter out public IPs from ipv4 addresses
+            ipv4_addresses = sorted([
+                # Has to be unicode for ipaddress library.
+                # Converting like this for py3 compat
+                ip_address(u'{}'.format(addr))
+                for addr in runtime_props['ipv4_addresses']
+            ])
+
+            for ip in ipv4_addresses:
+                for net_name, network in self.network_mappings.items():
+                    if ip in network:
+                        networks[net_name] = str(ip)
+                        break
 
         if hasattr(instance, 'api_version'):
             rest_client = util.create_rest_client(
