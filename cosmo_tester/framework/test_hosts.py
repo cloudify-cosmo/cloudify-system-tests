@@ -756,8 +756,6 @@ class TestHosts(object):
                  logger,
                  number_of_instances=1,
                  instances=None,
-                 tf_template=None,
-                 template_inputs=None,
                  upload_plugins=True,
                  request=None,
                  flavor=None,
@@ -783,7 +781,6 @@ class TestHosts(object):
                 for _ in range(number_of_instances)]
         else:
             self.instances = instances
-        self._template_inputs = template_inputs or {'servers': self.instances}
         self._request = request
         self.upload_plugins = upload_plugins
         self.tenant = None
