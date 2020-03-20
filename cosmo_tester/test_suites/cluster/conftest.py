@@ -6,7 +6,7 @@ import pytest
 from os.path import join, dirname
 from jinja2 import Environment, FileSystemLoader
 
-from cosmo_tester.framework.test_hosts import BootstrappableHosts
+from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework import util
 
 CONFIG_DIR = join(dirname(__file__), 'config')
@@ -110,11 +110,12 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                pre_cluster_rabbit=False, high_security=True):
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
-    hosts = BootstrappableHosts(
+    hosts = TestHosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=broker_count + db_count + manager_count + (
             1 if use_load_balancer else 0
-        ))
+        ),
+        bootstrappable=True)
 
     tempdir = hosts._tmpdir
 

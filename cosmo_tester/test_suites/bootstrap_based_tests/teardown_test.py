@@ -15,7 +15,7 @@
 
 import pytest
 
-from cosmo_tester.framework.test_hosts import BootstrapBasedCloudifyManagers
+from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework.examples.hello_world import hello_worlds # noqa # (pytest fixture imported)
 
 pre_bootstrap_state = None
@@ -53,18 +53,21 @@ def test_teardown(manager, hello_worlds):  # noqa # (pytest fixture, not redefin
 def manager(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
     # The preconfigure callback populates the files structure prior to the BS
-    hosts = BootstrapBasedCloudifyManagers(
-        cfy, ssh_key, module_tmpdir, attributes, logger)
-    hosts.preconfigure_callback = _preconfigure_callback
+    hosts = TestHosts(
+        cfy, ssh_key, module_tmpdir, attributes, logger,
+        bootstrappable=True,
+    )
     try:
         hosts.create()
+        check_pre_bootstrap_state(hosts.instances)
+        hosts.instances[0].bootstrap()
         hosts.instances[0].use()
         yield hosts.instances[0]
     finally:
         hosts.destroy()
 
 
-def _preconfigure_callback(managers):
+def check_pre_bootstrap_state(managers):
     global pre_bootstrap_state
     mgr = managers[0]
     pre_bootstrap_state = _get_system_state(mgr)

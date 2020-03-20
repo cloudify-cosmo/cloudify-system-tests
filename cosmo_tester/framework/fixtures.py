@@ -13,11 +13,12 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import time
+
 import pytest
 
 from .test_hosts import (
     TestHosts,
-    BootstrapBasedCloudifyManagers,
 )
 
 
@@ -61,10 +62,19 @@ def image_based_manager_without_plugins(
 def bootstrap_based_manager(
         request, cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps a cloudify manager on a VM in rackspace OpenStack."""
-    hosts = BootstrapBasedCloudifyManagers(
-            cfy, ssh_key, module_tmpdir, attributes, logger)
+    hosts = TestHosts(
+            cfy, ssh_key, module_tmpdir, attributes, logger,
+            bootstrappable=True)
     try:
         hosts.create()
+        for instance in hosts.instances:
+            instance.bootstrap(blocking=False, upload_license=True)
+        for instance in hosts.instances:
+            logger.info('Waiting for bootstrap of {}'.format(
+                instance.server_id
+            ))
+            while not instance.bootstrap_is_complete():
+                time.sleep(3)
         hosts.instances[0].use()
         yield hosts.instances[0]
     finally:
