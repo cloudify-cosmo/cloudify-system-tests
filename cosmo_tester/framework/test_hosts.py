@@ -760,7 +760,7 @@ class TestHosts(object):
                  request=None,
                  flavor=None,
                  multi_net=False,
-                 bootstrappable=True):
+                 bootstrappable=False):
         """
         instances: supply a list of VM instances.
         This allows pre-configuration to happen before starting the hosts, or
