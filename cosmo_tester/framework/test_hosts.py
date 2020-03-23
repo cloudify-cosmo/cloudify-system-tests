@@ -938,12 +938,15 @@ class TestHosts(object):
 
     def _upload_secrets_to_infrastructure_manager(self):
         # Used to maintain compatibility with current test framework config
-        secret_env_var_mapping = {
-            "keystone_password": "OS_PASSWORD",
-            "keystone_tenant_name": "OS_TENANT_NAME",
-            "keystone_url": "OS_AUTH_URL",
-            "keystone_username": "OS_USERNAME",
-            "region": "OS_REGION_NAME",
+        secrets_from_env = {
+            "keystone_password": os.environ["OS_PASSWORD"],
+            "keystone_tenant_name": (
+                os.environ.get("OS_TENANT_NAME")
+                or os.environ['OS_PROJECT_NAME']
+            ),
+            "keystone_url": os.environ["OS_AUTH_URL"],
+            "keystone_username": os.environ["OS_USERNAME"],
+            "region": os.environ.get("OS_REGION_NAME", "RegionOne"),
         }
         self._logger.info(
             'Uploading openstack secrets to infrastructure manager.'
@@ -956,7 +959,7 @@ class TestHosts(object):
             "region",
         ]:
             self._cfy.secrets.create(
-                "--secret-string", os.environ[secret_env_var_mapping[secret]],
+                "--secret-string", secrets_from_env,
                 secret,
             )
         self._cfy.secrets.create(
