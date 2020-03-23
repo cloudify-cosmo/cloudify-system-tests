@@ -959,7 +959,7 @@ class TestHosts(object):
             "region",
         ]:
             self._cfy.secrets.create(
-                "--secret-string", secrets_from_env,
+                "--secret-string", secrets_from_env[secret],
                 secret,
             )
         self._cfy.secrets.create(
