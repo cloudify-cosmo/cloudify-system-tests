@@ -21,6 +21,7 @@ from cosmo_tester.framework.examples.hello_world import centos_hello_world
 
 
 manager = image_based_manager
+ATTRIBUTES = util.get_attributes()
 
 
 @pytest.fixture(scope='function')
@@ -62,6 +63,8 @@ def test_capabilities(cfy,
                       web_app,
                       tmpdir,
                       logger):
+    manager.upload_plugin(ATTRIBUTES['default_openstack_plugin'])
+
     # We're uploading a blueprint that creates an infrastructure for a VM,
     # and then exposes capabilities, which will be used in the application
     logger.info('Deploying infrastructure blueprint.')
