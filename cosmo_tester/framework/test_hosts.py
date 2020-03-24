@@ -923,12 +923,19 @@ class TestHosts(object):
                 self._logger.info('Deleting plugins.')
                 plugins = json.loads(self._cfy.plugins.list('--json').stdout)
                 for plugin in plugins:
-                    self._logger.info(
-                        'Deleting %s (%s)',
-                        plugin['package_name'],
-                        plugin['id'],
-                    )
-                    self._cfy.plugins.delete(plugin['id'])
+                    if plugin["tenant_name"] != self.tenant:
+                        self._logger.info(
+                            'Skipping shared %s (%s)',
+                            plugin['package_name'],
+                            plugin['id'],
+                        )
+                    else:
+                        self._logger.info(
+                            'Deleting %s (%s)',
+                            plugin['package_name'],
+                            plugin['id'],
+                        )
+                        self._cfy.plugins.delete(plugin['id'])
 
                 self._logger.info('Switching back to default tenant.')
                 self._cfy.profiles.set('--manager-tenant', 'default_tenant')
@@ -968,13 +975,20 @@ class TestHosts(object):
         )
 
     def _upload_plugins_to_infrastructure_manager(self):
-        self._logger.info(
-            'Uploading openstack plugin to infrastructure manager.'
-        )
-        self._cfy.plugins.upload(
-            "--yaml-path", ATTRIBUTES['openstack_plugin_yaml_path'],
-            ATTRIBUTES['openstack_plugin_path'],
-        )
+        current_plugins = json.loads(self._cfy.plugins.list('--json').stdout)
+        if any(
+            plugin["package_name"] == "cloudify-openstack-plugin"
+            for plugin in current_plugins
+        ):
+            self._logger.info('Openstack plugin already present.')
+        else:
+            self._logger.info(
+                'Uploading openstack plugin to infrastructure manager.'
+            )
+            self._cfy.plugins.upload(
+                "--yaml-path", ATTRIBUTES['openstack_plugin_yaml_path'],
+                ATTRIBUTES['openstack_plugin_path'],
+            )
 
     def _upload_blueprints_to_infrastructure_manager(self):
         self._logger.info(
