@@ -55,6 +55,7 @@ def test_ssl(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
                                 protocol='https',
                                 cert=cert_path)
     manager.client = ssl_client
+    manager.upload_plugin(attributes['default_openstack_plugin'])
 
     if not is_community():
         tenant_name = 'ssl_tenant'
