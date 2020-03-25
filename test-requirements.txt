@@ -3,4 +3,4 @@ git+https://github.com/cloudify-cosmo/cloudify-cli@master#egg=cloudify==master
 git+https://github.com/cloudify-cosmo/cloudify-agent@master#egg=cloudify-agent==master
 mock
 passlib==1.7.1
-git+https://github.com/cloudify-cosmo/cloudify-fabric-plugin@master#egg=cloudify-fabric-plugin==1.6.0
+git+https://github.com/cloudify-cosmo/cloudify-fabric-plugin@1.6.0#egg=cloudify-fabric-plugin==1.6.0
