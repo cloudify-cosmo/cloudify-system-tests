@@ -27,7 +27,7 @@ from cosmo_tester.framework.util import is_community
 if is_community():
     VERSIONS = ['master']
 else:
-    VERSIONS = ['4.3.1', 'master']
+    VERSIONS = ['5.0.5', 'master']
 
 
 @pytest.fixture(scope='module', params=VERSIONS)
@@ -39,6 +39,9 @@ def image_based_manager(request, cfy, ssh_key, module_tmpdir, attributes,
     try:
         hosts.create()
         hosts.instances[0].use()
+        hosts.instances[0].upload_plugin(
+            attributes['default_openstack_plugin']
+        )
         yield hosts.instances[0]
     finally:
         hosts.destroy()
