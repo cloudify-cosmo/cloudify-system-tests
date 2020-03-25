@@ -30,6 +30,9 @@ def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
         # The second manager needs to be clean, to allow restoring to it
         _managers[1].upload_plugins = False
         hosts.create()
+        hosts.instances[0].upload_plugin(
+            attributes['default_openstack_plugin']
+        )
         yield _managers
     finally:
         hosts.destroy()
