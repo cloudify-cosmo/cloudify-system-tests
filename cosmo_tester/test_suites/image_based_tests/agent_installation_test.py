@@ -104,17 +104,17 @@ def test_windows_provided_userdata_agent(cfy,
         manager,
         cfy,
     )
+    user = 'Admin'
     install_userdata = _install_script(
         name=name,
         windows=True,
-        user=attributes.windows_2012_username,
+        user=user,
         manager=manager,
         attributes=attributes,
         tmpdir=tmpdir,
         logger=logger,
         tenant=tenant,
     )
-    user = attributes.windows_2012_username
     file_path = 'C:\\Users\\{0}\\test_file'.format(user)
     userdata = '#ps1_sysnative\n' \
                'Set-Content {1} "{0}"'.format(EXPECTED_FILE_CONTENT, file_path)
@@ -199,7 +199,7 @@ def _test_windows_common(
         os_name,
         tenant,
         deployment_id_prefix):
-    user = attributes.windows_2012_username
+    user = 'Admin'
     if not tenant:
         tenant = prepare_and_get_test_tenant(
             '{0}_{1}'.format(deployment_id_prefix, os_name),
@@ -302,6 +302,8 @@ def _test_agent_alive_after_reboot(cfy, manager, attributes, os_name,
         'private_key_path': manager.remote_private_key_path,
         'keypair_name': attributes['keypair_name'],
     }
+    if os_name == 'windows_2012':
+        inputs['user'] = 'Admin'
 
     blueprint_path = util.get_resource_path(blueprint_name)
     inputs['value'] = os_name
