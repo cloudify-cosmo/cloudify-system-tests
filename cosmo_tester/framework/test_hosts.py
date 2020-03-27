@@ -97,7 +97,11 @@ class VM(object):
 
     @property
     def linux_username(self):
-        return self._attributes.default_linux_username
+        return self._linux_username or self._attributes.default_linux_username
+
+    @linux_username.setter
+    def linux_username(self, user):
+        self._linux_username = user
 
     @contextmanager
     def ssh(self, **kwargs):
@@ -217,6 +221,7 @@ class VM(object):
             raise RuntimeError('Status reporter is not installed')
         return node_id_parts[1]
 
+    _linux_username = None
     image_name = ATTRIBUTES['default_linux_image_name']
     username = ATTRIBUTES['default_linux_username']
     image_type = 'centos'
@@ -1092,7 +1097,12 @@ class TestHosts(object):
 
         scale_count = max(len(instances) - 1, 0)
 
-        vm_id = 'vm_{}'.format(image_id)
+        vm_id = 'vm_{}'.format(
+            image_id
+            .replace(' ', '_')
+            .replace('(', '_')
+            .replace(')', '_')
+        )
 
         self._logger.info('Creating test VM inputs for %s', image_id)
         vm_inputs = {

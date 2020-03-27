@@ -141,6 +141,9 @@ def centos_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir,
 @pytest.fixture(scope='function')
 def hello_worlds(cfy, manager, attributes, ssh_key, tmpdir,
                  logger):
+    manager.upload_plugin(
+        attributes['default_openstack_plugin']
+    )
     hellos = get_hello_worlds(cfy, manager, attributes, ssh_key, tmpdir,
                               logger)
     yield hellos
