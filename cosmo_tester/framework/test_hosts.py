@@ -52,6 +52,7 @@ class VM(object):
         self.userdata = ""
         self.enable_ssh_wait = True
         self.should_finalize = True
+        self.restservice_expected = False
 
     def assign(
             self,
@@ -129,8 +130,9 @@ class VM(object):
     def finalize_preparation(self):
         """Complete preparations for using a new instance."""
         self.wait_for_ssh()
-        self.use()
-        self.wait_for_manager()
+        if self.restservice_expected:
+            self.use()
+            self.wait_for_manager()
         self.upload_necessary_files()
 
     @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
@@ -505,7 +507,8 @@ class _CloudifyManager(VM):
         return config_file
 
     def bootstrap(self, enter_sanity_mode=True, upload_license=False,
-                  blocking=True):
+                  blocking=True, restservice_expected=True):
+        self.restservice_expected = restservice_expected
         manager_install_rpm = \
             ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
             util.get_manager_install_rpm_url()
