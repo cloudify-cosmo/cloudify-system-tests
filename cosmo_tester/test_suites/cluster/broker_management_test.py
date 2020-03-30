@@ -1,6 +1,8 @@
 import json
 import time
 
+import retrying
+
 
 def get_broker_listing(broker, prefix='rabbit@'):
     with broker.ssh() as broker_ssh:
@@ -47,6 +49,7 @@ def join_cluster(new_broker, cluster_member):
         ))
 
 
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
 def get_cluster_listing(cluster_brokers, down=()):
     cluster_listing = get_broker_listing(cluster_brokers[0])
     for other_broker in cluster_brokers[1:]:
