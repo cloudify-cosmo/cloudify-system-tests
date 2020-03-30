@@ -443,7 +443,8 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         return
 
     # We have to block on every manager
-    node.bootstrap(blocking=True)
+    # And we can't do a cfy.use on the manager because of the ssl
+    node.bootstrap(blocking=True, restservice_expected=False)
 
     # Correctly configure the rest client for the node
     node.client = util.create_rest_client(
