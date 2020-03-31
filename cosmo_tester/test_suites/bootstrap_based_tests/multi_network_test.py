@@ -17,7 +17,6 @@ import time
 import yaml
 import pytest
 from copy import deepcopy
-from StringIO import StringIO
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 from cosmo_tester.framework.test_hosts import (
@@ -277,10 +276,11 @@ def proxy_prepare_hosts(instances, logger):
         for port in [5671, 53333]:
             service = 'proxy_{0}'.format(port)
             filename = '/usr/lib/systemd/system/{0}.service'.format(service)
-            fabric.put(
-                StringIO(PROXY_SERVICE_TEMPLATE.format(
-                    ip=manager_ip, port=port)),
-                filename, use_sudo=True)
+            proxy.put_remote_file_content(
+                filename,
+                PROXY_SERVICE_TEMPLATE.format(
+                    ip=manager_ip, port=port),
+            )
             fabric.sudo('systemctl enable {0}'.format(service))
             fabric.sudo('systemctl start {0}'.format(service))
 

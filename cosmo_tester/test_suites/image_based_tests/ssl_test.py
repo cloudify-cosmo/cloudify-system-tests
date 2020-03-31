@@ -102,8 +102,7 @@ def _generate_external_cert(_manager, logger):
 
 
 def _download_external_cert(_manager, logger, local_cert_path):
-    with _manager.ssh() as fabric_ssh:
-        logger.info('Downloading external cert from the manager...')
-        fabric_ssh.get(
-            REMOTE_EXTERNAL_CERT_PATH, local_cert_path, use_sudo=True
-        )
+    logger.info('Downloading external cert from the manager...')
+    _manager.get_remote_file(
+        REMOTE_EXTERNAL_CERT_PATH, local_cert_path,
+    )

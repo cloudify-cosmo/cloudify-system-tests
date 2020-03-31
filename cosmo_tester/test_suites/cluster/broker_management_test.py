@@ -6,7 +6,9 @@ import retrying
 
 def get_broker_listing(broker, prefix='rabbit@'):
     with broker.ssh() as broker_ssh:
-        brokers_list_output = broker_ssh.run('cfy_manager brokers list')
+        brokers_list_output = broker_ssh.run(
+            'cfy_manager brokers list'
+        ).stdout
     broker_lines = [line for line in brokers_list_output.splitlines()
                     if prefix in line]
     brokers = {}
@@ -136,7 +138,7 @@ def test_list(brokers, logger):
     with brokers[0].ssh() as broker_ssh:
         result = broker_ssh.run(
             'cfy_manager brokers list 2>&1 || true'
-        ).lower()
+        ).stdout.lower()
         # Make sure we make some indication of possible cluster failure in the
         # output
         assert 'cluster' in result
@@ -152,7 +154,7 @@ def test_auth_fail(broker, logger):
         )
         result = broker_ssh.run(
             'cfy_manager brokers list 2>&1 || true'
-        ).lower()
+        ).stdout.lower()
         # Make sure we indicate something about auth failure in the output
         assert 'login' in result
         assert 'fail' in result
@@ -174,7 +176,7 @@ def test_add(brokers, logger):
             'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[2].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'start' in result
         assert 'node' in result
     get_cluster_listing([brokers[0]])
@@ -196,7 +198,7 @@ def test_add(brokers, logger):
             'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[2].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'in' in result
         assert 'cluster' in result
         assert 'run' in result
@@ -211,7 +213,7 @@ def test_add(brokers, logger):
             'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[0].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'resolvable' in result
     logger.info('Unresolvable join failed correctly.')
 
@@ -227,7 +229,7 @@ def test_add(brokers, logger):
             'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[1].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'erlang' in result
         assert 'cookie' in result
     logger.info('Incorrect erlang cookie gave correct error.')
@@ -239,7 +241,7 @@ def test_add(brokers, logger):
             'cfy_manager brokers add -j {node} || true'.format(
                 node=brokers[1].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'cannot' in result
         assert 'connect' in result
     logger.info('Correct error trying to join unreachable node.')
@@ -256,7 +258,7 @@ def test_remove(brokers, logger):
             'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
                 node=brokers[1].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'must' in result
         assert 'shut down' in result
     logger.info('Active node removal check successful.')
@@ -279,7 +281,7 @@ def test_remove(brokers, logger):
             'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
                 node=brokers[1].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'not found' in result
         # Make sure we list valid nodes
         assert brokers[0].hostname in result
@@ -293,7 +295,7 @@ def test_remove(brokers, logger):
             'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
                 node=brokers[2].hostname,
             )
-        ).lower()
+        ).stdout.lower()
         assert 'cluster' in result
         assert 'failed' in result
 

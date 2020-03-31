@@ -134,7 +134,9 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
                 # because the hostname is used by nodes that are being
                 # bootstrapped with reference to nodes that may not have been
                 # bootstrapped yet.
-                node.hostname = str(fabric_ssh.run('hostname -s'))
+                node.hostname = str(
+                    fabric_ssh.run('hostname -s').stdout.strip()
+                )
 
         brokers = hosts.instances[:broker_count]
         dbs = hosts.instances[broker_count:broker_count + db_count]

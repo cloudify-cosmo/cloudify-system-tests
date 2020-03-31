@@ -16,6 +16,7 @@
 from ipaddress import ip_address, ip_network
 import textwrap
 
+import hashlib
 import json
 import os
 import re
@@ -27,8 +28,7 @@ from contextlib import contextmanager
 from distutils.version import LooseVersion
 
 import retrying
-from fabric import api as fabric_api
-from fabric import context_managers as fabric_context_managers
+from fabric import Connection
 
 from cosmo_tester.framework import util
 
@@ -105,14 +105,21 @@ class VM(object):
         self._linux_username = user
 
     @contextmanager
-    def ssh(self, **kwargs):
-        with fabric_context_managers.settings(
-                host_string=self.ip_address,
-                user=self.linux_username,
-                key_filename=self.private_key_path,
-                abort_exception=Exception,
-                **kwargs):
-            yield fabric_api
+    def ssh(self):
+        conn = Connection(
+            host=self.ip_address,
+            user=self.linux_username,
+            connect_kwargs={
+                'key_filename': self.private_key_path,
+            },
+            port=22,
+            connect_timeout=3,
+        )
+        try:
+            conn.open()
+            yield conn
+        finally:
+            conn.close()
 
     def __str__(self):
         return 'Cloudify Test VM ({image}) [{ip}]'.format(
@@ -165,31 +172,47 @@ class VM(object):
     def ssh_key(self):
         return self._ssh_key
 
-    def get_remote_file(self, remote_path, local_path, use_sudo=True):
+    def get_remote_file(self, remote_path, local_path):
         """ Dump the contents of the remote file into the local path """
+        # Similar to the way fabric1 did it
+        remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
+        self.run_command(
+            'cp {} {}'.format(remote_path, remote_tmp),
+            use_sudo=True,
+        ),
 
         with self.ssh() as fabric_ssh:
             fabric_ssh.get(
-                remote_path,
+                remote_tmp,
                 local_path,
-                use_sudo=use_sudo
             )
 
-    def put_remote_file(self, remote_path, local_path, use_sudo=True):
+    def put_remote_file(self, remote_path, local_path):
         """ Dump the contents of the local file into the remote path """
 
         with self.ssh() as fabric_ssh:
+            # Similar to the way fabric1 did it
+            remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
             fabric_ssh.put(
                 local_path,
-                remote_path,
-                use_sudo=use_sudo
+                remote_tmp,
             )
+        self.run_command(
+            'mkdir -p {}'.format(
+                os.path.dirname(remote_path),
+            ),
+            use_sudo=True,
+        )
+        self.run_command(
+            'mv {} {}'.format(remote_tmp, remote_path),
+            use_sudo=True,
+        )
 
-    def get_remote_file_content(self, remote_path, use_sudo=True):
+    def get_remote_file_content(self, remote_path):
         tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
 
         try:
-            self.get_remote_file(remote_path, tmp_local_path, use_sudo)
+            self.get_remote_file(remote_path, tmp_local_path)
             with open(tmp_local_path, 'r') as f:
                 content = f.read()
         finally:
@@ -197,25 +220,25 @@ class VM(object):
                 os.unlink(tmp_local_path)
         return content
 
-    def put_remote_file_content(self, remote_path, content, use_sudo=True):
+    def put_remote_file_content(self, remote_path, content):
         tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
 
         try:
             with open(tmp_local_path, 'w') as f:
                 f.write(content)
 
-            self.put_remote_file(remote_path, tmp_local_path, use_sudo)
+            self.put_remote_file(remote_path, tmp_local_path)
 
         finally:
             if os.path.exists(tmp_local_path):
                 os.unlink(tmp_local_path)
 
-    def run_command(self, command, use_sudo=False):
+    def run_command(self, command, use_sudo=False, warn_only=False):
         with self.ssh() as fabric_ssh:
             if use_sudo:
-                return fabric_ssh.sudo(command)
+                return fabric_ssh.sudo(command, warn=warn_only)
             else:
-                return fabric_ssh.run(command)
+                return fabric_ssh.run(command, warn=warn_only)
 
     def get_node_id(self):
         node_id_parts = self.run_command('cfy_manager node get-id').split(': ')
@@ -272,21 +295,16 @@ class _CloudifyManager(VM):
     def upload_necessary_files(self):
         self._logger.info('Uploading necessary files to %s', self)
         openstack_config_file = self._create_openstack_config_file()
+
+        self.put_remote_file(REMOTE_OPENSTACK_CONFIG_PATH,
+                             openstack_config_file)
+
+        self.put_remote_file(REMOTE_PRIVATE_KEY_PATH,
+                             self._ssh_key.private_key_path)
+        self.put_remote_file(REMOTE_PUBLIC_KEY_PATH,
+                             self._ssh_key.public_key_path)
+
         with self.ssh() as fabric_ssh:
-            openstack_json_path = REMOTE_OPENSTACK_CONFIG_PATH
-            fabric_ssh.sudo('mkdir -p "{}"'.format(
-                os.path.dirname(REMOTE_PRIVATE_KEY_PATH)))
-            fabric_ssh.put(openstack_config_file,
-                           openstack_json_path,
-                           use_sudo=True)
-
-            fabric_ssh.put(self._ssh_key.private_key_path,
-                           REMOTE_PRIVATE_KEY_PATH,
-                           use_sudo=True)
-            fabric_ssh.put(self._ssh_key.public_key_path,
-                           REMOTE_PUBLIC_KEY_PATH,
-                           use_sudo=True)
-
             fabric_ssh.sudo('chown cfyuser:cfyuser {key_file}'.format(
                 key_file=REMOTE_PRIVATE_KEY_PATH,
             ))
@@ -308,13 +326,8 @@ class _CloudifyManager(VM):
         Test Managers should be in sanity mode to skip Cloudify license
         validations.
         """
+        self.put_remote_file_content(SANITY_MODE_FILE_PATH, 'sanity')
         with self.ssh() as fabric_ssh:
-
-            fabric_ssh.sudo('mkdir -p "{}"'.format(
-                os.path.dirname(SANITY_MODE_FILE_PATH)))
-
-            fabric_ssh.sudo('echo sanity >> "{0}"'.format(
-                SANITY_MODE_FILE_PATH))
             fabric_ssh.sudo('chown cfyuser:cfyuser {sanity_mode}'.format(
                 sanity_mode=SANITY_MODE_FILE_PATH,
             ))
@@ -518,14 +531,14 @@ class _CloudifyManager(VM):
         install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('mkdir -p /tmp/bs_logs')
-            fabric_ssh.put(
+            self.put_remote_file(
+                '/tmp/cloudify.conf',
                 install_config,
-                '/tmp/cloudify.conf'
             )
             if upload_license:
-                fabric_ssh.put(
+                self.put_remote_file(
+                    '/tmp/test_valid_paying_license.yaml',
                     util.get_resource_path('test_valid_paying_license.yaml'),
-                    '/tmp/test_valid_paying_license.yaml'
                 )
 
             commands = [
@@ -559,7 +572,7 @@ class _CloudifyManager(VM):
                 self.ip_address,
             )
             install_file.write_text(install_command)
-            fabric_ssh.put(install_file, '/tmp/bootstrap_script')
+            self.put_remote_file('/tmp/bootstrap_script', install_file)
 
             fabric_ssh.run('nohup bash /tmp/bootstrap_script')
 
@@ -585,7 +598,7 @@ class _CloudifyManager(VM):
                 'else '
                 '  echo not done; '
                 'fi'
-            ).strip()
+            ).stdout.strip()
 
             if result == 'done':
                 self._logger.info('Bootstrap complete.')
@@ -692,10 +705,9 @@ class _CloudifyManager(VM):
             # Create and copy the interface config
             network_file_path.write_text(config_content)
             with self.ssh() as fabric_ssh:
-                fabric_ssh.put(
-                    network_file_path,
+                self.put_remote_file(
                     '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
-                    use_sudo=True
+                    network_file_path,
                 )
                 # Start the interface
                 fabric_ssh.sudo('ifup eth{0}'.format(i))
