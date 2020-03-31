@@ -20,7 +20,6 @@ import logging
 
 import sh
 import pytest
-import fabric.network
 from path import Path
 
 from cosmo_tester.framework import util
@@ -101,8 +100,3 @@ def cfy(module_tmpdir, logger):
     cfy = util.sh_bake(sh.cfy)
     cfy(['--version'])
     return cfy
-
-
-@pytest.fixture(scope='function', autouse=True)
-def clear_fabric_cache(request):
-    request.addfinalizer(fabric.network.disconnect_all)

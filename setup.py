@@ -26,7 +26,7 @@ setup(
     zip_safe=False,
     install_requires=[
         'paramiko==1.18.3',
-        'fabric==1.13.1',
+        'fabric==2.5.0',
         'PyYAML==3.10',
         'requests>=2.7.0,<3.0.0',
         'sh==1.11',

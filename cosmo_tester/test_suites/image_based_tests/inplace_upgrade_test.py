@@ -98,7 +98,7 @@ def test_inplace_upgrade(cfy,
             try:
                 if fabric_ssh.run(
                     'ps aux | grep shutdown | grep -v grep || true'
-                ).strip():
+                ).stdout.strip():
                     # Still waiting for post-restore reboot
                     sleep(retry_delay)
                     reboot_triggered = True
@@ -118,7 +118,7 @@ def test_inplace_upgrade(cfy,
             log_tail = fabric_ssh.run(
                 'sudo tail -n30 '
                 '/var/log/cloudify/mgmtworker/logs/__system__.log'
-            ).strip()
+            ).stdout.strip()
             raise RuntimeError(
                 'Did not see reboot trigger. '
                 'Did the manager already reboot?\n'

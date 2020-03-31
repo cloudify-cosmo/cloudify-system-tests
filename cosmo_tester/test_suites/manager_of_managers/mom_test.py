@@ -122,7 +122,7 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
         )
 
     for src_content, dst_path in files_to_create:
-        manager.put_remote_file_content(dst_path, src_content, use_sudo=True)
+        manager.put_remote_file_content(dst_path, src_content)
 
     logger.info('Giving `cfyuser` permissions to downloaded files...')
     files_to_chown = [

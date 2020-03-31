@@ -15,8 +15,7 @@
 
 import re
 
-from fabric import api as fabric_api
-from fabric import context_managers as fabric_context_managers
+from fabric import Connection
 import pytest
 import requests
 from retrying import retry
@@ -66,20 +65,25 @@ class HelloWorldExample(AbstractExample):
             self._disable_iptables(http_endpoint)
         self.assert_webserver_running(http_endpoint)
 
-    @retry(stop_max_attempt_number=3, wait_fixed=10000)
+    @retry(stop_max_attempt_number=5, wait_fixed=10000)
     def _disable_iptables(self, http_endpoint):
         self.logger.info('Disabling iptables on hello world vm..')
         ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', http_endpoint)[0]
         self.logger.info('Hello world vm IP address is: %s', ip)
-        with fabric_context_managers.settings(
-                host_string=ip,
-                user=self.inputs['agent_user'],
-                key_filename=self._ssh_key.private_key_path,
-                connections_attempts=3,
-                abort_on_prompts=True):
-            fabric_api.sudo('sudo service iptables save')
-            fabric_api.sudo('sudo service iptables stop')
-            fabric_api.sudo('sudo chkconfig iptables off')
+
+        conn = Connection(
+            host=ip,
+            user=self.inputs['agent_user'],
+            connect_kwargs={
+                'key_filename': self._ssh_key.private_key_path,
+            },
+            port=22,
+            connect_timeout=3,
+        )
+        conn.open()
+        conn.sudo('sudo service iptables save')
+        conn.sudo('sudo service iptables stop')
+        conn.sudo('sudo chkconfig iptables off')
 
     @retry(stop_max_attempt_number=10, wait_fixed=5000)
     def assert_webserver_running(self, http_endpoint):

@@ -400,8 +400,7 @@ def _install_script(name, windows, user, manager, attributes, tmpdir, logger,
     logger.info('Downloading internal cert from manager: %s -> %s',
                 attributes.LOCAL_REST_CERT_FILE,
                 local_cert_path)
-    with manager.ssh() as fabric:
-        fabric.get(attributes.LOCAL_REST_CERT_FILE, local_cert_path)
+    manager.get_remote_file(attributes.LOCAL_REST_CERT_FILE, local_cert_path)
 
     env_vars = {
         constants.REST_HOST_KEY: manager.private_ip_address,

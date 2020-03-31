@@ -104,5 +104,5 @@ def _assert_agent_not_running(manager, node_name):
                            key=agent['key'],
                            name=agent['name']))
     with manager.ssh() as fabric:
-        response = fabric.run(ssh_command, warn_only=True)
+        response = fabric.run(ssh_command, warn_only=True).stdout
         assert('not running' in response)
