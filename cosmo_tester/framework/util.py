@@ -206,7 +206,7 @@ def get_manager_install_rpm_url():
     return yaml.load(_get_package_url('manager-install-rpm.yaml'))
 
 
-def get_image_suffix():
+def get_image_suffix(attributes):
     content = _get_package_url('common_build_env.sh')
     with open('/tmp/common_build_env.sh', 'w') as f:
         f.write(content)
@@ -230,7 +230,7 @@ def get_image_suffix():
             image_suffix=image_suffix
         )
 
-    distro = ATTRIBUTES.default_manager_distro
+    distro = attributes.default_manager_distro
     if distro != 'centos':
         image_suffix = image_suffix + '-{distro}'.format(distro=distro)
 

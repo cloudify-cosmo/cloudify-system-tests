@@ -802,7 +802,7 @@ class TestHosts(object):
         image_name = ATTRIBUTES['cloudify_manager_installer_image_name']
         if not image_name:
             image_prefix = 'cloudify-manager-installer'
-            image_suffix = util.get_image_suffix()
+            image_suffix = util.get_image_suffix(ATTRIBUTES)
             image_name = '{image_prefix}-{image_suffix}'.format(
                 image_prefix=image_prefix, image_suffix=image_suffix
             )
