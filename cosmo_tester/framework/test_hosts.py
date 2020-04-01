@@ -801,11 +801,10 @@ class TestHosts(object):
     def bootstrappable_image_name(self):
         image_name = ATTRIBUTES['cloudify_manager_installer_image_name']
         if not image_name:
-            image_prefix = 'cloudify-manager-installer'
-            image_suffix = util.get_image_suffix(ATTRIBUTES)
-            image_name = '{image_prefix}-{image_suffix}'.format(
-                image_prefix=image_prefix, image_suffix=image_suffix
-            )
+            # TODO once sync the community and premium version we can add a
+            #  fallback which allows us to generate the image name based on
+            #  the current version pulled form the cloudify cli
+            raise Exception('cloudify_manager_installer_image_name is not set')
         return image_name
 
     def create(self):

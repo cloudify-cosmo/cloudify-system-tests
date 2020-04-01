@@ -206,40 +206,6 @@ def get_manager_install_rpm_url():
     return yaml.load(_get_package_url('manager-install-rpm.yaml'))
 
 
-def get_image_suffix(attributes):
-    # TODO need to update this method when sync the version scheme for
-    #  community and premium, so that we can depend on the attributes.yaml
-    #  instead of parsing the common build env
-    content = _get_package_url('common_build_env.sh')
-    with open('/tmp/common_build_env.sh', 'w') as f:
-        f.write(content)
-
-    # Source the content of the common_build_env.sh
-    run(['chmod', '+x', '/tmp/common_build_env.sh'])
-    run(['source', '/tmp/common_build_env.sh'])
-    run(['rm', '/tmp/common_build_env.sh'])
-
-    version = os.environ.get('VERSION')
-    prerelease = os.environ.get('PRERELEASE')
-    if not all([version, prerelease]):
-        raise RuntimeError('`VERSION` and `PRERELEASE` are empty')
-
-    image_suffix = '{prerelease}-{version}'.format(
-        prerelease=prerelease, version=prerelease
-    )
-
-    if not is_community():
-        image_suffix = 'premium-{image_suffix}'.format(
-            image_suffix=image_suffix
-        )
-
-    distro = attributes.default_manager_distro
-    if distro != 'centos':
-        image_suffix = image_suffix + '-{distro}'.format(distro=distro)
-
-    return image_suffix
-
-
 def _get_contents_from_github(repo, resource_path):
     branch = os.environ.get('BRANCH_NAME_CORE', 'master')
     url = (
