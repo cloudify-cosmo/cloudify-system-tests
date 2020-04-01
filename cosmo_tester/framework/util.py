@@ -207,6 +207,9 @@ def get_manager_install_rpm_url():
 
 
 def get_image_suffix(attributes):
+    # TODO need to update this method when sync the version scheme for
+    #  community and premium, so that we can depend on the attributes.yaml
+    #  instead of parsing the common build env
     content = _get_package_url('common_build_env.sh')
     with open('/tmp/common_build_env.sh', 'w') as f:
         f.write(content)
