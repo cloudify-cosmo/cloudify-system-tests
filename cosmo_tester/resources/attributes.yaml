@@ -28,6 +28,14 @@ cloudify_manager_4_5_image_name: cloudify-manager-premium-4.5
 cloudify_manager_4_4_image_name: cloudify-manager-premium-4.4
 cloudify_manager_4_3_1_image_name: cloudify-manager-premium-4.3.1
 
+# Set image name used for bootstrappable instances
+# This image contains pre-installed cloudify-manager-installer
+# Examples for possible values:
+# 1. cloudify-manager-installer-premium-5.1.0.dev1
+# 2. cloudify-manager-installer-premium-5.1.0.dev1-rhel
+# 2. cloudify-manager-installer-community-20.03.18
+cloudify_manager_installer_image_name: ''
+
 # Set URLs for each of the keys here to override the package URL for that OS
 cli_urls_override:
   windows_cli_package_url: null

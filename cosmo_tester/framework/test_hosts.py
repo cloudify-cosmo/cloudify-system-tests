@@ -522,13 +522,8 @@ class _CloudifyManager(VM):
     def bootstrap(self, enter_sanity_mode=True, upload_license=False,
                   blocking=True, restservice_expected=True):
         self.restservice_expected = restservice_expected
-        manager_install_rpm = \
-            ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
-            util.get_manager_install_rpm_url()
-
         install_config = self._create_config_file(
             upload_license and not util.is_community())
-        install_rpm_file = 'cloudify-manager-install.rpm'
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('mkdir -p /tmp/bs_logs')
             self.put_remote_file(
@@ -542,21 +537,6 @@ class _CloudifyManager(VM):
                 )
 
             commands = [
-                'echo "Downloading RPM..." >/tmp/bs_logs/1_download',
-                (
-                    'curl -S {0} -o {1} --silent --write-out "'
-                    'Response code: %{{response_code}}\n'
-                    'Downloaded bytes: %{{size_download}}\n'
-                    'Download duration: %{{time_total}}\n'
-                    'Speed bytes/second: %{{speed_download}}\n'
-                    '" 2>&1 >>/tmp/bs_logs/1_download'.format(
-                        manager_install_rpm,
-                        install_rpm_file,
-                    )
-                ),
-                'sudo yum install -y {0} > /tmp/bs_logs/2_yum 2>&1'.format(
-                    install_rpm_file,
-                ),
                 'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
                 'cfy_manager install > /tmp/bs_logs/3_install 2>&1',
                 'touch /tmp/bootstrap_complete'
@@ -814,8 +794,19 @@ class TestHosts(object):
 
         if bootstrappable:
             for instance in self.instances:
-                instance._image_name = ATTRIBUTES['default_linux_image_name']
+                instance._image_name = self.bootstrappable_image_name
                 instance.should_finalize = False
+
+    @property
+    def bootstrappable_image_name(self):
+        image_name = ATTRIBUTES['cloudify_manager_installer_image_name']
+        if not image_name:
+            image_prefix = 'cloudify-manager-installer'
+            image_suffix = util.get_image_suffix()
+            image_name = '{image_prefix}-{image_suffix}'.format(
+                image_prefix=image_prefix, image_suffix=image_suffix
+            )
+        return image_name
 
     def create(self):
         """Creates the infrastructure for a Cloudify manager."""
