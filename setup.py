@@ -25,7 +25,7 @@ setup(
     description='Cosmo system tests framework',
     zip_safe=False,
     install_requires=[
-        'paramiko==1.18.3',
+        'paramiko==2.0.9',
         'fabric==2.5.0',
         'PyYAML==3.10',
         'requests>=2.7.0,<3.0.0',
