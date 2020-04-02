@@ -16,11 +16,8 @@ jobs:
 
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            sudo pip install tox
-            tox -e flake8
+      - run: pip install --user flake8
+      - run: python -m flake8
 
 workflows:
   version: 2
