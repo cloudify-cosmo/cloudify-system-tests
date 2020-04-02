@@ -340,7 +340,7 @@ def is_hello_world(vm):
     with vm.ssh() as fabric_ssh:
         result = fabric_ssh.sudo(
             'curl localhost:8080 || echo "Curl failed."'
-        )
+        ).stdout
         return 'Cloudify Hello World' in result
 
 
@@ -504,7 +504,7 @@ def update_admin_password(new_password, cfy):
 
 def get_security_conf(manager):
     with manager.ssh() as fabric_ssh:
-        output = fabric_ssh.sudo('cat /opt/manager/rest-security.conf')
+        output = fabric_ssh.sudo('cat /opt/manager/rest-security.conf').stdout
     # No real error checking here; the old manager shouldn't be able to even
     # start the rest service if this file isn't json.
     return json.loads(output)
@@ -551,9 +551,6 @@ def fix_admin_account(manager, salt, cfy):
             'WHERE id=0"'.format(
                 new_hash=new_hash,
             ),
-            # No really, fabric, just leave the command alone.
-            shell_escape=False,
-            shell=False,
         )
 
     # This will confirm that the hash change worked... or it'll fail.
@@ -667,7 +664,7 @@ def verify_services_status(manager, logger):
         for instance in systemd.get('instances', []):
             with manager.ssh() as fabric:
                 logs = fabric.sudo('journalctl -u {0} -n 20 --no-pager'
-                                   .format(instance['Id']))
+                                   .format(instance['Id'])).stdout
             logger.info('Journald logs of the failing service:')
             logger.info(logs)
             raise Exception('Service {0} is in status {1}'.
