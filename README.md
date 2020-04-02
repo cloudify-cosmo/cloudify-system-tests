@@ -8,6 +8,14 @@ The system tests framework uses pytest fixtures in order to create the required
 resources for testing Cloudify.
 
 
+## Updating requirements.txt
+
+* Activate your system tests virtualenv.
+* Update dependencies as desired.
+* pip install --user pip-tools
+* PATH=$PATH:/home/ubuntu/.local/bin  # May need adding if you don't have this in your path already
+* pip-compile --generate-hashes
+
 ## Installation
 
 ### Install system tests framework
