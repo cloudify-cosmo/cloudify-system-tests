@@ -14,7 +14,11 @@ resources for testing Cloudify.
 * Update dependencies as desired.
 * pip install --user pip-tools
 * PATH=$PATH:/home/ubuntu/.local/bin  # May need adding if you don't have this in your path already
-* pip-compile --generate-hashes
+* pip-compile
+* echo 'https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip
+> https://github.com/cloudify-cosmo/cloudify-cli/archive/master.zip
+> https://github.com/cloudify-cosmo/cloudify-agent/archive/master.zip
+> https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/master.zip' >> requirements.txt
 
 ## Installation
 
