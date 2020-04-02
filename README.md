@@ -7,19 +7,6 @@ Cloudify System Tests
 The system tests framework uses pytest fixtures in order to create the required
 resources for testing Cloudify.
 
-
-## Updating requirements.txt
-
-* Activate your system tests virtualenv.
-* Update dependencies as desired.
-* pip install --user pip-tools
-* PATH=$PATH:/home/ubuntu/.local/bin  # May need adding if you don't have this in your path already
-* pip-compile
-* echo 'https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip
-> https://github.com/cloudify-cosmo/cloudify-cli/archive/master.zip
-> https://github.com/cloudify-cosmo/cloudify-agent/archive/master.zip
-> https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/master.zip' >> requirements.txt
-
 ## Installation
 
 ### Install system tests framework
