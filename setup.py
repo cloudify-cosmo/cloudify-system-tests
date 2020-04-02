@@ -25,22 +25,21 @@ setup(
     description='Cosmo system tests framework',
     zip_safe=False,
     install_requires=[
-        'paramiko==1.18.3',
-        'fabric==2.5.0',
-        'PyYAML==3.10',
+        'fabric',
+        'PyYAML',
         'requests>=2.7.0,<3.0.0',
-        'sh==1.11',
-        'path.py==8.1.2',
-        'retrying==1.3.3',
-        'Jinja2==2.10',
-        'pywinrm==0.3.0',
-        'fasteners==0.13.0',
+        'sh',
+        'path.py',
+        'retrying',
+        'Jinja2',
+        'pywinrm',
+        'fasteners',
         # Wagon version has been left out since it better reflects the user
         # use-case
-        'wagon[venv]==0.6.3',
-        'pytest==4.6.4',
-        'testtools==2.2.0',
-        'openstacksdk==0.13.0'
+        'wagon[venv]',
+        'pytest',
+        'testtools',
+        'openstacksdk'
     ],
     entry_points={
         'console_scripts': [
