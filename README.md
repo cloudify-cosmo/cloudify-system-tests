@@ -7,6 +7,10 @@ Cloudify System Tests
 The system tests framework uses pytest fixtures in order to create the required
 resources for testing Cloudify.
 
+## Updating requirements.txt
+
+Install pip-tools, update dependencies as desired and run `pip-compile`, as noted in the requirements.txt header.
+
 ## Installation
 
 ### Install system tests framework
