@@ -484,11 +484,6 @@ def sudo(command, *args, **kwargs):
     return run(command=command, *args, **kwargs)
 
 
-def remove(path_to_remove, ignore_failure=False, logger=logging):
-    logger.debug('Removing {0}...'.format(path_to_remove))
-    # sudo(['rm', '-rf', path_to_remove], ignore_failures=ignore_failure)
-
-
 def write_to_tempfile(contents, json_dump=False):
     fd, file_path = mkstemp()
     os.close(fd)
@@ -527,10 +522,7 @@ def _csr_config(cn, metadata=None, logger=logging):
     csr_config = CSR_CONFIG_TEMPLATE.format(cn=cn, metadata=metadata)
     temp_config_path = write_to_tempfile(csr_config)
 
-    try:
-        yield temp_config_path
-    finally:
-        remove(temp_config_path)
+    yield temp_config_path
 
 
 def _format_ips(ips):
@@ -638,7 +630,6 @@ def generate_ssl_certificate(ips,
                 '-signkey', key_path
             ]
         run(x509_command)
-        remove(csr_path)
 
     logger.debug('Generated SSL certificate: {0} and key: {1}'.format(
         cert_path, key_path
