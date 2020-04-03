@@ -36,6 +36,8 @@ def image_based_manager(
             cfy, ssh_key, module_tmpdir, attributes, logger, request=request)
     try:
         hosts.create()
+        hosts.instances[0].restservice_expected = True
+        hosts.instances[0].finalize_preparation()
         hosts.instances[0].use()
         yield hosts.instances[0]
     finally:
@@ -52,6 +54,8 @@ def image_based_manager_without_plugins(
             upload_plugins=False)
     try:
         hosts.create()
+        hosts.instances[0].restservice_expected = True
+        hosts.instances[0].finalize_preparation()
         hosts.instances[0].use()
         yield hosts.instances[0]
     finally:
