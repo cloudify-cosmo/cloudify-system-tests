@@ -1107,6 +1107,9 @@ class TestHosts(object):
             .replace(' ', '_')
             .replace('(', '_')
             .replace(')', '_')
+            # Openstack drop the part that contains '.' when generate the name
+            # This to replace '.' with '-'
+            .replace('.', '-')
         )
 
         self._logger.info('Creating test VM inputs for %s', image_id)
