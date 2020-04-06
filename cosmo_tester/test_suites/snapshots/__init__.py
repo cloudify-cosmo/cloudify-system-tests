@@ -13,15 +13,11 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import base64
-import hashlib
-import hmac
 import json
 import os
 from time import sleep
 
 import retrying
-from passlib.context import CryptContext
 
 from cloudify.snapshots import STATES
 from cosmo_tester.framework.test_hosts import (
@@ -442,10 +438,13 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
         sleep(wait_timeout)
 
 
+def change_salt_on_new_manager(cfy, logger, manager):
+    manager.use()
+    change_salt(manager, 'this_is_a_test_salt', cfy, logger)
+
+
 def prepare_credentials_tests(cfy, logger, manager):
     manager.use()
-
-    change_salt(manager, 'this_is_a_test_salt', cfy, logger)
 
     logger.info('Creating test user')
     create_user('testuser', 'testpass', cfy)
@@ -541,33 +540,10 @@ def change_salt(manager, new_salt, cfy, logger):
 
 
 def fix_admin_account(manager, salt, cfy):
-    new_hash = generate_admin_password_hash('admin', salt)
-    new_hash = new_hash.replace('$', '\\$')
-
-    with manager.ssh() as fabric_ssh:
-        fabric_ssh.run(
-            'sudo -u postgres psql cloudify_db -t -c '
-            '"UPDATE users SET password=\'{new_hash}\' '
-            'WHERE id=0"'.format(
-                new_hash=new_hash,
-            ),
-        )
+    manager.run_command('cfy_manager reset-admin-password admin')
 
     # This will confirm that the hash change worked... or it'll fail.
     change_profile_credentials('admin', 'admin', cfy)
-
-
-def generate_admin_password_hash(admin_password, salt):
-    # Flask password hash generation approach for Cloudify 4.x where x<=2
-    pwd_hmac = base64.b64encode(
-        # Encodes put in to keep hmac happy with unicode strings
-        hmac.new(salt.encode('utf-8'), admin_password.encode('utf-8'),
-                 hashlib.sha512).digest()
-    ).decode('ascii')
-
-    # This ctx is nothing to do with a cloudify ctx.
-    pass_ctx = CryptContext(schemes=['pbkdf2_sha256'])
-    return pass_ctx.encrypt(pwd_hmac)
 
 
 def check_plugins(manager, old_plugins, logger, tenant='default_tenant'):

@@ -23,6 +23,7 @@ from . import (
     check_credentials,
     check_deployments,
     verify_services_status,
+    change_salt_on_new_manager,
     check_from_source_plugin,
     check_plugins,
     hosts,
@@ -100,6 +101,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         for tenant in tenants
     }
 
+    change_salt_on_new_manager(cfy, logger, new_manager)
     prepare_credentials_tests(cfy, logger, old_manager)
 
     create_snapshot(old_manager, SNAPSHOT_ID, attributes, logger)
