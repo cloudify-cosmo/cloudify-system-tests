@@ -241,7 +241,8 @@ class VM(object):
                 return fabric_ssh.run(command, warn=warn_only)
 
     def get_node_id(self):
-        node_id_parts = self.run_command('cfy_manager node get-id').split(': ')
+        node_id_parts = self.run_command(
+            'cfy_manager node get-id').stdout.split(': ')
         if len(node_id_parts) < 2:
             raise RuntimeError('Status reporter is not installed')
         return node_id_parts[1]

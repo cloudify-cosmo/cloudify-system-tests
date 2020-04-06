@@ -468,7 +468,7 @@ def _configure_status_reporters(managers, brokers, dbs, skip_bootstrap_list,
             # We pipe through cat to get rid of unhelpful shell escape
             # characters that cfy adds
             'cfy_manager status-reporter get-tokens --json 2>/dev/null | cat'
-        )
+        ).stdout
     )
     managers_ip = ' '.join([manager.private_ip_address
                             for manager in managers])

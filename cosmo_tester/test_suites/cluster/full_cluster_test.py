@@ -299,7 +299,7 @@ def _verify_agent_broker_connection_and_get_broker_ip(mgr_node):
 
     agent_ip = mgr_node.client.agents.list().items[0]['ip']
     agent_netstat_result = mgr_node.run_command(netstat_check_command.format(
-        agent_ip=agent_ip, broker_port=BROKER_PORT_SSL)).split('\n')
+        agent_ip=agent_ip, broker_port=BROKER_PORT_SSL)).stdout.split('\n')
     connection_established = False
     for line in agent_netstat_result:
         if 'ESTABLISHED' in line:
