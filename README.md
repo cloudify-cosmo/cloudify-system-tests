@@ -17,7 +17,7 @@ Install pip-tools, update dependencies as desired and run `pip-compile`, as note
 
 * Checkout the repository.
 * cd cloudify-system-tests
-* pip install -e . -r test-requirements.txt -c suites/constraints.txt
+* pip install -r requirements.txt && pip install --no-index -e .
 
 ### Install Terraform
 
