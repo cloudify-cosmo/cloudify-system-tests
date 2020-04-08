@@ -4,6 +4,7 @@
 #
 #    pip-compile --output-file=requirements.txt requirements.in setup.py
 #
+apipkg==1.5               # via execnet
 appdirs==1.4.3            # via openstacksdk
 argparse==1.4.0           # via unittest2
 atomicwrites==1.3.0       # via pytest
@@ -16,10 +17,10 @@ cffi==1.14.0              # via bcrypt, cryptography, pynacl
 chardet==3.0.4            # via requests
 click==6.7                # via click-didyoumean, cloudify
 click_didyoumean==0.0.3   # via cloudify
-https://github.com/cloudify-cosmo/cloudify-cli/archive/master.zip#egg=cloudify  # via -r requirements.in
 https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip#egg=cloudify-common  # via -r requirements.in, cloudify
-https://github.com/cloudify-cosmo/cloudify-agent/archive/master.zip  # via -r requirements.in
+https://github.com/cloudify-cosmo/cloudify-cli/archive/master.zip#egg=cloudify  # via -r requirements.in
 https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/master.zip  # via -r requirements.in
+https://github.com/cloudify-cosmo/cloudify-agent/archive/master.zip  # via -r requirements.in
 colorama==0.3.3           # via cloudify
 configparser==4.0.2       # via importlib-metadata
 contextlib2==0.6.0.post1  # via importlib-metadata, zipp
@@ -27,6 +28,7 @@ cryptography==2.8         # via openstacksdk, paramiko, requests-ntlm
 decorator==4.4.2          # via dogpile.cache, openstacksdk
 dogpile.cache==0.9.0      # via openstacksdk
 enum34==1.1.10            # via cryptography
+execnet==1.7.1            # via pytest-xdist
 extras==1.0.0             # via testtools
 fabric==2.5.0             # via cloudify-system-tests (setup.py)
 fasteners==0.15           # via cloudify-system-tests (setup.py)
@@ -64,7 +66,9 @@ py==1.8.1                 # via pytest
 pycparser==2.20           # via cffi
 pynacl==1.3.0             # via paramiko
 pyparsing==2.4.6          # via packaging
-pytest==4.6.9             # via cloudify-system-tests (setup.py)
+pytest-forked==1.1.3      # via pytest-xdist
+pytest-xdist==1.31.0      # via cloudify-system-tests (setup.py)
+pytest==4.6.9             # via cloudify-system-tests (setup.py), pytest-forked, pytest-xdist
 python-mimeparse==1.6.0   # via testtools
 pywinrm==0.4.1            # via cloudify-system-tests (setup.py)
 pyyaml==3.12              # via cloudify, cloudify-system-tests (setup.py), openstacksdk
@@ -74,7 +78,7 @@ requestsexceptions==1.4.0  # via openstacksdk
 retrying==1.3.3           # via cloudify, cloudify-system-tests (setup.py)
 scandir==1.10.0           # via pathlib2
 sh==1.12.14               # via cloudify-system-tests (setup.py)
-six==1.14.0               # via bcrypt, cryptography, fasteners, fixtures, keystoneauth1, more-itertools, munch, openstacksdk, packaging, pathlib2, pynacl, pytest, pywinrm, retrying, stevedore, testtools, unittest2
+six==1.14.0               # via bcrypt, cryptography, fasteners, fixtures, keystoneauth1, more-itertools, munch, openstacksdk, packaging, pathlib2, pynacl, pytest, pytest-xdist, pywinrm, retrying, stevedore, testtools, unittest2
 stevedore==1.32.0         # via keystoneauth1
 testtools==2.4.0          # via cloudify-system-tests (setup.py), fixtures
 traceback2==1.4.0         # via testtools, unittest2

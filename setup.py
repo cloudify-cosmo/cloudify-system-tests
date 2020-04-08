@@ -38,6 +38,7 @@ setup(
         # use-case
         'wagon[venv]',
         'pytest',
+        'pytest-xdist',
         'testtools',
         'openstacksdk'
     ],
