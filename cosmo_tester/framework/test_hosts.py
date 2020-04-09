@@ -16,6 +16,7 @@
 from ipaddress import ip_address, ip_network
 import textwrap
 
+from datetime import datetime
 import hashlib
 import json
 import os
@@ -824,7 +825,7 @@ class TestHosts(object):
                 # hello_world_test.py::test_hello_world[centos_7]
                 os.environ['PYTEST_CURRENT_TEST'].split('/')[-1],
             ),
-            time=int(time.time()),
+            time=datetime.strftime(datetime.now(), '%Y%m%d%H%M%S'),
         )
 
         image_id_instance_mapping = {}
