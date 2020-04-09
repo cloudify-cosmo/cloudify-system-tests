@@ -13,7 +13,6 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-from cosmo_tester.framework.examples.hello_world import centos_hello_world
 from cosmo_tester.framework.fixtures import image_based_manager
 from cosmo_tester.framework.util import is_community
 from cloudify_rest_client.client import CloudifyClient
@@ -69,11 +68,6 @@ def test_ssl(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
                     '-r',
                     DEFAULT_TENANT_ROLE)
 
-    hello_world = centos_hello_world(cfy, manager, attributes, ssh_key,
-                                     logger, module_tmpdir)
-
-    hello_world.upload_and_verify_install()
-
     cfy.ssl.disable()
     cfy.profiles.set('--ssl', 'off', '--skip-credentials-validation')
     time.sleep(5)
@@ -84,8 +78,6 @@ def test_ssl(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
     assert ' http ' in current_profile
 
     manager.client = _manager_client
-    hello_world.uninstall()
-    hello_world.delete_deployment()
 
 
 def _generate_external_cert(_manager, logger):
