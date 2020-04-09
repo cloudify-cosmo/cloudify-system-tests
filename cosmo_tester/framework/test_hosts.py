@@ -180,7 +180,11 @@ class VM(object):
         self.run_command(
             'cp {} {}'.format(remote_path, remote_tmp),
             use_sudo=True,
-        ),
+        )
+        self.run_command(
+            'chmod 444 {}'.format(remote_tmp),
+            use_sudo=True,
+        )
 
         with self.ssh() as fabric_ssh:
             fabric_ssh.get(
@@ -191,9 +195,13 @@ class VM(object):
     def put_remote_file(self, remote_path, local_path):
         """ Dump the contents of the local file into the remote path """
 
+        remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
+        self.run_command(
+            'rm -rf {}'.format(remote_tmp),
+            use_sudo=True,
+        )
         with self.ssh() as fabric_ssh:
             # Similar to the way fabric1 did it
-            remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
             fabric_ssh.put(
                 local_path,
                 remote_tmp,
