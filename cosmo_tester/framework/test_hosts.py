@@ -383,6 +383,16 @@ class _CloudifyManager(VM):
 
         self.wait_for_all_executions()
 
+    def upload_test_plugin(self, tenant_name=DEFAULT_TENANT_NAME):
+        self._logger.info('Uploading test plugin to %s', tenant_name)
+        with util.set_client_tenant(self, tenant_name):
+            self.client.plugins.upload(
+                util.get_resource_path(
+                    'plugin/test_plugin-1.0.0-py27-none-any.zip'
+                ),
+            )
+            self.wait_for_all_executions()
+
     @property
     def remote_private_key_path(self):
         """Returns the private key path on the manager."""

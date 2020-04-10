@@ -1,0 +1,34 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Create a file in an arbitrary location on a pre-existing VM using a plugin.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - plugin:test-plugin
+
+inputs:
+  server_ip:
+    default: 127.0.0.1
+  agent_user:
+    default: centos
+  path: {}
+  content: {}
+
+node_templates:
+  vm:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: server_ip }
+      agent_config:
+        user: { get_input: agent_user }
+        key: { get_secret: agent_key }
+
+  file:
+    type: cloudify.test.nodes.File
+    properties:
+      path: { get_input: path }
+      content: { get_input: content }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm

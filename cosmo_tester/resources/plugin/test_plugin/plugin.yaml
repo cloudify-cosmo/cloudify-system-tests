@@ -1,0 +1,28 @@
+plugins:
+    test_plugin:
+        executor: host_agent
+        package_name: test-plugin
+        package_version: 1.0.0
+        source: null
+        install: true
+
+node_types:
+  cloudify.test.nodes.File:
+    derived_from: cloudify.nodes.Root
+    properties:
+      path:
+        description: >
+            Where the test file should be created.
+            The instance ID will be appended to this.
+            e.g. /tmp/test_plugin_test_file_nodename_a123ff
+        default: /tmp/test_plugin_test_file
+      content:
+        description: What the contents of the test file should be.
+        default: This is a test file.
+    interfaces:
+      create:
+        implementation: test_plugin.test_plugin.file.create
+        inputs: {}
+      delete:
+        implementation: test_plugin.test_plugin.file.delete
+        inputs: {}

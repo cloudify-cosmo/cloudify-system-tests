@@ -13,73 +13,37 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import csv
-from StringIO import StringIO
-
 import pytest
-import requests
 
-from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
-from cosmo_tester.framework.fixtures import image_based_manager
+from cosmo_tester.framework.examples.on_manager import OnManagerExample
 from cosmo_tester.framework.util import (
     prepare_and_get_test_tenant,
     set_client_tenant,
 )
 
-manager = image_based_manager
-
 
 @pytest.fixture(scope='function')
-def nodecellar(cfy, manager, attributes, ssh_key, tmpdir, logger):
-    tenant = prepare_and_get_test_tenant('nc_scale', manager, cfy)
-    nc = NodeCellarExample(
-            cfy, manager, attributes, ssh_key, logger, tmpdir,
-            tenant=tenant, suffix='scale')
-    nc.blueprint_file = 'openstack-haproxy-blueprint.yaml'
-    nc.inputs['number_of_instances'] = 1
-    yield nc
-    nc.cleanup()
+def on_manager_example(cfy, image_based_manager, attributes, ssh_key, tmpdir,
+                       logger):
+    tenant = prepare_and_get_test_tenant('scale', image_based_manager, cfy)
+
+    image_based_manager.upload_test_plugin(tenant)
+
+    example = OnManagerExample(
+        cfy, image_based_manager, attributes, ssh_key, logger, tmpdir,
+        tenant=tenant,
+    )
+
+    yield example
 
 
 def _scale(cfy, deployment_id, delta, tenant):
     cfy.executions.start.scale([
         '-d', deployment_id,
-        '-p', 'scalable_entity_name=nodecellar',
+        '-p', 'scalable_entity_name=file',
         '-p', 'delta={}'.format(delta),
         '-p', 'scale_compute=true',
         '--tenant-name', tenant])
-
-
-def _read_haproxy_stats(ip_address):
-    csv_data = requests.get(
-            'http://{0}:9000/haproxy_stats;csv'.format(ip_address),
-            auth=('admin', 'password')).text
-    buff = StringIO(csv_data)
-    parsed_csv_data = list(csv.reader(buff))
-    headers = parsed_csv_data[0]
-    structured_csv_data = [dict(zip(headers, row))
-                           for row in parsed_csv_data]
-    return dict([(struct['svname'], int(struct['stot']))
-                 for struct in structured_csv_data
-                 if struct['# pxname'] == 'servers' and
-                 struct['svname'] != 'BACKEND'])
-
-
-def _assert_haproxy_load_balancing(outputs, expected_number_of_backends=1):
-    ip_address = outputs['endpoint']['ip_address']
-    port = outputs['endpoint']['port']
-
-    initial_stats = _read_haproxy_stats(ip_address)
-    number_of_backends = len(initial_stats)
-    assert expected_number_of_backends == number_of_backends
-    for count in initial_stats.values():
-        assert 0 == count
-
-    for i in range(1, number_of_backends + 1):
-        requests.get('http://{0}:{1}/wines'.format(ip_address, port))
-        stats = _read_haproxy_stats(ip_address)
-        active_backends = [b for b, count in stats.items() if count == 1]
-        assert i == len(active_backends)
 
 
 def _assert_scale(manager, deployment_id, outputs, expected_instances,
@@ -89,35 +53,41 @@ def _assert_scale(manager, deployment_id, outputs, expected_instances,
             deployment_id=deployment_id,
             _include=['id'],
         )
-    assert len(instances) == 9 + 3 * expected_instances
-
-    _assert_haproxy_load_balancing(
-            outputs, expected_number_of_backends=expected_instances)
+    assert len(instances) == expected_instances
 
 
-def test_nodecellar_example(cfy, manager, nodecellar, logger):
-    nodecellar.upload_and_verify_install()
+def test_scaling(cfy, image_based_manager, on_manager_example, logger):
+    on_manager_example.upload_and_verify_install()
 
-    # scale out (+1)
-    logger.info('Performing scale out +1..')
-    _scale(cfy, nodecellar.deployment_id, delta=1, tenant=nodecellar.tenant)
+    logger.info('Performing scale out +2..')
+    _scale(cfy, on_manager_example.deployment_id, delta=2,
+           tenant=on_manager_example.tenant)
     _assert_scale(
-            manager,
-            nodecellar.deployment_id,
-            nodecellar.outputs,
-            expected_instances=2,
-            tenant=nodecellar.tenant)
+            image_based_manager,
+            on_manager_example.deployment_id,
+            on_manager_example.outputs,
+            expected_instances=6,
+            tenant=on_manager_example.tenant)
+    on_manager_example.check_files()
 
-    # scale in (-1)
     logger.info('Performing scale in -1..')
-    _scale(cfy, nodecellar.deployment_id, delta=-1, tenant=nodecellar.tenant)
+    _scale(cfy, on_manager_example.deployment_id, delta=-1,
+           tenant=on_manager_example.tenant)
     _assert_scale(
-            manager,
-            nodecellar.deployment_id,
-            nodecellar.outputs,
-            expected_instances=1,
-            tenant=nodecellar.tenant)
+            image_based_manager,
+            on_manager_example.deployment_id,
+            on_manager_example.outputs,
+            expected_instances=4,
+            tenant=on_manager_example.tenant)
+    on_manager_example.check_files()
 
-    # uninstall
-    nodecellar.uninstall()
-    nodecellar.delete_deployment()
+    on_manager_example.uninstall()
+
+    # This gets us the full paths, which then allows us to see if the test
+    # file prefix is in there.
+    # Technically this could collide if the string /tmp/test_file is in there
+    # but not actually part of the path, but that's unlikely so we'll tackle
+    # that problem when we cause it.
+    # Running with sudo to avoid exit status of 1 due to root owned files
+    tmp_contents = image_based_manager.run_command('sudo find /tmp').stdout
+    assert on_manager_example.inputs['path'] not in tmp_contents
