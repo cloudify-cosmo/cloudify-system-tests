@@ -33,13 +33,9 @@ def get_linux_image_settings():
     return [
         (attrs.centos_7_image_name, attrs.centos_7_username,
          'rhel_centos_cli_package_url'),
-        (attrs.centos_6_image_name, attrs.centos_6_username,
-         'rhel_centos_cli_package_url'),
         (attrs.ubuntu_14_04_image_name, attrs.ubuntu_14_04_username,
          'debian_cli_package_url'),
         (attrs.rhel_7_image_name, attrs.rhel_7_username,
-         'rhel_centos_cli_package_url'),
-        (attrs.rhel_6_image_name, attrs.rhel_6_username,
          'rhel_centos_cli_package_url'),
     ]
 
