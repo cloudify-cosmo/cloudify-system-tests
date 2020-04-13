@@ -25,7 +25,8 @@ from cosmo_tester.framework.util import (
 @pytest.fixture(scope='function')
 def on_manager_example(cfy, image_based_manager, attributes, ssh_key, tmpdir,
                        logger):
-    tenant = prepare_and_get_test_tenant('scale', image_based_manager, cfy)
+    tenant = prepare_and_get_test_tenant('scale', image_based_manager, cfy,
+                                         upload=False)
 
     image_based_manager.upload_test_plugin(tenant)
 
@@ -83,11 +84,4 @@ def test_scaling(cfy, image_based_manager, on_manager_example, logger):
 
     on_manager_example.uninstall()
 
-    # This gets us the full paths, which then allows us to see if the test
-    # file prefix is in there.
-    # Technically this could collide if the string /tmp/test_file is in there
-    # but not actually part of the path, but that's unlikely so we'll tackle
-    # that problem when we cause it.
-    # Running with sudo to avoid exit status of 1 due to root owned files
-    tmp_contents = image_based_manager.run_command('sudo find /tmp').stdout
-    assert on_manager_example.inputs['path'] not in tmp_contents
+    on_manager_example.check_all_test_files_deleted()

@@ -408,7 +408,7 @@ def set_client_tenant(manager, tenant):
             manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
 
 
-def prepare_and_get_test_tenant(test_param, manager, cfy):
+def prepare_and_get_test_tenant(test_param, manager, cfy, upload=True):
     """
         Prepares a tenant for testing based on the test name (or other
         identifier passed in as 'test_param'), and returns the name of the
@@ -423,8 +423,9 @@ def prepare_and_get_test_tenant(test_param, manager, cfy):
     else:
         tenant = test_param
         cfy.tenants.create(tenant)
-        manager.upload_plugin(default_openstack_plugin,
-                              tenant_name=tenant)
+        if upload:
+            manager.upload_plugin(default_openstack_plugin,
+                                  tenant_name=tenant)
     return tenant
 
 
