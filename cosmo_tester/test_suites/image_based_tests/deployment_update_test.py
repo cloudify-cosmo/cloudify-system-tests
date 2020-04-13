@@ -15,92 +15,87 @@
 
 import json
 import uuid
-import shutil
 
 import pytest
-import requests
 
-from path import Path
 from retrying import retry
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.fixtures import image_based_manager
-from cosmo_tester.framework.examples.hello_world import centos_hello_world
+from cosmo_tester.framework.examples.on_manager import OnManagerExample
 from cosmo_tester.framework.util import (prepare_and_get_test_tenant,
                                          set_client_tenant)
 
 
 update_counter = 0
-manager = image_based_manager
 
 
 @pytest.fixture(scope='function')
-def hello_world(cfy, manager, attributes, ssh_key, tmpdir, logger):
-    tenant = prepare_and_get_test_tenant('dep_update', manager, cfy)
-    hw = centos_hello_world(cfy,
-                            manager,
-                            attributes,
-                            ssh_key,
-                            logger,
-                            tmpdir,
-                            tenant=tenant,
-                            suffix='update')
-    yield hw
-    hw.cleanup()
+def example_deployment(cfy, image_based_manager, attributes, ssh_key, tmpdir,
+                       logger):
+    tenant = prepare_and_get_test_tenant('dep_update', image_based_manager,
+                                         cfy)
+    image_based_manager.upload_test_plugin(tenant)
+    example = OnManagerExample(cfy,
+                               image_based_manager,
+                               attributes,
+                               ssh_key,
+                               logger,
+                               tmpdir,
+                               tenant=tenant)
+    yield example
+    example.uninstall()
 
 
 def test_hello_world_deployment_update(cfy,
-                                       manager,
-                                       hello_world,
+                                       image_based_manager,
+                                       example_deployment,
                                        tmpdir,
                                        logger):
-    logger.info('Deploying hello world example..')
-    hello_world.upload_and_verify_install()
-    http_endpoint = hello_world.outputs['http_endpoint']
-    modified_port = '9090'
+    example_deployment.upload_and_verify_install()
 
-    # Update the deployment - shutdown the http_web_server, and the
-    # security_group node. Remove the relationship between the vm
-    # and the security_group node. Remove the output - since no new outputs
-    # have been outputted, the check will be based on the old outputs.
-    blueprint_base_path = hello_world.blueprint_path.dirname()
+    modified_blueprint_path = util.get_resource_path(
+        'blueprints/compute/example_2_files.yaml'
+    )
 
-    # Remove the .git folder because its permissions mess up the upload
-    shutil.rmtree(blueprint_base_path / '.git')
-
-    modified_blueprint_path = blueprint_base_path / 'modified_blueprint.yaml'
-    hello_world.blueprint_path.copy(modified_blueprint_path)
-    _modify_blueprint(modified_blueprint_path)
-
-    logger.info('Updating hello world deployment..')
+    logger.info('Updating example deployment...')
     _update_deployment(cfy,
-                       manager,
-                       hello_world.deployment_id,
-                       hello_world.tenant,
+                       image_based_manager,
+                       example_deployment.deployment_id,
+                       example_deployment.tenant,
                        modified_blueprint_path,
                        tmpdir,
                        skip_reinstall=True)
 
-    # Verify hello world is not responding
-    logger.info('Verifying hello world is down..')
-    try:
-        requests.get(http_endpoint)
-        pytest.fail('Hello world is responsive after deployment update but '
-                    'should be down!')
-    except requests.exceptions.RequestException:
-        pass
+    logger.info('Checking old files still exist')
+    example_deployment.check_files()
 
-    # Startup the initial blueprint (with 9090 as port)
-    logger.info('Updating hello world deployment to use a different port..')
+    logger.info('Checking new files exist')
+    example_deployment.check_files(path='/tmp/test_announcement',
+                                   expected_content='I like cake')
+
+    logger.info('Updating deployment to use different path and content')
     _update_deployment(cfy,
-                       manager,
-                       hello_world.deployment_id,
-                       hello_world.tenant,
-                       hello_world.blueprint_path,
+                       image_based_manager,
+                       example_deployment.deployment_id,
+                       example_deployment.tenant,
+                       example_deployment.blueprint_file,
                        tmpdir,
-                       inputs={'webserver_port': modified_port})
-    logger.info('Verifying hello world updated deployment..')
-    hello_world.verify_installation()
+                       inputs={'path': '/tmp/new_test',
+                               'content': 'Where are the elephants?'})
+
+    logger.info('Checking new files were created')
+    example_deployment.check_files(
+        path='/tmp/new_test',
+        expected_content='Where are the elephants?',
+    )
+    logger.info('Checking old files were removed')
+    # This will look for the originally named files
+    example_deployment.check_all_test_files_deleted()
+
+    logger.info('Uninstalling deployment')
+    example_deployment.uninstall()
+    logger.info('Checking new files were removed')
+    example_deployment.check_all_test_files_deleted(path='/tmp/new_test')
 
 
 def _wait_for_deployment_update_to_finish(func):
@@ -148,12 +143,9 @@ def _update_deployment(cfy,
                        tmpdir,
                        skip_reinstall=False,
                        inputs=None):
+    kwargs = {}
     if inputs:
-        inputs_file = Path(tmpdir) / 'deployment_update_inputs.json'
-        inputs_file.write_text(json.dumps(inputs))
-        kwargs = {'inputs': inputs_file.abspath()}
-    else:
-        kwargs = {}
+        kwargs['inputs'] = json.dumps(inputs)
     global update_counter
     update_counter += 1
     cfy.deployments.update(deployment_id,
@@ -162,23 +154,3 @@ def _update_deployment(cfy,
                            tenant_name=tenant,
                            skip_reinstall=skip_reinstall,
                            **kwargs)
-
-
-def _modify_blueprint(blueprint_path):
-    with util.YamlPatcher(blueprint_path) as patcher:
-        # Remove security group
-        patcher.delete_property('node_templates.security_group')
-        # Remove the webserver node
-        patcher.delete_property('node_templates.http_web_server')
-        # Remove the output
-        patcher.delete_property('outputs', 'http_endpoint')
-        # Remove vm to security_group relationships
-        blueprint = util.get_yaml_as_dict(blueprint_path)
-        vm_relationships = blueprint['node_templates']['vm'][
-            'relationships']
-        vm_relationships = [r for r in vm_relationships if r['target'] !=
-                            'security_group']
-        patcher.set_value('node_templates.vm.relationships', vm_relationships)
-        # Remove vm interfaces - this is needed because it contains
-        # a get_attribute with a reference to the deleted security group node.
-        patcher.delete_property('node_templates.vm.interfaces')
