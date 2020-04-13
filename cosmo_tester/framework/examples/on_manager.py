@@ -41,16 +41,20 @@ class OnManagerExample(AbstractExample):
             self.manager.client.blueprints.upload(
                 self.blueprint_file, self.blueprint_id)
 
-    def check_files(self):
+    def check_files(self, path=None, expected_content=None):
         instances = self.manager.client.node_instances.list(
             deployment_id=self.deployment_id,
             _include=['id', 'node_id'],
         )
 
-        expected_content = self.inputs['content']
+        if path is None:
+            path = self.inputs['path']
+        if expected_content is None:
+            expected_content = self.inputs['content']
+
         for instance in instances:
             if instance.node_id == 'file':
-                file_path = self.inputs['path'] + '_' + instance.id
+                file_path = path + '_' + instance.id
                 content = self.manager.get_remote_file_content(file_path)
                 assert content == expected_content
 
@@ -63,7 +67,10 @@ class OnManagerExample(AbstractExample):
         )
         self.check_all_test_files_deleted()
 
-    def check_all_test_files_deleted(self):
+    def check_all_test_files_deleted(self, path=None):
+        if path is None:
+            path = self.inputs['path']
+
         # This gets us the full paths, which then allows us to see if the test
         # file prefix is in there.
         # Technically this could collide if the string /tmp/test_file is in
@@ -71,4 +78,4 @@ class OnManagerExample(AbstractExample):
         # we'll tackle that problem when we cause it.
         # Running with sudo to avoid exit status of 1 due to root owned files
         tmp_contents = self.manager.run_command('sudo find /tmp').stdout
-        assert self.inputs['path'] not in tmp_contents
+        assert path not in tmp_contents
