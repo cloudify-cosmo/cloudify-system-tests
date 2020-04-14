@@ -13,13 +13,18 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-from cosmo_tester.framework.fixtures import bootstrap_based_manager
-
-from cosmo_tester.framework.examples.hello_world import hello_worlds # noqa # (pytest fixture imported)
-
-manager = bootstrap_based_manager
+from cosmo_tester.test_suites.bootstrap_based_tests import (
+    get_on_manager_example,
+)
 
 
-def test_manager_bootstrap_and_deployment(hello_worlds, attributes):  # noqa (pytest fixture, not redefinition of hello_worlds)
-    for hello in hello_worlds:
-        hello.verify_all()
+def test_manager_bootstrap_and_deployment(bootstrap_test_manager, cfy,
+                                          attributes, ssh_key, tmpdir,
+                                          logger):
+    bootstrap_test_manager.bootstrap()
+    bootstrap_test_manager.use()
+
+    example = get_on_manager_example(cfy, bootstrap_test_manager, attributes,
+                                     ssh_key, tmpdir, logger)
+    example.upload_and_verify_install()
+    example.uninstall()
