@@ -16,65 +16,77 @@
 import pytest
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.fixtures import image_based_manager
-from cosmo_tester.framework.examples.hello_world import centos_hello_world
+from cosmo_tester.framework.examples.on_manager import OnManagerExample
+from cosmo_tester.framework.util import prepare_and_get_test_tenant
 
 
-manager = image_based_manager
 ATTRIBUTES = util.get_attributes()
 
 
 @pytest.fixture(scope='function')
-def vm_infrastructure(cfy, manager, attributes, ssh_key, logger, tmpdir):
-    hw = centos_hello_world(cfy,
-                            manager,
-                            attributes,
-                            ssh_key,
-                            logger,
-                            tmpdir)
-    hw.blueprint_file = util.get_resource_path(
-        'blueprints/capabilities/vm_infrastructure.yaml'
+def fake_vm(cfy, image_based_manager, attributes, ssh_key, logger, tmpdir):
+    tenant = prepare_and_get_test_tenant('capability', image_based_manager,
+                                         cfy, upload=False)
+
+    example = OnManagerExample(cfy,
+                               image_based_manager,
+                               attributes,
+                               ssh_key,
+                               logger,
+                               tmpdir,
+                               tenant=tenant)
+
+    example.blueprint_file = util.get_resource_path(
+        'blueprints/capabilities/fake_vm.yaml'
     )
-    hw.blueprint_id = 'os_infra'
-    hw.deployment_id = 'os_infra'
-    yield hw
-    hw.cleanup()
+    example.blueprint_id = 'fake_vm'
+    example.deployment_id = 'fake_vm'
+    example.inputs = {}
+    yield example
 
 
 @pytest.fixture(scope='function')
-def web_app(cfy, manager, attributes, ssh_key, logger, tmpdir):
-    hw = centos_hello_world(cfy,
-                            manager,
-                            attributes,
-                            ssh_key,
-                            logger,
-                            tmpdir)
-    hw.blueprint_file = util.get_resource_path(
-        'blueprints/capabilities/web_app.yaml'
+def proxied_plugin_file(cfy, image_based_manager, attributes, ssh_key, logger,
+                        tmpdir):
+    tenant = prepare_and_get_test_tenant('capability', image_based_manager,
+                                         cfy, upload=False)
+
+    image_based_manager.upload_test_plugin(tenant)
+
+    example = OnManagerExample(cfy,
+                               image_based_manager,
+                               attributes,
+                               ssh_key,
+                               logger,
+                               tmpdir,
+                               tenant=tenant)
+    example.blueprint_file = util.get_resource_path(
+        'blueprints/capabilities/capable_file.yaml'
     )
-    hw.inputs.clear()
-    yield hw
-    hw.cleanup()
+    example.blueprint_id = 'proxied_file'
+    example.deployment_id = 'proxied_file'
+    example.inputs['tenant'] = tenant
+    # We don't need the secret as we won't be sshing to install the agent
+    example.create_secret = False
+    yield example
 
 
-def test_capabilities(cfy,
-                      manager,
-                      vm_infrastructure,
-                      web_app,
-                      tmpdir,
+def test_capabilities(fake_vm,
+                      proxied_plugin_file,
                       logger):
-    manager.upload_plugin(ATTRIBUTES['default_openstack_plugin'])
-
     # We're uploading a blueprint that creates an infrastructure for a VM,
     # and then exposes capabilities, which will be used in the application
     logger.info('Deploying infrastructure blueprint.')
-    vm_infrastructure.upload_blueprint()
-    vm_infrastructure.create_deployment()
-    vm_infrastructure.install()
+    fake_vm.upload_blueprint()
+    fake_vm.create_deployment()
+    fake_vm.install()
 
     logger.info('Deploying application blueprint.')
-    # This application relies on capabilities that it gets from the vm_infra,
+    # This application relies on capabilities that it gets from the fake_vm,
     # as well as utilizing the new agent proxy ability to connect to an
-    # agent of a node installed previously in another deployment (vm_infra)
-    web_app.verify_all()
-    logger.info('Webserver successfully validated.')
+    # agent of a node installed previously in another deployment (fake_vm)
+    proxied_plugin_file.upload_and_verify_install()
+    logger.info('File successfully validated.')
+
+    proxied_plugin_file.uninstall()
+    fake_vm.uninstall(check_files_are_deleted=False)
