@@ -1,0 +1,40 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Create a file on a vm owned by another deployment, using capabilities.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - plugin:test-plugin
+
+inputs:
+  source_deployment:
+    default: fake_vm
+  tenant: {}
+  path: {}
+  content: {}
+
+node_templates:
+  proxied_vm:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_capability: [ { get_input: source_deployment }, host_private_ip ] }
+      agent_config:
+        install_method: provided
+        user: { get_capability: [ { get_input: source_deployment }, agent_user ] }
+        extra:
+          proxy:
+            # All three of these must be set or an error about the agent likely never
+            # having started successfully will be raised
+            deployment: { get_input: source_deployment }
+            tenant: { get_input: tenant }
+            node_instance: { get_capability: [ { get_input: source_deployment }, host_instance_id ]}
+
+  file:
+    type: cloudify.test.nodes.File
+    properties:
+      path: { get_input: path }
+      content: { get_input: content }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: proxied_vm

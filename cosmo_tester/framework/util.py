@@ -37,6 +37,7 @@ from path import Path
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
+from cloudify_rest_client.exceptions import CloudifyClientError
 from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 
 from .exceptions import ProcessExecutionError
@@ -422,7 +423,13 @@ def prepare_and_get_test_tenant(test_param, manager, cfy, upload=True):
         # default tenant
     else:
         tenant = test_param
-        cfy.tenants.create(tenant)
+        try:
+            manager.client.tenants.create(tenant)
+        except CloudifyClientError as err:
+            if 'already exists' in str(err):
+                pass
+            else:
+                raise
         if upload:
             manager.upload_plugin(default_openstack_plugin,
                                   tenant_name=tenant)

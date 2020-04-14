@@ -20,6 +20,7 @@ class OnManagerExample(AbstractExample):
         self.blueprint_file = util.get_resource_path(
             'blueprints/compute/example.yaml'
         )
+        self.create_secret = True
 
     def set_agent_key_secret(self):
         with open(self.ssh_key.private_key_path) as key_handle:
@@ -35,7 +36,8 @@ class OnManagerExample(AbstractExample):
                          self.blueprint_file,
                          self.blueprint_id)
 
-        self.set_agent_key_secret()
+        if self.create_secret:
+            self.set_agent_key_secret()
 
         with util.set_client_tenant(self.manager, self.tenant):
             self.manager.client.blueprints.upload(
@@ -58,14 +60,15 @@ class OnManagerExample(AbstractExample):
                 content = self.manager.get_remote_file_content(file_path)
                 assert content == expected_content
 
-    def uninstall(self):
+    def uninstall(self, check_files_are_deleted=True):
         self.logger.info('Cleaning up on manager example.')
         self.cfy.executions.start(
             '--deployment-id', self.deployment_id,
             '--tenant-name', self.tenant,
             'uninstall'
         )
-        self.check_all_test_files_deleted()
+        if check_files_are_deleted:
+            self.check_all_test_files_deleted()
 
     def check_all_test_files_deleted(self, path=None):
         if path is None:
