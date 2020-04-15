@@ -54,6 +54,7 @@ class VM(object):
         self.enable_ssh_wait = True
         self.should_finalize = True
         self.restservice_expected = False
+        self.upload_files = True
 
     def assign(
             self,
@@ -137,11 +138,14 @@ class VM(object):
 
     def finalize_preparation(self):
         """Complete preparations for using a new instance."""
+        self._logger.info('Finalizing server preparations.')
         self.wait_for_ssh()
         if self.restservice_expected:
             self.use()
             self.wait_for_manager()
-        self.upload_necessary_files()
+            self.apply_license()
+        if self.upload_files:
+            self.upload_necessary_files()
 
     @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
     def _wait_for_server_to_be_stopped(self):
@@ -537,6 +541,10 @@ class _CloudifyManager(VM):
             'Install config:\n%s', str(install_config_str))
         config_file.write_text(install_config_str)
         return config_file
+
+    def apply_license(self):
+        license = util.get_resource_path('test_valid_paying_license.yaml')
+        self.client.license.upload(license)
 
     def bootstrap(self, enter_sanity_mode=True, upload_license=False,
                   blocking=True, restservice_expected=True):

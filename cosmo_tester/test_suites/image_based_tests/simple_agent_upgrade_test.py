@@ -16,55 +16,68 @@
 import pytest
 
 from cosmo_tester.framework.test_hosts import TestHosts
-from cosmo_tester.framework.examples.nodecellar import NodeCellarExample
+from cosmo_tester.framework import util
+from cosmo_tester.framework.examples.on_vm import OnVMExample
 
 from cosmo_tester.test_suites.snapshots import restore_snapshot
 
+ATTRIBUTES = util.get_attributes()
+
 
 @pytest.fixture(scope='module')
-def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
-    hosts = TestHosts(cfy, ssh_key, module_tmpdir, attributes, logger, 2)
+def managers_and_vm(cfy, ssh_key, module_tmpdir, attributes, logger):
+    hosts = TestHosts(cfy, ssh_key, module_tmpdir, attributes, logger, 3)
     try:
-        _managers = hosts.instances
+        managers = hosts.instances[:2]
+        vm = hosts.instances[2]
 
-        # The second manager needs to be clean, to allow restoring to it
-        _managers[1].upload_plugins = False
+        managers[0].upload_files = False
+        managers[1].upload_files = False
+        managers[0].restservice_expected = True
+        managers[1].restservice_expected = True
+
+        vm.upload_files = False
+        vm._image_name = ATTRIBUTES['centos_7_image_name']
+        vm._linux_username = ATTRIBUTES['centos_7_username']
+
         hosts.create()
-        hosts.instances[0].upload_plugin(
-            attributes['default_openstack_plugin']
-        )
-        yield _managers
+        yield hosts.instances
     finally:
         hosts.destroy()
 
 
 @pytest.fixture(scope='function')
-def nodecellar(managers, cfy, ssh_key, tmpdir, attributes, logger):
-    """
-    Using nodecellar instead of hello world, because the process stays up
-    after the old agent is stopped (as opposed to the webserver started in
-    hello world)
-    """
-    manager = managers[0]
-    nc = NodeCellarExample(cfy, manager, attributes, ssh_key, logger, tmpdir)
-    nc.blueprint_file = 'openstack-blueprint.yaml'
-    yield nc
-    if nc.cleanup_required:
-        nc.cleanup()
+def example(managers_and_vm, cfy, ssh_key, tmpdir, attributes, logger):
+    manager = managers_and_vm[0]
+    vm = managers_and_vm[2]
+
+    tenant = util.prepare_and_get_test_tenant('agent_upgrade',
+                                              manager,
+                                              cfy, upload=False)
+
+    manager.upload_test_plugin(tenant)
+
+    example = OnVMExample(
+        cfy, manager, vm, attributes, ssh_key, logger, tmpdir,
+        tenant=tenant
+    )
+
+    yield example
 
 
 def test_old_agent_stopped_after_agent_upgrade(
-        managers, nodecellar, cfy, logger, tmpdir
+        managers_and_vm, example, cfy, logger, tmpdir
 ):
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
     snapshot_id = 'snap'
 
-    old_manager = managers[0]
-    new_manager = managers[1]
+    old_manager = managers_and_vm[0]
+    new_manager = managers_and_vm[1]
+    vm = managers_and_vm[2]
 
     old_manager.use()
 
-    nodecellar.upload_and_verify_install()
+    example.upload_and_verify_install()
 
     cfy.snapshots.create([snapshot_id])
     old_manager.wait_for_all_executions()
@@ -77,32 +90,29 @@ def test_old_agent_stopped_after_agent_upgrade(
 
     # Before upgrading the agents, the old agent should still be up
     old_manager.use()
-    cfy.agents.validate()
+    cfy.agents.validate('--tenant-name', example.tenant)
 
     # Upgrade to new agents and stop old agents
     new_manager.use()
-    cfy.agents.install('--stop-old-agent')
+    cfy.agents.install('--stop-old-agent',
+                       '--tenant-name', example.tenant)
 
     logger.info('Validating the old agent is indeed down')
-    _assert_agent_not_running(old_manager, 'nodejs_host')
+    _assert_agent_not_running(old_manager, vm, 'vm', example.tenant)
     old_manager.stop()
 
     new_manager.use()
-    nodecellar.manager = new_manager
-    nodecellar.verify_installation()
-    nodecellar.uninstall()
+    example.manager = new_manager
+    example.check_files()
+    example.uninstall()
 
 
-def _assert_agent_not_running(manager, node_name):
-    node = manager.client.node_instances.list(node_name=node_name)[0]
+def _assert_agent_not_running(manager, vm, node_name, tenant):
+    with util.set_client_tenant(manager, tenant):
+        node = manager.client.node_instances.list(node_id=node_name)[0]
     agent = node.runtime_properties['cloudify_agent']
-    ssh_command = ('sudo ssh -o StrictHostKeyChecking=no '
-                   '{user}@{ip} -i {key} '
-                   '"sudo service cloudify-worker-{name} status"'
-                   .format(user=agent['user'],
-                           ip=node.runtime_properties['ip'],
-                           key=agent['key'],
-                           name=agent['name']))
-    with manager.ssh() as fabric:
-        response = fabric.run(ssh_command, warn_only=True).stdout
-        assert('not running' in response)
+    ssh_command = 'sudo service cloudify-worker-{name} status'.format(
+        name=agent['name'],
+    )
+    response = vm.run_command(ssh_command, warn_only=True).stdout
+    assert 'inactive' in response
