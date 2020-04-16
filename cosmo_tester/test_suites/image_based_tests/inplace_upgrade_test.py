@@ -13,16 +13,19 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import os
 from time import sleep
 from os.path import join
 
 import pytest
 
-from cosmo_tester.framework import git_helper
-from cosmo_tester.framework.test_hosts import TestHosts, get_image
-from cosmo_tester.framework.examples.hello_world import get_hello_worlds
-from cosmo_tester.framework.util import is_community
+from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.test_hosts import (
+    TestHosts as Hosts,
+    get_image,
+)
+from cosmo_tester.framework.util import is_community, get_attributes
+
+ATTRIBUTES = get_attributes()
 
 if is_community():
     VERSIONS = ['master']
@@ -31,47 +34,54 @@ else:
 
 
 @pytest.fixture(scope='module', params=VERSIONS)
-def image_based_manager(request, cfy, ssh_key, module_tmpdir, attributes,
-                        logger):
-    instances = [get_image(request.param)]
-    hosts = TestHosts(cfy, ssh_key, module_tmpdir, attributes, logger,
-                      instances=instances, request=request)
+def manager_and_vm(request, cfy, ssh_key, module_tmpdir, attributes,
+                   logger):
+    hosts = Hosts(cfy, ssh_key, module_tmpdir, attributes, logger, 2)
+    hosts.instances[0] = get_image(request.param)
+    manager, vm = hosts.instances
+
+    manager.upload_files = False
+    manager.restservice_expected = True
+
+    vm.upload_files = False
+    vm._image_name = ATTRIBUTES['centos_7_image_name']
+    vm._linux_username = ATTRIBUTES['centos_7_username']
     try:
         hosts.create()
-        hosts.instances[0].use()
-        hosts.instances[0].upload_plugin(
-            attributes['default_openstack_plugin']
-        )
-        yield hosts.instances[0]
+        manager.use()
+        yield hosts.instances
     finally:
         hosts.destroy()
 
 
-manager = image_based_manager
+@pytest.fixture(scope='function')
+def example(manager_and_vm, cfy, ssh_key, tmpdir, attributes, logger):
+    manager, vm = manager_and_vm
+
+    example = get_example_deployment(
+        cfy, manager, ssh_key, logger, 'inplace_upgrade', vm)
+
+    try:
+        yield example
+    finally:
+        if example.installed:
+            example.uninstall()
 
 
 def test_inplace_upgrade(cfy,
-                         manager,
+                         manager_and_vm,
+                         example,
                          attributes,
                          ssh_key,
                          module_tmpdir,
                          logger):
+    manager, vm = manager_and_vm
+
     snapshot_name = 'inplace_upgrade_snapshot_{0}'.format(manager.image_type)
     snapshot_path = join(str(module_tmpdir), snapshot_name) + '.zip'
 
-    if manager.image_type == git_helper.MASTER_BRANCH:
-        os.environ['BRANCH_NAME_CORE'] = manager.image_type
-    else:
-        os.environ['BRANCH_NAME_CORE'] = '{0}-build'.format(
-            manager.image_type)
+    example.upload_and_verify_install()
 
-    # We can't use the hello_worlds fixture here because this test has
-    # multiple managers rather than just one (the hosts vs a single
-    # manager).
-    hellos = get_hello_worlds(cfy, manager, attributes, ssh_key,
-                              module_tmpdir, logger)
-    for hello_world in hellos:
-        hello_world.upload_and_verify_install()
     cfy.snapshots.create([snapshot_name])
     manager.wait_for_all_executions()
     cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
@@ -133,7 +143,4 @@ def test_inplace_upgrade(cfy,
     sleep(50)
     manager.wait_for_manager()
 
-    for hello_world in hellos:
-        cfy.agents.install(['-t', hello_world.tenant])
-        hello_world.uninstall()
-        hello_world.delete_deployment()
+    example.uninstall()
