@@ -13,18 +13,15 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-from cosmo_tester.test_suites.bootstrap_based_tests import (
-    get_on_manager_example,
-)
+from cosmo_tester.framework.examples import get_example_deployment
 
 
 def test_manager_bootstrap_and_deployment(bootstrap_test_manager, cfy,
-                                          attributes, ssh_key, tmpdir,
-                                          logger):
+                                          ssh_key, logger):
     bootstrap_test_manager.bootstrap()
     bootstrap_test_manager.use()
 
-    example = get_on_manager_example(cfy, bootstrap_test_manager, attributes,
-                                     ssh_key, tmpdir, logger)
+    example = get_example_deployment(cfy, bootstrap_test_manager,
+                                     ssh_key, logger, 'bootstrap')
     example.upload_and_verify_install()
     example.uninstall()
