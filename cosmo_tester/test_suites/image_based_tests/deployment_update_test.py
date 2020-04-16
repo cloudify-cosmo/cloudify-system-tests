@@ -21,27 +21,18 @@ import pytest
 from retrying import retry
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.examples.on_manager import OnManagerExample
-from cosmo_tester.framework.util import (prepare_and_get_test_tenant,
-                                         set_client_tenant)
+from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.util import set_client_tenant
 
 
 update_counter = 0
 
 
 @pytest.fixture(scope='function')
-def example_deployment(cfy, image_based_manager, attributes, ssh_key, tmpdir,
-                       logger):
-    tenant = prepare_and_get_test_tenant('dep_update', image_based_manager,
-                                         cfy)
-    image_based_manager.upload_test_plugin(tenant)
-    example = OnManagerExample(cfy,
-                               image_based_manager,
-                               attributes,
-                               ssh_key,
-                               logger,
-                               tmpdir,
-                               tenant=tenant)
+def example_deployment(cfy, image_based_manager, ssh_key, logger):
+    example = get_example_deployment(
+        cfy, image_based_manager, ssh_key, logger, 'dep_update')
+
     yield example
     example.uninstall()
 

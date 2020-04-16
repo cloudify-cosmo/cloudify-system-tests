@@ -15,9 +15,9 @@
 
 import pytest
 
-from cosmo_tester.framework.test_hosts import TestHosts
 from cosmo_tester.framework import util
-from cosmo_tester.framework.examples.on_vm import OnVMExample
+from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.test_hosts import TestHosts as Hosts
 
 from cosmo_tester.test_suites.snapshots import restore_snapshot
 
@@ -26,7 +26,7 @@ ATTRIBUTES = util.get_attributes()
 
 @pytest.fixture(scope='module')
 def managers_and_vm(cfy, ssh_key, module_tmpdir, attributes, logger):
-    hosts = TestHosts(cfy, ssh_key, module_tmpdir, attributes, logger, 3)
+    hosts = Hosts(cfy, ssh_key, module_tmpdir, attributes, logger, 3)
     try:
         managers = hosts.instances[:2]
         vm = hosts.instances[2]
@@ -51,18 +51,14 @@ def example(managers_and_vm, cfy, ssh_key, tmpdir, attributes, logger):
     manager = managers_and_vm[0]
     vm = managers_and_vm[2]
 
-    tenant = util.prepare_and_get_test_tenant('agent_upgrade',
-                                              manager,
-                                              cfy, upload=False)
+    example = get_example_deployment(
+        cfy, manager, ssh_key, logger, 'agent_upgrade', vm)
 
-    manager.upload_test_plugin(tenant)
-
-    example = OnVMExample(
-        cfy, manager, vm, attributes, ssh_key, logger, tmpdir,
-        tenant=tenant
-    )
-
-    yield example
+    try:
+        yield example
+    finally:
+        if example.installed:
+            example.uninstall()
 
 
 def test_old_agent_stopped_after_agent_upgrade(
@@ -71,9 +67,7 @@ def test_old_agent_stopped_after_agent_upgrade(
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
     snapshot_id = 'snap'
 
-    old_manager = managers_and_vm[0]
-    new_manager = managers_and_vm[1]
-    vm = managers_and_vm[2]
+    old_manager, new_manager, vm = managers_and_vm
 
     old_manager.use()
 

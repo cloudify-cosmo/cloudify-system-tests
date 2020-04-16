@@ -16,8 +16,7 @@
 import json
 import pytest
 
-from cosmo_tester.framework.examples.on_manager import OnManagerExample
-from cosmo_tester.framework.util import prepare_and_get_test_tenant
+from cosmo_tester.framework.examples import get_example_deployment
 
 
 def test_simple_deployment(example_deployment):
@@ -38,14 +37,8 @@ def test_simple_deployment_using_cfy_install_command(example_deployment):
 @pytest.fixture(scope='function')
 def example_deployment(cfy, image_based_manager, attributes, ssh_key, tmpdir,
                        logger, request):
-    tenant = prepare_and_get_test_tenant(request.node.name,
-                                         image_based_manager,
-                                         cfy, upload=False)
-    image_based_manager.upload_test_plugin(tenant)
-    example = OnManagerExample(
-        cfy, image_based_manager, attributes, ssh_key, logger, tmpdir,
-        tenant=tenant
-    )
+    example = get_example_deployment(
+        cfy, image_based_manager, ssh_key, logger, request.node.name)
 
     yield example
     example.uninstall()
