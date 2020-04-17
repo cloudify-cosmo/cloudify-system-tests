@@ -258,7 +258,9 @@ class VM(object):
             'cfy_manager node get-id').stdout.split(': ')
         if len(node_id_parts) < 2:
             raise RuntimeError('Status reporter is not installed')
-        return node_id_parts[1]
+        # This is used in the config.yaml, so can't be unicode
+        # (thanks, ruamel)
+        return str(node_id_parts[1].strip())
 
     _linux_username = None
     image_name = ATTRIBUTES['default_linux_image_name']

@@ -14,8 +14,8 @@ from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     restore_snapshot,
 )
-from cosmo_tester.framework.test_hosts import _CloudifyManager
-from cosmo_tester.framework.examples.hello_world import centos_hello_world
+from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.util import set_client_tenant
 
 
 def test_full_cluster(full_cluster, logger, attributes, cfy):
@@ -55,11 +55,14 @@ def test_queue_node_failover(cluster_with_single_db, logger,
 
     # cfy commands will use mgr1
     mgr1.use(cert_path=mgr1.local_ca)
-    hello_world = _prepare_cluster_with_agent(
-        [mgr1, mgr2], logger, module_tmpdir, attributes, ssh_key, cfy
+    example = get_example_deployment(cfy, mgr1, ssh_key, logger,
+                                     'queue_failover')
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
+    _validate_cluster_and_agents(cfy, example.tenant)
+    agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(
+        example.example_host,
     )
-    _validate_cluster_and_agents(cfy)
-    agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(mgr1)
 
     # stop the rabbitmq service in the agent's broker node
     agent_broker = None
@@ -71,9 +74,11 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         broker_ssh.run('sudo service cloudify-rabbitmq stop')
 
     # the agent should now pick another broker
-    _validate_cluster_and_agents(cfy, expected_broker_status='Degraded')
-    agent_broker_ip2 = \
-        _verify_agent_broker_connection_and_get_broker_ip(mgr1)
+    _validate_cluster_and_agents(cfy, example.tenant,
+                                 expected_broker_status='Degraded')
+    agent_broker_ip2 = _verify_agent_broker_connection_and_get_broker_ip(
+        example.example_host,
+    )
     assert agent_broker_ip2 != agent_broker_ip1
 
     # The following asserts that the agent will reconnect to a stopped and
@@ -97,19 +102,18 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         with agent_broker.ssh() as broker_ssh:
             broker_ssh.run('sudo service cloudify-rabbitmq stop')
         agent_broker_ip = new_agent_broker_ip
-        new_agent_broker_ip = \
-            _verify_agent_broker_connection_and_get_broker_ip(mgr1)
+        new_agent_broker_ip = (
+           _verify_agent_broker_connection_and_get_broker_ip(
+                example.example_host,
+           )
+        )
         if new_agent_broker_ip in restarted_broker_ips:
             restarted_broker_connected = True
         assert len(restarted_broker_ips) < 3
 
     assert restarted_broker_connected
 
-    # finally, uninstall the hello world
-    mgr1.run_command(
-        'cfy executions start uninstall -d {deployment_id} -t {tenant} '
-        '--timeout 900'.format(deployment_id=hello_world.deployment_id,
-                               tenant=hello_world.tenant))
+    example.uninstall()
 
 
 def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
@@ -119,15 +123,19 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     lb.use(cert_path=lb.local_ca)
     _wait_for_cfy_node_to_start_serving(cfy)  # where the cfy node = the LB
 
-    hello_world = _prepare_cluster_with_agent(
-        [mgr1, mgr2, mgr3], logger, module_tmpdir, attributes, ssh_key, cfy
-    )
-    _validate_cluster_and_agents(cfy)
+    example = get_example_deployment(cfy, mgr1, ssh_key, logger,
+                                     'manager_failover')
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
+    _validate_cluster_and_agents(cfy, example.tenant)
 
     # get agent's manager node
-    agent_host = json.loads(cfy.agents.list('--json').stdout)[0]['id']
+    agent_host = json.loads(
+        cfy.agents.list('--json',
+                        '--all-tenants').stdout)[0]['id']
     lb.client._client.cert = lb.local_ca
-    node_instances = lb.client.node_instances.list().items
+    with set_client_tenant(lb, example.tenant):
+        node_instances = lb.client.node_instances.list().items
     agent_manager_ip = None
     for instance in node_instances:
         if instance.id == agent_host:
@@ -146,14 +154,15 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     _wait_for_cfy_node_to_start_serving(cfy)
     time.sleep(5)  # wait 5 secs for status reporter to poll
-    _validate_cluster_and_agents(cfy, expected_managers_status='Degraded')
+    _validate_cluster_and_agents(cfy, example.tenant,
+                                 expected_managers_status='Degraded')
 
     # restart the manager connected to the agent
     with agent_mgr.ssh() as manager_ssh:
         manager_ssh.run('cfy_manager start')
 
     time.sleep(5)
-    _validate_cluster_and_agents(cfy)
+    _validate_cluster_and_agents(cfy, example.tenant)
 
     # stop two managers
     with mgr2.ssh() as manager_ssh:
@@ -163,13 +172,10 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     _wait_for_cfy_node_to_start_serving(cfy)
     time.sleep(5)
-    _validate_cluster_and_agents(cfy, expected_managers_status='Degraded')
+    _validate_cluster_and_agents(cfy, example.tenant,
+                                 expected_managers_status='Degraded')
 
-    # finally, uninstall the hello world
-    mgr1.run_command(
-        'cfy executions start uninstall -d {deployment_id} -t {tenant} '
-        '--timeout 900'.format(deployment_id=hello_world.deployment_id,
-                               tenant=hello_world.tenant))
+    example.uninstall()
 
 
 def _wait_for_cfy_node_to_start_serving(cfy, timeout=15):
@@ -201,10 +207,11 @@ def test_workflow_resume_manager_failover(minimal_cluster, cfy):
     cfy.deployments.create(plugin_name, '-b', plugin_name)
     _wait_for_deployment_creation(cfy, plugin_name)
     execution_start_time = time.time()
-    mgr1.client.executions.start(plugin_name, 'install')
+    with set_client_tenant(mgr1, example.tenant):
+        mgr1.client.executions.start(plugin_name, 'install')
 
-    # check which management worker handles the execution
-    exec_node_id = mgr1.client.node_instances.list()[0].id
+        # check which management worker handles the execution
+        exec_node_id = mgr1.client.node_instances.list()[0].id
     time.sleep(3)   # wait for mgmtworker to get the execution
     executing_manager = None
     other_manager = None
@@ -254,34 +261,11 @@ def _wait_for_healthy_broker_cluster(cfy, timeout=15):
     raise TimeoutException
 
 
-def _prepare_cluster_with_agent(managers, logger, module_tmpdir, attributes,
-                                ssh_key, cfy):
-    logger.info('Installing a deployment with agents')
-    hello_world = centos_hello_world(cfy, managers[0], attributes, ssh_key,
-                                     logger, module_tmpdir)
-
-    for manager in managers:
-        _CloudifyManager.upload_necessary_files(manager)
-    _CloudifyManager.upload_plugin(
-        managers[0], managers[0]._attributes.default_openstack_plugin)
-
-    # Install a hello world deployment.
-    # The test cluster has no outer network access so mgr1.use() won't do, so I
-    # use a workaround to run the following functions with the manager's client
-    hello_world.upload_blueprint()
-    hello_world.create_deployment()
-    managers[0].run_command(
-        'cfy executions start install -d {deployment_id} -t {tenant} '
-        '--timeout 900'.format(deployment_id=hello_world.deployment_id,
-                               tenant=hello_world.tenant))
-    hello_world.verify_installation()
-    return hello_world
-
-
 def _validate_cluster_and_agents(cfy,
+                                 tenant,
                                  expected_broker_status='OK',
                                  expected_managers_status='OK'):
-    validate_agents = cfy.agents.validate()
+    validate_agents = cfy.agents.validate('--tenant-name', tenant)
     assert 'Task succeeded' in validate_agents
 
     cluster_status = _get_cluster_status(cfy)['services']
@@ -292,14 +276,11 @@ def _validate_cluster_and_agents(cfy,
     assert cluster_status['broker']['status'] == expected_broker_status
 
 
-def _verify_agent_broker_connection_and_get_broker_ip(mgr_node):
-    netstat_check_command = \
-        'sudo ssh -i /etc/cloudify/key.pem -o StrictHostKeyChecking=no ' \
-        'centos@{agent_ip} netstat -na | grep {broker_port}'
+def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
+    agent_netstat_result = agent_node.run_command(
+        'netstat -na | grep {port}'.format(port=BROKER_PORT_SSL),
+    ).stdout.split('\n')
 
-    agent_ip = mgr_node.client.agents.list().items[0]['ip']
-    agent_netstat_result = mgr_node.run_command(netstat_check_command.format(
-        agent_ip=agent_ip, broker_port=BROKER_PORT_SSL)).stdout.split('\n')
     connection_established = False
     for line in agent_netstat_result:
         if 'ESTABLISHED' in line:
