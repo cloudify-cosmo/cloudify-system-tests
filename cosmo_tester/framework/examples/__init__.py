@@ -41,6 +41,7 @@ class BaseExample(object):
             'blueprints/compute/example.yaml'
         )
         self.inputs = {
+            'agent_user': manager.linux_username,
             'path': '/tmp/test_file',
             'content': 'Test',
         }
@@ -180,6 +181,7 @@ class OnVMExample(BaseExample):
             blueprint_id='on_vm_example', tenant=tenant,
         )
         self.inputs['server_ip'] = vm.ip_address
+        self.inputs['agent_user'] = vm.linux_username,
         self.example_host = vm
 
 
