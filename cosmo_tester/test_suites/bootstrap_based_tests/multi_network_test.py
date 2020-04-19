@@ -72,6 +72,8 @@ def prepare_hosts(instances, logger):
             'sanity': {'skip_sanity': 'true'}
         }
 
+        # Wait for ssh before enable the nics
+        instance.wait_for_ssh()
         # Configure NICs in order for networking to work properly
         instance.enable_nics()
 
@@ -205,6 +207,9 @@ def _make_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
     hw = centos_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir,
                             tenant=DEFAULT_TENANT_NAME,
                             suffix='default_network')
+    # Upload openstack plugin to default tenant
+    manager.upload_plugin(attributes.default_openstack_plugin,
+                          tenant_name=DEFAULT_TENANT_NAME)
     hellos.append(hw)
 
     yield hellos
