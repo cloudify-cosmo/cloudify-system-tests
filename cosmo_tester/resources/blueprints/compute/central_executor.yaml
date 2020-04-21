@@ -1,6 +1,14 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Wait for an arbitrary amount of time.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+
 plugins:
     test_plugin:
-        executor: host_agent
+        executor: central_deployment_agent
         package_name: test-plugin
         package_version: 1.0.0
         source: null
@@ -10,29 +18,35 @@ node_types:
   cloudify.test.nodes.File:
     derived_from: cloudify.nodes.Root
     properties:
-      path:
-        description: >
-            Where the test file should be created.
-            The instance ID will be appended to this.
-            e.g. /tmp/test_plugin_test_file_nodename_a123ff
-        default: /tmp/test_plugin_test_file
-      content:
-        description: What the contents of the test file should be.
-        default: This is a test file.
+      path: {}
+      content: {}
     interfaces:
       create:
         implementation: test_plugin.test_plugin.file.create
-        inputs: {}
       delete:
         implementation: test_plugin.test_plugin.file.delete
-        inputs: {}
 
   cloudify.test.nodes.Wait:
     derived_from: cloudify.nodes.Root
     properties:
-      delay:
-        description: How long to wait for, in seconds.
-        default: 60
+      delay: {}
     interfaces:
       create:
         implementation: test_plugin.test_plugin.wait.wait
+
+inputs:
+  path: {}
+  content: {}
+  wait: {}
+
+node_templates:
+  file:
+    type: cloudify.test.nodes.File
+    properties:
+      path: { get_input: path }
+      content: { get_input: content }
+
+  wait:
+    type: cloudify.test.nodes.Wait
+    properties:
+      delay: { get_input: wait }
