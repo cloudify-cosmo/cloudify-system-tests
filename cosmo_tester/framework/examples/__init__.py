@@ -30,21 +30,28 @@ from cosmo_tester.framework.util import (
 class BaseExample(object):
 
     def __init__(self, cfy, manager, ssh_key, logger,
-                 blueprint_id, tenant='default_tenant'):
+                 blueprint_id, tenant='default_tenant',
+                 using_agent=True):
         self.logger = logger
         self.manager = manager
         self.cfy = cfy
         self.ssh_key = ssh_key
         self.tenant = tenant
-        self.create_secret = True
-        self.blueprint_file = get_resource_path(
-            'blueprints/compute/example.yaml'
-        )
         self.inputs = {
-            'agent_user': manager.linux_username,
             'path': '/tmp/test_file',
             'content': 'Test',
         }
+        if using_agent:
+            self.create_secret = True
+            self.blueprint_file = get_resource_path(
+                'blueprints/compute/example.yaml'
+            )
+            self.inputs['agent_user'] = manager.linux_username,
+        else:
+            self.create_secret = False
+            self.blueprint_file = get_resource_path(
+                'blueprints/compute/central_executor.yaml'
+            )
         self.blueprint_id = blueprint_id
         self.deployment_id = self.blueprint_id
         self.example_host = manager
@@ -166,19 +173,23 @@ class BaseExample(object):
 
 class OnManagerExample(BaseExample):
 
-    def __init__(self, cfy, manager, ssh_key, logger, tenant):
+    def __init__(self, cfy, manager, ssh_key, logger, tenant,
+                 using_agent=True):
         super(OnManagerExample, self).__init__(
             cfy, manager, ssh_key, logger,
             blueprint_id='on_manager_example', tenant=tenant,
+            using_agent=using_agent,
         )
 
 
 class OnVMExample(BaseExample):
 
-    def __init__(self, cfy, manager, vm, ssh_key, logger, tenant):
+    def __init__(self, cfy, manager, vm, ssh_key, logger, tenant,
+                 using_agent=True):
         super(OnVMExample, self).__init__(
             cfy, manager, ssh_key, logger,
             blueprint_id='on_vm_example', tenant=tenant,
+            using_agent=using_agent,
         )
         self.inputs['server_ip'] = vm.ip_address
         self.inputs['agent_user'] = vm.linux_username,
@@ -186,7 +197,7 @@ class OnVMExample(BaseExample):
 
 
 def get_example_deployment(cfy, manager, ssh_key, logger, tenant_name,
-                           vm=None, upload_plugin=True):
+                           vm=None, upload_plugin=True, using_agent=True):
     tenant = prepare_and_get_test_tenant(tenant_name, manager, cfy,
                                          upload=False)
 
@@ -194,9 +205,11 @@ def get_example_deployment(cfy, manager, ssh_key, logger, tenant_name,
         manager.upload_test_plugin(tenant)
 
     if vm:
-        return OnVMExample(cfy, manager, vm, ssh_key, logger, tenant)
+        return OnVMExample(cfy, manager, vm, ssh_key, logger, tenant,
+                           using_agent=using_agent)
     else:
-        return OnManagerExample(cfy, manager, ssh_key, logger, tenant)
+        return OnManagerExample(cfy, manager, ssh_key, logger, tenant,
+                                using_agent=using_agent)
 
 
 class AbstractExample(testtools.TestCase):

@@ -14,6 +14,9 @@ inputs:
     default: centos
   path: {}
   content: {}
+  wait:
+    description: How long wait node should delay, in seconds.
+    default: 0
 
 node_templates:
   vm:
@@ -29,6 +32,14 @@ node_templates:
     properties:
       path: { get_input: path }
       content: { get_input: content }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm
+
+  wait:
+    type: cloudify.test.nodes.Wait
+    properties:
+      delay: { get_input: wait }
     relationships:
       - type: cloudify.relationships.contained_in
         target: vm
