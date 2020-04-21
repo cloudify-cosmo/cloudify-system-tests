@@ -1,18 +1,3 @@
-########
-# Copyright (c) 2015 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import os
 import time
 
@@ -29,111 +14,9 @@ from cosmo_tester.framework.util import (
     prepare_and_get_test_tenant,
 )
 
-manager = image_based_manager
-
-
 EXPECTED_FILE_CONTENT = 'CONTENT'
 
-
-def test_3_2_agent(cfy, manager, attributes):
-    _test_agent('a3_2', cfy, manager, attributes)
-
-
-def test_ssh_agent(cfy, manager, attributes):
-    _test_agent('ssh', cfy, manager, attributes)
-
-
-def test_ubuntu_14_04_agent_reboot(cfy, manager, attributes):
-    _test_agent_alive_after_reboot(cfy, manager, attributes, 'ubuntu_14_04',
-                                   suffix='ubuntu_14_04_reboot')
-
-
-def test_centos_7_agent_reboot(cfy, manager, attributes):
-    _test_agent_alive_after_reboot(cfy, manager, attributes, 'centos_7',
-                                   suffix='centos_7_reboot')
-
-
-def test_winrm_agent_alive_after_reboot(cfy, manager, attributes):
-
-    _test_agent_alive_after_reboot(cfy, manager, attributes, 'windows_2012',
-                                   suffix='windows_2012_reboot')
-
-
-def test_ubuntu_trusty_provided_userdata_agent(cfy,
-                                               manager,
-                                               attributes,
-                                               tmpdir,
-                                               logger):
-    name = 'cloudify_agent'
-    os_name = 'ubuntu_14_04'
-    tenant = prepare_and_get_test_tenant(
-        'userdataprov_{}'.format(os_name),
-        manager,
-        cfy,
-    )
-    install_userdata = _install_script(
-        name=name,
-        windows=False,
-        user=attributes.ubuntu_14_04_username,
-        manager=manager,
-        attributes=attributes,
-        tmpdir=tmpdir,
-        logger=logger,
-        tenant=tenant,
-    )
-    _test_linux_userdata_agent(
-        cfy,
-        manager,
-        attributes,
-        os_name,
-        install_method='provided',
-        name=name,
-        install_userdata=install_userdata,
-        tenant=tenant,
-    )
-
-
-def test_windows_provided_userdata_agent(cfy,
-                                         manager,
-                                         attributes,
-                                         tmpdir,
-                                         logger):
-    name = 'cloudify_agent'
-    tenant = prepare_and_get_test_tenant(
-        'userdataprov_windows_2012',
-        manager,
-        cfy,
-    )
-    user = 'Admin'
-    install_userdata = _install_script(
-        name=name,
-        windows=True,
-        user=user,
-        manager=manager,
-        attributes=attributes,
-        tmpdir=tmpdir,
-        logger=logger,
-        tenant=tenant,
-    )
-    file_path = 'C:\\Users\\{0}\\test_file'.format(user)
-    userdata = '#ps1_sysnative\n' \
-               'Set-Content {1} "{0}"'.format(EXPECTED_FILE_CONTENT, file_path)
-    userdata = create_multi_mimetype_userdata([userdata,
-                                               install_userdata])
-    inputs = {
-        'image': attributes.windows_2012_image_name,
-        'user': user,
-        'flavor': attributes.medium_flavor_name,
-        'os_family': 'windows',
-        'userdata': userdata,
-        'file_path': file_path,
-        'install_method': 'provided',
-        'name': name,
-        'keypair_name': attributes.keypair_name,
-        'private_key_path': manager.remote_private_key_path,
-        'network_name': attributes.network_name
-    }
-    _test_userdata_agent(cfy, manager, inputs, tenant)
+manager = image_based_manager
 
 
 def test_windows_with_service_user_winrm(
