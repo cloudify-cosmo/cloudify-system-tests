@@ -46,7 +46,7 @@ class BaseExample(object):
             self.blueprint_file = get_resource_path(
                 'blueprints/compute/example.yaml'
             )
-            self.inputs['agent_user'] = manager.linux_username,
+            self.inputs['agent_user'] = manager.linux_username
         else:
             self.create_secret = False
             self.blueprint_file = get_resource_path(
@@ -192,7 +192,7 @@ class OnVMExample(BaseExample):
             using_agent=using_agent,
         )
         self.inputs['server_ip'] = vm.ip_address
-        self.inputs['agent_user'] = vm.linux_username,
+        self.inputs['agent_user'] = vm.linux_username
         self.example_host = vm
 
 
