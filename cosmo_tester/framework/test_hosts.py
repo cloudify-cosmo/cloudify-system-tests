@@ -142,8 +142,11 @@ class VM(object):
         self._logger.info('Finalizing server preparations.')
         self.wait_for_ssh()
         if self.restservice_expected:
-            self.use()
+            self._logger.info('Checking rest service.')
             self.wait_for_manager()
+            self._logger.info('Using rest service.')
+            self.use()
+            self._logger.info('Applying license.')
             self.apply_license()
         if self.upload_files:
             self.upload_necessary_files()
