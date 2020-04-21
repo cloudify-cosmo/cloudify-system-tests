@@ -56,6 +56,7 @@ class BaseExample(object):
         self.deployment_id = self.blueprint_id
         self.example_host = manager
         self.installed = False
+        self.windows = False
 
     def set_agent_key_secret(self):
         with open(self.ssh_key.private_key_path) as key_handle:
@@ -65,6 +66,18 @@ class BaseExample(object):
                 'agent_key',
                 ssh_key,
             )
+
+    def use_windows(self, user, password):
+        # TODO: agent_user can be removed once instance.linux_username is
+        # standardised to just be instance.username
+        self.inputs['agent_user'] = user
+        self.inputs['agent_port'] = '5985'
+        self.inputs['os_family'] = 'windows'
+        self.inputs['agent_password'] = password
+        self.inputs['path'] = 'c:\\users\\{}\\test_file'.format(
+            self.inputs['agent_user'],
+        )
+        self.windows = True
 
     def upload_blueprint(self):
         self.logger.info('Uploading blueprint: %s [id=%s]',
@@ -92,8 +105,13 @@ class BaseExample(object):
         for instance in instances:
             if instance.node_id == 'file':
                 file_path = path + '_' + instance.id
-                content = self.example_host.get_remote_file_content(file_path)
-                assert content == expected_content
+                if self.windows:
+                    data = self.example_host.get_windows_remote_file_content(
+                        file_path)
+                else:
+                    data = self.example_host.get_remote_file_content(
+                        file_path)
+                assert data == expected_content
 
     def uninstall(self, check_files_are_deleted=True):
         self.logger.info('Cleaning up example.')
@@ -116,17 +134,26 @@ class BaseExample(object):
         # there but not actually part of the path, but that's unlikely so
         # we'll tackle that problem when we cause it.
         # Running with sudo to avoid exit status of 1 due to root owned files
-        tmp_contents = self.example_host.run_command('sudo find /tmp').stdout
+        if self.windows:
+            list_path = path.rsplit('\\', 1)[0]
+            assert path
+            tmp_contents = self.example_host.run_windows_command(
+                'dir {}'.format(list_path)).std_out
+        else:
+            list_path = os.path.dirname(path)
+            tmp_contents = self.example_host.run_command(
+                'sudo find {}'.format(list_path)).stdout
         assert path not in tmp_contents
 
-    def upload_and_verify_install(self, timeout=900):
+    def upload_and_verify_install(self, timeout=900,
+                                  skip_plugins_validation=False):
         self.upload_blueprint()
-        self.create_deployment()
+        self.create_deployment(skip_plugins_validation)
         self.install(timeout)
         self.assert_deployment_events_exist()
         self.check_files()
 
-    def create_deployment(self):
+    def create_deployment(self, skip_plugins_validation=False):
         self.logger.info(
                 'Creating deployment [id=%s] with the following inputs:\n%s',
                 self.deployment_id,
@@ -135,7 +162,8 @@ class BaseExample(object):
             self.manager.client.deployments.create(
                 deployment_id=self.deployment_id,
                 blueprint_id=self.blueprint_id,
-                inputs=self.inputs)
+                inputs=self.inputs,
+                skip_plugins_validation=skip_plugins_validation)
         self.cfy.deployments.list(tenant_name=self.tenant)
 
     def install(self, timeout=900):
