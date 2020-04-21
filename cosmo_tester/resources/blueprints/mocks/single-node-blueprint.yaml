@@ -1,8 +1,0 @@
-tosca_definitions_version: cloudify_dsl_1_3
-
-imports:
-    - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
-
-node_templates:
-    mock_vm:
-        type: cloudify.nodes.Compute
