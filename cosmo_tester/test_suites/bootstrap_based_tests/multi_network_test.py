@@ -72,6 +72,8 @@ def prepare_hosts(instances, logger):
             'sanity': {'skip_sanity': 'true'}
         }
 
+        # Wait for ssh before enable the nics
+        instance.wait_for_ssh()
         # Configure NICs in order for networking to work properly
         instance.enable_nics()
 
@@ -205,6 +207,9 @@ def _make_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
     hw = centos_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir,
                             tenant=DEFAULT_TENANT_NAME,
                             suffix='default_network')
+    # Upload openstack plugin to default tenant
+    manager.upload_plugin(attributes.default_openstack_plugin,
+                          tenant_name=DEFAULT_TENANT_NAME)
     hellos.append(hw)
 
     yield hellos
@@ -304,7 +309,12 @@ def proxy_helloworld(cfy, proxy_hosts, attributes, ssh_key, tmpdir, logger):
         hw.cleanup()
 
 
-def test_agent_via_proxy(cfy, proxy_hosts, proxy_helloworld, tmpdir, logger):
+def test_agent_via_proxy(cfy,
+                         proxy_hosts,
+                         attributes,
+                         proxy_helloworld,
+                         tmpdir,
+                         logger):
     proxy, manager = proxy_hosts
 
     # to make sure that the agents go through the proxy, and not connect to
@@ -324,4 +334,7 @@ def test_agent_via_proxy(cfy, proxy_hosts, proxy_helloworld, tmpdir, logger):
                     .format(ip, port))
 
     manager.use()
+    # Upload openstack plugin to default tenant
+    manager.upload_plugin(attributes.default_openstack_plugin,
+                          tenant_name=DEFAULT_TENANT_NAME)
     proxy_helloworld.verify_all()

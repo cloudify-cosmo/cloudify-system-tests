@@ -82,6 +82,7 @@ class VM(object):
         self._logger = logger
         self._openstack = util.create_openstack_client()
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
+        os.makedirs(self._tmpdir)
         self.node_instance_id = None
         self.deployment_id = None
         self.node_instance_id = node_instance_id
@@ -550,6 +551,7 @@ class _CloudifyManager(VM):
 
     def bootstrap(self, enter_sanity_mode=True, upload_license=False,
                   blocking=True, restservice_expected=True):
+        self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
             upload_license and not util.is_community())
