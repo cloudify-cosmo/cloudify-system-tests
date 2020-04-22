@@ -309,7 +309,12 @@ def proxy_helloworld(cfy, proxy_hosts, attributes, ssh_key, tmpdir, logger):
         hw.cleanup()
 
 
-def test_agent_via_proxy(cfy, proxy_hosts, proxy_helloworld, tmpdir, logger):
+def test_agent_via_proxy(cfy,
+                         proxy_hosts,
+                         attributes,
+                         proxy_helloworld,
+                         tmpdir,
+                         logger):
     proxy, manager = proxy_hosts
 
     # to make sure that the agents go through the proxy, and not connect to
@@ -329,4 +334,7 @@ def test_agent_via_proxy(cfy, proxy_hosts, proxy_helloworld, tmpdir, logger):
                     .format(ip, port))
 
     manager.use()
+    # Upload openstack plugin to default tenant
+    manager.upload_plugin(attributes.default_openstack_plugin,
+                          tenant_name=DEFAULT_TENANT_NAME)
     proxy_helloworld.verify_all()
