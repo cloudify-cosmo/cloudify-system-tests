@@ -23,6 +23,10 @@ inputs:
   wait:
     description: How long wait node should delay, in seconds.
     default: 0
+  service_user:
+    default: ""
+  service_password:
+    default: ""
 
 node_templates:
   vm:
@@ -35,6 +39,9 @@ node_templates:
         key: { get_secret: agent_key }
         password: { get_input: agent_password }
         port: { get_input: agent_port }
+        process_management:
+          service_user: { get_input: service_user }
+          service_password: { get_input: service_password }
 
   file:
     type: cloudify.test.nodes.File

@@ -2,11 +2,8 @@ import time
 
 import pytest
 
-from cosmo_tester.framework.test_hosts import TestHosts as Hosts
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import get_attributes
-
-ATTRIBUTES = get_attributes()
+from cosmo_tester.test_suites.agent import get_test_prerequisites
 
 
 @pytest.mark.parametrize("vm_os", [
@@ -19,22 +16,10 @@ ATTRIBUTES = get_attributes()
     'windows_2012',
 ])
 def test_agent_reboot(cfy, ssh_key, module_tmpdir, attributes, logger, vm_os):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, attributes, logger, 2)
+    hosts, username, password = get_test_prerequisites(
+        cfy, ssh_key, module_tmpdir, attributes, logger, vm_os,
+    )
     manager, vm = hosts.instances
-
-    manager.upload_files = False
-    manager.restservice_expected = True
-
-    vm.upload_files = False
-    image_name = ATTRIBUTES['{}_image_name'.format(vm_os)]
-    username = ATTRIBUTES['{}_username'.format(vm_os)]
-
-    password = None
-    if 'windows' in vm_os:
-        password = vm.prepare_for_windows(image_name, username)
-    else:
-        vm.image_name = image_name
-        vm._linux_username = username
 
     try:
         hosts.create()
