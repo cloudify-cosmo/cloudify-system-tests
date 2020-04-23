@@ -60,19 +60,6 @@ def _test_windows_with_service_user(
         os_name, tenant, deployment_id_prefix)
 
 
-def test_windows_winrm(
-        cfy,
-        manager,
-        attributes,
-        os_name='windows_2012',
-        tenant=None):
-    _test_windows_common(
-        cfy, manager, attributes,
-        'agent/winrm-agent-blueprint/winrm-agent-blueprint.yaml',
-        None,
-        os_name, tenant, 'winrm')
-
-
 def _test_windows_common(
         cfy,
         manager,
