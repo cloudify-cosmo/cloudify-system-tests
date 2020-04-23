@@ -18,18 +18,31 @@ inputs:
     default: 22
   agent_password:
     default: ""
+  client_ip:
+    default: 127.0.0.1
+  client_tenant:
+    default: default_tenant
+  client_username:
+    default: admin
+  client_password:
+    default: admin
 
 dsl_definitions:
   fabric_env: &fabric_env
-      host_string: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, host_private_ip ]}
-      user: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, agent_user ]}
-      key_filename: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, agent_key ]}
+      host_string: { get_capability: [ { get_attribute: [ shared_resource_node, deployment, id ] }, host_private_ip ]}
+      user: { get_capability: [ { get_attribute: [ shared_resource_node, deployment, id ] }, agent_user ]}
+      key_filename: { get_capability: [ { get_attribute: [ shared_resource_node, deployment, id ] }, agent_key ]}
 
 
 node_templates:
   shared_resource_node:
     type: cloudify.nodes.SharedResource
     properties:
+      client:
+        host: { get_input: client_ip }
+        username: { get_input: client_username }
+        password: { get_input: client_password }
+        tenant: { get_input: client_tenant }
       resource_config:
         deployment:
           id: infra
