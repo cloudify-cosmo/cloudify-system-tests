@@ -89,4 +89,4 @@ openstack_plugin_yaml_path: http://www.getcloudify.org/spec/openstack-plugin/3.2
 openstack_plugin_path: http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/3.2.10/cloudify_openstack_plugin-3.2.10-py27-none-linux_x86_64-centos-Core.wgn
 
 manager_admin_password: admin
-manager_address: 192.0.2.4
+manager_address: 10.239.3.16

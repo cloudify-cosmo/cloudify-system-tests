@@ -1,0 +1,117 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Create a file in an arbitrary location on a pre-existing VM using a plugin.
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - plugin:test-plugin
+
+inputs:
+  server_ip:
+    default: 127.0.0.1
+  agent_user:
+    default: centos
+  path: {}
+  content: {}
+  os_family:
+    default: linux
+  agent_port:
+    default: 22
+  agent_password:
+    default: ""
+  wait:
+    description: How long wait node should delay, in seconds.
+    default: 0
+
+node_templates:
+  infrastructure:
+    type: cloudify.nodes.Component
+    properties:
+      resource_config:
+        blueprint:
+          id: infra
+          main_file_name: 'fake-infra.yaml'
+          external_resource: true
+
+  vm:
+  # Represents an application.
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: server_ip }
+      os_family: { get_input: os_family }
+      agent_config:
+        user: { get_input: agent_user }
+        key: { get_secret: agent_key }
+        password: { get_input: agent_password }
+        port: { get_input: agent_port }
+    relationships:
+      - target: infrastructure
+        type: cloudify.relationships.depends_on
+
+  app:
+    type: cloudify.test.nodes.File
+    properties:
+      path: { get_input: path }
+      content: { get_input: content }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: proxied_vm
+#    interfaces:
+#      cloudify.interfaces.lifecycle:
+#        create:
+#          implementation: fabric.fabric_plugin.tasks.run_script
+#          inputs:
+#            script_path: scripts/app-create.sh
+#            # fabric_env tells Cloudify how to connect to the remote host
+#            # in order to run the script. We specify the host IP, the
+#            # SSH user to use, and the the path to the private key.
+#            # Note that since the plugin's code runs on the manager (as is
+#            # the default for the fabric plugin), the key_filename should point
+#            # to a file on the Manager.
+#            fabric_env: &fabric_env
+#              host_string: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, endpoint ]}
+#              user: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, user ]}
+#              key_filename: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, key_filename ]}
+#        delete:
+#          implementation: fabric.fabric_plugin.tasks.run_script
+#          inputs:
+#            script_path: scripts/app-delete.sh
+#            fabric_env: *fabric_env
+#      maintenance:
+#        update:
+#          implementation: fabric.fabric_plugin.tasks.run_script
+#          inputs:
+#            script_path: scripts/app-update.py
+#            fabric_env: *fabric_env
+#        commit:
+#          implementation: fabric.fabric_plugin.tasks.run_script
+#          max_retries: 0
+#          inputs:
+#            script_path: scripts/app-commit.py
+#            fabric_env: *fabric_env
+#        poll:
+#          implementation: fabric.fabric_plugin.tasks.run_script
+#          inputs:
+#            script_path: scripts/app-poll.sh
+#            fabric_env: *fabric_env
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm
+
+  wait:
+    type: cloudify.test.nodes.Wait
+    properties:
+      delay: { get_input: wait }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm
+
+workflows:
+  # Define a custom workflow called "rollout". The workflow is implemented as a
+  # Python script.
+  rollout:
+    mapping: scripts/rollout.py
+    # In 5.0.5, the default is true. This is going to change to false
+    # in an upcoming patch, and will be false for 5.1 onwards.
+    is_cascading: false
+
