@@ -1,0 +1,54 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Create a VM which depends on an app deployed using another deployment
+  (as a component), which in turn uses another deployment to deploy a VM
+  (i.e. a a component of a component)
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+
+inputs:
+  server_ip:
+    default: 127.0.0.1
+  agent_user:
+    default: centos
+  path: {}
+  content: {}
+  os_family:
+    default: linux
+  agent_port:
+    default: 22
+  agent_password:
+    default: ""
+  wait:
+    description: How long wait node should delay, in seconds.
+    default: 0
+
+node_templates:
+  sub_component:
+    type: cloudify.nodes.Component
+    properties:
+      resource_config:
+        blueprint:
+          id: app
+          main_file_name: 'component.yaml'
+          external_resource: true
+        deployment:
+          inputs:
+            agent_user: { get_input: agent_user }
+            path: { get_input: path }
+            content: { get_input: content }
+
+  vm:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: server_ip }
+      os_family: { get_input: os_family }
+      agent_config:
+        user: { get_input: agent_user }
+        key: { get_secret: agent_key }
+        password: { get_input: agent_password }
+        port: { get_input: agent_port }
+    relationships:
+      - target: sub_component
+        type: cloudify.relationships.depends_on
