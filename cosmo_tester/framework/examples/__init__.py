@@ -24,6 +24,7 @@ from cosmo_tester.framework.util import (
     get_resource_path,
     prepare_and_get_test_tenant,
     set_client_tenant,
+    wait_for_execution,
 )
 
 
@@ -34,7 +35,6 @@ class BaseExample(object):
                  using_agent=True):
         self.logger = logger
         self.manager = manager
-        self.cfy = cfy
         self.ssh_key = ssh_key
         self.tenant = tenant
         self.inputs = {
@@ -91,6 +91,61 @@ class BaseExample(object):
             self.manager.client.blueprints.upload(
                 self.blueprint_file, self.blueprint_id)
 
+    def create_deployment(self, skip_plugins_validation=False, wait=True):
+        self.logger.info(
+                'Creating deployment [id=%s] with the following inputs:\n%s',
+                self.deployment_id,
+                json.dumps(self.inputs, indent=2))
+        with set_client_tenant(self.manager, self.tenant):
+            self.manager.client.deployments.create(
+                deployment_id=self.deployment_id,
+                blueprint_id=self.blueprint_id,
+                inputs=self.inputs,
+                skip_plugins_validation=skip_plugins_validation)
+            self.logger.info('Deployments for tenant {}'.format(self.tenant))
+            for deployment in self.manager.client.deployments.list():
+                self.logger.info(deployment['id'])
+        if wait:
+            self.wait_for_deployment_environment_creation()
+
+    def wait_for_deployment_environment_creation(self):
+        self.logger.info('Waiting for deployment env creation.')
+        while True:
+            with set_client_tenant(self.manager, self.tenant):
+                executions = self.manager.client.executions.list(
+                    _include=['status'],
+                    deployment_id=self.deployment_id,
+                    workflow_id='create_deployment_environment',
+                )
+                if all(exc['status'] == 'terminated' for exc in executions):
+                    break
+        self.logger.info('Deployment env created.')
+
+    def install(self):
+        self.logger.info('Installing deployment...')
+        self.execute('install')
+        self.installed = True
+
+    def uninstall(self, check_files_are_deleted=True):
+        self.logger.info('Cleaning up example.')
+        self.execute('uninstall')
+        self.installed = False
+        if check_files_are_deleted:
+            self.check_all_test_files_deleted()
+
+    def execute(self, workflow_id):
+        self.logger.info('Starting workflow: {}'.format(workflow_id))
+        try:
+            with set_client_tenant(self.manager, self.tenant):
+                execution = self.manager.client.executions.start(
+                    deployment_id=self.deployment_id,
+                    workflow_id=workflow_id,
+                )
+                wait_for_execution(self.manager, execution, self.logger)
+        except Exception as err:
+            self.logger.error('Error on deployment execution: %s', err)
+            raise
+
     def check_files(self, path=None, expected_content=None):
         instances = self.manager.client.node_instances.list(
             deployment_id=self.deployment_id,
@@ -113,17 +168,6 @@ class BaseExample(object):
                         file_path)
                 assert data == expected_content
 
-    def uninstall(self, check_files_are_deleted=True):
-        self.logger.info('Cleaning up example.')
-        self.cfy.executions.start(
-            '--deployment-id', self.deployment_id,
-            '--tenant-name', self.tenant,
-            'uninstall'
-        )
-        self.installed = False
-        if check_files_are_deleted:
-            self.check_all_test_files_deleted()
-
     def check_all_test_files_deleted(self, path=None):
         if path is None:
             path = self.inputs['path']
@@ -145,41 +189,6 @@ class BaseExample(object):
                 'sudo find {}'.format(list_path)).stdout
         assert path not in tmp_contents
 
-    def upload_and_verify_install(self, timeout=900,
-                                  skip_plugins_validation=False):
-        self.upload_blueprint()
-        self.create_deployment(skip_plugins_validation)
-        self.install(timeout)
-        self.assert_deployment_events_exist()
-        self.check_files()
-
-    def create_deployment(self, skip_plugins_validation=False):
-        self.logger.info(
-                'Creating deployment [id=%s] with the following inputs:\n%s',
-                self.deployment_id,
-                json.dumps(self.inputs, indent=2))
-        with set_client_tenant(self.manager, self.tenant):
-            self.manager.client.deployments.create(
-                deployment_id=self.deployment_id,
-                blueprint_id=self.blueprint_id,
-                inputs=self.inputs,
-                skip_plugins_validation=skip_plugins_validation)
-        self.cfy.deployments.list(tenant_name=self.tenant)
-
-    def install(self, timeout=900):
-        self.logger.info('Installing deployment...')
-        try:
-            self.cfy.executions.start.install(['-d', self.deployment_id,
-                                               '-t', self.tenant,
-                                               '--timeout', timeout])
-            self.installed = True
-        except Exception as err:
-            self.logger.error('Error on deployment execution: %s', err)
-            self.logger.info('Listing executions..')
-            self.cfy.executions.list(['--all-tenants',
-                                      '--include-system-workflows'])
-            raise
-
     def assert_deployment_events_exist(self):
         self.logger.info('Verifying deployment events..')
         with set_client_tenant(self.manager, self.tenant):
@@ -197,6 +206,13 @@ class BaseExample(object):
                 self.deployment_id,
             )
         )
+
+    def upload_and_verify_install(self, skip_plugins_validation=False):
+        self.upload_blueprint()
+        self.create_deployment(skip_plugins_validation)
+        self.install()
+        self.assert_deployment_events_exist()
+        self.check_files()
 
 
 class OnManagerExample(BaseExample):
