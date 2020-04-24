@@ -13,78 +13,80 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import pytest
 import retrying
 
 from cloudify.snapshots import STATES
 
-from . import (
-    assert_hello_worlds,
+from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.test_suites.snapshots import (
     check_credentials,
     check_deployments,
     verify_services_status,
     change_salt_on_new_manager,
     check_from_source_plugin,
     check_plugins,
-    hosts,
     confirm_manager_empty,
-    create_helloworld_just_deployment,
     create_snapshot,
     stop_manager,
     download_snapshot,
     get_deployments_list,
     get_plugins_list,
-    get_multi_tenant_versions_list,
     get_secrets_list,
-    manager_supports_users_in_snapshot_creation,
-    NOINSTALL_DEPLOYMENT_ID,
     prepare_credentials_tests,
-    remove_and_check_deployments,
     restore_snapshot,
     set_client_tenant,
     SNAPSHOT_ID,
     update_credentials,
     upgrade_agents,
-    upload_and_install_helloworld,
     upload_snapshot,
-    upload_test_plugin,
 )
 
 
 def test_restore_snapshot_and_agents_upgrade_multitenant(
-        cfy, hosts_multitenant, attributes, logger, tmpdir):
+        cfy, hosts, attributes, logger, tmpdir, ssh_key):
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
-    new_tenants = ('tenant1', 'tenant2')
-    # These tenants will have hello world deployments installed on them
-    hello_tenants = ('default_tenant', new_tenants[0])
-    # These tenants will have additional hello world deployments which will
-    # not have the install workflow run on them
-    noinstall_tenants = new_tenants
 
-    old_manager = hosts_multitenant.instances[0]
-    new_manager = hosts_multitenant.instances[1]
-    hello_vms = hosts_multitenant.instances[2:]
+    from_source_tenant = 'from_source'
+    standard_deployment_tenant = 'default_tenant'
+    noinstall_tenant = 'noinstall'
 
-    hello_vm_mappings = {
-        hello_tenants[0]: hosts_multitenant.instances[2],
-        hello_tenants[1]: hosts_multitenant.instances[3],
-    }
+    install_tenants = [from_source_tenant, standard_deployment_tenant]
+    tenants = [from_source_tenant, standard_deployment_tenant,
+               noinstall_tenant]
+
+    old_manager, new_manager, vm = hosts.instances
 
     confirm_manager_empty(new_manager)
 
-    create_tenants(old_manager, logger, tenants=new_tenants)
-    tenants = ['default_tenant']
-    tenants.extend(new_tenants)
+    create_tenants(old_manager, logger, tenants=tenants)
 
-    for tenant in hello_tenants:
-        upload_and_install_helloworld(attributes, logger, old_manager,
-                                      hello_vm_mappings[tenant],
-                                      tmpdir, tenant=tenant, prefix=tenant)
-    for tenant in noinstall_tenants:
-        create_helloworld_just_deployment(old_manager, logger, tenant=tenant)
+    example_mappings = {}
 
-    for tenant in tenants:
-        upload_test_plugin(old_manager, logger, tenant)
+    # A deployment with a plugin installed from-source
+    # Note: This needs to be a central executor plugin or the later check will
+    # fail.
+    example_mappings[from_source_tenant] = get_example_deployment(
+        cfy, old_manager, ssh_key, logger, from_source_tenant,
+        using_agent=False, upload_plugin=False,
+    )
+
+    # A 'normal' deployment
+    example_mappings[standard_deployment_tenant] = get_example_deployment(
+        cfy, old_manager, ssh_key, logger, standard_deployment_tenant, vm,
+    )
+
+    # A deployment that hasn't been installed
+    example_mappings[noinstall_tenant] = get_example_deployment(
+        cfy, old_manager, ssh_key, logger, noinstall_tenant, vm,
+    )
+
+    for tenant in install_tenants:
+        skip_validation = tenant == from_source_tenant
+        example_mappings[tenant].upload_and_verify_install(
+            skip_plugins_validation=skip_validation,
+        )
+    example_mappings[noinstall_tenant].upload_blueprint()
+    example_mappings[noinstall_tenant].create_deployment()
 
     create_tenant_secrets(old_manager, tenants, logger)
 
@@ -111,25 +113,46 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     restore_snapshot(new_manager, SNAPSHOT_ID, cfy, logger,
                      wait_for_post_restore_commands=False)
 
-    _check_snapshot_status(new_manager)
+    _check_snapshot_status(new_manager, logger)
 
-    if manager_supports_users_in_snapshot_creation(old_manager):
-        update_credentials(cfy, logger, new_manager)
+    update_credentials(cfy, logger, new_manager)
 
     verify_services_status(new_manager, logger)
 
     check_credentials(cfy, logger, new_manager)
 
-    # Make sure we still have the hello worlds after the restore
-    assert_hello_worlds(hello_vms, installed=True, logger=logger)
+    # Use the new manager for the test deployments
+    for example in example_mappings.values():
+        example.manager = new_manager
+
+    # We need to use the new manager when checking for files for the
+    # from-source plugin
+    example_mappings[from_source_tenant].example_host = new_manager
+
+    # Because of the way the from-source central executor plugin works, we
+    # need to re-run the file creation so that checks for them will succeed.
+    example_mappings[from_source_tenant].execute(
+        'execute_operation',
+        parameters={
+            'node_ids': 'file',
+            'operation': 'cloudify.interfaces.lifecycle.create',
+        },
+    )
+
+    # Make sure we still have the test files after the restore
+    for example in example_mappings.values():
+        example.check_files()
 
     # We don't check agent keys are converted to secrets because that is only
     # expected to happen for 3.x restores now.
     check_tenant_secrets(new_manager, tenants, old_secrets, logger)
     check_tenant_plugins(new_manager, old_plugins, tenants, logger)
     check_tenant_deployments(new_manager, old_deployments, tenants, logger)
-    check_tenant_source_plugins(new_manager, 'aws', NOINSTALL_DEPLOYMENT_ID,
-                                noinstall_tenants, logger)
+    check_tenant_source_plugins(
+        new_manager, 'test_plugin',
+        example_mappings[from_source_tenant].deployment_id,
+        [from_source_tenant], logger,
+    )
 
     upgrade_agents(cfy, new_manager, logger)
 
@@ -137,35 +160,27 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     stop_manager(old_manager, logger)
 
     # Make sure the agent upgrade and old manager removal didn't
-    # damage the hello worlds
-    assert_hello_worlds(hello_vms, installed=True, logger=logger)
+    # damage the test files
+    for example in example_mappings.values():
+        example.check_files()
 
-    remove_and_check_deployments(hello_vms, new_manager, logger,
-                                 hello_tenants, with_prefixes=True)
+    # Make sure we can correctly remove all test files
+    for example in example_mappings.values():
+        if example.installed:
+            example.uninstall()
 
 
 # There is a short delay after the snapshot finishes restoring before the
 # post-restore commands finish running, so we'll give it time
-# If it doesn't happen within a minute on a reasonably quiet platform then
-# that probably is a problem
-@retrying.retry(stop_max_attempt_number=20, wait_fixed=3000)
-def _check_snapshot_status(manager):
+# create-admin-token is rarely taking 1.5+ minutes to execute, so three
+# minutes are allowed for it
+@retrying.retry(stop_max_attempt_number=36, wait_fixed=5000)
+def _check_snapshot_status(manager, logger):
     # Assert the snapshot-status endpoint is working properly
     restore_status = manager.client.snapshots.get_status()
+    logger.info('Current snapshot status: %s, waiting for %s',
+                restore_status, STATES.NOT_RUNNING)
     assert STATES.NOT_RUNNING == restore_status['status']
-
-
-@pytest.fixture(
-        scope='module',
-        params=get_multi_tenant_versions_list())
-def hosts_multitenant(
-        request, cfy, ssh_key, module_tmpdir, attributes,
-        logger, install_dev_tools=True):
-    mt_hosts = hosts(
-            request, cfy, ssh_key, module_tmpdir, attributes,
-            logger, 2, install_dev_tools)
-    yield mt_hosts
-    mt_hosts.destroy()
 
 
 def create_tenant_secrets(manager, tenants, logger):
@@ -255,6 +270,8 @@ def check_tenant_source_plugins(manager, plugin, deployment_id, tenants,
 
 def create_tenants(manager, logger, tenants=('tenant1', 'tenant2')):
     for tenant in tenants:
+        if tenant == 'default_tenant':
+            continue
         logger.info('Creating tenant {tenant}'.format(tenant=tenant))
         manager.client.tenants.create(tenant)
         logger.info('Tenant {tenant} created.'.format(tenant=tenant))

@@ -1,18 +1,3 @@
-#######
-# Copyright (c) 2017 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import json
 import os
 from time import sleep
@@ -20,31 +5,18 @@ from time import sleep
 import retrying
 
 from cloudify.snapshots import STATES
-from cosmo_tester.framework.test_hosts import (
-    TestHosts,
-    get_image,
-)
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
     create_rest_client,
     is_community,
     set_client_tenant,
 )
-from cloudify_cli.utils import get_deployment_environment_execution
-from cloudify_cli.constants import CREATE_DEPLOYMENT
 from cloudify_rest_client.exceptions import UserUnauthorizedError
 
 
-HELLO_WORLD_URL = 'https://github.com/cloudify-cosmo/cloudify-hello-world-example/archive/master.zip'  # noqa
-BASE_ID = 'helloworld'
-BLUEPRINT_ID = '{base}_bp'.format(base=BASE_ID)
-DEPLOYMENT_ID = '{base}_dep'.format(base=BASE_ID)
-NOINSTALL_BLUEPRINT_ID = '{base}_noinstall_bp'.format(base=BASE_ID)
-NOINSTALL_DEPLOYMENT_ID = '{base}_noinstall_dep'.format(base=BASE_ID)
 SNAPSHOT_ID = 'testsnapshot'
 # This is used purely for testing that plugin restores have occurred.
 # Any plugin should work.
-TEST_PLUGIN_URL = 'http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/2.0.1/cloudify_openstack_plugin-2.0.1-py27-none-linux_x86_64-centos-Core.wgn'  # noqa
 BASE_PLUGIN_PATH = '/opt/mgmtworker/env/plugins/{tenant}/'
 INSTALLED_PLUGIN_PATH = BASE_PLUGIN_PATH + '{name}-{version}'
 FROM_SOURCE_PLUGIN_PATH = BASE_PLUGIN_PATH + '{deployment}-{plugin}'
@@ -64,7 +36,7 @@ MULTI_TENANT_MANAGERS = (
     '4.5.5',
     '4.6',
     '5.0.5',
-    'master'
+    'master',
 )
 
 
@@ -82,179 +54,10 @@ def upgrade_agents(cfy, manager, logger):
     cfy.agents.install(args)
 
 
-def remove_and_check_deployments(hello_vms, manager, logger,
-                                 tenants=('default_tenant',),
-                                 with_prefixes=False):
-    for tenant in tenants:
-        _log(
-            'Uninstalling hello world deployments from manager',
-            logger,
-            tenant,
-        )
-        _log(
-            'Found deployments: {deployments}'.format(
-                deployments=', '.join(get_deployments_list(manager, tenant)),
-            ),
-            logger,
-            tenant,
-        )
-        with set_client_tenant(manager, tenant):
-            if with_prefixes:
-                deployment_id = tenant + DEPLOYMENT_ID
-            else:
-                deployment_id = DEPLOYMENT_ID
-            execution = manager.client.executions.start(
-                deployment_id,
-                'uninstall',
-            )
-
-        logger.info('Waiting for uninstall to finish')
-        wait_for_execution(
-            manager,
-            execution,
-            logger,
-            tenant,
-        )
-        _log('Uninstalled deployments', logger, tenant)
-
-    assert_hello_worlds(hello_vms, installed=False, logger=logger)
-
-
 def stop_manager(manager, logger):
     logger.info('Stopping {version} manager..'.format(
         version=manager.image_type))
     manager.stop()
-
-
-def create_helloworld_just_deployment(manager, logger, tenant=None):
-    """
-        Upload an AWS hello world blueprint and create a deployment from it.
-        This is used for checking that plugins installed from source work as
-        expected.
-    """
-    upload_helloworld(
-        manager,
-        'test-ec2-bp.yaml',
-        NOINSTALL_BLUEPRINT_ID,
-        tenant,
-        logger,
-    )
-
-    inputs = {
-        'image_id': 'does not matter',
-    }
-
-    deploy_helloworld(
-        manager,
-        inputs,
-        NOINSTALL_BLUEPRINT_ID,
-        NOINSTALL_DEPLOYMENT_ID,
-        tenant,
-        logger,
-    )
-
-
-def upload_helloworld(manager, blueprint, blueprint_id, tenant, logger):
-    version = manager.image_type
-    logger.info(
-        'Uploading blueprint {blueprint} from archive {archive} as {name} '
-        'for manager version {version}'.format(
-            blueprint=blueprint,
-            archive=HELLO_WORLD_URL,
-            name=blueprint_id,
-            version=version,
-        )
-    )
-    with set_client_tenant(manager, tenant):
-        manager.client.blueprints.publish_archive(
-            HELLO_WORLD_URL,
-            blueprint_id,
-            blueprint,
-        )
-
-
-def deploy_helloworld(manager, inputs, blueprint_id,
-                      deployment_id, tenant, logger):
-    version = manager.image_type
-    _log(
-        'Deploying {deployment} on {version} manager'.format(
-            deployment=deployment_id,
-            version=version,
-        ),
-        logger,
-        tenant,
-    )
-    with set_client_tenant(manager, tenant):
-        manager.client.deployments.create(
-            blueprint_id,
-            deployment_id,
-            inputs,
-            skip_plugins_validation=True,
-        )
-
-        creation_execution = get_deployment_environment_execution(
-            manager.client, deployment_id, CREATE_DEPLOYMENT)
-    logger.info('Waiting for execution environment')
-    wait_for_execution(
-        manager,
-        creation_execution,
-        logger,
-        tenant,
-    )
-    logger.info('Deployment environment created')
-
-
-def upload_and_install_helloworld(attributes, logger, manager, target_vm,
-                                  tmpdir, prefix='', tenant=None):
-    assert not is_hello_world(target_vm), (
-        'Hello world blueprint already installed!'
-    )
-    version = manager.image_type
-    _log(
-        'Uploading helloworld blueprint to {version} manager'.format(
-            version=version,
-        ),
-        logger,
-        tenant,
-    )
-    blueprint_id = prefix + BLUEPRINT_ID
-    deployment_id = prefix + DEPLOYMENT_ID
-    inputs = {
-        'server_ip': target_vm.ip_address,
-        'agent_user': attributes.centos_7_username,
-        'agent_private_key_path': manager.remote_private_key_path,
-    }
-    upload_helloworld(
-        manager,
-        'test-bp.yaml',
-        blueprint_id,
-        tenant,
-        logger,
-    )
-
-    deploy_helloworld(
-        manager,
-        inputs,
-        blueprint_id,
-        deployment_id,
-        tenant,
-        logger,
-    )
-
-    with set_client_tenant(manager, tenant):
-        execution = manager.client.executions.start(
-            deployment_id,
-            'install')
-    logger.info('Waiting for installation to finish')
-    wait_for_execution(
-        manager,
-        execution,
-        logger,
-        tenant,
-    )
-    assert is_hello_world(target_vm), (
-        'Hello world blueprint did not install correctly.'
-    )
 
 
 class ExecutionWaiting(Exception):
@@ -276,8 +79,10 @@ def retry_if_not_failed(exception):
 
 
 @retrying.retry(
+    # Wait up to 5 seconds
     stop_max_delay=5 * 60 * 1000,
-    wait_fixed=100000,
+    # With a delay of 20 seconds between each
+    wait_fixed=20000,
     retry_on_exception=retry_if_not_failed,
 )
 def wait_for_execution(manager, execution, logger, tenant=None,
@@ -293,10 +98,8 @@ def wait_for_execution(manager, execution, logger, tenant=None,
         with set_client_tenant(manager, tenant):
             execution = manager.client.executions.get(execution['id'])
     except UserUnauthorizedError:
-        if (manager_supports_users_in_snapshot_creation(manager) and
-                change_manager_password):
-            # This will happen on a restore with modified users
-            change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+        # This will happen on a restore with modified users
+        change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
     logger.info('- execution.status = %s', execution.status)
     if execution.status not in execution.END_STATES:
@@ -332,42 +135,6 @@ def confirm_manager_empty(manager):
     assert get_deployments_list(manager) == []
 
 
-def is_hello_world(vm):
-    with vm.ssh() as fabric_ssh:
-        result = fabric_ssh.sudo(
-            'curl localhost:8080 || echo "Curl failed."'
-        ).stdout
-        return 'Cloudify Hello World' in result
-
-
-def assert_hello_worlds(hello_vms, installed, logger):
-    """
-        Assert that all hello worlds are saying hello if installed is True.
-
-        If installed is False then instead confirm that they are all not
-        saying hello, to allow for detection of uninstall workflow failures.
-
-        :param hello_vms: A list of all hello world VMs.
-        :param installed: Boolean determining whether we are checking for
-                          hello world deployments that are currently
-                          installed (True) or not installed (False).
-        :param logger: A logger to provide useful output.
-    """
-    logger.info('Confirming that hello world services are {state}.'.format(
-        state='running' if installed else 'not running',
-    ))
-    for hello_vm in hello_vms:
-        if installed:
-            assert is_hello_world(hello_vm), (
-                'Hello world was not running after restore.'
-            )
-        else:
-            assert not is_hello_world(hello_vm), (
-                'Hello world blueprint did not uninstall correctly.'
-            )
-    logger.info('Hello world services are in expected state.')
-
-
 def create_snapshot(manager, snapshot_id, attributes, logger):
     logger.info('Creating snapshot on manager {image_name}'
                 .format(image_name=manager.image_name))
@@ -377,16 +144,8 @@ def create_snapshot(manager, snapshot_id, attributes, logger):
         include_logs=True,
         include_events=True
     )
-    if manager_supports_users_in_snapshot_creation(manager):
-        password = CHANGED_ADMIN_PASSWORD
-    else:
-        password = 'admin'
+    password = CHANGED_ADMIN_PASSWORD
     assert_snapshot_created(manager, snapshot_id, password)
-
-
-def manager_supports_users_in_snapshot_creation(manager):
-    """Premium managers starting 4.2 support users in snapshot creation."""
-    return not is_community()
 
 
 def download_snapshot(manager, local_path, snapshot_id, logger):
@@ -647,13 +406,6 @@ def verify_services_status(manager, logger):
                             format(instance, instance['state']))
 
 
-def upload_test_plugin(manager, logger, tenant=None):
-    _log('Uploading test plugin', logger, tenant)
-    with set_client_tenant(manager, tenant):
-        manager.client.plugins.upload(TEST_PLUGIN_URL)
-        manager.wait_for_all_executions()
-
-
 def get_plugins_list(manager, tenant=None):
     with set_client_tenant(manager, tenant):
         return [
@@ -678,49 +430,6 @@ def get_secrets_list(manager, tenant=None):
         return [
             item['key'] for item in manager.client.secrets.list()
         ]
-
-
-def get_nodes(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
-        return manager.client.nodes.list()
-
-
-def hosts(
-        request, cfy, ssh_key, module_tmpdir, attributes, logger,
-        hello_count, install_dev_tools=True):
-
-    manager_types = [request.param, 'master']
-    hello_vms = ['centos' for i in range(hello_count)]
-    instances = [
-        get_image(mgr_type)
-        for mgr_type in manager_types + hello_vms
-    ]
-
-    hosts = TestHosts(
-        cfy, ssh_key, module_tmpdir,
-        attributes, logger, instances=instances, request=request,
-        upload_plugins=False)
-    hosts.create()
-
-    # gcc and python-devel are needed to build most of our infrastructure
-    # plugins.
-    # As we need to test from source installation of plugins, we must have
-    # these packages installed.
-    # We'll iterate over only the old and new managers (managers[0] and
-    # managers[1].
-    # The hello_world VMs don't need these so we won't waste time installing
-    # them.
-    for manager in instances[:2]:
-        with manager.ssh() as fabric_ssh:
-            fabric_ssh.sudo('yum -y -q install gcc')
-            fabric_ssh.sudo('yum -y -q install python-devel')
-
-    with instances[0].ssh() as fabric_ssh:
-        fabric_ssh.sudo('systemctl restart cloudify-restservice')
-
-    instances[0].verify_services_are_running()
-
-    return hosts
 
 
 def _log(message, logger, tenant=None):

@@ -212,7 +212,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         if self.upload_files:
             self.upload_necessary_files()
 
-    @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
+    @retrying.retry(stop_max_attempt_number=24, wait_fixed=5000)
     def _wait_for_server_to_be_stopped(self):
         self._logger.info('Waiting for server to stop...')
         servers = [x for x in self._openstack.compute.servers()
