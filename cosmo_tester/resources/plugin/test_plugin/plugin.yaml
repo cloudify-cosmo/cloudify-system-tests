@@ -20,12 +20,13 @@ node_types:
         description: What the contents of the test file should be.
         default: This is a test file.
     interfaces:
-      create:
-        implementation: test_plugin.test_plugin.file.create
-        inputs: {}
-      delete:
-        implementation: test_plugin.test_plugin.file.delete
-        inputs: {}
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.file.create
+          inputs: {}
+        delete:
+          implementation: test_plugin.test_plugin.file.delete
+          inputs: {}
 
   cloudify.test.nodes.Wait:
     derived_from: cloudify.nodes.Root
@@ -34,5 +35,6 @@ node_types:
         description: How long to wait for, in seconds.
         default: 60
     interfaces:
-      create:
-        implementation: test_plugin.test_plugin.wait.wait
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.wait.wait
