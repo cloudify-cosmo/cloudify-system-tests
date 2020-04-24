@@ -133,13 +133,14 @@ class BaseExample(object):
         if check_files_are_deleted:
             self.check_all_test_files_deleted()
 
-    def execute(self, workflow_id):
+    def execute(self, workflow_id, parameters=None):
         self.logger.info('Starting workflow: {}'.format(workflow_id))
         try:
             with set_client_tenant(self.manager, self.tenant):
                 execution = self.manager.client.executions.start(
                     deployment_id=self.deployment_id,
                     workflow_id=workflow_id,
+                    parameters=parameters,
                 )
                 wait_for_execution(self.manager, execution, self.logger)
         except Exception as err:
