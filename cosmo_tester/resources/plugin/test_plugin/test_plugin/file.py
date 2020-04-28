@@ -6,7 +6,7 @@ def create(ctx):
     path = ctx.node.properties['path'] + '_' + ctx.instance.id
     content = ctx.node.properties['content']
 
-    ctx.logger.info('Creating {path} with contents: {contents}'.format(
+    ctx.logger.info('Creating {path} with contents: {content}'.format(
         path=path,
         content=content,
     ))

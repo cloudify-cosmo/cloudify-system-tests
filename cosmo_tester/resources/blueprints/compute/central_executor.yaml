@@ -8,11 +8,11 @@ imports:
 
 plugins:
     test_plugin:
-        executor: central_deployment_agent
-        package_name: test-plugin
-        package_version: 1.0.0
-        source: null
-        install: true
+      executor: central_deployment_agent
+      package_name: test-plugin
+      package_version: 1.0.0
+      source: test-plugin
+      install: true
 
 node_types:
   cloudify.test.nodes.File:
@@ -21,23 +21,26 @@ node_types:
       path: {}
       content: {}
     interfaces:
-      create:
-        implementation: test_plugin.test_plugin.file.create
-      delete:
-        implementation: test_plugin.test_plugin.file.delete
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.file.create
+        delete:
+          implementation: test_plugin.test_plugin.file.delete
 
   cloudify.test.nodes.Wait:
     derived_from: cloudify.nodes.Root
     properties:
       delay: {}
     interfaces:
-      create:
-        implementation: test_plugin.test_plugin.wait.wait
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.wait.wait
 
 inputs:
   path: {}
   content: {}
-  wait: {}
+  wait:
+    default: 0
 
 node_templates:
   file:

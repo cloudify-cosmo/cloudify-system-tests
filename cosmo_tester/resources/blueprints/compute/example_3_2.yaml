@@ -1,0 +1,83 @@
+tosca_definitions_version: cloudify_dsl_1_1
+
+# No description because that was introduced in dsl 1.2
+# Create a file in an arbitrary location on a pre-existing VM using a plugin.
+# This blueprint uses the old DSL version and old types.yaml for back compat testing.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+
+plugins:
+  test_plugin:
+    source: test-plugin
+    executor: host_agent
+
+node_types:
+  cloudify.test.nodes.File:
+    derived_from: cloudify.nodes.Root
+    properties:
+      path:
+        description: >
+            Where the test file should be created.
+            The instance ID will be appended to this.
+            e.g. /tmp/test_plugin_test_file_nodename_a123ff
+        default: /tmp/test_plugin_test_file
+      content:
+        description: What the contents of the test file should be.
+        default: This is a test file.
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.file.create
+          inputs: {}
+        delete:
+          implementation: test_plugin.test_plugin.file.delete
+          inputs: {}
+
+  cloudify.test.nodes.Wait:
+    derived_from: cloudify.nodes.Root
+    properties:
+      delay:
+        description: How long to wait for, in seconds.
+        default: 60
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.wait.wait
+
+inputs:
+  server_ip:
+    default: 127.0.0.1
+  agent_user:
+    default: centos
+  path: {}
+  content: {}
+  wait:
+    description: How long wait node should delay, in seconds.
+    default: 0
+
+node_templates:
+  vm:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: server_ip }
+      cloudify_agent:
+        user: { get_input: agent_user }
+        key: { get_secret: agent_key }
+
+  file:
+    type: cloudify.test.nodes.File
+    properties:
+      path: { get_input: path }
+      content: { get_input: content }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm
+
+  wait:
+    type: cloudify.test.nodes.Wait
+    properties:
+      delay: { get_input: wait }
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: vm

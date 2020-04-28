@@ -30,6 +30,7 @@ from distutils.version import LooseVersion
 
 import retrying
 from fabric import Connection
+import winrm
 
 from cosmo_tester.framework import util
 
@@ -82,11 +83,72 @@ class VM(object):
         self._logger = logger
         self._openstack = util.create_openstack_client()
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
+        os.makedirs(self._tmpdir)
         self.node_instance_id = None
         self.deployment_id = None
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
+
+    def prepare_for_windows(self, image, user):
+        """Prepare this VM to be created as a windows VM."""
+        add_firewall_cmd = "&netsh advfirewall firewall add rule"
+        password = 'AbCdEfG123456!'
+
+        self.enable_ssh_wait = False
+        self.upload_files = False
+        self.restservice_expected = False
+        self.should_finalize = False
+        self.image_name = image
+        self.username = user
+
+        self.userdata = """#ps1_sysnative
+$PSDefaultParameterValues['*:Encoding'] = 'utf8'
+
+Write-Host "## Configuring WinRM and firewall rules.."
+winrm quickconfig -q
+winrm set winrm/config              '@{{MaxTimeoutms="1800000"}}'
+winrm set winrm/config/winrs        '@{{MaxMemoryPerShellMB="300"}}'
+winrm set winrm/config/service      '@{{AllowUnencrypted="true"}}'
+winrm set winrm/config/service/auth '@{{Basic="true"}}'
+{fw_cmd} name="WinRM 5985" protocol=TCP dir=in localport=5985 action=allow
+{fw_cmd} name="WinRM 5986" protocol=TCP dir=in localport=5986 action=allow
+
+Write-Host "## Setting password for Admin user.."
+$user = [ADSI]"WinNT://localhost/{user}"
+$user.SetPassword("{password}")
+$user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
+                          user=self.username,
+                          password=password)
+
+        self.password = password
+        return password
+
+    @retrying.retry(stop_max_attempt_number=120, wait_fixed=3000)
+    def wait_for_winrm(self):
+        self._logger.info('Checking Windows VM %s is up...', self.ip_address)
+        self.run_windows_command('Write-Output "Testing winrm."',
+                                 powershell=True)
+        self._logger.info('...Windows VM is up.')
+
+    def run_windows_command(self, command, powershell=False,
+                            warn_only=False):
+        url = 'http://{host}:{port}/wsman'.format(host=self.ip_address,
+                                                  port=5985)
+        session = winrm.Session(url, auth=(self.username, self.password))
+        self._logger.info('Running command: %s', command)
+        runner = session.run_ps if powershell else session.run_cmd
+        result = runner(command)
+        self._logger.info('- stdout: %s', result.std_out)
+        self._logger.info('- stderr: %s', result.std_err)
+        self._logger.info('- status_code: %d', result.status_code)
+        if not warn_only:
+            assert result.status_code == 0
+        return result
+
+    def get_windows_remote_file(self, path):
+        return self.run_windows_command(
+            'Get-Content -Path {}'.format(path)).std_out
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=3000)
     def wait_for_ssh(self):
@@ -141,13 +203,16 @@ class VM(object):
         self._logger.info('Finalizing server preparations.')
         self.wait_for_ssh()
         if self.restservice_expected:
-            self.use()
+            self._logger.info('Checking rest service.')
             self.wait_for_manager()
+            self._logger.info('Using rest service.')
+            self.use()
+            self._logger.info('Applying license.')
             self.apply_license()
         if self.upload_files:
             self.upload_necessary_files()
 
-    @retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
+    @retrying.retry(stop_max_attempt_number=24, wait_fixed=5000)
     def _wait_for_server_to_be_stopped(self):
         self._logger.info('Waiting for server to stop...')
         servers = [x for x in self._openstack.compute.servers()
@@ -503,6 +568,10 @@ class _CloudifyManager(VM):
 
         return self._image_name
 
+    @image_name.setter
+    def image_name(self, image):
+        self._image_name = image
+
     @property
     def api_version(self):
         if self.image_type == '4.3.1':
@@ -550,6 +619,7 @@ class _CloudifyManager(VM):
 
     def bootstrap(self, enter_sanity_mode=True, upload_license=False,
                   blocking=True, restservice_expected=True):
+        self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
             upload_license and not util.is_community())
