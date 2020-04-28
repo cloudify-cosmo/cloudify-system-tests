@@ -69,10 +69,7 @@ def prepare_hosts(instances, logger):
         all_networks = deepcopy(instance.networks)
         all_networks.pop(NETWORK_2)
 
-        instance.additional_install_config = {
-            'networks': all_networks,
-            'sanity': {'skip_sanity': 'true'}
-        }
+        instance.install_config['networks'] = all_networks
 
         # Wait for ssh before enable the nics
         instance.wait_for_ssh()
@@ -272,10 +269,10 @@ def proxy_prepare_hosts(instances, logger):
     manager_ip = manager.private_ip_address
     # on the manager, we override the default network ip, so that by default
     # all agents will go through the proxy
-    manager.additional_install_config = {
-        'networks': {
-            'default': str(proxy_ip)
-        }
+    manager.install_config['networks'] = {
+        'default': str(proxy_ip),
+        # Included so the cert contains this IP for mgmtworker
+        'manager_private': str(manager_ip),
     }
 
     # setup the proxy - simple socat services that forward all TCP connections

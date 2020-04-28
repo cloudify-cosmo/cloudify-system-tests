@@ -265,18 +265,16 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
     else:
         rabbit_nodes = {}
 
-    node.additional_install_config = {
-        'rabbitmq': {
-            'ca_path': '/tmp/ca.crt',
-            'cert_path': node.remote_cert,
-            'key_path': node.remote_key,
-            'erlang_cookie': 'thisisacookiefortestingnotproduction',
-            'cluster_members': rabbit_nodes,
-            'nodename': node.hostname,
-            'join_cluster': join_target,
-        },
-        'services_to_install': ['queue_service'],
+    node.install_config['rabbitmq'] = {
+        'ca_path': '/tmp/ca.crt',
+        'cert_path': node.remote_cert,
+        'key_path': node.remote_key,
+        'erlang_cookie': 'thisisacookiefortestingnotproduction',
+        'cluster_members': rabbit_nodes,
+        'nodename': node.hostname,
+        'join_cluster': join_target,
     }
+    node.install_config['services_to_install'] = ['queue_service']
 
     if node.friendly_name in skip_bootstrap_list:
         return
@@ -299,17 +297,15 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
     node.pg_password = 'xsqkopcdsog\'je"d<sub;n>osz ,po#qe'
 
-    node.additional_install_config = {
-        'postgresql_server': {
-            'postgres_password': node.pg_password,
-            'cert_path': node.remote_cert,
-            'key_path': node.remote_key,
-            'ca_path': '/tmp/ca.crt',
-        },
-        'services_to_install': ['database_service']
+    node.install_config['postgresql_server'] = {
+        'postgres_password': node.pg_password,
+        'cert_path': node.remote_cert,
+        'key_path': node.remote_key,
+        'ca_path': '/tmp/ca.crt',
     }
+    node.install_config['services_to_install'] = ['database_service']
 
-    server_conf = node.additional_install_config['postgresql_server']
+    server_conf = node.install_config['postgresql_server']
     if len(dbs) > 1:
         db_nodes = {db.hostname: {'ip': str(db.private_ip_address)}
                     for db in dbs}
@@ -372,23 +368,21 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
             }
         }
 
-    node.additional_install_config = {
-        'manager': {
-            'private_ip': str(node.private_ip_address),
-            'public_ip': str(node.private_ip_address),
-            'security': {
-                'admin_password': attributes.cloudify_password,
-            },
+    node.install_config['manager'] = {
+        'private_ip': str(node.private_ip_address),
+        'public_ip': str(node.private_ip_address),
+        'security': {
+            'admin_password': attributes.cloudify_password,
         },
-        'rabbitmq': {
-            'ca_path': '/tmp/ca.crt',
-            'cluster_members': rabbit_nodes,
-        },
-        'services_to_install': ['manager_service'],
     }
+    node.install_config['rabbitmq'] = {
+        'ca_path': '/tmp/ca.crt',
+        'cluster_members': rabbit_nodes,
+    }
+    node.install_config['services_to_install'] = ['manager_service']
 
     if high_security:
-        node.additional_install_config['ssl_inputs'] = {
+        node.install_config['ssl_inputs'] = {
             'external_cert_path': node.remote_cert,
             'external_key_path': node.remote_key,
             'internal_cert_path': node.remote_cert,
@@ -396,15 +390,15 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
             'ca_cert_path': node.remote_ca,
             'external_ca_cert_path': node.remote_ca,
         }
-        node.additional_install_config['manager']['security'][
+        node.install_config['manager']['security'][
             'ssl_enabled'] = True
 
     if dbs:
-        node.additional_install_config['postgresql_server'] = {
+        node.install_config['postgresql_server'] = {
             'ca_path': node.remote_ca,
             'cluster': {'nodes': {}},
         }
-        node.additional_install_config['postgresql_client'] = {
+        node.install_config['postgresql_client'] = {
             'server_username': 'postgres',
             'server_password': dbs[0].pg_password,
         }
@@ -418,26 +412,24 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                 for db in dbs
                 if db.friendly_name not in skip_bootstrap_list
             }
-            node.additional_install_config['postgresql_server']['cluster'][
+            node.install_config['postgresql_server']['cluster'][
                 'nodes'] = db_nodes
         else:
-            node.additional_install_config['postgresql_client'][
+            node.install_config['postgresql_client'][
                 'host'] = str(dbs[0].private_ip_address)
 
         if high_security:
-            node.additional_install_config['postgresql_client'][
+            node.install_config['postgresql_client'][
                 'ssl_client_verification'] = True
-            node.additional_install_config['postgresql_client'][
-                'ssl_enabled'] = True
-            node.additional_install_config['ssl_inputs'][
+            node.install_config['postgresql_client']['ssl_enabled'] = True
+            node.install_config['ssl_inputs'][
                 'postgresql_client_cert_path'] = node.remote_cert
-            node.additional_install_config['ssl_inputs'][
+            node.install_config['ssl_inputs'][
                 'postgresql_client_key_path'] = node.remote_key
     else:
         # If we're installing no db nodes we must put the db on the
         # manager (this only makes sense for testing external rabbit)
-        node.additional_install_config[
-            'services_to_install'].append('database_service')
+        node.install_config['services_to_install'].append('database_service')
 
     if node.friendly_name in skip_bootstrap_list:
         return
