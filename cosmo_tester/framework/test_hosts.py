@@ -653,7 +653,7 @@ class _CloudifyManager(VM):
             install_file.write_text(install_command)
             self.put_remote_file('/tmp/bootstrap_script', install_file)
 
-            fabric_ssh.run('nohup bash /tmp/bootstrap_script')
+            fabric_ssh.run('nohup bash /tmp/bootstrap_script &>/dev/null &')
 
         if blocking:
             while True:
