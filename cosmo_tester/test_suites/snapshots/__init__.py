@@ -94,12 +94,18 @@ def wait_for_execution(manager, execution, logger, tenant=None,
         logger,
         tenant,
     )
+    password_updated = False
     try:
         with set_client_tenant(manager, tenant):
             execution = manager.client.executions.get(execution['id'])
     except UserUnauthorizedError:
-        # This will happen on a restore with modified users
-        change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+        if change_manager_password and not password_updated:
+            # This will happen on a restore with modified users
+            change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+            password_updated = True
+        else:
+            # We either shouldn't change the password, or did already.
+            raise
 
     logger.info('- execution.status = %s', execution.status)
     if execution.status not in execution.END_STATES:
@@ -448,3 +454,15 @@ def _assert_restore_status(manager):
     """
     restore_status = manager.client.snapshots.get_status()
     assert restore_status['status'] == STATES.RUNNING
+
+
+# There is a short delay after the snapshot finishes restoring before the
+# post-restore commands finish running, so we'll give it time
+# create-admin-token is rarely taking 1.5+ minutes to execute, so three
+# minutes are allowed for it
+@retrying.retry(stop_max_attempt_number=36, wait_fixed=5000)
+def wait_for_restore(manager, logger):
+    restore_status = manager.client.snapshots.get_status()
+    logger.info('Current snapshot status: %s, waiting for %s',
+                restore_status, STATES.NOT_RUNNING)
+    assert STATES.NOT_RUNNING == restore_status['status']

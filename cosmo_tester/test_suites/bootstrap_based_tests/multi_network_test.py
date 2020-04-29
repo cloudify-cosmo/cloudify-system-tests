@@ -31,10 +31,11 @@ from cosmo_tester.framework import util
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
-    upload_snapshot,
     restore_snapshot,
+    stop_manager,
     upgrade_agents,
-    stop_manager
+    upload_snapshot,
+    wait_for_restore,
 )
 
 ATTRIBUTES = util.get_attributes()
@@ -120,7 +121,10 @@ def test_multiple_networks(managers,
 
     upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(new_manager, snapshot_id, cfy, logger,
-                     change_manager_password=False)
+                     change_manager_password=False,
+                     wait_for_post_restore_commands=False)
+
+    wait_for_restore(new_manager, logger)
 
     upgrade_agents(cfy, new_manager, logger)
     stop_manager(old_manager, logger)
