@@ -772,21 +772,18 @@ class _CloudifyManager(VM):
 
         self._logger.info('Adding extra NICs...')
 
-        # Need to do this for each network except 0 (eth0 is already enabled)
-        for i in range(1, len(self.networks)):
-            network_file_path = self._tmpdir / 'network_cfg_{0}'.format(i)
-            ip_addr = self.networks['network_{0}'.format(i)]
+        for i in range(0, len(self.networks)):
+            network_file_path = self._tmpdir / 'network_cfg_{}'.format(i)
+            ip_addr = self.networks['network_{}'.format(i + 1)]
             config_content = template.format(i, ip_addr)
 
-            # Create and copy the interface config
-            network_file_path.write_text(config_content)
-            with self.ssh() as fabric_ssh:
-                self.put_remote_file(
-                    '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
-                    network_file_path,
-                )
-                # Start the interface
-                fabric_ssh.sudo('ifup eth{0}'.format(i))
+            with open(network_file_path, 'w') as conf_handle:
+                conf_handle.write(config_content)
+            self.put_remote_file(
+                '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
+                network_file_path,
+            )
+            self.run_command('ifup eth{0}'.format(i), use_sudo=True)
 
 
 def get_latest_manager_image_name():
@@ -1176,7 +1173,7 @@ class TestHosts(object):
                 net_details = self._get_node_instances(
                     'test_network_{}'.format(net), 'infrastructure'
                 )[0]['runtime_properties']
-                network_names['network_{}'.format(net - 1)] = net_details[
+                network_names['network_{}'.format(net)] = net_details[
                     'name']
             self._attributes.network_names = network_names
 
@@ -1185,7 +1182,7 @@ class TestHosts(object):
                 subnet_details = self._get_node(
                     'test_subnet_{}'.format(sn), 'infrastructure',
                 )['properties']['resource_config']
-                network_mappings['network_{}'.format(sn - 1)] = ip_network(
+                network_mappings['network_{}'.format(sn)] = ip_network(
                     # Has to be unicode for ipaddress library.
                     # Converting like this for py3 compat
                     u'{}'.format(subnet_details['cidr']),
@@ -1218,15 +1215,20 @@ class TestHosts(object):
             'image': image_id,
             'flavor': self.server_flavor,
             'userdata': self.instances[index].userdata,
-            'use_net': self.vm_net_mappings.get(index, 1),
         }
+        blueprint_id = 'test_vm'
+        if self.multi_net:
+            if index in self.vm_net_mappings:
+                vm_inputs['use_net'] = self.vm_net_mappings.get(index, 1)
+            else:
+                blueprint_id = blueprint_id + '-multi-net'
         vm_inputs_path = self._tmpdir / '{}_{}.yaml'.format(vm_id, index)
         with open(vm_inputs_path, 'w') as inp_handle:
             inp_handle.write(json.dumps(vm_inputs))
 
         self._logger.info('Deploying instance %d of %s', index, image_id)
         self._cfy.deployments.create(
-            "--blueprint-id", "test_vm",
+            "--blueprint-id", blueprint_id,
             "--inputs", vm_inputs_path,
             vm_id,
         )
