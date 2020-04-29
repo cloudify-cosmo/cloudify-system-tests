@@ -27,6 +27,8 @@ inputs:
     default: ""
   service_password:
     default: ""
+  network:
+    default: default
 
 node_templates:
   vm:
@@ -39,6 +41,7 @@ node_templates:
         key: { get_secret: agent_key }
         password: { get_input: agent_password }
         port: { get_input: agent_port }
+        network: { get_input: network }
         process_management:
           service_user: { get_input: service_user }
           service_password: { get_input: service_password }
