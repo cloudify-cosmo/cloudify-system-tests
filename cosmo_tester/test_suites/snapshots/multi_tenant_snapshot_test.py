@@ -13,10 +13,6 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-import retrying
-
-from cloudify.snapshots import STATES
-
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
     check_credentials,
@@ -39,6 +35,7 @@ from cosmo_tester.test_suites.snapshots import (
     update_credentials,
     upgrade_agents,
     upload_snapshot,
+    wait_for_restore,
 )
 
 
@@ -113,7 +110,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     restore_snapshot(new_manager, SNAPSHOT_ID, cfy, logger,
                      wait_for_post_restore_commands=False)
 
-    _check_snapshot_status(new_manager, logger)
+    wait_for_restore(new_manager, logger)
 
     update_credentials(cfy, logger, new_manager)
 
@@ -168,19 +165,6 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     for example in example_mappings.values():
         if example.installed:
             example.uninstall()
-
-
-# There is a short delay after the snapshot finishes restoring before the
-# post-restore commands finish running, so we'll give it time
-# create-admin-token is rarely taking 1.5+ minutes to execute, so three
-# minutes are allowed for it
-@retrying.retry(stop_max_attempt_number=36, wait_fixed=5000)
-def _check_snapshot_status(manager, logger):
-    # Assert the snapshot-status endpoint is working properly
-    restore_status = manager.client.snapshots.get_status()
-    logger.info('Current snapshot status: %s, waiting for %s',
-                restore_status, STATES.NOT_RUNNING)
-    assert STATES.NOT_RUNNING == restore_status['status']
 
 
 def create_tenant_secrets(manager, tenants, logger):
