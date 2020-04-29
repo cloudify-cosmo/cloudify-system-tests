@@ -856,7 +856,8 @@ class TestHosts(object):
                  request=None,
                  flavor=None,
                  multi_net=False,
-                 bootstrappable=False):
+                 bootstrappable=False,
+                 vm_net_mappings=None):
         """
         instances: supply a list of VM instances.
         This allows pre-configuration to happen before starting the hosts, or
@@ -882,7 +883,10 @@ class TestHosts(object):
         self.tenant = None
         self.deployments = []
         self.blueprints = []
+
         self.multi_net = multi_net
+        self.vm_net_mappings = vm_net_mappings or {}
+
         if flavor:
             self.server_flavor = flavor
         else:
@@ -922,13 +926,6 @@ class TestHosts(object):
             time=datetime.strftime(datetime.now(), '%Y%m%d%H%M%S'),
         )
 
-        image_id_instance_mapping = {}
-        for instance in self.instances:
-            image_id_instance_mapping[instance.image_name] = (
-                image_id_instance_mapping.get(instance.image_name, [])
-                + [instance]
-            )
-
         # Connect to the infrastructure manager for setting up the tests
         self._cfy.profiles.use(
             "--manager-username", "admin",
@@ -953,8 +950,9 @@ class TestHosts(object):
             self._deploy_test_infrastructure(test_identifier)
 
             # Deploy hosts
-            for image_id, instances in image_id_instance_mapping.items():
-                self._deploy_test_vms(image_id, instances, test_identifier)
+            for index, instance in enumerate(self.instances):
+                self._deploy_test_vm(instance.image_name, index,
+                                     test_identifier)
 
             for instance in self.instances:
                 if instance.should_finalize:
@@ -1110,15 +1108,20 @@ class TestHosts(object):
             ),
         )
         self.blueprints.append('infrastructure')
-        self._cfy.blueprints.upload(
-            "--blueprint-id", "test_vm",
-            util.get_resource_path(
-                'infrastructure_blueprints/vm{}.yaml'.format(
-                    suffix,
-                )
-            ),
-        )
-        self.blueprints.append('test_vm')
+        test_vm_suffixes = ['']
+        if self.multi_net:
+            test_vm_suffixes.append('-multi-net')
+
+        for suffix in test_vm_suffixes:
+            self._cfy.blueprints.upload(
+                "--blueprint-id", "test_vm{}".format(suffix),
+                util.get_resource_path(
+                    'infrastructure_blueprints/vm{}.yaml'.format(
+                        suffix,
+                    )
+                ),
+            )
+            self.blueprints.append('test_vm{}'.format(suffix))
 
     def _deploy_test_infrastructure(self, test_identifier):
         self._logger.info('Creating test infrastructure inputs.')
@@ -1189,38 +1192,39 @@ class TestHosts(object):
                 )
             self.network_mappings = network_mappings
 
-    def _deploy_test_vms(self, image_id, instances, test_identifier):
+    def _deploy_test_vm(self, image_id, index, test_identifier):
         self._logger.info(
-            'Preparing to deploy %d instance of image %s',
-            len(instances),
+            'Preparing to deploy instance %d of image %s',
+            index,
             image_id,
         )
 
-        scale_count = max(len(instances) - 1, 0)
-
-        vm_id = 'vm_{}'.format(
+        vm_id = 'vm_{}_{}'.format(
             image_id
             .replace(' ', '_')
             .replace('(', '_')
             .replace(')', '_')
             # Openstack drop the part that contains '.' when generate the name
             # This to replace '.' with '-'
-            .replace('.', '-')
+            .replace('.', '-'),
+            index,
         )
 
-        self._logger.info('Creating test VM inputs for %s', image_id)
+        self._logger.info('Creating test VM inputs for %s_%d',
+                          image_id, index)
         vm_inputs = {
             'test_infrastructure_name': test_identifier,
             'floating_network_id': ATTRIBUTES['floating_network_id'],
             'image': image_id,
             'flavor': self.server_flavor,
-            'userdata': instances[0].userdata,
+            'userdata': self.instances[index].userdata,
+            'use_net': self.vm_net_mappings.get(index, 1),
         }
-        vm_inputs_path = self._tmpdir / '{}.yaml'.format(vm_id)
+        vm_inputs_path = self._tmpdir / '{}_{}.yaml'.format(vm_id, index)
         with open(vm_inputs_path, 'w') as inp_handle:
             inp_handle.write(json.dumps(vm_inputs))
 
-        self._logger.info('Deploying instance of %s', image_id)
+        self._logger.info('Deploying instance %d of %s', index, image_id)
         self._cfy.deployments.create(
             "--blueprint-id", "test_vm",
             "--inputs", vm_inputs_path,
@@ -1232,36 +1236,14 @@ class TestHosts(object):
             "install",
         )
 
-        if scale_count:
-            self._logger.info(
-                'Deploying %d more instances of %s',
-                scale_count,
-                image_id,
-            )
-            self._cfy.executions.start(
-                "--deployment-id", vm_id,
-                "--parameters", "scalable_entity_name=vmgroup",
-                "--parameters", "delta={}".format(scale_count),
-                "scale",
-            )
-
         self._logger.info('Retrieving deployed instance details.')
-        node_instances = self._get_node_instances('test_host', vm_id)
-        if len(node_instances) != len(instances):
-            raise AssertionError(
-                "Unexpected node instance count- found {found}/{expected}"
-                .format(
-                    found=len(node_instances),
-                    expected=len(instances),
-                )
-            )
+        node_instance = self._get_node_instances('test_host', vm_id)[0]
 
         self._logger.info('Storing instance details.')
-        for idx in range(len(instances)):
-            self._update_instance(
-                instances[idx],
-                node_instances[idx]
-            )
+        self._update_instance(
+            self.instances[index],
+            node_instance,
+        )
 
     def _get_node_instances(self, node_name, deployment_id):
         node_instances = []
