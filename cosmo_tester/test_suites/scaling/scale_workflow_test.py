@@ -20,9 +20,9 @@ from cosmo_tester.framework.util import set_client_tenant
 
 
 @pytest.fixture(scope='function')
-def on_manager_example(cfy, image_based_manager, ssh_key, logger):
+def on_manager_example(image_based_manager, ssh_key, logger):
     example = get_example_deployment(
-        cfy, image_based_manager, ssh_key, logger, 'scale')
+        image_based_manager, ssh_key, logger, 'scale')
 
     yield example
 

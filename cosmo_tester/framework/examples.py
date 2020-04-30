@@ -10,8 +10,7 @@ from cosmo_tester.framework.util import (
 
 
 class BaseExample(object):
-
-    def __init__(self, cfy, manager, ssh_key, logger,
+    def __init__(self, manager, ssh_key, logger,
                  blueprint_id, tenant='default_tenant',
                  using_agent=True):
         self.logger = logger
@@ -198,22 +197,20 @@ class BaseExample(object):
 
 
 class OnManagerExample(BaseExample):
-
-    def __init__(self, cfy, manager, ssh_key, logger, tenant,
+    def __init__(self, manager, ssh_key, logger, tenant,
                  using_agent=True):
         super(OnManagerExample, self).__init__(
-            cfy, manager, ssh_key, logger,
+            manager, ssh_key, logger,
             blueprint_id='on_manager_example', tenant=tenant,
             using_agent=using_agent,
         )
 
 
 class OnVMExample(BaseExample):
-
-    def __init__(self, cfy, manager, vm, ssh_key, logger, tenant,
+    def __init__(self, manager, vm, ssh_key, logger, tenant,
                  using_agent=True):
         super(OnVMExample, self).__init__(
-            cfy, manager, ssh_key, logger,
+            manager, ssh_key, logger,
             blueprint_id='on_vm_example', tenant=tenant,
             using_agent=using_agent,
         )
@@ -222,17 +219,16 @@ class OnVMExample(BaseExample):
         self.example_host = vm
 
 
-def get_example_deployment(cfy, manager, ssh_key, logger, tenant_name,
+def get_example_deployment(manager, ssh_key, logger, tenant_name,
                            vm=None, upload_plugin=True, using_agent=True):
-    tenant = prepare_and_get_test_tenant(tenant_name, manager, cfy,
-                                         upload=False)
+    tenant = prepare_and_get_test_tenant(tenant_name, manager, upload=False)
 
     if upload_plugin:
         manager.upload_test_plugin(tenant)
 
     if vm:
-        return OnVMExample(cfy, manager, vm, ssh_key, logger, tenant,
+        return OnVMExample(manager, vm, ssh_key, logger, tenant,
                            using_agent=using_agent)
     else:
-        return OnManagerExample(cfy, manager, ssh_key, logger, tenant,
+        return OnManagerExample(manager, ssh_key, logger, tenant,
                                 using_agent=using_agent)
