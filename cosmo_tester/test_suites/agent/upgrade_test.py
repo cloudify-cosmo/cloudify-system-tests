@@ -37,8 +37,8 @@ def managers_and_vm(cfy, ssh_key, module_tmpdir, attributes, logger):
         managers[1].restservice_expected = True
 
         vm.upload_files = False
-        vm._image_name = ATTRIBUTES['centos_7_image_name']
-        vm._linux_username = ATTRIBUTES['centos_7_username']
+        vm.image_name = ATTRIBUTES['centos_7_image_name']
+        vm.linux_username = ATTRIBUTES['centos_7_username']
 
         hosts.create()
         yield hosts.instances
