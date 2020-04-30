@@ -23,9 +23,10 @@ def test_simple_deployment(example_deployment):
     example_deployment.upload_and_verify_install()
 
 
-def test_simple_deployment_using_cfy_install_command(example_deployment):
+def test_simple_deployment_using_cfy_install_command(example_deployment, cfy):
     example_deployment.set_agent_key_secret()
-    example_deployment.cfy.install(
+    example_deployment.manager.use()
+    cfy.install(
         '--tenant-name', example_deployment.tenant,
         '--blueprint-id', example_deployment.blueprint_id,
         '--deployment-id', example_deployment.deployment_id,
