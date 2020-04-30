@@ -363,7 +363,6 @@ class _CloudifyManager(VM):
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
         self._openstack = util.create_openstack_client()
-        self.additional_install_config = {}
         # Only set this if it wasn't explicitly set elsewhere.
         # (otherwise multiple test managers cannot have different settings for
         # this value due to the way we deploy them)
@@ -372,6 +371,17 @@ class _CloudifyManager(VM):
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
+        self.install_config = {
+            'manager': {
+                'public_ip': str(public_ip_address),
+                'private_ip': str(private_ip_address),
+                'hostname': str(server_id),
+                'security': {
+                    'admin_username': attributes.cloudify_username,
+                    'admin_password': attributes.cloudify_password,
+                },
+            },
+        }
 
     def upload_necessary_files(self):
         self._logger.info('Uploading necessary files to %s', self)
@@ -591,22 +601,9 @@ class _CloudifyManager(VM):
         config_file = self._tmpdir / 'config_{0}.yaml'.format(self.ip_address)
         cloudify_license_path = \
             '/tmp/test_valid_paying_license.yaml' if upload_license else ''
-        install_config = {
-            'manager': {
-                'public_ip': str(self.ip_address),
-                'private_ip': str(self.private_ip_address),
-                'hostname': str(self.server_id),
-                'security': {
-                    'admin_username': self._attributes.cloudify_username,
-                    'admin_password': self._attributes.cloudify_password,
-                },
-                'cloudify_license_path': cloudify_license_path,
-            },
-        }
-
-        # Add any additional bootstrap inputs passed from the test
-        install_config.update(self.additional_install_config)
-        install_config_str = yaml.dump(install_config)
+        self.install_config['manager'][
+            'cloudify_license_path'] = cloudify_license_path
+        install_config_str = yaml.dump(self.install_config)
 
         self._logger.info(
             'Install config:\n%s', str(install_config_str))
@@ -653,7 +650,7 @@ class _CloudifyManager(VM):
             install_file.write_text(install_command)
             self.put_remote_file('/tmp/bootstrap_script', install_file)
 
-            fabric_ssh.run('nohup bash /tmp/bootstrap_script')
+            fabric_ssh.run('nohup bash /tmp/bootstrap_script &>/dev/null &')
 
         if blocking:
             while True:

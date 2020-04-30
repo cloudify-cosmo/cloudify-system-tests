@@ -20,14 +20,14 @@ from copy import deepcopy
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 from cosmo_tester.framework.test_hosts import (
-    TestHosts,
-    get_image,
+    TestHosts as Hosts,
 )
 from cosmo_tester.framework.examples.hello_world import (
     HelloWorldExample,
-    centos_hello_world
+    centos_hello_world,
 )
-from cosmo_tester.framework.util import prepare_and_get_test_tenant
+from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework import util
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
@@ -37,6 +37,8 @@ from cosmo_tester.test_suites.snapshots import (
     stop_manager
 )
 
+ATTRIBUTES = util.get_attributes()
+
 NETWORK_2 = "network_2"
 
 
@@ -44,7 +46,7 @@ NETWORK_2 = "network_2"
 def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack."""
 
-    hosts = TestHosts(
+    hosts = Hosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=2,
         flavor=attributes.medium_flavor_name,
@@ -67,10 +69,7 @@ def prepare_hosts(instances, logger):
         all_networks = deepcopy(instance.networks)
         all_networks.pop(NETWORK_2)
 
-        instance.additional_install_config = {
-            'networks': all_networks,
-            'sanity': {'skip_sanity': 'true'}
-        }
+        instance.install_config['networks'] = all_networks
 
         # Wait for ssh before enable the nics
         instance.wait_for_ssh()
@@ -182,7 +181,7 @@ def _make_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
 
     # Add a MultiNetworkHelloWorld per management network
     for network_name, network_id in attributes.network_names.iteritems():
-        tenant = prepare_and_get_test_tenant(
+        tenant = util.prepare_and_get_test_tenant(
             '{0}_tenant'.format(network_name), manager, cfy
         )
         hello = MultiNetworkHelloWorld(
@@ -231,16 +230,18 @@ def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
 
 @pytest.fixture(scope='function')
 def proxy_hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
-    # the convention for this test is that the proxy is instances[0] and
-    # the manager is instances[1]
-    # note that even though we bootstrap, we need to use current manager
-    # for the manager and not the VM to setup a manager correctly
-    instances = [get_image('centos'), get_image('master')]
-    hosts = TestHosts(
-        cfy, ssh_key, module_tmpdir, attributes, logger, instances=instances,
-        bootstrappable=True)
-    hosts.create()
+    hosts = Hosts(
+        cfy, ssh_key, module_tmpdir, attributes, logger, 3,
+        bootstrappable=True,)
+    proxy, manager, vm = hosts.instances
+
+    proxy.upload_files = False
+    proxy.image_name = ATTRIBUTES['centos_7_image_name']
+    vm.upload_files = False
+    vm.image_name = ATTRIBUTES['centos_7_image_name']
+
     try:
+        hosts.create()
         proxy_prepare_hosts(hosts.instances, logger)
         yield hosts.instances
     finally:
@@ -263,15 +264,15 @@ WantedBy=multi-user.target
 
 
 def proxy_prepare_hosts(instances, logger):
-    proxy, manager = instances
+    proxy, manager, vm = instances
     proxy_ip = proxy.private_ip_address
     manager_ip = manager.private_ip_address
     # on the manager, we override the default network ip, so that by default
     # all agents will go through the proxy
-    manager.additional_install_config = {
-        'networks': {
-            'default': str(proxy_ip)
-        }
+    manager.install_config['networks'] = {
+        'default': str(proxy_ip),
+        # Included so the cert contains this IP for mgmtworker
+        'manager_private': str(manager_ip),
     }
 
     # setup the proxy - simple socat services that forward all TCP connections
@@ -281,41 +282,27 @@ def proxy_prepare_hosts(instances, logger):
         for port in [5671, 53333]:
             service = 'proxy_{0}'.format(port)
             filename = '/usr/lib/systemd/system/{0}.service'.format(service)
+            logger.info('Deploying proxy service file')
             proxy.put_remote_file_content(
                 filename,
                 PROXY_SERVICE_TEMPLATE.format(
                     ip=manager_ip, port=port),
             )
+            logger.info('Enabling proxy service')
             fabric.sudo('systemctl enable {0}'.format(service))
+            logger.info('Starting proxy service')
             fabric.sudo('systemctl start {0}'.format(service))
 
-    manager.bootstrap(blocking=False, upload_license=True)
-
-    logger.info('Waiting for bootstrap of {}'.format(manager.server_id))
-    while not manager.bootstrap_is_complete():
-        time.sleep(3)
-
-
-@pytest.fixture(scope='function')
-def proxy_helloworld(cfy, proxy_hosts, attributes, ssh_key, tmpdir, logger):
-    # don't use MultiNetworkTestHosts - we're testing with the default
-    # network, so no need to set manager network name
-    hw = centos_hello_world(
-        cfy, proxy_hosts[1], attributes, ssh_key, logger, tmpdir)
-
-    yield hw
-    if hw.cleanup_required:
-        logger.info('Hello world cleanup required..')
-        hw.cleanup()
+    logger.info('Bootstrapping manager...')
+    manager.wait_for_ssh()
+    manager.bootstrap(blocking=True, upload_license=True)
 
 
 def test_agent_via_proxy(cfy,
                          proxy_hosts,
-                         attributes,
-                         proxy_helloworld,
-                         tmpdir,
-                         logger):
-    proxy, manager = proxy_hosts
+                         logger,
+                         ssh_key):
+    proxy, manager, vm = proxy_hosts
 
     # to make sure that the agents go through the proxy, and not connect to
     # the manager directly, we block all communication on the manager's
@@ -334,7 +321,8 @@ def test_agent_via_proxy(cfy,
                     .format(ip, port))
 
     manager.use()
-    # Upload openstack plugin to default tenant
-    manager.upload_plugin(attributes.default_openstack_plugin,
-                          tenant_name=DEFAULT_TENANT_NAME)
-    proxy_helloworld.verify_all()
+
+    example = get_example_deployment(
+        cfy, manager, ssh_key, logger, 'agent_via_proxy', vm)
+    example.upload_and_verify_install()
+    example.uninstall()
