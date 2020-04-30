@@ -27,8 +27,7 @@ def test_windows_with_service_user(cfy, ssh_key, module_tmpdir, attributes,
         )
 
         example = get_example_deployment(
-            cfy, manager, ssh_key, logger, 'windows_service_user',
-            vm=vm,
+            manager, ssh_key, logger, 'windows_service_user', vm=vm,
         )
         example.use_windows(username, password)
         example.inputs['service_user'] = service_user

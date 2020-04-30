@@ -85,7 +85,7 @@ def prepare_managers(managers, logger):
 
 
 @pytest.fixture(scope='function')
-def examples(managers_and_vms, cfy, ssh_key, tmpdir, attributes, logger):
+def examples(managers_and_vms, ssh_key, tmpdir, attributes, logger):
     manager = managers_and_vms[0]
     vms = managers_and_vms[2:]
 
@@ -93,7 +93,7 @@ def examples(managers_and_vms, cfy, ssh_key, tmpdir, attributes, logger):
     for idx, vm in enumerate(vms, 1):
         examples.append(
             get_example_deployment(
-                cfy, manager, ssh_key, logger, 'multi_net_{}'.format(idx), vm)
+                manager, ssh_key, logger, 'multi_net_{}'.format(idx), vm)
         )
         examples[-1].inputs['network'] = 'network_{}'.format(idx)
 
@@ -255,8 +255,7 @@ def proxy_prepare_hosts(instances, logger):
     manager.bootstrap(blocking=True, upload_license=True)
 
 
-def test_agent_via_proxy(cfy,
-                         proxy_hosts,
+def test_agent_via_proxy(proxy_hosts,
                          logger,
                          ssh_key):
     proxy, manager, vm = proxy_hosts
@@ -280,6 +279,6 @@ def test_agent_via_proxy(cfy,
     manager.use()
 
     example = get_example_deployment(
-        cfy, manager, ssh_key, logger, 'agent_via_proxy', vm)
+        manager, ssh_key, logger, 'agent_via_proxy', vm)
     example.upload_and_verify_install()
     example.uninstall()

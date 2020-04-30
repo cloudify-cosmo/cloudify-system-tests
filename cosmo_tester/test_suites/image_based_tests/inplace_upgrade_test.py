@@ -55,11 +55,11 @@ def manager_and_vm(request, cfy, ssh_key, module_tmpdir, attributes,
 
 
 @pytest.fixture(scope='function')
-def example(manager_and_vm, cfy, ssh_key, tmpdir, attributes, logger):
+def example(manager_and_vm, ssh_key, tmpdir, attributes, logger):
     manager, vm = manager_and_vm
 
     example = get_example_deployment(
-        cfy, manager, ssh_key, logger, 'inplace_upgrade', vm)
+        manager, ssh_key, logger, 'inplace_upgrade', vm)
 
     try:
         yield example

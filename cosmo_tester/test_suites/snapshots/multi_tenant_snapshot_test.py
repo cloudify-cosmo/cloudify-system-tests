@@ -63,18 +63,18 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     # Note: This needs to be a central executor plugin or the later check will
     # fail.
     example_mappings[from_source_tenant] = get_example_deployment(
-        cfy, old_manager, ssh_key, logger, from_source_tenant,
+        old_manager, ssh_key, logger, from_source_tenant,
         using_agent=False, upload_plugin=False,
     )
 
     # A 'normal' deployment
     example_mappings[standard_deployment_tenant] = get_example_deployment(
-        cfy, old_manager, ssh_key, logger, standard_deployment_tenant, vm,
+        old_manager, ssh_key, logger, standard_deployment_tenant, vm,
     )
 
     # A deployment that hasn't been installed
     example_mappings[noinstall_tenant] = get_example_deployment(
-        cfy, old_manager, ssh_key, logger, noinstall_tenant, vm,
+        old_manager, ssh_key, logger, noinstall_tenant, vm,
     )
 
     for tenant in install_tenants:

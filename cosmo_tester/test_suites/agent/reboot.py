@@ -25,8 +25,7 @@ def test_agent_reboot(cfy, ssh_key, module_tmpdir, attributes, logger, vm_os):
         hosts.create()
 
         example = get_example_deployment(
-            cfy, manager, ssh_key, logger, 'agent_reboot_{}'.format(vm_os),
-            vm=vm,
+            manager, ssh_key, logger, 'agent_reboot_{}'.format(vm_os), vm=vm,
         )
         if 'windows' in vm_os:
             example.use_windows(username, password)

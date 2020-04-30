@@ -51,8 +51,8 @@ def example(managers_and_vm, cfy, ssh_key, tmpdir, attributes, logger):
     manager = managers_and_vm[0]
     vm = managers_and_vm[2]
 
-    example = get_example_deployment(
-        cfy, manager, ssh_key, logger, 'agent_upgrade', vm)
+    example = get_example_deployment(manager, ssh_key, logger,
+                                     'agent_upgrade', vm)
 
     try:
         yield example
