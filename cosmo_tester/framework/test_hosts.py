@@ -50,7 +50,7 @@ class VM(object):
     def __init__(self, image_type):
         self.image_type = image_type
         self.upload_plugins = None
-        self._image_name = None
+        self.image_name = None
         self.userdata = ""
         self.enable_ssh_wait = True
         self.should_finalize = True
@@ -891,7 +891,7 @@ class TestHosts(object):
 
         if bootstrappable:
             for instance in self.instances:
-                instance._image_name = self.bootstrappable_image_name
+                instance.image_name = self.bootstrappable_image_name
                 instance.should_finalize = False
 
     @property
