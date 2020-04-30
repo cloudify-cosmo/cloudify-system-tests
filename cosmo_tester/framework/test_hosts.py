@@ -916,8 +916,8 @@ class TestHosts(object):
                 '[^a-zA-Z0-9]',
                 '',
                 # This is set by pytest and looks like:
-                # cosmo_tester/test_suites/image_based_tests/\
-                # hello_world_test.py::test_hello_world[centos_7]
+                # cosmo_tester/test_suites/some_tests/\
+                # some_test.py::test_specific_thing
                 os.environ['PYTEST_CURRENT_TEST'].split('/')[-1],
             ),
             time=datetime.strftime(datetime.now(), '%Y%m%d%H%M%S'),
