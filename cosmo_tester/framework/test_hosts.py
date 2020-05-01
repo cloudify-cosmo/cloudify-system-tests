@@ -160,19 +160,11 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def private_key_path(self):
         return self._ssh_key.private_key_path
 
-    @property
-    def linux_username(self):
-        return self._linux_username or self._attributes.default_linux_username
-
-    @linux_username.setter
-    def linux_username(self, user):
-        self._linux_username = user
-
     @contextmanager
     def ssh(self):
         conn = Connection(
             host=self.ip_address,
-            user=self.linux_username,
+            user=self.username,
             connect_kwargs={
                 'key_filename': self.private_key_path,
             },
@@ -327,7 +319,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         # (thanks, ruamel)
         return str(node_id_parts[1].strip())
 
-    _linux_username = None
     image_name = ATTRIBUTES['default_linux_image_name']
     username = ATTRIBUTES['default_linux_username']
     image_type = 'centos'

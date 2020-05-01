@@ -52,7 +52,7 @@ def managers_and_vms(cfy, ssh_key, module_tmpdir, attributes, logger):
     for inst in [2, 3, 4]:
         hosts.instances[inst].upload_files = False
         hosts.instances[inst].image_name = ATTRIBUTES['centos_7_image_name']
-        hosts.instances[inst].linux_username = ATTRIBUTES['centos_7_username']
+        hosts.instances[inst].username = ATTRIBUTES['centos_7_username']
 
     try:
         hosts.create()

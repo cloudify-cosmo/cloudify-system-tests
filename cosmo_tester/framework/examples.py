@@ -26,7 +26,7 @@ class BaseExample(object):
             self.blueprint_file = get_resource_path(
                 'blueprints/compute/example.yaml'
             )
-            self.inputs['agent_user'] = manager.linux_username
+            self.inputs['agent_user'] = manager.username
         else:
             self.create_secret = False
             self.blueprint_file = get_resource_path(
@@ -48,9 +48,6 @@ class BaseExample(object):
             )
 
     def use_windows(self, user, password):
-        # TODO: agent_user can be removed once instance.linux_username is
-        # standardised to just be instance.username
-        self.inputs['agent_user'] = user
         self.inputs['agent_port'] = '5985'
         self.inputs['os_family'] = 'windows'
         self.inputs['agent_password'] = password
@@ -215,7 +212,7 @@ class OnVMExample(BaseExample):
             using_agent=using_agent,
         )
         self.inputs['server_ip'] = vm.ip_address
-        self.inputs['agent_user'] = vm.linux_username
+        self.inputs['agent_user'] = vm.username
         self.example_host = vm
 
 
