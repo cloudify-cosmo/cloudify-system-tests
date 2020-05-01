@@ -146,9 +146,20 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             assert result.status_code == 0
         return result
 
-    def get_windows_remote_file(self, path):
+    def get_windows_remote_file_content(self, path):
         return self.run_windows_command(
             'Get-Content -Path {}'.format(path)).std_out
+
+    def put_windows_remote_file_content(self, path, content):
+        self.run_windows_command(
+            "Add-Content -Path {} -Value '{}'".format(
+                path,
+                # Single quoted string will not be interpreted
+                # But single quotes must be represented in such a string with
+                # double single quotes
+                content.replace("'", "''"),
+            )
+        )
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=3000)
     def wait_for_ssh(self):
