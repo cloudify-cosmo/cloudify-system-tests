@@ -51,7 +51,7 @@ def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
     ]
 
     instances[0].image_name = request.param[0]
-    instances[0].linux_username = request.param[1]
+    instances[0].username = request.param[1]
 
     cli_hosts = TestHosts(
         cfy, ssh_key, module_tmpdir,
@@ -62,7 +62,7 @@ def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
 
     yield {
         'cli_hosts': cli_hosts,
-        'username': instances[1].linux_username,
+        'username': instances[1].username,
         'url_key': request.param[2],
     }
     cli_hosts.destroy()

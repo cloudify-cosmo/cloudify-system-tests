@@ -38,7 +38,7 @@ def managers_and_vm(cfy, ssh_key, module_tmpdir, attributes, logger):
 
         vm.upload_files = False
         vm.image_name = ATTRIBUTES['centos_7_image_name']
-        vm.linux_username = ATTRIBUTES['centos_7_username']
+        vm.username = ATTRIBUTES['centos_7_username']
 
         hosts.create()
         yield hosts.instances

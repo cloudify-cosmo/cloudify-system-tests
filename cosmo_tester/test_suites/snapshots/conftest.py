@@ -20,7 +20,7 @@ def hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
     vm = hosts.instances[2]
     vm.upload_files = False
     vm.image_name = ATTRIBUTES['centos_7_image_name']
-    vm._linux_username = ATTRIBUTES['centos_7_username']
+    vm.username = ATTRIBUTES['centos_7_username']
 
     hosts.create()
 

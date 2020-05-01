@@ -45,7 +45,7 @@ def manager_and_vm(request, cfy, ssh_key, module_tmpdir, attributes,
 
     vm.upload_files = False
     vm.image_name = ATTRIBUTES['centos_7_image_name']
-    vm.linux_username = ATTRIBUTES['centos_7_username']
+    vm.username = ATTRIBUTES['centos_7_username']
     try:
         hosts.create()
         manager.use()

@@ -21,6 +21,6 @@ def get_test_prerequisites(cfy, ssh_key, module_tmpdir, attributes, logger,
         password = vm.prepare_for_windows(image_name, username)
     else:
         vm.image_name = image_name
-        vm._linux_username = username
+        vm.username = username
 
     return hosts, username, password
