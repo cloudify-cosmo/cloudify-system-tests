@@ -55,7 +55,7 @@ source my-openrc.sh
 
 Run:
 ```python
-pytest -s cosmo_tester/test_suites/image_based_tests/hello_world_test.py::test_hello_world
+pytest -s cosmo_tester/test_suites/image_based_tests/simple_deployment_test.py::test_simple_deployment
 ```
 
 **Please note it is important to run tests with the `-s` flag as the framework uses `Fabric` which is known to have problems with pytest's output capturing (https://github.com/pytest-dev/pytest/issues/1585).**

@@ -50,7 +50,7 @@ class VM(object):
     def __init__(self, image_type):
         self.image_type = image_type
         self.upload_plugins = None
-        self._image_name = None
+        self.image_name = None
         self.userdata = ""
         self.enable_ssh_wait = True
         self.should_finalize = True
@@ -146,9 +146,20 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             assert result.status_code == 0
         return result
 
-    def get_windows_remote_file(self, path):
+    def get_windows_remote_file_content(self, path):
         return self.run_windows_command(
             'Get-Content -Path {}'.format(path)).std_out
+
+    def put_windows_remote_file_content(self, path, content):
+        self.run_windows_command(
+            "Add-Content -Path {} -Value '{}'".format(
+                path,
+                # Single quoted string will not be interpreted
+                # But single quotes must be represented in such a string with
+                # double single quotes
+                content.replace("'", "''"),
+            )
+        )
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=3000)
     def wait_for_ssh(self):
@@ -160,19 +171,11 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def private_key_path(self):
         return self._ssh_key.private_key_path
 
-    @property
-    def linux_username(self):
-        return self._linux_username or self._attributes.default_linux_username
-
-    @linux_username.setter
-    def linux_username(self, user):
-        self._linux_username = user
-
     @contextmanager
     def ssh(self):
         conn = Connection(
             host=self.ip_address,
-            user=self.linux_username,
+            user=self.username,
             connect_kwargs={
                 'key_filename': self.private_key_path,
             },
@@ -327,7 +330,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         # (thanks, ruamel)
         return str(node_id_parts[1].strip())
 
-    _linux_username = None
     image_name = ATTRIBUTES['default_linux_image_name']
     username = ATTRIBUTES['default_linux_username']
     image_type = 'centos'
@@ -772,21 +774,18 @@ class _CloudifyManager(VM):
 
         self._logger.info('Adding extra NICs...')
 
-        # Need to do this for each network except 0 (eth0 is already enabled)
-        for i in range(1, len(self.networks)):
-            network_file_path = self._tmpdir / 'network_cfg_{0}'.format(i)
-            ip_addr = self.networks['network_{0}'.format(i)]
+        for i in range(0, len(self.networks)):
+            network_file_path = self._tmpdir / 'network_cfg_{}'.format(i)
+            ip_addr = self.networks['network_{}'.format(i + 1)]
             config_content = template.format(i, ip_addr)
 
-            # Create and copy the interface config
-            network_file_path.write_text(config_content)
-            with self.ssh() as fabric_ssh:
-                self.put_remote_file(
-                    '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
-                    network_file_path,
-                )
-                # Start the interface
-                fabric_ssh.sudo('ifup eth{0}'.format(i))
+            with open(network_file_path, 'w') as conf_handle:
+                conf_handle.write(config_content)
+            self.put_remote_file(
+                '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
+                network_file_path,
+            )
+            self.run_command('ifup eth{0}'.format(i), use_sudo=True)
 
 
 def get_latest_manager_image_name():
@@ -856,7 +855,8 @@ class TestHosts(object):
                  request=None,
                  flavor=None,
                  multi_net=False,
-                 bootstrappable=False):
+                 bootstrappable=False,
+                 vm_net_mappings=None):
         """
         instances: supply a list of VM instances.
         This allows pre-configuration to happen before starting the hosts, or
@@ -882,7 +882,10 @@ class TestHosts(object):
         self.tenant = None
         self.deployments = []
         self.blueprints = []
+
         self.multi_net = multi_net
+        self.vm_net_mappings = vm_net_mappings or {}
+
         if flavor:
             self.server_flavor = flavor
         else:
@@ -890,7 +893,7 @@ class TestHosts(object):
 
         if bootstrappable:
             for instance in self.instances:
-                instance._image_name = self.bootstrappable_image_name
+                instance.image_name = self.bootstrappable_image_name
                 instance.should_finalize = False
 
     @property
@@ -915,19 +918,12 @@ class TestHosts(object):
                 '[^a-zA-Z0-9]',
                 '',
                 # This is set by pytest and looks like:
-                # cosmo_tester/test_suites/image_based_tests/\
-                # hello_world_test.py::test_hello_world[centos_7]
+                # cosmo_tester/test_suites/some_tests/\
+                # some_test.py::test_specific_thing
                 os.environ['PYTEST_CURRENT_TEST'].split('/')[-1],
             ),
             time=datetime.strftime(datetime.now(), '%Y%m%d%H%M%S'),
         )
-
-        image_id_instance_mapping = {}
-        for instance in self.instances:
-            image_id_instance_mapping[instance.image_name] = (
-                image_id_instance_mapping.get(instance.image_name, [])
-                + [instance]
-            )
 
         # Connect to the infrastructure manager for setting up the tests
         self._cfy.profiles.use(
@@ -953,8 +949,9 @@ class TestHosts(object):
             self._deploy_test_infrastructure(test_identifier)
 
             # Deploy hosts
-            for image_id, instances in image_id_instance_mapping.items():
-                self._deploy_test_vms(image_id, instances, test_identifier)
+            for index, instance in enumerate(self.instances):
+                self._deploy_test_vm(instance.image_name, index,
+                                     test_identifier)
 
             for instance in self.instances:
                 if instance.should_finalize:
@@ -1110,15 +1107,20 @@ class TestHosts(object):
             ),
         )
         self.blueprints.append('infrastructure')
-        self._cfy.blueprints.upload(
-            "--blueprint-id", "test_vm",
-            util.get_resource_path(
-                'infrastructure_blueprints/vm{}.yaml'.format(
-                    suffix,
-                )
-            ),
-        )
-        self.blueprints.append('test_vm')
+        test_vm_suffixes = ['']
+        if self.multi_net:
+            test_vm_suffixes.append('-multi-net')
+
+        for suffix in test_vm_suffixes:
+            self._cfy.blueprints.upload(
+                "--blueprint-id", "test_vm{}".format(suffix),
+                util.get_resource_path(
+                    'infrastructure_blueprints/vm{}.yaml'.format(
+                        suffix,
+                    )
+                ),
+            )
+            self.blueprints.append('test_vm{}'.format(suffix))
 
     def _deploy_test_infrastructure(self, test_identifier):
         self._logger.info('Creating test infrastructure inputs.')
@@ -1173,7 +1175,7 @@ class TestHosts(object):
                 net_details = self._get_node_instances(
                     'test_network_{}'.format(net), 'infrastructure'
                 )[0]['runtime_properties']
-                network_names['network_{}'.format(net - 1)] = net_details[
+                network_names['network_{}'.format(net)] = net_details[
                     'name']
             self._attributes.network_names = network_names
 
@@ -1182,47 +1184,53 @@ class TestHosts(object):
                 subnet_details = self._get_node(
                     'test_subnet_{}'.format(sn), 'infrastructure',
                 )['properties']['resource_config']
-                network_mappings['network_{}'.format(sn - 1)] = ip_network(
+                network_mappings['network_{}'.format(sn)] = ip_network(
                     # Has to be unicode for ipaddress library.
                     # Converting like this for py3 compat
                     u'{}'.format(subnet_details['cidr']),
                 )
             self.network_mappings = network_mappings
 
-    def _deploy_test_vms(self, image_id, instances, test_identifier):
+    def _deploy_test_vm(self, image_id, index, test_identifier):
         self._logger.info(
-            'Preparing to deploy %d instance of image %s',
-            len(instances),
+            'Preparing to deploy instance %d of image %s',
+            index,
             image_id,
         )
 
-        scale_count = max(len(instances) - 1, 0)
-
-        vm_id = 'vm_{}'.format(
+        vm_id = 'vm_{}_{}'.format(
             image_id
             .replace(' ', '_')
             .replace('(', '_')
             .replace(')', '_')
             # Openstack drop the part that contains '.' when generate the name
             # This to replace '.' with '-'
-            .replace('.', '-')
+            .replace('.', '-'),
+            index,
         )
 
-        self._logger.info('Creating test VM inputs for %s', image_id)
+        self._logger.info('Creating test VM inputs for %s_%d',
+                          image_id, index)
         vm_inputs = {
             'test_infrastructure_name': test_identifier,
             'floating_network_id': ATTRIBUTES['floating_network_id'],
             'image': image_id,
             'flavor': self.server_flavor,
-            'userdata': instances[0].userdata,
+            'userdata': self.instances[index].userdata,
         }
-        vm_inputs_path = self._tmpdir / '{}.yaml'.format(vm_id)
+        blueprint_id = 'test_vm'
+        if self.multi_net:
+            if index in self.vm_net_mappings:
+                vm_inputs['use_net'] = self.vm_net_mappings.get(index, 1)
+            else:
+                blueprint_id = blueprint_id + '-multi-net'
+        vm_inputs_path = self._tmpdir / '{}_{}.yaml'.format(vm_id, index)
         with open(vm_inputs_path, 'w') as inp_handle:
             inp_handle.write(json.dumps(vm_inputs))
 
-        self._logger.info('Deploying instance of %s', image_id)
+        self._logger.info('Deploying instance %d of %s', index, image_id)
         self._cfy.deployments.create(
-            "--blueprint-id", "test_vm",
+            "--blueprint-id", blueprint_id,
             "--inputs", vm_inputs_path,
             vm_id,
         )
@@ -1232,36 +1240,14 @@ class TestHosts(object):
             "install",
         )
 
-        if scale_count:
-            self._logger.info(
-                'Deploying %d more instances of %s',
-                scale_count,
-                image_id,
-            )
-            self._cfy.executions.start(
-                "--deployment-id", vm_id,
-                "--parameters", "scalable_entity_name=vmgroup",
-                "--parameters", "delta={}".format(scale_count),
-                "scale",
-            )
-
         self._logger.info('Retrieving deployed instance details.')
-        node_instances = self._get_node_instances('test_host', vm_id)
-        if len(node_instances) != len(instances):
-            raise AssertionError(
-                "Unexpected node instance count- found {found}/{expected}"
-                .format(
-                    found=len(node_instances),
-                    expected=len(instances),
-                )
-            )
+        node_instance = self._get_node_instances('test_host', vm_id)[0]
 
         self._logger.info('Storing instance details.')
-        for idx in range(len(instances)):
-            self._update_instance(
-                instances[idx],
-                node_instances[idx]
-            )
+        self._update_instance(
+            self.instances[index],
+            node_instance,
+        )
 
     def _get_node_instances(self, node_name, deployment_id):
         node_instances = []

@@ -14,60 +14,60 @@
 #    * limitations under the License.
 
 import time
-import yaml
 import pytest
 from copy import deepcopy
 
-from cloudify_cli.constants import DEFAULT_TENANT_NAME
-from cosmo_tester.framework.test_hosts import (
-    TestHosts as Hosts,
-)
-from cosmo_tester.framework.examples.hello_world import (
-    HelloWorldExample,
-    centos_hello_world,
-)
+from cosmo_tester.framework.test_hosts import TestHosts as Hosts
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework import util
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
-    upload_snapshot,
     restore_snapshot,
+    stop_manager,
     upgrade_agents,
-    stop_manager
+    upload_snapshot,
+    wait_for_restore,
 )
 
 ATTRIBUTES = util.get_attributes()
-
-NETWORK_2 = "network_2"
+POST_BOOTSTRAP_NET = 'network_3'
 
 
 @pytest.fixture(scope='module')
-def managers(cfy, ssh_key, module_tmpdir, attributes, logger):
-    """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack."""
+def managers_and_vms(cfy, ssh_key, module_tmpdir, attributes, logger):
+    """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack.
+    Also provides VMs for testing, on separate networks.
+    """
 
     hosts = Hosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
-        number_of_instances=2,
+        number_of_instances=5,
         flavor=attributes.medium_flavor_name,
         bootstrappable=True,
         multi_net=True,
+        vm_net_mappings={2: 1, 3: 2, 4: 3},
     )
+
+    for inst in [2, 3, 4]:
+        hosts.instances[inst].upload_files = False
+        hosts.instances[inst].image_name = ATTRIBUTES['centos_7_image_name']
+        hosts.instances[inst].username = ATTRIBUTES['centos_7_username']
 
     try:
         hosts.create()
-        prepare_hosts(hosts.instances, logger)
+        prepare_managers(hosts.instances[:2], logger)
         yield hosts.instances
     finally:
         hosts.destroy()
 
 
-def prepare_hosts(instances, logger):
+def prepare_managers(managers, logger):
     # The preconfigure callback populates the networks config prior to the BS
-    for instance in instances:
+    for instance in managers:
         # Remove one of the networks - it will be added post-bootstrap
         all_networks = deepcopy(instance.networks)
-        all_networks.pop(NETWORK_2)
+        all_networks.pop(POST_BOOTSTRAP_NET)
 
         instance.install_config['networks'] = all_networks
 
@@ -78,15 +78,36 @@ def prepare_hosts(instances, logger):
 
         instance.bootstrap(blocking=False, upload_license=True)
 
-    for instance in instances:
+    for instance in managers:
         logger.info('Waiting for bootstrap of {}'.format(instance.server_id))
         while not instance.bootstrap_is_complete():
             time.sleep(3)
 
 
-def test_multiple_networks(managers,
+@pytest.fixture(scope='function')
+def examples(managers_and_vms, ssh_key, tmpdir, attributes, logger):
+    manager = managers_and_vms[0]
+    vms = managers_and_vms[2:]
+
+    examples = []
+    for idx, vm in enumerate(vms, 1):
+        examples.append(
+            get_example_deployment(
+                manager, ssh_key, logger, 'multi_net_{}'.format(idx), vm)
+        )
+        examples[-1].inputs['network'] = 'network_{}'.format(idx)
+
+    try:
+        yield examples
+    finally:
+        for example in examples:
+            if example.installed:
+                example.uninstall()
+
+
+def test_multiple_networks(managers_and_vms,
+                           examples,
                            cfy,
-                           multi_network_hello_worlds,
                            logger,
                            tmpdir,
                            attributes):
@@ -100,18 +121,22 @@ def test_multiple_networks(managers,
     # finally, to complete the verification, we'll uninstall the remaining
     # hellos on the new manager
 
-    old_manager = managers[0]
-    new_manager = managers[1]
-    snapshot_id = 'SNAPSHOT_ID'
+    old_manager, new_manager = managers_and_vms[:2]
+    snapshot_id = 'multi_net_test_snapshot'
     local_snapshot_path = str(tmpdir / 'snap.zip')
 
-    # The first hello is the one that belongs to a network that will be added
-    # manually post bootstrap to the new manager
-    post_bootstrap_hello = multi_network_hello_worlds.pop(0)
-    post_bootstrap_hello.manager = new_manager
+    # One multi-net dep will be used to test a network added post bootstrap
+    logger.info('Selecting post-bootstrap network test vm')
+    post_bootstrap_example_idx = None
+    for idx, example in enumerate(examples):
+        if example.inputs['network'] == POST_BOOTSTRAP_NET:
+            post_bootstrap_example_idx = idx
+    assert post_bootstrap_example_idx is not None
+    post_bootstrap_example = examples.pop(post_bootstrap_example_idx)
+    post_bootstrap_example.manager = new_manager
 
-    for hello in multi_network_hello_worlds:
-        hello.upload_and_verify_install()
+    for example in examples:
+        example.upload_and_verify_install()
 
     create_snapshot(old_manager, snapshot_id, attributes, logger)
     download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
@@ -120,28 +145,32 @@ def test_multiple_networks(managers,
 
     upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(new_manager, snapshot_id, cfy, logger,
-                     change_manager_password=False)
+                     change_manager_password=False,
+                     wait_for_post_restore_commands=False)
+
+    wait_for_restore(new_manager, logger)
 
     upgrade_agents(cfy, new_manager, logger)
     stop_manager(old_manager, logger)
 
-    for hello in multi_network_hello_worlds:
-        hello.manager = new_manager
-        hello.uninstall()
-        hello.delete_deployment()
+    for example in examples:
+        example.manager = new_manager
+        example.uninstall()
 
     _add_new_network(new_manager, logger)
-    post_bootstrap_hello.verify_all()
+    post_bootstrap_example.upload_and_verify_install()
+    post_bootstrap_example.uninstall()
 
 
 def _add_new_network(manager, logger, restart=True):
-    logger.info('Adding network `{0}` to the new manager'.format(NETWORK_2))
+    logger.info('Adding network `{0}` to the new manager'.format(
+        POST_BOOTSTRAP_NET))
 
     old_networks = deepcopy(manager.networks)
-    network2_ip = old_networks.pop(NETWORK_2)
+    new_network_ip = old_networks.pop(POST_BOOTSTRAP_NET)
     networks_json = (
         '{{ "{0}": "{1}" }}'
-    ).format(NETWORK_2, network2_ip)
+    ).format(POST_BOOTSTRAP_NET, new_network_ip)
     with manager.ssh() as fabric_ssh:
         fabric_ssh.sudo(
             "{cfy_manager} add-networks --networks '{networks}' ".format(
@@ -154,78 +183,6 @@ def _add_new_network(manager, logger, restart=True):
             fabric_ssh.sudo('systemctl restart cloudify-rabbitmq')
             fabric_ssh.sudo('systemctl restart nginx')
             fabric_ssh.sudo('systemctl restart cloudify-mgmtworker')
-
-
-class MultiNetworkHelloWorld(HelloWorldExample):
-    def _patch_blueprint(self):
-        with open(self.blueprint_path, 'r') as f:
-            blueprint_dict = yaml.load(f)
-
-        node_props = blueprint_dict['node_templates']['vm']['properties']
-        agent_config = node_props['agent_config']
-        agent_config['network'] = {'get_input': 'manager_network_name'}
-
-        inputs = blueprint_dict['inputs']
-        inputs['manager_network_name'] = {}
-
-        with open(self.blueprint_path, 'w') as f:
-            yaml.dump(blueprint_dict, f)
-
-
-def _make_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
-                               logger):
-    # The first manager is the initial one
-    manager = managers[0]
-    manager.use()
-    hellos = []
-
-    # Add a MultiNetworkHelloWorld per management network
-    for network_name, network_id in attributes.network_names.iteritems():
-        tenant = util.prepare_and_get_test_tenant(
-            '{0}_tenant'.format(network_name), manager, cfy
-        )
-        hello = MultiNetworkHelloWorld(
-            cfy, manager, attributes, ssh_key, logger, tmpdir,
-            tenant=tenant, suffix=network_name)
-        hello.blueprint_file = 'openstack-blueprint.yaml'
-        hello.inputs.update({
-            'agent_user': attributes.centos_7_username,
-            'image': attributes.centos_7_image_name,
-            'manager_network_name': network_name,
-            'network_name': network_id,
-        })
-
-        # Make sure the post_bootstrap network is first
-        if network_name == NETWORK_2:
-            hellos.insert(0, hello)
-        else:
-            hellos.append(hello)
-
-    # Add one more hello world, that will run on the `default` network
-    # implicitly
-    hw = centos_hello_world(cfy, manager, attributes, ssh_key, logger, tmpdir,
-                            tenant=DEFAULT_TENANT_NAME,
-                            suffix='default_network')
-    # Upload openstack plugin to default tenant
-    manager.upload_plugin(attributes.default_openstack_plugin,
-                          tenant_name=DEFAULT_TENANT_NAME)
-    hellos.append(hw)
-
-    yield hellos
-    for hello in hellos:
-        hello.cleanup()
-
-
-@pytest.fixture(scope='function')
-def multi_network_hello_worlds(cfy, managers, attributes, ssh_key, tmpdir,
-                               logger):
-    # unfortunately, pytest wants the fixtures to be generators syntactically
-    # so we can't just do `return _make_network..()` when factoring out
-    # common functionality, we need to do this silly thing.
-    # In python 2.x, we don't have `yield from` either.
-    for _x in _make_network_hello_worlds(cfy, managers, attributes, ssh_key,
-                                         tmpdir, logger):
-        yield _x
 
 
 @pytest.fixture(scope='function')
@@ -298,8 +255,7 @@ def proxy_prepare_hosts(instances, logger):
     manager.bootstrap(blocking=True, upload_license=True)
 
 
-def test_agent_via_proxy(cfy,
-                         proxy_hosts,
+def test_agent_via_proxy(proxy_hosts,
                          logger,
                          ssh_key):
     proxy, manager, vm = proxy_hosts
@@ -323,6 +279,6 @@ def test_agent_via_proxy(cfy,
     manager.use()
 
     example = get_example_deployment(
-        cfy, manager, ssh_key, logger, 'agent_via_proxy', vm)
+        manager, ssh_key, logger, 'agent_via_proxy', vm)
     example.upload_and_verify_install()
     example.uninstall()

@@ -9,9 +9,8 @@ ATTRIBUTES = get_attributes()
 
 def test_3_2_agent_install(cfy, image_based_manager, ssh_key, logger):
     # Check agent install with the 3.2 types and 1.2 DSL version via ssh
-    example = get_example_deployment(
-        cfy, image_based_manager, ssh_key, logger, 'agent_install_3_2',
-        upload_plugin=False)
+    example = get_example_deployment(image_based_manager, ssh_key, logger,
+                                     'agent_install_3_2', upload_plugin=False)
     example.blueprint_file = get_resource_path(
         'blueprints/compute/example_3_2.yaml'
     )

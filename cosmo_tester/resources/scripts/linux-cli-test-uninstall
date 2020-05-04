@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+cfy executions start uninstall -d test_dep
+cfy deployments delete test_dep
+# Depoyment is deleted from DB AFTER delete_dep_env workflow ended successfully, this might take a second or two
+sleep 4
+cfy blueprints delete test_bp

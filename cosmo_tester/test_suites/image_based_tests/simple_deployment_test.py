@@ -23,9 +23,10 @@ def test_simple_deployment(example_deployment):
     example_deployment.upload_and_verify_install()
 
 
-def test_simple_deployment_using_cfy_install_command(example_deployment):
+def test_simple_deployment_using_cfy_install_command(example_deployment, cfy):
     example_deployment.set_agent_key_secret()
-    example_deployment.cfy.install(
+    example_deployment.manager.use()
+    cfy.install(
         '--tenant-name', example_deployment.tenant,
         '--blueprint-id', example_deployment.blueprint_id,
         '--deployment-id', example_deployment.deployment_id,
@@ -35,10 +36,10 @@ def test_simple_deployment_using_cfy_install_command(example_deployment):
 
 
 @pytest.fixture(scope='function')
-def example_deployment(cfy, image_based_manager, attributes, ssh_key, tmpdir,
+def example_deployment(image_based_manager, attributes, ssh_key, tmpdir,
                        logger, request):
     example = get_example_deployment(
-        cfy, image_based_manager, ssh_key, logger, request.node.name)
+        image_based_manager, ssh_key, logger, request.node.name)
 
     yield example
     example.uninstall()

@@ -23,9 +23,9 @@ ATTRIBUTES = util.get_attributes()
 
 
 @pytest.fixture(scope='function')
-def fake_vm(cfy, image_based_manager, ssh_key, logger):
+def fake_vm(image_based_manager, ssh_key, logger):
     example = get_example_deployment(
-        cfy, image_based_manager, ssh_key, logger, 'capability',
+        image_based_manager, ssh_key, logger, 'capability',
         upload_plugin=False)
 
     example.blueprint_file = util.get_resource_path(
@@ -38,9 +38,9 @@ def fake_vm(cfy, image_based_manager, ssh_key, logger):
 
 
 @pytest.fixture(scope='function')
-def proxied_plugin_file(cfy, image_based_manager, ssh_key, logger):
+def proxied_plugin_file(image_based_manager, ssh_key, logger):
     example = get_example_deployment(
-        cfy, image_based_manager, ssh_key, logger, 'capability')
+        image_based_manager, ssh_key, logger, 'capability')
 
     example.blueprint_file = util.get_resource_path(
         'blueprints/capabilities/capable_file.yaml'

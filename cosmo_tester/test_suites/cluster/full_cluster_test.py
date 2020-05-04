@@ -55,8 +55,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
 
     # cfy commands will use mgr1
     mgr1.use(cert_path=mgr1.local_ca)
-    example = get_example_deployment(cfy, mgr1, ssh_key, logger,
-                                     'queue_failover')
+    example = get_example_deployment(mgr1, ssh_key, logger, 'queue_failover')
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
     _validate_cluster_and_agents(cfy, example.tenant)
@@ -123,7 +122,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     lb.use(cert_path=lb.local_ca)
     _wait_for_cfy_node_to_start_serving(cfy)  # where the cfy node = the LB
 
-    example = get_example_deployment(cfy, mgr1, ssh_key, logger,
+    example = get_example_deployment(mgr1, ssh_key, logger,
                                      'manager_failover')
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
@@ -194,7 +193,7 @@ def test_workflow_resume_manager_failover(minimal_cluster, cfy,
     broker, db, mgr1, mgr2 = minimal_cluster
     mgr1.use(cert_path=mgr1.local_ca)
 
-    example = get_example_deployment(cfy, mgr1, ssh_key, logger,
+    example = get_example_deployment(mgr1, ssh_key, logger,
                                      'workflow_resume_manager_failover',
                                      using_agent=False)
     example.inputs['wait'] = 60

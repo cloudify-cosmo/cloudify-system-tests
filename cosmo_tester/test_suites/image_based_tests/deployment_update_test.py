@@ -31,17 +31,17 @@ update_counter = 0
 @pytest.fixture(scope='function')
 def example_deployment(cfy, image_based_manager, ssh_key, logger):
     example = get_example_deployment(
-        cfy, image_based_manager, ssh_key, logger, 'dep_update')
+        image_based_manager, ssh_key, logger, 'dep_update')
 
     yield example
     example.uninstall()
 
 
-def test_hello_world_deployment_update(cfy,
-                                       image_based_manager,
-                                       example_deployment,
-                                       tmpdir,
-                                       logger):
+def test_simple_deployment_update(cfy,
+                                  image_based_manager,
+                                  example_deployment,
+                                  tmpdir,
+                                  logger):
     example_deployment.upload_and_verify_install()
 
     modified_blueprint_path = util.get_resource_path(
