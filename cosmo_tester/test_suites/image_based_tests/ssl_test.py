@@ -24,7 +24,7 @@ DEFAULT_TENANT_ROLE = 'user'
 REMOTE_EXTERNAL_CERT_PATH = '/etc/cloudify/ssl/cloudify_external_cert.pem'
 
 
-def test_ssl(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
+def test_ssl(cfy, manager, module_tmpdir, ssh_key, logger):
     cert_path = join(module_tmpdir, '.cloudify', 'profiles',
                      manager.ip_address, 'public_rest_cert.crt')
     _generate_external_cert(manager, logger)
@@ -54,7 +54,7 @@ def test_ssl(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
                                 protocol='https',
                                 cert=cert_path)
     manager.client = ssl_client
-    manager.upload_plugin(attributes['default_openstack_plugin'])
+    manager.upload_test_plugin()
 
     if not is_community():
         tenant_name = 'ssl_tenant'
