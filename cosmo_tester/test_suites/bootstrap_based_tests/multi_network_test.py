@@ -43,7 +43,6 @@ def managers_and_vms(cfy, ssh_key, module_tmpdir, attributes, logger):
     hosts = Hosts(
         cfy, ssh_key, module_tmpdir, attributes, logger,
         number_of_instances=5,
-        flavor=attributes.medium_flavor_name,
         bootstrappable=True,
         multi_net=True,
         vm_net_mappings={2: 1, 3: 2, 4: 3},
