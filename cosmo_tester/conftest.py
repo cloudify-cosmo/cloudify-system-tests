@@ -15,30 +15,20 @@
 
 
 import os
-import sys
-import logging
 
 import sh
 import pytest
 from path import Path
 
+from cosmo_tester.framework.config import load_config
+from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework import util
 from cosmo_tester.framework.fixtures import *  # noqa
 
 
 @pytest.fixture(scope='module')
 def logger(request):
-    logger = logging.getLogger(request.module.__name__)
-    logger.setLevel(logging.INFO)
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.INFO)
-    formatter = logging.Formatter(fmt='%(asctime)s [%(levelname)s] '
-                                      '[%(name)s] %(message)s',
-                                  datefmt='%H:%M:%S')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    logger.propagate = False
-    return logger
+    return get_logger(request.module.__name__)
 
 
 @pytest.fixture(scope='module')
@@ -79,9 +69,25 @@ def ssh_key(module_tmpdir, logger):
     return key
 
 
+def pytest_addoption(parser):
+    """Add the --cloudify-tester-config option to pytest."""
+    parser.addoption(
+        '--config-location',
+        action='store',
+        default='test_config.yaml',
+        help='Location of the test config.',
+    )
+
+
 @pytest.fixture(scope='module')
-def attributes(logger):
-    return util.get_attributes(logger)
+def test_config(request, logger):
+    """Retrieve the test config."""
+    # Not using a fixture so that we can use config for logger fixture
+    logger = get_logger('config')
+
+    config_file_location = request.config.getoption('--config-location')
+
+    return load_config(logger, config_file_location)
 
 
 @pytest.fixture(scope='module')
