@@ -409,14 +409,12 @@ def set_client_tenant(manager, tenant):
             manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
 
 
-def prepare_and_get_test_tenant(test_param, manager, upload=True):
+def prepare_and_get_test_tenant(test_param, manager):
     """
         Prepares a tenant for testing based on the test name (or other
         identifier passed in as 'test_param'), and returns the name of the
         tenant that should be used for this test.
     """
-    default_openstack_plugin = get_attributes()['default_openstack_plugin']
-
     if is_community():
         tenant = 'default_tenant'
         # It is expected that the plugin is already uploaded for the
@@ -430,9 +428,6 @@ def prepare_and_get_test_tenant(test_param, manager, upload=True):
                 pass
             else:
                 raise
-        if upload:
-            manager.upload_plugin(default_openstack_plugin,
-                                  tenant_name=tenant)
     return tenant
 
 
