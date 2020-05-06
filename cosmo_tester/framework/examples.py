@@ -218,7 +218,7 @@ class OnVMExample(BaseExample):
 
 def get_example_deployment(manager, ssh_key, logger, tenant_name,
                            vm=None, upload_plugin=True, using_agent=True):
-    tenant = prepare_and_get_test_tenant(tenant_name, manager, upload=False)
+    tenant = prepare_and_get_test_tenant(tenant_name, manager)
 
     if upload_plugin:
         manager.upload_test_plugin(tenant)
