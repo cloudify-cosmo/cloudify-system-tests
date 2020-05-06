@@ -19,8 +19,6 @@ click==6.7                # via click-didyoumean, cloudify
 click_didyoumean==0.0.3   # via cloudify
 https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip#egg=cloudify-common[dispatcher]  # via -r requirements.in, cloudify
 https://github.com/cloudify-cosmo/cloudify-cli/archive/master.zip#egg=cloudify  # via -r requirements.in
-https://github.com/cloudify-cosmo/cloudify-agent/archive/master.zip  # via -r requirements.in
-https://github.com/cloudify-cosmo/cloudify-fabric-plugin/archive/master.zip  # via -r requirements.in
 colorama==0.3.3           # via cloudify
 configparser==4.0.2       # via importlib-metadata
 contextlib2==0.6.0.post1  # via importlib-metadata, zipp
