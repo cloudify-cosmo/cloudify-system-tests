@@ -1,0 +1,40 @@
+namespace: openstack
+plugin_url:
+  description: URL of plugin for this platform. Will be used to install the platform plugin if it is not present.
+  default: http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/3.2.10/cloudify_openstack_plugin-3.2.10-py27-none-linux_x86_64-centos-Core.wgn
+plugin_yaml_url:
+  description: URL of plugin yaml for this platform. Will be used to install the platform plugin if it is not present.
+  default: http://www.getcloudify.org/spec/openstack-plugin/3.2.10/plugin.yaml
+linux_size:
+  description: Size to use for linux on this platform.
+  default: m1.medium
+windows_size:
+  description: Size to use for windows on this platform.
+  default: m1.medium
+ubuntu_14_04_image:
+  description: Image to use for Ubuntu 14.04 on this platform.
+  default: 'Ubuntu 14.04.1 LTS Trusty Tahr (cloudimg)'
+ubuntu_16_04_image:
+  description: Image to use for Ubuntu 16.04 on this platform.
+  default: ubuntu_16.04_xenial_with_python
+rhel_7_image:
+  description: Image to use for RHEL 7 on this platform.
+  default: rhel-server-7.6
+rhel_6_image:
+  description: Image to use for RHEL 6 on this platform.
+  default: rhel-guest-image-6.9-120.x86_64.qcow2
+centos_7_image:
+  description: Image to use for Centos 7 on this platform.
+  default: CentOS-7_6-x86_64-GenericCloud
+centos_6_image:
+  description: Image to use for Centos 6 on this platform.
+  default: centos_6.6
+windows_2012_image:
+  description: Image to use for Windows 2012 on this platform.
+  default: windows_server_2012_r2_standard_eval
+manager_image_name_prefix:
+  description: Prefix to use for manager images on this platform. Will have a suffix of '-<version>', e.g. '-5.0.5'
+  default: cloudify-manager-premium
+floating_network_id:
+  description: Openstack network ID to use for floating IPs.
+  default: dda079ce-12cf-4309-879a-8e67aec94de4

@@ -1,0 +1,10 @@
+namespace: cli_urls_override
+windows:
+  description: Alternate Windows CLI package URL to use for CLI tests.
+  default: null
+rhel_centos:
+  description: Alternate RHEL/Centos CLI package URL to use for CLI tests.
+  default: null
+debian:
+  description: Alternate Debian/Ubuntu CLI package URL to use for CLI tests.
+  default: null

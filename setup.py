@@ -42,9 +42,11 @@ setup(
         'testtools',
         'openstacksdk'
     ],
+    package_data={'cosmo_tester': ['resources/schemas/*.yaml']},
     entry_points={
         'console_scripts': [
-            'cfy-systests = cosmo_tester.cli:main'
+            'cfy-systests = cosmo_tester.cli:main',
+            'test-config = cosmo_tester.conf_cli:main',
         ]
     },
 

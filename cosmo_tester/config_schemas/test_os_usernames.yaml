@@ -1,0 +1,22 @@
+namespace: test_os_usernames
+rhel_7:
+  description: Username for RHEL 7 test VMs.
+  default: cloud-user
+rhel_6:
+  description: Username for RHEL 6 test VMs.
+  default: cloud-user
+ubuntu_14_04:
+  description: Username for Ubuntu 14.04 test VMs.
+  default: ubuntu
+ubuntu_16_04:
+  description: Username for Ubuntu 16.04 test VMs.
+  default: ubuntu
+centos_7:
+  description: Username for Centos 7 test VMs.
+  default: centos
+centos_6:
+  description: Username for Centos 6 test VMs.
+  default: centos
+windows_2012:
+  description: Username for Windows 2012 test VMs.
+  default: Administrator

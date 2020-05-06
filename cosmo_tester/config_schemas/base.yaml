@@ -1,0 +1,6 @@
+premium:
+  description: Whether to run tests on premium or community. If false, tests will be run on community.
+target_platform:
+  description: Which platform to deploy test resources on.
+  default: openstack
+  valid: [openstack]
