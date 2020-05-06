@@ -113,8 +113,8 @@ class AbstractRegionalCluster(AbstractExample):
             'haproxy-infrastructure--'
             'ssh_private_key_path': self.manager.remote_private_key_path,
 
-            'ca_cert': self.attributes.LOCAL_REST_CERT_FILE,
-            'ca_key': self.attributes.LOCAL_REST_KEY_FILE,
+            'ca_cert': '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
+            'ca_key': '/etc/cloudify/ssl/cloudify_internal_ca_key.pem',
             'install_rpm_path': constants.INSTALL_RPM_PATH,
 
             # We're uploading the private SSH key and OS config from
