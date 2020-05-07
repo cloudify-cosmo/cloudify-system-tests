@@ -26,6 +26,9 @@ manager = image_based_manager
 
 def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
+    logger.info('Installing dependencies to run system tests...')
+    subprocess.call(['npm', 'run', 'beforebuild'],
+                    cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
     if os.environ["UPDATE_STAGE_ON_MANAGER"] == 'true':
         logger.info('Starting update of Stage package on Manager...')
         if os.environ["CENTOS_MANAGER"] == 'false':
@@ -35,8 +38,6 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         if not os.environ["STAGE_PACKAGE_URL"]:
             logger.info('Creating Stage package...')
-            subprocess.call(['npm', 'run', 'beforebuild'],
-                            cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
             subprocess.call(['npm', 'run', 'build'],
                             cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])
             subprocess.call(['npm', 'run', 'zip'],

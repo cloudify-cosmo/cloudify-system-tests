@@ -25,24 +25,23 @@ manager = image_based_manager
 
 def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
+    logger.info('Installing dependencies to run system tests...')
+    subprocess.call(['npm', 'ci'],
+                    cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
     if os.environ["UPDATE_COMPOSER_ON_MANAGER"] == 'true':
         logger.info('Starting update of Composer package on Manager...')
         os.environ["MANAGER_IP"] = manager.ip_address
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         logger.info('Creating Composer package...')
-        subprocess.call(['npm', 'install'],
-                        cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
         subprocess.call(['bower', 'install'],
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
         subprocess.call(['grunt', 'pack'],
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
         logger.info('Uploading Composer package...')
-        subprocess.call(['e2e/uploadPackage.sh'],
+        subprocess.call(['npm', 'run', 'upload'],
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
 
     logger.info('Starting Composer system tests...')
-    logger.info('Using test host at {0}'.format(
-        os.environ["COMPOSER_E2E_SELENIUM_HOST"]))
     os.environ["COMPOSER_E2E_MANAGER_URL"] = manager.ip_address
     subprocess.call(['npm', 'run', 'e2e'],
                     cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
