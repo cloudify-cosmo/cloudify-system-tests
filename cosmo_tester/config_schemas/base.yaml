@@ -3,4 +3,4 @@ premium:
 target_platform:
   description: Which platform to deploy test resources on.
   default: openstack
-  valid: [openstack]
+  valid_values: [openstack]

@@ -11,4 +11,4 @@ tenant:
 distro:
   description: Distro to use for managers deployed during tests.
   default: rhel
-  valid: [centos, rhel]
+  valid_values: [centos, rhel]
