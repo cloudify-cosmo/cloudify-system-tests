@@ -23,20 +23,12 @@ from cosmo_tester.framework.test_hosts import (
     TestHosts as Hosts,
     get_image,
 )
-from cosmo_tester.framework.util import is_community, get_attributes
-
-ATTRIBUTES = get_attributes()
-
-if is_community():
-    VERSIONS = ['master']
-else:
-    VERSIONS = ['5.0.5', 'master']
 
 
-@pytest.fixture(scope='module', params=VERSIONS)
-def manager_and_vm(request, cfy, ssh_key, module_tmpdir, attributes,
+@pytest.fixture(scope='module', params=['5.0.5', 'master'])
+def manager_and_vm(request, cfy, ssh_key, module_tmpdir, test_config,
                    logger):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, attributes, logger, 2)
+    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, 2)
     hosts.instances[0] = get_image(request.param)
     manager, vm = hosts.instances
 
@@ -44,8 +36,8 @@ def manager_and_vm(request, cfy, ssh_key, module_tmpdir, attributes,
     manager.restservice_expected = True
 
     vm.upload_files = False
-    vm.image_name = ATTRIBUTES['centos_7_image_name']
-    vm.username = ATTRIBUTES['centos_7_username']
+    vm.image_name = test_config.platform['centos_7_image']
+    vm.username = test_config['test_os_usernames']['centos_7']
     try:
         hosts.create()
         manager.use()
@@ -55,11 +47,11 @@ def manager_and_vm(request, cfy, ssh_key, module_tmpdir, attributes,
 
 
 @pytest.fixture(scope='function')
-def example(manager_and_vm, ssh_key, tmpdir, attributes, logger):
+def example(manager_and_vm, ssh_key, tmpdir, logger, test_config):
     manager, vm = manager_and_vm
 
     example = get_example_deployment(
-        manager, ssh_key, logger, 'inplace_upgrade', vm)
+        manager, ssh_key, logger, 'inplace_upgrade', test_config, vm)
 
     try:
         yield example
@@ -71,7 +63,6 @@ def example(manager_and_vm, ssh_key, tmpdir, attributes, logger):
 def test_inplace_upgrade(cfy,
                          manager_and_vm,
                          example,
-                         attributes,
                          ssh_key,
                          module_tmpdir,
                          logger):

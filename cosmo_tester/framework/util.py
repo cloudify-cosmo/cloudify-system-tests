@@ -53,18 +53,6 @@ OS_PROJECT_NAME_ENV = 'OS_PROJECT_NAME'
 OS_AUTH_URL_ENV = 'OS_AUTH_URL'
 
 
-class AttributesDict(dict):
-    __getattr__ = dict.__getitem__
-
-
-def get_attributes(logger=logging, resources_dir=None):
-    attributes_file = get_resource_path('attributes.yaml', resources_dir)
-    logger.info('Loading attributes from: %s', attributes_file)
-    with open(attributes_file, 'r') as f:
-        attrs = AttributesDict(yaml.load(f))
-        return attrs
-
-
 def get_cli_version():
     return pkg_resources.require('cloudify')[0].version
 
@@ -183,28 +171,25 @@ def test_cli_package_url(url):
         )
 
 
-def get_cli_package_url(platform):
+def get_cli_package_url(platform, test_config):
     # Override URLs if they are provided in the config
-    config_cli_urls = get_attributes()['cli_urls_override']
+    config_cli_urls = test_config['cli_urls_override']
 
     if config_cli_urls.get(platform):
         url = config_cli_urls[platform]
     else:
-        if is_community():
-            filename = 'cli-packages.yaml'
-            packages_key = 'cli_packages_urls'
-        else:
+        if test_config['premium']:
             filename = 'cli-premium-packages.yaml'
             packages_key = 'cli_premium_packages_urls'
-        url = yaml.load(_get_package_url(filename))[packages_key][platform]
+        else:
+            filename = 'cli-packages.yaml'
+            packages_key = 'cli_packages_urls'
+        url = yaml.load(_get_package_url(filename, test_config))[
+            packages_key][platform]
 
     test_cli_package_url(url)
 
     return url
-
-
-def get_manager_install_rpm_url():
-    return yaml.load(_get_package_url('manager-install-rpm.yaml'))
 
 
 def _get_contents_from_github(repo, resource_path):
@@ -222,17 +207,17 @@ def _get_contents_from_github(repo, resource_path):
     return r.text
 
 
-def _get_package_url(filename):
+def _get_package_url(filename, test_config):
     """Gets the package URL(s).
     They will be retrieved either from GitHub (if (GITHUB_TOKEN exists in env)
     or locally if the cloudify-premium or cloudify-versions repository is
     checked out under the same folder the cloudify-system-tests repo is
     checked out.
     """
-    if is_community():
-        repo = 'cloudify-versions'
-    else:
+    if test_config['premium']:
         repo = 'cloudify-premium'
+    else:
+        repo = 'cloudify-versions'
 
     if os.environ.get('GITHUB_TOKEN'):
         return _get_contents_from_github(
@@ -344,7 +329,7 @@ class YamlPatcher(object):
 
 
 @retrying.retry(stop_max_attempt_number=20, wait_fixed=5000)
-def assert_snapshot_created(manager, snapshot_id, attributes):
+def assert_snapshot_created(manager, snapshot_id):
     snapshots = manager.client.snapshots.list()
 
     existing_snapshots = {
@@ -369,30 +354,6 @@ def assert_snapshot_created(manager, snapshot_id, attributes):
     )
 
 
-def is_community():
-    image_type = get_attributes()['image_type']
-
-    # We check the image type is valid to avoid unanticipated effects from
-    # typos.
-    community_image_types = [
-        'community',
-    ]
-    valid_image_types = community_image_types + [
-        'premium',
-    ]
-
-    if image_type not in valid_image_types:
-        raise ValueError(
-            'Invalid image_type: {specified}.\n'
-            'Valid image types are: {valid}'.format(
-                specified=image_type,
-                valid=', '.join(valid_image_types),
-            )
-        )
-
-    return image_type in community_image_types
-
-
 @contextmanager
 def set_client_tenant(manager, tenant):
     if tenant:
@@ -409,17 +370,13 @@ def set_client_tenant(manager, tenant):
             manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
 
 
-def prepare_and_get_test_tenant(test_param, manager):
+def prepare_and_get_test_tenant(test_param, manager, test_config):
     """
         Prepares a tenant for testing based on the test name (or other
         identifier passed in as 'test_param'), and returns the name of the
         tenant that should be used for this test.
     """
-    if is_community():
-        tenant = 'default_tenant'
-        # It is expected that the plugin is already uploaded for the
-        # default tenant
-    else:
+    if test_config['premium']:
         tenant = test_param
         try:
             manager.client.tenants.create(tenant)
@@ -428,6 +385,10 @@ def prepare_and_get_test_tenant(test_param, manager):
                 pass
             else:
                 raise
+    else:
+        tenant = 'default_tenant'
+        # It is expected that the plugin is already uploaded for the
+        # default tenant
     return tenant
 
 

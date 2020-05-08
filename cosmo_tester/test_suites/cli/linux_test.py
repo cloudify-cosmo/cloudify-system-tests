@@ -1,25 +1,9 @@
-########
-# Copyright (c) 2017 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import json
 import os
 
 import pytest
 
 from cosmo_tester.framework.util import (
-    get_attributes,
     get_cli_package_url,
     get_resource_path,
 )
@@ -28,36 +12,34 @@ from cosmo_tester.framework.test_hosts import (
     TestHosts as Hosts,
 )
 from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.test_suites.cli import get_image_and_username
 
 
 def get_linux_image_settings():
-    attrs = get_attributes()
     return [
-        (attrs.centos_7_image_name, attrs.centos_7_username,
-         'rhel_centos_cli_package_url'),
-        (attrs.ubuntu_14_04_image_name, attrs.ubuntu_14_04_username,
-         'debian_cli_package_url'),
-        (attrs.rhel_7_image_name, attrs.rhel_7_username,
-         'rhel_centos_cli_package_url'),
+        ('centos_7', 'rhel_centos_cli_package_url'),
+        ('ubuntu_14_04', 'debian_cli_package_url'),
+        ('rhel_7', 'rhel_centos_cli_package_url'),
     ]
 
 
 @pytest.fixture(
     scope='module',
     params=get_linux_image_settings())
-def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
+def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
                      logger, install_dev_tools=True):
     instances = [
         get_image('centos'),
         get_image('master'),
     ]
 
-    instances[0].image_name = request.param[0]
-    instances[0].username = request.param[1]
+    image, username = get_image_and_username(request.param[0], test_config)
+    instances[0].image_name = image
+    instances[0].username = username
 
     cli_hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
-        attributes, logger, instances=instances, request=request,
+        test_config, logger, instances=instances, request=request,
         upload_plugins=False,
     )
     cli_hosts.create()
@@ -65,12 +47,13 @@ def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
     yield {
         'cli_hosts': cli_hosts,
         'username': instances[1].username,
-        'url_key': request.param[2],
+        'url_key': request.param[1],
     }
     cli_hosts.destroy()
 
 
-def test_cli_on_linux(linux_cli_tester, module_tmpdir, ssh_key, logger):
+def test_cli_on_linux(linux_cli_tester, module_tmpdir, ssh_key, logger,
+                      test_config):
     cli_host, manager_host = linux_cli_tester['cli_hosts'].instances
 
     local_install_script_path = get_resource_path(
@@ -94,7 +77,8 @@ def test_cli_on_linux(linux_cli_tester, module_tmpdir, ssh_key, logger):
     cli_host.run_command('chmod 500 {}'.format(remote_uninstall_script_path))
 
     example = get_example_deployment(
-        manager_host, ssh_key, logger, linux_cli_tester['url_key'])
+        manager_host, ssh_key, logger, linux_cli_tester['url_key'],
+        test_config)
     example.set_agent_key_secret()
     example.inputs['path'] = '/tmp/{}'.format(linux_cli_tester['url_key'])
     cli_host.run_command('mkdir -p /tmp/test_blueprint')
@@ -115,7 +99,8 @@ def test_cli_on_linux(linux_cli_tester, module_tmpdir, ssh_key, logger):
     cli_host.run_command(
         '{script} {cli_url} {mgr_priv} {tenant}'.format(
             script=remote_install_script_path,
-            cli_url=get_cli_package_url(linux_cli_tester['url_key']),
+            cli_url=get_cli_package_url(linux_cli_tester['url_key'],
+                                        test_config),
             mgr_priv=manager_host.private_ip_address,
             tenant=example.tenant,
         )

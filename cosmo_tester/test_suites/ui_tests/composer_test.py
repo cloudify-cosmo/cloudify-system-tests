@@ -13,24 +13,18 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-# import pytest
-
-from cosmo_tester.framework.fixtures import image_based_manager
-
 import subprocess
 import os
 
-manager = image_based_manager
 
-
-def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
+def test_ui(cfy, image_based_manager, module_tmpdir, ssh_key, logger):
 
     logger.info('Installing dependencies to run system tests...')
     subprocess.call(['npm', 'ci'],
                     cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
     if os.environ["UPDATE_COMPOSER_ON_MANAGER"] == 'true':
         logger.info('Starting update of Composer package on Manager...')
-        os.environ["MANAGER_IP"] = manager.ip_address
+        os.environ["MANAGER_IP"] = image_based_manager.ip_address
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         logger.info('Creating Composer package...')
         subprocess.call(['bower', 'install'],

@@ -17,65 +17,65 @@ def skip(*args, **kwargs):
 
 
 @pytest.fixture()
-def brokers(cfy, ssh_key, module_tmpdir, attributes, logger):
+def brokers(cfy, ssh_key, module_tmpdir, test_config, logger):
     for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir,
-                               attributes, logger, broker_count=3):
+                               test_config, logger, broker_count=3):
         yield _brokers
 
 
 @pytest.fixture()
-def broker(cfy, ssh_key, module_tmpdir, attributes, logger):
-    for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir, attributes,
+def broker(cfy, ssh_key, module_tmpdir, test_config, logger):
+    for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir, test_config,
                                logger, broker_count=1):
         yield _brokers[0]
 
 
 @pytest.fixture()
-def dbs(cfy, ssh_key, module_tmpdir, attributes, logger):
-    for _dbs in _get_hosts(cfy, ssh_key, module_tmpdir, attributes,
+def dbs(cfy, ssh_key, module_tmpdir, test_config, logger):
+    for _dbs in _get_hosts(cfy, ssh_key, module_tmpdir, test_config,
                            logger, db_count=3):
         yield _dbs
 
 
 @pytest.fixture()
-def brokers_and_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
+def brokers_and_manager(cfy, ssh_key, module_tmpdir, test_config, logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           attributes, logger,
+                           test_config, logger,
                            broker_count=2, manager_count=1):
         yield _vms
 
 
 @pytest.fixture()
-def brokers3_and_manager(cfy, ssh_key, module_tmpdir, attributes, logger):
+def brokers3_and_manager(cfy, ssh_key, module_tmpdir, test_config, logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           attributes, logger,
+                           test_config, logger,
                            broker_count=3, manager_count=1):
         yield _vms
 
 
 @pytest.fixture()
-def full_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
+def full_cluster(cfy, ssh_key, module_tmpdir, test_config, logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           attributes, logger,
+                           test_config, logger,
                            broker_count=3, db_count=3, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
 
 
 @pytest.fixture()
-def cluster_with_lb(cfy, ssh_key, module_tmpdir, attributes, logger):
+def cluster_with_lb(cfy, ssh_key, module_tmpdir, test_config, logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           attributes, logger,
+                           test_config, logger,
                            broker_count=1, db_count=1, manager_count=3,
                            use_load_balancer=True, pre_cluster_rabbit=True):
         yield _vms
 
 
 @pytest.fixture()
-def cluster_missing_one_db(cfy, ssh_key, module_tmpdir, attributes,
+def cluster_missing_one_db(cfy, ssh_key, module_tmpdir, test_config,
                            logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           attributes, logger,
+                           test_config, logger,
                            skip_bootstrap_list=['db3'],
                            broker_count=3, db_count=3, manager_count=2,
                            pre_cluster_rabbit=True):
@@ -83,24 +83,24 @@ def cluster_missing_one_db(cfy, ssh_key, module_tmpdir, attributes,
 
 
 @pytest.fixture()
-def cluster_with_single_db(cfy, ssh_key, module_tmpdir, attributes,
+def cluster_with_single_db(cfy, ssh_key, module_tmpdir, test_config,
                            logger):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           attributes, logger,
+                           test_config, logger,
                            broker_count=3, db_count=1, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
 
 
 @pytest.fixture()
-def minimal_cluster(cfy, ssh_key, module_tmpdir, attributes, logger):
-    for _vms in _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
+def minimal_cluster(cfy, ssh_key, module_tmpdir, test_config, logger):
+    for _vms in _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger,
                            broker_count=1, db_count=1, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
 
 
-def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
+def _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,
                # Pre-cluster rabbit determines whether to cluster rabbit
@@ -111,7 +111,7 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
     hosts = TestHosts(
-        cfy, ssh_key, module_tmpdir, attributes, logger,
+        cfy, ssh_key, module_tmpdir, test_config, logger,
         number_of_instances=broker_count + db_count + manager_count + (
             1 if use_load_balancer else 0
         ),
@@ -164,7 +164,7 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, attributes, logger,
             _bootstrap_manager_node(node, node_num, dbs, brokers,
                                     skip_bootstrap_list, pre_cluster_rabbit,
                                     high_security, tempdir, logger,
-                                    attributes)
+                                    test_config)
 
         if len(managers) > 1:
             _configure_status_reporters(managers, brokers, dbs,
@@ -340,7 +340,7 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
 def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                             pre_cluster_rabbit, high_security, tempdir,
-                            logger, attributes):
+                            logger, test_config):
     node.friendly_name = 'manager' + str(mgr_num)
 
     _base_prep(node, tempdir)
@@ -372,7 +372,7 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         'private_ip': str(node.private_ip_address),
         'public_ip': str(node.private_ip_address),
         'security': {
-            'admin_password': attributes.cloudify_password,
+            'admin_password': test_config['test_manager']['password'],
         },
     }
     node.install_config['rabbitmq'] = {
@@ -441,9 +441,9 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     # Correctly configure the rest client for the node
     node.client = util.create_rest_client(
         str(node.ip_address),
-        username=attributes.cloudify_username,
-        password=attributes.cloudify_password,
-        tenant=attributes.cloudify_tenant,
+        username=test_config['test_manager']['username'],
+        password=test_config['test_manager']['password'],
+        tenant=test_config['test_manager']['tenant'],
         api_version=node.api_version,
         cert=node.local_ca,
         protocol='https',

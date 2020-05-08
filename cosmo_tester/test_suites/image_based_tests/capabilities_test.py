@@ -19,14 +19,11 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.examples import get_example_deployment
 
 
-ATTRIBUTES = util.get_attributes()
-
-
 @pytest.fixture(scope='function')
-def fake_vm(image_based_manager, ssh_key, logger):
+def fake_vm(image_based_manager, ssh_key, logger, test_config):
     example = get_example_deployment(
         image_based_manager, ssh_key, logger, 'capability',
-        upload_plugin=False)
+        test_config, upload_plugin=False)
 
     example.blueprint_file = util.get_resource_path(
         'blueprints/capabilities/fake_vm.yaml'
@@ -38,9 +35,9 @@ def fake_vm(image_based_manager, ssh_key, logger):
 
 
 @pytest.fixture(scope='function')
-def proxied_plugin_file(image_based_manager, ssh_key, logger):
+def proxied_plugin_file(image_based_manager, ssh_key, logger, test_config):
     example = get_example_deployment(
-        image_based_manager, ssh_key, logger, 'capability')
+        image_based_manager, ssh_key, logger, 'capability', test_config)
 
     example.blueprint_file = util.get_resource_path(
         'blueprints/capabilities/capable_file.yaml'

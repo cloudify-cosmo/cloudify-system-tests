@@ -18,12 +18,12 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import set_client_tenant
 
 
-def test_full_cluster(full_cluster, logger, attributes, cfy):
+def test_full_cluster(full_cluster, logger, cfy):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
 
     logger.info('Creating snapshot')
     snapshot_id = 'cluster_test_snapshot'
-    create_snapshot(mgr1, snapshot_id, attributes, logger)
+    create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
@@ -35,12 +35,12 @@ def test_full_cluster(full_cluster, logger, attributes, cfy):
 # This is to confirm that we work with a single DB endpoint set (e.g. on a
 # PaaS).
 # It is not intended that a single external DB be used in production.
-def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
+def test_cluster_single_db(cluster_with_single_db, logger, cfy):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
 
     logger.info('Creating snapshot')
     snapshot_id = 'cluster_test_snapshot'
-    create_snapshot(mgr1, snapshot_id, attributes, logger)
+    create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
@@ -50,12 +50,13 @@ def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
 
 
 def test_queue_node_failover(cluster_with_single_db, logger,
-                             module_tmpdir, attributes, ssh_key, cfy):
+                             module_tmpdir, ssh_key, cfy, test_config):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
 
     # cfy commands will use mgr1
     mgr1.use(cert_path=mgr1.local_ca)
-    example = get_example_deployment(mgr1, ssh_key, logger, 'queue_failover')
+    example = get_example_deployment(mgr1, ssh_key, logger, 'queue_failover',
+                                     test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
     _validate_cluster_and_agents(cfy, example.tenant)
@@ -116,14 +117,14 @@ def test_queue_node_failover(cluster_with_single_db, logger,
 
 
 def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
-                               attributes, ssh_key, cfy):
+                               ssh_key, cfy, test_config):
     broker, db, mgr1, mgr2, mgr3, lb = cluster_with_lb
 
     lb.use(cert_path=lb.local_ca)
     _wait_for_cfy_node_to_start_serving(cfy)  # where the cfy node = the LB
 
     example = get_example_deployment(mgr1, ssh_key, logger,
-                                     'manager_failover')
+                                     'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
     _validate_cluster_and_agents(cfy, example.tenant)
@@ -189,13 +190,13 @@ def _wait_for_cfy_node_to_start_serving(cfy, timeout=15):
 
 
 def test_workflow_resume_manager_failover(minimal_cluster, cfy,
-                                          logger, ssh_key):
+                                          logger, ssh_key, test_config):
     broker, db, mgr1, mgr2 = minimal_cluster
     mgr1.use(cert_path=mgr1.local_ca)
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'workflow_resume_manager_failover',
-                                     using_agent=False)
+                                     test_config, using_agent=False)
     example.inputs['wait'] = 60
     example.upload_blueprint()
     example.create_deployment()

@@ -42,8 +42,6 @@ REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
 REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 
-ATTRIBUTES = util.get_attributes()
-
 
 class VM(object):
 
@@ -65,7 +63,7 @@ class VM(object):
             rest_client,
             ssh_key,
             cfy,
-            attributes,
+            test_config,
             logger,
             tmpdir,
             upload_plugins,  # Ignored
@@ -79,7 +77,7 @@ class VM(object):
         self.deleted = False
         self._ssh_key = ssh_key
         self._cfy = cfy
-        self._attributes = attributes
+        self._test_config = test_config
         self._logger = logger
         self._openstack = util.create_openstack_client()
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
@@ -89,6 +87,9 @@ class VM(object):
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
+        # For backwards compatabilitish, keeping defaults here
+        self.image_name = self._test_config.platform['centos_7_image']
+        self.username = test_config['test_os_usernames']['centos_7']
 
     def prepare_for_windows(self, image, user):
         """Prepare this VM to be created as a windows VM."""
@@ -330,8 +331,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         # (thanks, ruamel)
         return str(node_id_parts[1].strip())
 
-    image_name = ATTRIBUTES['default_linux_image_name']
-    username = ATTRIBUTES['default_linux_username']
     image_type = 'centos'
 
 
@@ -345,7 +344,7 @@ class _CloudifyManager(VM):
             rest_client,
             ssh_key,
             cfy,
-            attributes,
+            test_config,
             logger,
             tmpdir,
             upload_plugins,
@@ -360,7 +359,7 @@ class _CloudifyManager(VM):
         self.networks = networks
         self._ssh_key = ssh_key
         self._cfy = cfy
-        self._attributes = attributes
+        self._test_config = test_config
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
@@ -379,8 +378,10 @@ class _CloudifyManager(VM):
                 'private_ip': str(private_ip_address),
                 'hostname': str(server_id),
                 'security': {
-                    'admin_username': attributes.cloudify_username,
-                    'admin_password': attributes.cloudify_password,
+                    'admin_username': self._test_config[
+                        'test_manager']['username'],
+                    'admin_password': self._test_config[
+                        'test_manager']['password'],
                 },
             },
         }
@@ -498,9 +499,9 @@ class _CloudifyManager(VM):
             kwargs['rest_certificate'] = cert_path
         self._cfy.profiles.use([
             self.ip_address,
-            '-u', self._attributes.cloudify_username,
-            '-p', self._attributes.cloudify_password,
-            '-t', tenant or self._attributes.cloudify_tenant,
+            '-u', self._test_config['test_manager']['username'],
+            '-p', self._test_config['test_manager']['password'],
+            '-t', tenant or self._test_config['test_manager']['tenant'],
         ], **kwargs)
 
     def verify_services_are_running(self):
@@ -564,25 +565,32 @@ class _CloudifyManager(VM):
                         'service {0} is in {1} state'.format(
                             service['display_name'], instance['SubState'])
 
-    @property
-    def image_name(self):
-        if self._image_name is None:
-            if self.image_type == 'master':
-                self._image_name = get_latest_manager_image_name()
-            else:
-                self._image_name = ATTRIBUTES[
-                    'cloudify_manager_{}_image_name'.format(
-                        self.image_type.replace('.', '_')
-                    )
-                ]
-                if ATTRIBUTES['default_manager_distro'] == 'rhel':
-                    self._image_name += '-rhel'
+    def set_image_details(self, test_config):
+        if self.image_type == 'master':
+            version = util.get_cli_version()
+            version_num, _, version_milestone = version.partition('-')
 
-        return self._image_name
+            # starting 5.0.0, we name images with the trailing .0
+            if LooseVersion(version_num) < '5.0.0':
+                if version_num.endswith('.0') and version_num.count('.') > 1:
+                    version_num = version_num[:-2]
 
-    @image_name.setter
-    def image_name(self, image):
-        self._image_name = image
+            distro = test_config['test_manager']['distro']
+            version = version_num + version_milestone
+        else:
+            version = self.image_type.replace('.', '_')
+
+        image_name = '{prefix}-{suffix}'.format(
+            prefix=test_config.platform['manager_image_name_prefix'],
+            suffix=version,
+        )
+
+        if distro != 'centos':
+            image_name = image_name + '-{distro}'.format(distro=distro)
+
+        self.image_name = image_name
+        username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
+        self.username = test_config['test_os_usernames'][username_key]
 
     @property
     def api_version(self):
@@ -621,7 +629,7 @@ class _CloudifyManager(VM):
         self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
-            upload_license and not util.is_community())
+            upload_license and self._test_config['premium'])
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('mkdir -p /tmp/bs_logs')
             self.put_remote_file(
@@ -788,38 +796,6 @@ class _CloudifyManager(VM):
             self.run_command('ifup eth{0}'.format(i), use_sudo=True)
 
 
-def get_latest_manager_image_name():
-    """
-    Returns the manager image name based on installed CLI version.
-    For CLI version "4.0.0-m15"
-    Returns: "cloudify-manager-premium-4.0m15"
-    """
-    specific_manager_name = ATTRIBUTES.cloudify_manager_latest_image.strip()
-
-    if specific_manager_name:
-        image_name = specific_manager_name
-    else:
-        version = util.get_cli_version()
-        version_num, _, version_milestone = version.partition('-')
-
-        # starting 5.0.0, we name images with the trailing .0
-        if LooseVersion(version_num) < '5.0.0':
-            if version_num.endswith('.0') and version_num.count('.') > 1:
-                version_num = version_num[:-2]
-
-        distro = ATTRIBUTES.default_manager_distro
-        version = version_num + version_milestone
-        image_name = '{prefix}-{suffix}'.format(
-            prefix=ATTRIBUTES.cloudify_manager_image_name_prefix,
-            suffix=version
-        )
-
-        if distro != 'centos':
-            image_name = image_name + '-{distro}'.format(distro=distro)
-
-    return image_name
-
-
 def get_image(version):
     supported = [
         '4.3.1', '4.4', '4.5', '4.5.5', '4.6', '5.0.5', 'master',
@@ -847,7 +823,7 @@ class TestHosts(object):
                  cfy,
                  ssh_key,
                  tmpdir,
-                 attributes,
+                 test_config,
                  logger,
                  number_of_instances=1,
                  instances=None,
@@ -866,7 +842,7 @@ class TestHosts(object):
 
         super(TestHosts, self).__init__()
         self._logger = logger
-        self._attributes = attributes
+        self._test_config = test_config
         self._tmpdir = tmpdir
         self._ssh_key = ssh_key
         self._cfy = cfy
@@ -889,7 +865,7 @@ class TestHosts(object):
         if flavor:
             self.server_flavor = flavor
         else:
-            self.server_flavor = self._attributes.manager_server_flavor_name
+            self.server_flavor = self._test_config.platform['linux_size']
 
         if bootstrappable:
             for instance in self.instances:
@@ -898,13 +874,7 @@ class TestHosts(object):
 
     @property
     def bootstrappable_image_name(self):
-        image_name = ATTRIBUTES['cloudify_manager_installer_image_name']
-        if not image_name:
-            # TODO once sync the community and premium version we can add a
-            #  fallback which allows us to generate the image name based on
-            #  the current version pulled form the cloudify cli
-            raise Exception('cloudify_manager_installer_image_name is not set')
-        return image_name
+        return self._test_config.platform['installer_image']
 
     def create(self):
         """Creates the infrastructure for a Cloudify manager."""
@@ -926,11 +896,12 @@ class TestHosts(object):
         )
 
         # Connect to the infrastructure manager for setting up the tests
+        infra_mgr_config = self._test_config['infrastructure_manager']
         self._cfy.profiles.use(
             "--manager-username", "admin",
-            "--manager-password", ATTRIBUTES["manager_admin_password"],
+            "--manager-password", infra_mgr_config['admin_password'],
             "--manager-tenant", "default_tenant",
-            ATTRIBUTES["manager_address"],
+            infra_mgr_config['address'],
         )
 
         try:
@@ -950,6 +921,7 @@ class TestHosts(object):
 
             # Deploy hosts
             for index, instance in enumerate(self.instances):
+                instance.set_image_details(self._test_config)
                 self._deploy_test_vm(instance.image_name, index,
                                      test_identifier)
 
@@ -977,10 +949,10 @@ class TestHosts(object):
                 self._logger.info(
                     'Switching profile to %s on %s',
                     self.tenant,
-                    ATTRIBUTES['manager_address'],
+                    self._test_config['infrastructure_manager']['address'],
                 )
                 self._cfy.profiles.use(
-                    ATTRIBUTES["manager_address"],
+                    self._test_config['infrastructure_manager']['address'],
                 )
                 self._cfy.profiles.set('--manager-tenant', self.tenant)
 
@@ -1047,30 +1019,20 @@ class TestHosts(object):
                 self.tenant = None
 
     def _upload_secrets_to_infrastructure_manager(self):
-        # Used to maintain compatibility with current test framework config
-        secrets_from_env = {
-            "keystone_password": os.environ["OS_PASSWORD"],
-            "keystone_tenant_name": (
-                os.environ.get("OS_TENANT_NAME")
-                or os.environ['OS_PROJECT_NAME']
-            ),
-            "keystone_url": os.environ["OS_AUTH_URL"],
-            "keystone_username": os.environ["OS_USERNAME"],
-            "region": os.environ.get("OS_REGION_NAME", "RegionOne"),
-        }
         self._logger.info(
             'Uploading openstack secrets to infrastructure manager.'
         )
-        for secret in [
-            "keystone_password",
-            "keystone_tenant_name",
-            "keystone_url",
-            "keystone_username",
+        for config_key in [
+            "password",
+            "tenant",
+            "url",
+            "username",
             "region",
         ]:
+            secret_name = 'keystone_' + config_key
             self._cfy.secrets.create(
-                "--secret-string", secrets_from_env[secret],
-                secret,
+                "--secret-string", self._test_config['openstack'][config_key],
+                secret_name,
             )
         self._cfy.secrets.create(
             "--secret-file", self._ssh_key.public_key_path,
@@ -1078,9 +1040,10 @@ class TestHosts(object):
         )
 
     def _upload_plugins_to_infrastructure_manager(self):
+        plugin_details = self._test_config.platform
         current_plugins = json.loads(self._cfy.plugins.list('--json').stdout)
         if any(
-            plugin["package_name"] == "cloudify-openstack-plugin"
+            plugin["package_name"] == plugin_details['plugin_package_name']
             for plugin in current_plugins
         ):
             self._logger.info('Openstack plugin already present.')
@@ -1089,8 +1052,8 @@ class TestHosts(object):
                 'Uploading openstack plugin to infrastructure manager.'
             )
             self._cfy.plugins.upload(
-                "--yaml-path", ATTRIBUTES['openstack_plugin_yaml_path'],
-                ATTRIBUTES['openstack_plugin_path'],
+                "--yaml-path", plugin_details['plugin_yaml_url'],
+                plugin_details['plugin_url'],
             )
 
     def _upload_blueprints_to_infrastructure_manager(self):
@@ -1126,7 +1089,10 @@ class TestHosts(object):
         self._logger.info('Creating test infrastructure inputs.')
         infrastructure_inputs = {
             'test_infrastructure_name': test_identifier,
-            'floating_network_id': ATTRIBUTES['floating_network_id'],
+            'floating_network_id': self._test_config[
+                # This will only work on openstack anyway, so will be made
+                # properly generic once we add another platform
+                'openstack']['floating_network_id']
         }
         infrastructure_inputs_path = self._tmpdir / 'infra_inputs.yaml'
         with open(infrastructure_inputs_path, 'w') as inp_handle:
@@ -1146,39 +1112,7 @@ class TestHosts(object):
             "install",
         )
 
-        self._logger.info(
-            'Retrieving infrastructure details for attributes.'
-        )
-        infra_keypair = self._get_node_instances(
-            'test_keypair', 'infrastructure',
-        )[0]
-        self._attributes['keypair_name'] = infra_keypair[
-            'runtime_properties']['id']
-        infra_network = self._get_node_instances(
-            'test_network_1', 'infrastructure',
-        )[0]
-        self._attributes['network_name'] = infra_network[
-            'runtime_properties']['name']
-        infra_subnet = self._get_node_instances(
-            'test_subnet_1', 'infrastructure',
-        )[0]
-        self._attributes['subnet_name'] = infra_subnet[
-            'runtime_properties']['name']
-        infra_security_group = self._get_node_instances(
-            'test_security_group', 'infrastructure',
-        )[0]
-        self._attributes['security_group_name'] = infra_security_group[
-            'runtime_properties']['name']
         if self.multi_net:
-            network_names = {}
-            for net in range(1, 4):
-                net_details = self._get_node_instances(
-                    'test_network_{}'.format(net), 'infrastructure'
-                )[0]['runtime_properties']
-                network_names['network_{}'.format(net)] = net_details[
-                    'name']
-            self._attributes.network_names = network_names
-
             network_mappings = {}
             for sn in range(1, 4):
                 subnet_details = self._get_node(
@@ -1213,7 +1147,10 @@ class TestHosts(object):
                           image_id, index)
         vm_inputs = {
             'test_infrastructure_name': test_identifier,
-            'floating_network_id': ATTRIBUTES['floating_network_id'],
+            'floating_network_id': self._test_config[
+                # This will only work on openstack anyway, so will be made
+                # properly generic once we add another platform
+                'openstack']['floating_network_id'],
             'image': image_id,
             'flavor': self.server_flavor,
             'userdata': self.instances[index].userdata,
@@ -1300,11 +1237,12 @@ class TestHosts(object):
                         break
 
         if hasattr(instance, 'api_version'):
+            test_mgr_conf = self._test_config['test_manager']
             rest_client = util.create_rest_client(
                 public_ip_address,
-                username=self._attributes.cloudify_username,
-                password=self._attributes.cloudify_password,
-                tenant=self._attributes.cloudify_tenant,
+                username=test_mgr_conf['username'],
+                password=test_mgr_conf['password'],
+                tenant=test_mgr_conf['tenant'],
                 api_version=instance.api_version,
             )
         else:
@@ -1316,7 +1254,7 @@ class TestHosts(object):
             rest_client,
             self._ssh_key,
             self._cfy,
-            self._attributes,
+            self._test_config,
             self._logger,
             self._tmpdir,
             self.upload_plugins,
