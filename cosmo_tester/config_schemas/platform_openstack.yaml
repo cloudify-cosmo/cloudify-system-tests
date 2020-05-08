@@ -44,3 +44,13 @@ installer_image:
 floating_network_id:
   description: Openstack network ID to use for floating IPs.
   default: dda079ce-12cf-4309-879a-8e67aec94de4
+username:
+  description: Keystone username for openstack.
+password:
+  description: Keystone password for openstack.
+tenant:
+  description: Keystone tenant or project for openstack.
+url:
+  description: Openstack auth URL.
+region:
+  description: Openstack region name.

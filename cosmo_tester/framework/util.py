@@ -214,27 +214,18 @@ def _get_package_url(filename, test_config):
     checked out under the same folder the cloudify-system-tests repo is
     checked out.
     """
-    if test_config['premium']:
-        repo = 'cloudify-premium'
-    else:
-        repo = 'cloudify-versions'
+    package_urls_key = 'premium' if test_config['premium'] else 'community'
 
-    if os.environ.get('GITHUB_TOKEN'):
-        return _get_contents_from_github(
-            repo=repo,
-            resource_path='packages-urls/{filename}'.format(
-                filename=filename,
-            )
+    package_url_file = os.path.abspath(
+        os.path.join(
+            os.path.dirname(cosmo_tester.__file__), '..',
+            test_config['package_urls'][package_urls_key],
+            'package-urls', filename,
         )
-    else:
-        package_url_file = (
-            Path(cosmo_tester.__file__).dirname() /
-            '..' / '..' / repo / 'packages-urls' / filename
-        ).abspath()
-        if not package_url_file.exists():
-            raise IOError('File containing {0} URL not '
-                          'found: {1}'.format(filename, package_url_file))
-        return package_url_file.text()
+    )
+
+    with open(package_url_file):
+        return package_url_file.read()
 
 
 class YamlPatcher(object):

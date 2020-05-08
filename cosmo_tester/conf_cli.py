@@ -3,10 +3,7 @@ import argparse
 # cleaner output
 import json
 
-from cosmo_tester.framework.config import (
-    load_config,
-    validate_config,
-)
+from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
 
 
@@ -106,13 +103,14 @@ def main():
     logger = get_logger('conf_cli')
 
     if args.action == 'validate':
-        config = load_config(logger, args.config_location)
-        validate_config(config, logger)
+        # We validate on loading, so simply attempting to load the config with
+        # the config supplied by the user will validate it
+        load_config(logger, args.config_location)
     elif args.action == 'schema':
         config = load_config(logger)
         print(show_schema(config.schema, False))
     elif args.action == 'generate':
-        config = load_config(logger)
+        config = load_config(logger, validate=False)
         print(show_schema(config.schema,
                           generate_sample_config=True,
                           include_defaults=args.include_defaults))

@@ -1,0 +1,9 @@
+namespace: package_urls
+community:
+  description: Path relative to root of repo to local copy of repository containing package URLs for community. This should probably be the cloudify-version repo.
+  default: ../cloudify-versions
+  validate_existing_dir: true
+premium:
+  description: Path relative to root of repo to local copy of repository containing package URLs for premium. This should probably be the cloudify-premium repo, or 'null' if testing community.
+  default: ../cloudify-premium
+  validate_optional_dir: true

@@ -61,7 +61,6 @@ class Config(object):
                 raw_config.pop(key),
             )
         self.raw_config.update(processed_config)
-        self.check_config_is_valid()
 
     def update_schema(self, schema_file):
         with open(schema_file) as schema_handle:
@@ -117,34 +116,91 @@ class Config(object):
             self.schema.update(schema)
         else:
             self.schema[namespace].update(schema)
-        self.check_config_is_valid()
 
     def check_config_is_valid(self, namespace=None):
-        # Allow the existence of, but warn about, config keys that aren't in
-        # the schema.
-        # They will not be usable.
-        if namespace is None:
-            schema = self.schema
-            config = self.raw_config
-        else:
+        schema = self.schema
+        config = self.config.copy()
+        # To allow us to warn on keys that aren't in the schema
+        # (e.g. due to typo)
+        config.update(self.raw_config)
+        if namespace:
             schema = self.schema[namespace]
-            config = self.raw_config.get(namespace, {})
-        for key in config.keys():
+            config = config.get(namespace, {})
+
+        config_valid = True
+
+        for key in config:
+            # Determine how to display the key if there are problems
             if namespace is None:
                 display_key = key
             else:
                 display_key = '.'.join([namespace, key])
-            if key not in schema.keys():
+
+            if key in schema:
+                if schema[key].get('.is_namespace', False):
+                    # Descend into this namespace
+                    namespace_valid = self.check_config_is_valid(namespace=key)
+                    # We only need to consider updating if the config is still
+                    # valid. There's no way for an invalid config to become
+                    # valid, so if it's already invalid we can just move on.
+                    if config_valid:
+                        config_valid = namespace_valid
+                elif config.get(key) is NotSet:
+                    self.logger.error(
+                        '{key} is not set and has no default!'.format(
+                            key=display_key,
+                        )
+                    )
+                    config_valid = False
+                else:
+                    key_value = config.get(key, schema[key].get('default'))
+                    valid_values = schema[key].get('valid_values')
+                    if valid_values:
+                        if key_value not in valid_values:
+                            self.logger.error(
+                                '{key} is set to "{value}", but this is not '
+                                'an allowed value. Allowed values are: '
+                                '{allowed}'.format(
+                                    key=display_key,
+                                    value=key_value,
+                                    allowed=', '.join(valid_values),
+                                )
+                            )
+                            config_valid = False
+
+                    validate_dir = schema[key].get('validate_existing_dir')
+                    if validate_dir:
+                        if not os.path.isdir(key_value):
+                            self.logger.error(
+                                '{key} is set to "{value}". This key must '
+                                'refer to a directory which exists, but the '
+                                'specified path is not a directory.'.format(
+                                    key=display_key,
+                                    value=key_value,
+                                )
+                            )
+
+                    validate_optional_dir = schema[key].get(
+                        'validate_optional_dir')
+                    if validate_optional_dir:
+                        key_value = None if key_value is NotSet else key_value
+                        if key_value and not os.path.isdir(key_value):
+                            self.logger.error(
+                                '{key} is set to "{value}". If set, this key '
+                                'must refer to a directory which exists, but '
+                                'the specified path is not a directory.'
+                                .format(
+                                    key=display_key,
+                                    value=key_value,
+                                )
+                            )
+            else:
                 self.logger.warn(
                     '{key} is in config, but not defined in the schema. '
                     'This key will not be usable until correctly defined '
                     'in the schema.'.format(key=display_key)
                 )
-            if key in schema.keys() and schema[key].get('.is_namespace',
-                                                        False):
-                self.check_config_is_valid(namespace=key)
-        # Currently, if we can load it then it's valid.
-        return True
+        return config_valid
 
     @property
     def config(self):
@@ -155,7 +211,7 @@ class Config(object):
     def _generate_config(self, schema=None, raw_config=None):
 
         schema = schema or self.schema
-        raw_config = raw_config or self.raw_config
+        raw_config = self.raw_config if raw_config is None else raw_config
 
         # Get all namespaces and config entries at the current level
         namespaces = [
@@ -234,7 +290,8 @@ def find_schemas():
     return schemas
 
 
-def load_config(logger, config_file=None, missing_config_fail=True):
+def load_config(logger, config_file=None, missing_config_fail=True,
+                validate=True):
     """Load the configuration from the specified file.
     missing_config_fail determines whether the file being absent is fatal.
     """
@@ -247,7 +304,7 @@ def load_config(logger, config_file=None, missing_config_fail=True):
             logger=logger,
         )
     except SchemaError as err:
-        print(str(err))
+        sys.stderr.write('{}'.format(err))
         sys.exit(1)
     except IOError as err:
         message = 'Could not find config or schema file: {config}'.format(
@@ -258,27 +315,10 @@ def load_config(logger, config_file=None, missing_config_fail=True):
             sys.exit(2)
         else:
             logger.warn(message)
+
+    if validate and not config.check_config_is_valid():
+        logger.error(
+            'Configuration is invalid, please correct the listed errors.'
+        )
+        sys.exit(2)
     return config
-
-
-def validate_config(config, logger):
-    """Validate the configuration against the schema."""
-    valid = True
-    namespaces = config.namespaces
-    not_set_message = '{key} is not set and has no default!'
-    for namespace in namespaces:
-        if namespace is None:
-            check = config.items()
-        else:
-            check = config[namespace].items()
-        for key, value in check:
-            display_key = key
-            if namespace is not None:
-                display_key = '.'.join([namespace, key])
-            if key not in namespaces:
-                if value is NotSet:
-                    logger.error(not_set_message.format(
-                        key=display_key,
-                    ))
-                    valid = False
-    return valid
