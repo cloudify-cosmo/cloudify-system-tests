@@ -29,9 +29,10 @@ update_counter = 0
 
 
 @pytest.fixture(scope='function')
-def example_deployment(cfy, image_based_manager, ssh_key, logger):
+def example_deployment(cfy, image_based_manager, ssh_key, logger,
+                       test_config):
     example = get_example_deployment(
-        image_based_manager, ssh_key, logger, 'dep_update')
+        image_based_manager, ssh_key, logger, 'dep_update', test_config)
 
     yield example
     example.uninstall()

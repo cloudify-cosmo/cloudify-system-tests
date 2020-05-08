@@ -14,7 +14,6 @@
 #    * limitations under the License.
 
 from cosmo_tester.framework.fixtures import image_based_manager
-from cosmo_tester.framework.util import is_community
 from cloudify_rest_client.client import CloudifyClient
 from os.path import join
 import time
@@ -24,7 +23,7 @@ DEFAULT_TENANT_ROLE = 'user'
 REMOTE_EXTERNAL_CERT_PATH = '/etc/cloudify/ssl/cloudify_external_cert.pem'
 
 
-def test_ssl(cfy, manager, module_tmpdir, ssh_key, logger):
+def test_ssl(cfy, manager, module_tmpdir, ssh_key, logger, test_config):
     cert_path = join(module_tmpdir, '.cloudify', 'profiles',
                      manager.ip_address, 'public_rest_cert.crt')
     _generate_external_cert(manager, logger)
@@ -56,7 +55,7 @@ def test_ssl(cfy, manager, module_tmpdir, ssh_key, logger):
     manager.client = ssl_client
     manager.upload_test_plugin()
 
-    if not is_community():
+    if test_config['premium']:
         tenant_name = 'ssl_tenant'
         cfy.users.create('ssl_user', '-p', 'ssl_pass')
         cfy.tenants.create(tenant_name)

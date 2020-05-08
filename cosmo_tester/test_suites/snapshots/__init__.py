@@ -8,7 +8,6 @@ from cloudify.snapshots import STATES
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
     create_rest_client,
-    is_community,
     set_client_tenant,
 )
 from cloudify_rest_client.exceptions import UserUnauthorizedError
@@ -41,16 +40,12 @@ MULTI_TENANT_MANAGERS = (
 
 
 def get_multi_tenant_versions_list():
-    if is_community():
-        # Community only works single tenanted
-        return ()
-    else:
-        return MULTI_TENANT_MANAGERS
+    return MULTI_TENANT_MANAGERS
 
 
-def upgrade_agents(cfy, manager, logger):
+def upgrade_agents(cfy, manager, logger, test_config):
     logger.info('Upgrading agents')
-    args = [] if is_community() else ['--all-tenants']
+    args = ['--all-tenants'] if test_config['premium'] else []
     cfy.agents.install(args)
 
 
@@ -141,7 +136,7 @@ def confirm_manager_empty(manager):
     assert get_deployments_list(manager) == []
 
 
-def create_snapshot(manager, snapshot_id, attributes, logger):
+def create_snapshot(manager, snapshot_id, logger):
     logger.info('Creating snapshot on manager {image_name}'
                 .format(image_name=manager.image_name))
     manager.client.snapshots.create(

@@ -1,18 +1,3 @@
-########
-# Copyright (c) 2018 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import pytest
 
 from cosmo_tester.framework import util
@@ -21,12 +6,10 @@ from cosmo_tester.framework.test_hosts import TestHosts as Hosts
 
 from cosmo_tester.test_suites.snapshots import restore_snapshot
 
-ATTRIBUTES = util.get_attributes()
-
 
 @pytest.fixture(scope='module')
-def managers_and_vm(cfy, ssh_key, module_tmpdir, attributes, logger):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, attributes, logger, 3)
+def managers_and_vm(cfy, ssh_key, module_tmpdir, test_config, logger):
+    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, 3)
     try:
         managers = hosts.instances[:2]
         vm = hosts.instances[2]
@@ -37,8 +20,8 @@ def managers_and_vm(cfy, ssh_key, module_tmpdir, attributes, logger):
         managers[1].restservice_expected = True
 
         vm.upload_files = False
-        vm.image_name = ATTRIBUTES['centos_7_image_name']
-        vm.username = ATTRIBUTES['centos_7_username']
+        vm.image_name = test_config.platform['centos_7_image_name']
+        vm.username = test_config['test_os_usernames']['centos_7']
 
         hosts.create()
         yield hosts.instances
@@ -47,12 +30,12 @@ def managers_and_vm(cfy, ssh_key, module_tmpdir, attributes, logger):
 
 
 @pytest.fixture(scope='function')
-def example(managers_and_vm, cfy, ssh_key, tmpdir, attributes, logger):
+def example(managers_and_vm, cfy, ssh_key, tmpdir, logger, test_config):
     manager = managers_and_vm[0]
     vm = managers_and_vm[2]
 
     example = get_example_deployment(manager, ssh_key, logger,
-                                     'agent_upgrade', vm)
+                                     'agent_upgrade', test_config, vm)
 
     try:
         yield example

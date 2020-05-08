@@ -1,25 +1,9 @@
-########
-# Copyright (c) 2017 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import time
 import pytest
 from copy import deepcopy
 
 from cosmo_tester.framework.test_hosts import TestHosts as Hosts
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework import util
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
@@ -30,18 +14,17 @@ from cosmo_tester.test_suites.snapshots import (
     wait_for_restore,
 )
 
-ATTRIBUTES = util.get_attributes()
 POST_BOOTSTRAP_NET = 'network_3'
 
 
 @pytest.fixture(scope='module')
-def managers_and_vms(cfy, ssh_key, module_tmpdir, attributes, logger):
+def managers_and_vms(cfy, ssh_key, module_tmpdir, test_config, logger):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack.
     Also provides VMs for testing, on separate networks.
     """
 
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, attributes, logger,
+        cfy, ssh_key, module_tmpdir, test_config, logger,
         number_of_instances=5,
         bootstrappable=True,
         multi_net=True,
@@ -50,8 +33,10 @@ def managers_and_vms(cfy, ssh_key, module_tmpdir, attributes, logger):
 
     for inst in [2, 3, 4]:
         hosts.instances[inst].upload_files = False
-        hosts.instances[inst].image_name = ATTRIBUTES['centos_7_image_name']
-        hosts.instances[inst].username = ATTRIBUTES['centos_7_username']
+        hosts.instances[inst].image_name = test_config.platform[
+            'centos_7_image']
+        hosts.instances[inst].username = test_config[
+            'test_os_usernames']['centos_7']
 
     try:
         hosts.create()
@@ -84,7 +69,7 @@ def prepare_managers(managers, logger):
 
 
 @pytest.fixture(scope='function')
-def examples(managers_and_vms, ssh_key, tmpdir, attributes, logger):
+def examples(managers_and_vms, ssh_key, tmpdir, logger, test_config):
     manager = managers_and_vms[0]
     vms = managers_and_vms[2:]
 
@@ -92,7 +77,8 @@ def examples(managers_and_vms, ssh_key, tmpdir, attributes, logger):
     for idx, vm in enumerate(vms, 1):
         examples.append(
             get_example_deployment(
-                manager, ssh_key, logger, 'multi_net_{}'.format(idx), vm)
+                manager, ssh_key, logger, 'multi_net_{}'.format(idx),
+                test_config, vm)
         )
         examples[-1].inputs['network'] = 'network_{}'.format(idx)
 
@@ -109,7 +95,7 @@ def test_multiple_networks(managers_and_vms,
                            cfy,
                            logger,
                            tmpdir,
-                           attributes):
+                           test_config):
 
     logger.info('Testing managers with multiple networks')
 
@@ -137,7 +123,7 @@ def test_multiple_networks(managers_and_vms,
     for example in examples:
         example.upload_and_verify_install()
 
-    create_snapshot(old_manager, snapshot_id, attributes, logger)
+    create_snapshot(old_manager, snapshot_id, logger)
     download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
 
     new_manager.use()
@@ -149,7 +135,7 @@ def test_multiple_networks(managers_and_vms,
 
     wait_for_restore(new_manager, logger)
 
-    upgrade_agents(cfy, new_manager, logger)
+    upgrade_agents(cfy, new_manager, logger, test_config)
     stop_manager(old_manager, logger)
 
     for example in examples:
@@ -185,16 +171,16 @@ def _add_new_network(manager, logger, restart=True):
 
 
 @pytest.fixture(scope='function')
-def proxy_hosts(request, cfy, ssh_key, module_tmpdir, attributes, logger):
+def proxy_hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, attributes, logger, 3,
+        cfy, ssh_key, module_tmpdir, test_config, logger, 3,
         bootstrappable=True,)
     proxy, manager, vm = hosts.instances
 
     proxy.upload_files = False
-    proxy.image_name = ATTRIBUTES['centos_7_image_name']
+    proxy.image_name = test_config.platform['centos_7_image']
     vm.upload_files = False
-    vm.image_name = ATTRIBUTES['centos_7_image_name']
+    vm.image_name = test_config.platform['centos_7_image']
 
     try:
         hosts.create()
@@ -256,7 +242,8 @@ def proxy_prepare_hosts(instances, logger):
 
 def test_agent_via_proxy(proxy_hosts,
                          logger,
-                         ssh_key):
+                         ssh_key,
+                         test_config):
     proxy, manager, vm = proxy_hosts
 
     # to make sure that the agents go through the proxy, and not connect to
@@ -278,6 +265,6 @@ def test_agent_via_proxy(proxy_hosts,
     manager.use()
 
     example = get_example_deployment(
-        manager, ssh_key, logger, 'agent_via_proxy', vm)
+        manager, ssh_key, logger, 'agent_via_proxy', test_config, vm)
     example.upload_and_verify_install()
     example.uninstall()

@@ -15,9 +15,7 @@
 
 import pytest
 
-from .test_hosts import (
-    TestHosts,
-)
+from cosmo_tester.framework.test_hosts import TestHosts
 
 
 SKIP_SANITY = {'skip_sanity': 'true'}
@@ -28,10 +26,10 @@ MANAGER_SERVICES_TO_INSTALL = ['manager_service']
 
 @pytest.fixture(scope='module')
 def image_based_manager(
-        request, cfy, ssh_key, module_tmpdir, attributes, logger):
+        request, cfy, ssh_key, module_tmpdir, test_config, logger):
     """Creates a cloudify manager from an image in rackspace OpenStack."""
     hosts = TestHosts(
-            cfy, ssh_key, module_tmpdir, attributes, logger, request=request)
+            cfy, ssh_key, module_tmpdir, test_config, logger, request=request)
     try:
         hosts.create()
         hosts.instances[0].restservice_expected = True
@@ -44,11 +42,10 @@ def image_based_manager(
 
 @pytest.fixture(scope='module')
 def image_based_manager_without_plugins(
-        request, cfy, ssh_key, module_tmpdir, attributes, logger):
-    """Creates a cloudify manager from an image in rackspace OpenStack."""
+        request, cfy, ssh_key, module_tmpdir, test_config, logger):
     """Creates a cloudify manager from an image in rackspace OpenStack."""
     hosts = TestHosts(
-            cfy, ssh_key, module_tmpdir, attributes, logger, request=request,
+            cfy, ssh_key, module_tmpdir, test_config, logger, request=request,
             upload_plugins=False)
     try:
         hosts.create()

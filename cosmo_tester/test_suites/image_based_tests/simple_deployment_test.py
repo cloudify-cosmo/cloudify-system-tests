@@ -36,10 +36,11 @@ def test_simple_deployment_using_cfy_install_command(example_deployment, cfy):
 
 
 @pytest.fixture(scope='function')
-def example_deployment(image_based_manager, attributes, ssh_key, tmpdir,
-                       logger, request):
+def example_deployment(image_based_manager, ssh_key, tmpdir,
+                       logger, request, test_config):
     example = get_example_deployment(
-        image_based_manager, ssh_key, logger, request.node.name)
+        image_based_manager, ssh_key, logger, request.node.name,
+        test_config)
 
     yield example
     example.uninstall()

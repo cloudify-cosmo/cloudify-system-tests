@@ -146,7 +146,14 @@ class Config(object):
         # Currently, if we can load it then it's valid.
         return True
 
+    @property
+    def config(self):
+        if not self._config:
+            self._config = self._generate_config()
+        return self._config
+
     def _generate_config(self, schema=None, raw_config=None):
+
         schema = schema or self.schema
         raw_config = raw_config or self.raw_config
 
@@ -177,12 +184,8 @@ class Config(object):
         return config
 
     def __getitem__(self, item):
-        if not self._config:
-            self._config = self._generate_config()
-        config = self._config
-
-        if item in config.keys():
-            return config[item]
+        if item in self.config.keys():
+            return self.config[item]
         else:
             if item in self.raw_config.keys():
                 raise KeyError(
@@ -197,13 +200,17 @@ class Config(object):
                 )
 
     def keys(self):
-        return self._generate_config().keys()
+        return self.config.keys()
 
     def values(self):
-        return self._generate_config().values()
+        return self.config.values()
 
     def items(self):
-        return self._generate_config().items()
+        return self.config.items()
+
+    @property
+    def platform(self):
+        return self.config[self.config['target_platform']]
 
 
 def find_schemas():

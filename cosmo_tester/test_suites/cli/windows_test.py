@@ -3,38 +3,36 @@ import time
 
 import pytest
 
-from cosmo_tester.framework.util import (
-    get_attributes,
-    get_cli_package_url,
-)
+from cosmo_tester.framework.util import get_cli_package_url
 from cosmo_tester.framework.test_hosts import (
     get_image,
     TestHosts as Hosts,
 )
 from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.test_suites.cli import get_image_and_username
 
 
 def get_windows_image_settings():
-    attrs = get_attributes()
     return [
-        (attrs.windows_2012_image_name, attrs.windows_2012_username,
-         'windows_cli_package_url'),
+        ('windows_2012', 'windows_cli_package_url'),
     ]
 
 
 @pytest.fixture(
     scope='module',
     params=get_windows_image_settings())
-def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
+def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
                        logger):
+
+    image, username = get_image_and_username(request.param[0], test_config)
 
     cli_hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
-        attributes, logger, 2, request=request, upload_plugins=False,
+        test_config, logger, 2, request=request, upload_plugins=False,
     )
     cli_hosts.instances[0] = get_image('centos')
-    cli_hosts.instances[0].prepare_for_windows(request.param[0],
-                                               request.param[1])
+    cli_hosts.instances[0].prepare_for_windows(image,
+                                               username)
     cli_hosts.create()
 
     cli_hosts.instances[0].wait_for_winrm()
@@ -42,14 +40,15 @@ def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
     try:
         yield {
             'instances': cli_hosts.instances,
-            'username': request.param[1],
-            'url_key': request.param[2],
+            'username': username,
+            'url_key': request.param[1],
         }
     finally:
         cli_hosts.destroy()
 
 
-def test_cli_on_windows_2012(windows_cli_tester, logger, ssh_key):
+def test_cli_on_windows_2012(windows_cli_tester, logger, ssh_key,
+                             test_config):
     cli_host, manager_host = windows_cli_tester['instances']
     username = windows_cli_tester['username']
     url_key = windows_cli_tester['url_key']
@@ -62,7 +61,8 @@ def test_cli_on_windows_2012(windows_cli_tester, logger, ssh_key):
                                                cli_installer_exe_name)
 
     example = get_example_deployment(
-        manager_host, ssh_key, logger, windows_cli_tester['url_key'])
+        manager_host, ssh_key, logger, windows_cli_tester['url_key'],
+        test_config)
     example.use_windows()
     example.inputs['path'] = '/tmp/{}'.format(windows_cli_tester['url_key'])
     remote_blueprint_path = work_dir + '\\Documents\\blueprint.yaml'
@@ -76,7 +76,7 @@ def test_cli_on_windows_2012(windows_cli_tester, logger, ssh_key):
     cfy_exe = 'C:\\Cloudify\\embedded\\Scripts\\cfy.exe'
 
     logger.info('Downloading CLI package..')
-    cli_package_url = get_cli_package_url(url_key)
+    cli_package_url = get_cli_package_url(url_key, test_config)
     cli_host.run_windows_command(
         """
 $client = New-Object System.Net.WebClient

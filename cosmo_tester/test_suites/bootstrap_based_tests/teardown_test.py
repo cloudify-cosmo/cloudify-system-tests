@@ -18,7 +18,7 @@ from cosmo_tester.framework.examples import get_example_deployment
 pre_bootstrap_state = None
 
 
-def test_teardown(bootstrap_test_manager, ssh_key, logger):
+def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
     check_pre_bootstrap_state(bootstrap_test_manager)
     bootstrap_test_manager.bootstrap()
     bootstrap_test_manager.use()
@@ -27,7 +27,8 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger):
     expected_diffs = {}
 
     example = get_example_deployment(bootstrap_test_manager,
-                                     ssh_key, logger, 'teardown')
+                                     ssh_key, logger, 'teardown',
+                                     test_config)
     example.upload_and_verify_install()
     example.uninstall()
 

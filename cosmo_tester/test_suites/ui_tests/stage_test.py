@@ -13,18 +13,13 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-# import pytest
-
-from cosmo_tester.framework.fixtures import image_based_manager
 from cosmo_tester.framework import util
 
 import subprocess
 import os
 
-manager = image_based_manager
 
-
-def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
+def test_ui(cfy, image_based_manager, module_tmpdir, ssh_key, logger):
 
     logger.info('Installing dependencies to run system tests...')
     subprocess.call(['npm', 'run', 'beforebuild'],
@@ -34,7 +29,7 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
         if os.environ["CENTOS_MANAGER"] == 'false':
             logger.info('Setting Manager user to cloud-user')
             os.environ["MANAGER_USER"] = 'cloud-user'
-        os.environ["MANAGER_IP"] = manager.ip_address
+        os.environ["MANAGER_IP"] = image_based_manager.ip_address
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         if not os.environ["STAGE_PACKAGE_URL"]:
             logger.info('Creating Stage package...')
@@ -48,11 +43,11 @@ def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
     logger.info('Uploading license...')
     license_path = util.get_resource_path('test_valid_paying_license.yaml')
-    manager.client.license.upload(license_path)
+    image_based_manager.client.license.upload(license_path)
 
     logger.info('Starting Stage system tests...')
     logger.info('Using test host at {0}'.format(
         os.environ["STAGE_E2E_SELENIUM_HOST"]))
-    os.environ["STAGE_E2E_MANAGER_URL"] = manager.ip_address
+    os.environ["STAGE_E2E_MANAGER_URL"] = image_based_manager.ip_address
     subprocess.call(['npm', 'run', 'e2e'],
                     cwd=os.environ["CLOUDIFY_STAGE_REPO_PATH"])

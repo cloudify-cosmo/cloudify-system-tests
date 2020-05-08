@@ -1,4 +1,7 @@
 namespace: openstack
+plugin_package_name:
+  description: Package name of plugin for this platform, used to determine if it is already installed on the infrastructure manager.
+  default: cloudify-openstack-plugin
 plugin_url:
   description: URL of plugin for this platform. Will be used to install the platform plugin if it is not present.
   default: http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/3.2.10/cloudify_openstack_plugin-3.2.10-py27-none-linux_x86_64-centos-Core.wgn
@@ -35,6 +38,9 @@ windows_2012_image:
 manager_image_name_prefix:
   description: Prefix to use for manager images on this platform. Will have a suffix of '-<version>', e.g. '-5.0.5'
   default: cloudify-manager-premium
+installer_image:
+  description: Image to use for creating bootstrappable cloudify managers, with the manager-install RPM preinstalled. This should become a prefix when community image versioning is fixed.
+  default: cfy-installer-premium-5.1.0.dev1
 floating_network_id:
   description: Openstack network ID to use for floating IPs.
   default: dda079ce-12cf-4309-879a-8e67aec94de4
