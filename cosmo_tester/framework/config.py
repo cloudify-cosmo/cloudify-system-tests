@@ -117,7 +117,7 @@ class Config(object):
         else:
             self.schema[namespace].update(schema)
 
-    def check_config_is_valid(self, namespace=None):
+    def check_config_is_valid(self, namespace=None, fail_on_missing=True):
         schema = self.schema
         config = self.config.copy()
         # To allow us to warn on keys that aren't in the schema
@@ -139,13 +139,16 @@ class Config(object):
             if key in schema:
                 if schema[key].get('.is_namespace', False):
                     # Descend into this namespace
-                    namespace_valid = self.check_config_is_valid(namespace=key)
+                    namespace_valid = self.check_config_is_valid(
+                        namespace=key,
+                        fail_on_missing=fail_on_missing,
+                    )
                     # We only need to consider updating if the config is still
                     # valid. There's no way for an invalid config to become
                     # valid, so if it's already invalid we can just move on.
                     if config_valid:
                         config_valid = namespace_valid
-                elif config.get(key) is NotSet:
+                elif fail_on_missing and config.get(key) is NotSet:
                     self.logger.error(
                         '{key} is not set and has no default!'.format(
                             key=display_key,
