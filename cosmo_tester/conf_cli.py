@@ -2,6 +2,8 @@ import argparse
 # While the config is yaml, using json to dump the examples of it gives a
 # cleaner output
 import json
+import os
+import sys
 
 from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
@@ -10,7 +12,9 @@ from cosmo_tester.framework.logger import get_logger
 def show_schema(schema,
                 generate_sample_config=False,
                 include_defaults=False,
-                indent=''):
+                indent='',
+                raw_config=None):
+    raw_config = raw_config or {}
     output = []
     sorted_config_entries = schema.keys()
     sorted_config_entries = [
@@ -31,7 +35,12 @@ def show_schema(schema,
     for config_entry in root_config_entries:
         details = schema[config_entry]
         if generate_sample_config:
-            if 'default' in details.keys():
+            if config_entry in raw_config:
+                output.append(indent + '{entry}: {value}'.format(
+                    entry=config_entry,
+                    value=raw_config[config_entry],
+                ))
+            elif 'default' in details.keys():
                 if include_defaults:
                     output.append(indent + '{entry}: {default}'.format(
                         entry=config_entry,
@@ -56,11 +65,28 @@ def show_schema(schema,
             generate_sample_config,
             include_defaults,
             indent + '  ',
+            raw_config=raw_config.get(namespace, {}),
         )
         if namespace_output:
             output.append(indent + namespace + ':')
             output.append(namespace_output)
+
     return '\n'.join(output)
+
+
+def apply_platform_config(logger, config, platform):
+    config.raw_config['target_platform'] = platform
+    if platform == 'openstack':
+        config.raw_config['openstack'] = {}
+        target = config.raw_config['openstack']
+        target['username'] = os.environ["OS_USERNAME"]
+        target['password'] = os.environ["OS_PASSWORD"]
+        target['tenant'] = (
+            os.environ.get("OS_TENANT_NAME")
+            or os.environ['OS_PROJECT_NAME']
+        )
+        target['url'] = os.environ["OS_AUTH_URL"]
+        target['region'] = os.environ.get("OS_REGION_NAME", "RegionOne")
 
 
 def main():
@@ -97,6 +123,15 @@ def main():
         action='store_true',
         default=False
     )
+    generate_args.add_argument(
+        '-p', '--platform',
+        help=(
+            'Generate the initial config including values for the specified '
+            'target platform. For platform configuration to be properly '
+            "generated, you should have that platform's default way of "
+            'authenticating prepared, e.g. ". openstackrc".'
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -107,10 +142,15 @@ def main():
         # the config supplied by the user will validate it
         load_config(logger, args.config_location)
     elif args.action == 'schema':
-        config = load_config(logger)
+        config = load_config(logger, validate=False)
         print(show_schema(config.schema, False))
     elif args.action == 'generate':
         config = load_config(logger, validate=False)
+        if args.platform:
+            apply_platform_config(logger, config, args.platform)
+            if not config.check_config_is_valid(fail_on_missing=False):
+                sys.exit(1)
         print(show_schema(config.schema,
                           generate_sample_config=True,
-                          include_defaults=args.include_defaults))
+                          include_defaults=args.include_defaults,
+                          raw_config=config.raw_config))
