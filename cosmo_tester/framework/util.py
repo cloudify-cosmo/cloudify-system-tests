@@ -32,7 +32,6 @@ from tempfile import mkstemp
 from contextlib import contextmanager
 
 import pkg_resources
-from openstack import connection as openstack_connection
 from path import Path
 
 from cloudify_cli import env as cli_env
@@ -46,35 +45,8 @@ import cosmo_tester
 from cosmo_tester import resources
 
 
-OS_USERNAME_ENV = 'OS_USERNAME'
-OS_PASSWORD_ENV = 'OS_PASSWORD'
-OS_TENANT_NAME_ENV = 'OS_TENANT_NAME'
-OS_PROJECT_NAME_ENV = 'OS_PROJECT_NAME'
-OS_AUTH_URL_ENV = 'OS_AUTH_URL'
-
-
 def get_cli_version():
     return pkg_resources.require('cloudify')[0].version
-
-
-def get_openstack_config():
-    return {
-        'username': os.environ[OS_USERNAME_ENV],
-        'password': os.environ[OS_PASSWORD_ENV],
-        'tenant_name': os.environ.get(OS_TENANT_NAME_ENV,
-                                      os.environ[OS_PROJECT_NAME_ENV]),
-        'auth_url': os.environ[OS_AUTH_URL_ENV]
-    }
-
-
-def create_openstack_client():
-    conn = openstack_connection.Connection(
-        auth_url=os.environ[OS_AUTH_URL_ENV].replace('v3', 'v2.0'),
-        project_name=os.environ[OS_PROJECT_NAME_ENV],
-        username=os.environ[OS_USERNAME_ENV],
-        password=os.environ[OS_PASSWORD_ENV]
-    )
-    return conn
 
 
 def sh_bake(command):
