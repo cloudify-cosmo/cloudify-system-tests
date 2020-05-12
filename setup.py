@@ -40,7 +40,6 @@ setup(
         'pytest',
         'pytest-xdist',
         'testtools',
-        'openstacksdk'
     ],
     package_data={'cosmo_tester': ['resources/schemas/*.yaml']},
     entry_points={

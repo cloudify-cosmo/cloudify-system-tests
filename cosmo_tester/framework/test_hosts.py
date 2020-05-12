@@ -1,18 +1,3 @@
-########
-# Copyright (c) 2019 Cloudify Platform Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 from ipaddress import ip_address, ip_network
 import textwrap
 
@@ -30,6 +15,7 @@ from distutils.version import LooseVersion
 
 import retrying
 from fabric import Connection
+from paramiko.ssh_exception import NoValidConnectionsError
 import winrm
 
 from cosmo_tester.framework import util
@@ -39,7 +25,6 @@ from cloudify_cli.constants import DEFAULT_TENANT_NAME
 HEALTHY_STATE = 'OK'
 REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
 REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
-REMOTE_OPENSTACK_CONFIG_PATH = '/etc/cloudify/openstack_config.json'
 SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 
 
@@ -79,7 +64,6 @@ class VM(object):
         self._cfy = cfy
         self._test_config = test_config
         self._logger = logger
-        self._openstack = util.create_openstack_client()
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
         os.makedirs(self._tmpdir)
         self.node_instance_id = None
@@ -196,11 +180,17 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         )
 
     def stop(self):
-        """Deletes this instance from the OpenStack envrionment."""
+        """Stops this instance running."""
         self._logger.info('Stopping server.. [id=%s]', self.server_id)
-        self._openstack.compute.stop_server(self.server_id)
-        self._wait_for_server_to_be_stopped()
-        self.stopped = True
+        # Previously, we were calling stop_server on openstack, which allowed
+        # clean shutdown
+        self.run_command('shutdown -h now', warn_only=True, use_sudo=True)
+        while True:
+            try:
+                self.run_command('echo Still up...')
+            except NoValidConnectionsError:
+                self._logger.info('Server stopped.')
+                break
 
     def finalize_preparation(self):
         """Complete preparations for using a new instance."""
@@ -215,17 +205,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self.apply_license()
         if self.upload_files:
             self.upload_necessary_files()
-
-    @retrying.retry(stop_max_attempt_number=24, wait_fixed=5000)
-    def _wait_for_server_to_be_stopped(self):
-        self._logger.info('Waiting for server to stop...')
-        servers = [x for x in self._openstack.compute.servers()
-                   if x.id == self.server_id
-                   and x.status != 'SHUTOFF']
-        if servers:
-            self._logger.info('- server.status = %s', servers[0].status)
-        assert len(servers) == 0
-        self._logger.info('Server stopped!')
 
     def verify_services_are_running(self):
         return True
@@ -363,7 +342,6 @@ class _CloudifyManager(VM):
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
-        self._openstack = util.create_openstack_client()
         # Only set this if it wasn't explicitly set elsewhere.
         # (otherwise multiple test managers cannot have different settings for
         # this value due to the way we deploy them)
@@ -388,10 +366,6 @@ class _CloudifyManager(VM):
 
     def upload_necessary_files(self):
         self._logger.info('Uploading necessary files to %s', self)
-        openstack_config_file = self._create_openstack_config_file()
-
-        self.put_remote_file(REMOTE_OPENSTACK_CONFIG_PATH,
-                             openstack_config_file)
 
         self.put_remote_file(REMOTE_PRIVATE_KEY_PATH,
                              self._ssh_key.private_key_path)
@@ -707,12 +681,6 @@ class _CloudifyManager(VM):
                     )
                     self._logger.info('Bootstrap in progress...')
                     return False
-
-    def _create_openstack_config_file(self):
-        openstack_config_file = self._tmpdir / 'openstack_config.json'
-        openstack_config_file.write_text(json.dumps(
-            util.get_openstack_config(), indent=2))
-        return openstack_config_file
 
     @retrying.retry(stop_max_attempt_number=200, wait_fixed=1000)
     def wait_for_all_executions(self, include_system_workflows=True):
