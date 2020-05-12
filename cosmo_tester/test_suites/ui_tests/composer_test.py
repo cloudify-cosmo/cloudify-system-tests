@@ -36,6 +36,6 @@ def test_ui(cfy, image_based_manager, module_tmpdir, ssh_key, logger):
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
 
     logger.info('Starting Composer system tests...')
-    os.environ["COMPOSER_E2E_MANAGER_URL"] = manager.ip_address
+    os.environ["COMPOSER_E2E_MANAGER_URL"] = image_based_manager.ip_address
     subprocess.call(['npm', 'run', 'e2e'],
                     cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
