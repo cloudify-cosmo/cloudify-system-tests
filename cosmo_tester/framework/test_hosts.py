@@ -180,7 +180,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         )
 
     def stop(self):
-        """Stops this instance running."""
+        """Stops this instance."""
         self._logger.info('Stopping server.. [id=%s]', self.server_id)
         # Previously, we were calling stop_server on openstack, which allowed
         # clean shutdown
@@ -188,6 +188,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         while True:
             try:
                 self.run_command('echo Still up...')
+                time.sleep(3)
             except NoValidConnectionsError:
                 self._logger.info('Server stopped.')
                 break
