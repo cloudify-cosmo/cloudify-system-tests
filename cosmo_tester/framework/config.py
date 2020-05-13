@@ -1,5 +1,5 @@
+from collections import Mapping
 import pkg_resources
-import warnings
 import yaml
 
 import os
@@ -11,66 +11,85 @@ class SchemaError(Exception):
 
 
 class NotSet(object):
-    def __repr__(self):
-        return 'not set'
+    pass
 
 
-class Config(object):
-    schema = {}
-    raw_config = {}
-    namespaces = set([None])
-    _config = None
+class NameSpace(Mapping):
+    def __init__(self, config, raw_config):
+        self._config = config
+        self.raw_config = raw_config
 
+    def __getitem__(self, item):
+        if item in self._config:
+            return self._config[item]
+        else:
+            if item in self.raw_config:
+                raise KeyError(
+                    'Config entry {key} was supplied but was not in the '
+                    'schema. Please update the schema to use this config '
+                    'entry.'.format(key=item)
+                )
+            else:
+                raise KeyError(
+                    'Config entry {key} was not supplied and is not in '
+                    'schema.'.format(key=item)
+                )
+
+    def __iter__(self):
+        return iter(self._config)
+
+    def __len__(self):
+        return len(self._config)
+
+    def copy(self):
+        return self._config.copy()
+
+
+# Couldn't this all be a lot simpler?
+# Yes.
+# However, when we've gone for simpler approaches in the past we invariably
+# end up with all sorts of weird and wonderful things happening, such as:
+#   - Configuration entries created with unclear names and unclear utility.
+#   - Configuration entries being added within the test framework run, to be
+#     consumed elsewhere within that run, which you can only know exist if
+#     you already knew to look.
+#   - Configuration entries that need to exist, but don't, meaning that you
+#     get to wait 10 minutes for VMs to be deployed before the test fails
+#     due to not having a configuration entry it required.
+# Until such time as we can all be uplifted as perfect machines, this config
+# approach should make it hard to do the wrong thing.
+# Now we just need to also make it easy to do the right thing!
+class Config(NameSpace):
     def __init__(self, config_file, config_schema_files, logger):
-        self.logger = logger
+        self._logger = logger
+        self.schema = {}
+        self.raw_config = {}
+        self._cached_config = None
 
         # Load all initially supplied schemas
         for schema in config_schema_files:
-            self.update_schema(schema)
+            self._update_schema(schema)
         # We'll be pretty useless if we allow no config
         if len(self.schema) == 0:
             raise SchemaError('No valid config entries loaded from schemas.')
 
         # Load config
         if config_file:
-            self.update_config(config_file)
+            self._update_config(config_file)
 
-    def _nest_dotted_key(self, root_dict, key_path, value):
-        this_key = key_path.pop(0)
-
-        if len(key_path) == 0:
-            root_dict[this_key] = value
-        else:
-            if this_key not in root_dict.keys():
-                root_dict[this_key] = {}
-            self._nest_dotted_key(
-                root_dict[this_key],
-                key_path=key_path,
-                value=value,
-            )
-
-    def update_config(self, config_file):
+    def _update_config(self, config_file):
         with open(config_file) as config_handle:
-            raw_config = yaml.load(config_handle.read())
-        processed_config = {}
-        for key in raw_config.keys():
-            key_path = key.split('.')
-            self._nest_dotted_key(
-                processed_config,
-                key_path,
-                raw_config.pop(key),
-            )
-        self.raw_config.update(processed_config)
+            raw_config = yaml.load(config_handle)
+        self.raw_config.update(raw_config)
 
-    def update_schema(self, schema_file):
+    def _update_schema(self, schema_file):
         with open(schema_file) as schema_handle:
-            schema = yaml.load(schema_handle.read())
+            schema = yaml.load(schema_handle)
 
         namespace = None
-        if 'namespace' in schema.keys():
+        if 'namespace' in schema:
             namespace = schema['namespace']
-            self.namespaces.add(namespace)
-            if namespace in self.schema.keys():
+            if namespace in self.schema:
                 if not self.schema[namespace]['.is_namespace']:
                     raise SchemaError(
                         'Attempted to define namespace {namespace} but this '
@@ -90,7 +109,7 @@ class Config(object):
             if namespace is not None:
                 display_key = '.'.join([namespace, key])
             if '.' in key:
-                self.logger.error(
+                self._logger.error(
                     '{key} is not a valid name for a configuration entry. '
                     'Keys must not contain dots as this will interfere with '
                     'configuration access and display.'.format(
@@ -98,8 +117,8 @@ class Config(object):
                     )
                 )
                 healthy_schema = False
-            if 'description' not in value.keys():
-                self.logger.error(
+            if 'description' not in value:
+                self._logger.error(
                     '{key} in schema does not have description. '
                     'Please add a description for this schema entry.'.format(
                         key=display_key,
@@ -119,13 +138,15 @@ class Config(object):
 
     def check_config_is_valid(self, namespace=None, fail_on_missing=True):
         schema = self.schema
-        config = self.config.copy()
-        # To allow us to warn on keys that aren't in the schema
-        # (e.g. due to typo)
-        config.update(self.raw_config)
+        config = self._config.copy()
+        raw_config = self.raw_config.copy()
         if namespace:
             schema = self.schema[namespace]
-            config = config.get(namespace, {})
+            config = config.get(namespace, {}).copy()
+            raw_config = raw_config.get(namespace, {}).copy()
+        # To allow us to warn on keys that aren't in the schema
+        # (e.g. due to typo)
+        config.update(raw_config)
 
         config_valid = True
 
@@ -143,13 +164,9 @@ class Config(object):
                         namespace=key,
                         fail_on_missing=fail_on_missing,
                     )
-                    # We only need to consider updating if the config is still
-                    # valid. There's no way for an invalid config to become
-                    # valid, so if it's already invalid we can just move on.
-                    if config_valid:
-                        config_valid = namespace_valid
+                    config_valid = config_valid and namespace_valid
                 elif fail_on_missing and config.get(key) is NotSet:
-                    self.logger.error(
+                    self._logger.error(
                         '{key} is not set and has no default!'.format(
                             key=display_key,
                         )
@@ -160,7 +177,7 @@ class Config(object):
                     valid_values = schema[key].get('valid_values')
                     if valid_values:
                         if key_value not in valid_values:
-                            self.logger.error(
+                            self._logger.error(
                                 '{key} is set to "{value}", but this is not '
                                 'an allowed value. Allowed values are: '
                                 '{allowed}'.format(
@@ -174,7 +191,7 @@ class Config(object):
                     validate_dir = schema[key].get('validate_existing_dir')
                     if validate_dir:
                         if not os.path.isdir(key_value):
-                            self.logger.error(
+                            self._logger.error(
                                 '{key} is set to "{value}". This key must '
                                 'refer to a directory which exists, but the '
                                 'specified path is not a directory.'.format(
@@ -188,7 +205,7 @@ class Config(object):
                     if validate_optional_dir:
                         key_value = None if key_value is NotSet else key_value
                         if key_value and not os.path.isdir(key_value):
-                            self.logger.error(
+                            self._logger.error(
                                 '{key} is set to "{value}". If set, this key '
                                 'must refer to a directory which exists, but '
                                 'the specified path is not a directory.'
@@ -198,7 +215,7 @@ class Config(object):
                                 )
                             )
             else:
-                self.logger.warn(
+                self._logger.warn(
                     '{key} is in config, but not defined in the schema. '
                     'This key will not be usable until correctly defined '
                     'in the schema.'.format(key=display_key)
@@ -206,19 +223,18 @@ class Config(object):
         return config_valid
 
     @property
-    def config(self):
-        if not self._config:
-            self._config = self._generate_config()
-        return self._config
+    def _config(self):
+        if not self._cached_config:
+            self._cached_config = self._generate_config()
+        return self._cached_config
 
     def _generate_config(self, schema=None, raw_config=None):
-
         schema = schema or self.schema
         raw_config = self.raw_config if raw_config is None else raw_config
 
         # Get all namespaces and config entries at the current level
         namespaces = [
-            key for key in schema.keys()
+            key for key in schema
             if key != '.is_namespace'
             and schema[key].get('.is_namespace', False)
         ]
@@ -240,55 +256,25 @@ class Config(object):
                 raw_config=raw_config.get(namespace, {}),
             )
 
-        return config
-
-    def __getitem__(self, item):
-        if item in self.config.keys():
-            return self.config[item]
-        else:
-            if item in self.raw_config.keys():
-                raise KeyError(
-                    'Config entry {key} was supplied but was not in the '
-                    'schema. Please update the schema to use this config '
-                    'entry.'.format(key=item)
-                )
-            else:
-                raise KeyError(
-                    'Config entry {key} was not supplied and is not in '
-                    'schema.'.format(key=item)
-                )
-
-    def keys(self):
-        return self.config.keys()
-
-    def values(self):
-        return self.config.values()
-
-    def items(self):
-        return self.config.items()
+        return NameSpace(config, raw_config)
 
     @property
     def platform(self):
-        return self.config[self.config['target_platform']]
+        return self._config[self._config['target_platform']]
 
 
 def find_schemas():
-    # I'm not entirely keen on ignoring the userwarning here,
-    # but it seems like both Ubuntu and centos default to group
-    # writeable ~/.python-eggs, which triggers this warning.
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', category=UserWarning)
-        schemas = pkg_resources.resource_listdir(
+    schemas = pkg_resources.resource_listdir(
+        'cosmo_tester',
+        'config_schemas',
+    )
+    schemas = [
+        pkg_resources.resource_filename(
             'cosmo_tester',
-            'config_schemas',
+            os.path.join('config_schemas', schema),
         )
-        schemas = [
-            pkg_resources.resource_filename(
-                'cosmo_tester',
-                os.path.join('config_schemas', schema),
-            )
-            for schema in schemas
-        ]
+        for schema in schemas
+    ]
 
     return schemas
 
@@ -307,15 +293,14 @@ def load_config(logger, config_file=None, missing_config_fail=True,
             logger=logger,
         )
     except SchemaError as err:
-        sys.stderr.write('{}'.format(err))
-        sys.exit(1)
+        raise
     except IOError as err:
         message = 'Could not find config or schema file: {config}'.format(
             config=err.filename,
         )
         if missing_config_fail:
             logger.error(message)
-            sys.exit(2)
+            raise
         else:
             logger.warn(message)
 
