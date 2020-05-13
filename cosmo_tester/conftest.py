@@ -70,7 +70,7 @@ def ssh_key(module_tmpdir, logger):
 
 
 def pytest_addoption(parser):
-    """Add the --cloudify-tester-config option to pytest."""
+    """Tell the framework where to find the test file."""
     parser.addoption(
         '--config-location',
         action='store',

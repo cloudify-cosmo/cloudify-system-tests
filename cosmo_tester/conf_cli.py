@@ -34,20 +34,30 @@ def show_schema(schema,
 
     for config_entry in root_config_entries:
         details = schema[config_entry]
+        template = '{indent}{entry}: {value} # {description}'
         if generate_sample_config:
             if config_entry in raw_config:
-                output.append(indent + '{entry}: {value}'.format(
+                output.append(template.format(
+                    indent=indent,
                     entry=config_entry,
                     value=raw_config[config_entry],
+                    description=details['description'],
                 ))
             elif 'default' in details.keys():
                 if include_defaults:
-                    output.append(indent + '{entry}: {default}'.format(
+                    output.append(template.format(
+                        indent=indent,
                         entry=config_entry,
-                        default=json.dumps(details['default'])
+                        value=json.dumps(details['default']),
+                        description=details['description'],
                     ))
             else:
-                output.append(indent + '{entry}: '.format(entry=config_entry))
+                output.append(template.format(
+                    indent=indent,
+                    entry=config_entry,
+                    value='',
+                    description=details['description'],
+                ))
         else:
             line = '{entry}: {description}'
             if 'default' in schema[config_entry].keys():
@@ -154,3 +164,7 @@ def main():
                           generate_sample_config=True,
                           include_defaults=args.include_defaults,
                           raw_config=config.raw_config))
+
+
+if __name__ == '__main__':
+    main()
