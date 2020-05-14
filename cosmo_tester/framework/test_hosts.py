@@ -883,7 +883,7 @@ class TestHosts(object):
                 "Attempting to tear down test resources.", str(err)
             )
             self.destroy()
-            raise err
+            raise
 
     def destroy(self):
         """Destroys the infrastructure. """
