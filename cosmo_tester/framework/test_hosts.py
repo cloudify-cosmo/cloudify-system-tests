@@ -11,7 +11,6 @@ import uuid
 import yaml
 from retrying import retry
 from contextlib import contextmanager
-from distutils.version import LooseVersion
 
 import retrying
 from fabric import Connection
@@ -541,29 +540,10 @@ class _CloudifyManager(VM):
                             service['display_name'], instance['SubState'])
 
     def set_image_details(self, test_config):
-        if self.image_type == 'master':
-            version = util.get_cli_version()
-            version_num, _, version_milestone = version.partition('-')
+        distro = test_config['test_manager']['distro']
+        image_names = test_config['manager_image_names_{}'.format(distro)]
+        self.image_name = image_names[self.image_type.replace('.', '_')]
 
-            # starting 5.0.0, we name images with the trailing .0
-            if LooseVersion(version_num) < '5.0.0':
-                if version_num.endswith('.0') and version_num.count('.') > 1:
-                    version_num = version_num[:-2]
-
-            distro = test_config['test_manager']['distro']
-            version = version_num + version_milestone
-        else:
-            version = self.image_type.replace('.', '_')
-
-        image_name = '{prefix}-{suffix}'.format(
-            prefix=test_config.platform['manager_image_name_prefix'],
-            suffix=version,
-        )
-
-        if distro != 'centos':
-            image_name = image_name + '-{distro}'.format(distro=distro)
-
-        self.image_name = image_name
         username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
         self.username = test_config['test_os_usernames'][username_key]
 

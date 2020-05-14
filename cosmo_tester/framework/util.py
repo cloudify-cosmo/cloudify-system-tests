@@ -31,7 +31,6 @@ from os import makedirs
 from tempfile import mkstemp
 from contextlib import contextmanager
 
-import pkg_resources
 from path import Path
 
 from cloudify_cli import env as cli_env
@@ -43,10 +42,6 @@ from .exceptions import ProcessExecutionError
 
 import cosmo_tester
 from cosmo_tester import resources
-
-
-def get_cli_version():
-    return pkg_resources.require('cloudify')[0].version
 
 
 def sh_bake(command):
