@@ -111,9 +111,9 @@ def test_inplace_upgrade(cfy,
                     break
                 else:
                     sleep(retry_delay)
-            except Exception as err:
+            except Exception:
                 if attempt == max_attempts - 1:
-                    raise(err)
+                    raise
                 sleep(retry_delay)
         if not reboot_triggered:
             log_tail = fabric_ssh.run(
