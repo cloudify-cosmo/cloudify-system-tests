@@ -23,10 +23,7 @@ import pytest
 import yaml
 import jinja2
 
-from cosmo_tester.framework.util import (
-    get_resource_path,
-    is_community,
-)
+from cosmo_tester.framework.util import get_resource_path
 
 
 @pytest.fixture(scope='function')
@@ -63,7 +60,7 @@ def _test_cli_on_osx(package_tester, attributes):
         'cloudify_rpm_url': None,  # Will need repopulating when fixing this
         'cloudify_license': ''
     }
-    if not is_community():
+    if True:  # TODO: Fix this when updating this test (check for premium)
         inputs['cloudify_license'] = yaml.load(get_resource_path(
             'test_valid_paying_license.yaml'
         ))
