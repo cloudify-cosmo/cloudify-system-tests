@@ -199,6 +199,7 @@ class Config(NameSpace):
                                     value=key_value,
                                 )
                             )
+                            config_valid = False
 
                     validate_optional_dir = schema[key].get(
                         'validate_optional_dir')
@@ -214,6 +215,7 @@ class Config(NameSpace):
                                     value=key_value,
                                 )
                             )
+                            config_valid = False
             else:
                 self._logger.warn(
                     '{key} is in config, but not defined in the schema. '
