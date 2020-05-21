@@ -35,9 +35,6 @@ centos_6_image:
 windows_2012_image:
   description: Image to use for Windows 2012 on this platform.
   default: windows_server_2012_r2_standard_eval
-manager_image_name_prefix:
-  description: Prefix to use for manager images on this platform. Will have a suffix of '-<version>', e.g. '-5.0.5'
-  default: cloudify-manager-premium
 installer_image:
   description: Image to use for creating bootstrappable cloudify managers, with the manager-install RPM preinstalled. This should become a prefix when community image versioning is fixed.
   default: cfy-installer-premium-5.1.0.dev1
