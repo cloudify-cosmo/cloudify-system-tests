@@ -766,7 +766,7 @@ def get_image(version):
     return img_cls(version)
 
 
-class TestHosts(object):
+class Hosts(object):
 
     def __init__(self,
                  cfy,
@@ -774,10 +774,10 @@ class TestHosts(object):
                  tmpdir,
                  test_config,
                  logger,
+                 request,
                  number_of_instances=1,
                  instances=None,
                  upload_plugins=True,
-                 request=None,
                  flavor=None,
                  multi_net=False,
                  bootstrappable=False,
@@ -788,8 +788,6 @@ class TestHosts(object):
         for a list of instances of different versions to be created at once.
         if instances is provided, number_of_instances will be ignored
         """
-
-        super(TestHosts, self).__init__()
         self._logger = logger
         self._test_config = test_config
         self._tmpdir = tmpdir
@@ -807,6 +805,7 @@ class TestHosts(object):
         self.tenant = None
         self.deployments = []
         self.blueprints = []
+        self.test_identifier = None
 
         self.multi_net = multi_net
         self.vm_net_mappings = vm_net_mappings or {}
@@ -843,6 +842,7 @@ class TestHosts(object):
             ),
             time=datetime.strftime(datetime.now(), '%Y%m%d%H%M%S'),
         )
+        self.test_identifier = test_identifier
 
         # Connect to the infrastructure manager for setting up the tests
         infra_mgr_config = self._test_config['infrastructure_manager']
@@ -885,8 +885,33 @@ class TestHosts(object):
             self.destroy()
             raise
 
-    def destroy(self):
+    def destroy(self, passed=None):
         """Destroys the infrastructure. """
+        if passed is None:
+            try:
+                passed = self._request.session.testspassed
+            except AttributeError:
+                passed = 0
+        if passed:
+            if self._test_config['teardown']['on_success']:
+                self._logger.info('Preparing to destroy with passed tests...')
+            else:
+                self._logger.info(
+                    'Tests passed, skipping teardown due to configuration.'
+                    'To tear down, clean deployments on your test manager '
+                    'under tenant {}'.format(self.test_identifier)
+                )
+                return
+        else:
+            if self._test_config['teardown']['on_failure']:
+                self._logger.info('Preparing to destroy with failed tests...')
+            else:
+                self._logger.info(
+                    'Tests failed, skipping teardown due to configuration. '
+                    'To tear down, clean deployments on your test manager '
+                    'under tenant {}'.format(self.test_identifier)
+                )
+                return
         try:
             self._save_manager_logs()
         except Exception as e:

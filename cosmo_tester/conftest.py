@@ -106,3 +106,22 @@ def cfy(module_tmpdir, logger):
     cfy = util.sh_bake(sh.cfy)
     cfy(['--version'])
     return cfy
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    # execute all other hooks to obtain the report object
+    outcome = yield
+    rep = outcome.get_result()
+    if rep.when == 'call':
+        if rep.passed:
+            if hasattr(item.session, 'testspassed'):
+                item.session.testspassed += 1
+            else:
+                item.session.testspassed = 1
+        elif rep.skipped:
+            if hasattr(item.session, 'testsskipped'):
+                item.session.testsskipped += 1
+            else:
+                item.session.testsskipped = 1
+        # No need to handle failed, there's a builtin hook for that

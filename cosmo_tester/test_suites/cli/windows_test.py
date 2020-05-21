@@ -6,7 +6,7 @@ import pytest
 from cosmo_tester.framework.util import get_cli_package_url
 from cosmo_tester.framework.test_hosts import (
     get_image,
-    TestHosts as Hosts,
+    Hosts,
 )
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cli import get_image_and_username
@@ -28,7 +28,7 @@ def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
 
     cli_hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
-        test_config, logger, 2, request=request, upload_plugins=False,
+        test_config, logger, request, 2, upload_plugins=False,
     )
     cli_hosts.instances[0] = get_image('centos')
     cli_hosts.instances[0].prepare_for_windows(image,
@@ -37,14 +37,19 @@ def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
 
     cli_hosts.instances[0].wait_for_winrm()
 
+    passed = True
+
     try:
         yield {
             'instances': cli_hosts.instances,
             'username': username,
             'url_key': request.param[1],
         }
+    except Exception:
+        passed = False
+        raise
     finally:
-        cli_hosts.destroy()
+        cli_hosts.destroy(passed=passed)
 
 
 def test_cli_on_windows_2012(windows_cli_tester, logger, ssh_key,

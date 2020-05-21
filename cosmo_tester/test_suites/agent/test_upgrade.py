@@ -2,14 +2,19 @@ import pytest
 
 from cosmo_tester.framework import util
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.test_hosts import TestHosts as Hosts
+from cosmo_tester.framework.test_hosts import Hosts
 
 from cosmo_tester.test_suites.snapshots import restore_snapshot
 
 
 @pytest.fixture(scope='module')
-def managers_and_vm(cfy, ssh_key, module_tmpdir, test_config, logger):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, 3)
+def managers_and_vm(cfy, ssh_key, module_tmpdir, test_config, logger,
+                    request):
+    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
+                  3)
+
+    passed = True
+
     try:
         managers = hosts.instances[:2]
         vm = hosts.instances[2]
@@ -25,8 +30,11 @@ def managers_and_vm(cfy, ssh_key, module_tmpdir, test_config, logger):
 
         hosts.create()
         yield hosts.instances
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)
 
 
 @pytest.fixture(scope='function')

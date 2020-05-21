@@ -1,6 +1,6 @@
 import pytest
 
-from cosmo_tester.framework.test_hosts import TestHosts as Hosts
+from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.test_suites.snapshots import get_multi_tenant_versions_list
 
 
@@ -8,7 +8,7 @@ from cosmo_tester.test_suites.snapshots import get_multi_tenant_versions_list
 def hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
-        test_config, logger, request=request,
+        test_config, logger, request,
         number_of_instances=3, upload_plugins=False,
     )
 

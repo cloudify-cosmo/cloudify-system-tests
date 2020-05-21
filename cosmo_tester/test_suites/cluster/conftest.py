@@ -6,7 +6,7 @@ import pytest
 from os.path import join, dirname
 from jinja2 import Environment, FileSystemLoader
 
-from cosmo_tester.framework.test_hosts import TestHosts
+from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework import util
 
 CONFIG_DIR = join(dirname(__file__), 'config')
@@ -17,55 +17,58 @@ def skip(*args, **kwargs):
 
 
 @pytest.fixture()
-def brokers(cfy, ssh_key, module_tmpdir, test_config, logger):
-    for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir,
-                               test_config, logger, broker_count=3):
+def brokers(cfy, ssh_key, module_tmpdir, test_config, logger, request):
+    for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir, test_config,
+                               logger, request, broker_count=3):
         yield _brokers
 
 
 @pytest.fixture()
-def broker(cfy, ssh_key, module_tmpdir, test_config, logger):
+def broker(cfy, ssh_key, module_tmpdir, test_config, logger, request):
     for _brokers in _get_hosts(cfy, ssh_key, module_tmpdir, test_config,
-                               logger, broker_count=1):
+                               logger, request, broker_count=1):
         yield _brokers[0]
 
 
 @pytest.fixture()
-def dbs(cfy, ssh_key, module_tmpdir, test_config, logger):
+def dbs(cfy, ssh_key, module_tmpdir, test_config, logger, request):
     for _dbs in _get_hosts(cfy, ssh_key, module_tmpdir, test_config,
-                           logger, db_count=3):
+                           logger, request, db_count=3):
         yield _dbs
 
 
 @pytest.fixture()
-def brokers_and_manager(cfy, ssh_key, module_tmpdir, test_config, logger):
+def brokers_and_manager(cfy, ssh_key, module_tmpdir, test_config, logger,
+                        request):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           test_config, logger,
+                           test_config, logger, request,
                            broker_count=2, manager_count=1):
         yield _vms
 
 
 @pytest.fixture()
-def brokers3_and_manager(cfy, ssh_key, module_tmpdir, test_config, logger):
+def brokers3_and_manager(cfy, ssh_key, module_tmpdir, test_config, logger,
+                         request):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           test_config, logger,
+                           test_config, logger, request,
                            broker_count=3, manager_count=1):
         yield _vms
 
 
 @pytest.fixture()
-def full_cluster(cfy, ssh_key, module_tmpdir, test_config, logger):
+def full_cluster(cfy, ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           test_config, logger,
+                           test_config, logger, request,
                            broker_count=3, db_count=3, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
 
 
 @pytest.fixture()
-def cluster_with_lb(cfy, ssh_key, module_tmpdir, test_config, logger):
+def cluster_with_lb(cfy, ssh_key, module_tmpdir, test_config, logger,
+                    request):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           test_config, logger,
+                           test_config, logger, request,
                            broker_count=1, db_count=1, manager_count=3,
                            use_load_balancer=True, pre_cluster_rabbit=True):
         yield _vms
@@ -73,9 +76,9 @@ def cluster_with_lb(cfy, ssh_key, module_tmpdir, test_config, logger):
 
 @pytest.fixture()
 def cluster_missing_one_db(cfy, ssh_key, module_tmpdir, test_config,
-                           logger):
+                           logger, request):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           test_config, logger,
+                           test_config, logger, request,
                            skip_bootstrap_list=['db3'],
                            broker_count=3, db_count=3, manager_count=2,
                            pre_cluster_rabbit=True):
@@ -84,23 +87,25 @@ def cluster_missing_one_db(cfy, ssh_key, module_tmpdir, test_config,
 
 @pytest.fixture()
 def cluster_with_single_db(cfy, ssh_key, module_tmpdir, test_config,
-                           logger):
+                           logger, request):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir,
-                           test_config, logger,
+                           test_config, logger, request,
                            broker_count=3, db_count=1, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
 
 
 @pytest.fixture()
-def minimal_cluster(cfy, ssh_key, module_tmpdir, test_config, logger):
+def minimal_cluster(cfy, ssh_key, module_tmpdir, test_config, logger,
+                    request):
     for _vms in _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger,
+                           request,
                            broker_count=1, db_count=1, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
 
 
-def _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger,
+def _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,
                # Pre-cluster rabbit determines whether to cluster rabbit
@@ -110,8 +115,8 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger,
                pre_cluster_rabbit=False, high_security=True):
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
-    hosts = TestHosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger,
+    hosts = Hosts(
+        cfy, ssh_key, module_tmpdir, test_config, logger, request,
         number_of_instances=broker_count + db_count + manager_count + (
             1 if use_load_balancer else 0
         ),
