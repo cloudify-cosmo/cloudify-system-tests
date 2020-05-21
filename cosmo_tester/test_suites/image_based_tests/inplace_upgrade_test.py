@@ -1,18 +1,3 @@
-########
-# Copyright (c) 2015 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 from time import sleep
 from os.path import join
 
@@ -20,7 +5,7 @@ import pytest
 
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.test_hosts import (
-    TestHosts as Hosts,
+    Hosts,
     get_image,
 )
 
@@ -28,7 +13,8 @@ from cosmo_tester.framework.test_hosts import (
 @pytest.fixture(scope='module', params=['5.0.5', 'master'])
 def manager_and_vm(request, cfy, ssh_key, module_tmpdir, test_config,
                    logger):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, 2)
+    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
+                  2)
     hosts.instances[0] = get_image(request.param)
     manager, vm = hosts.instances
 
@@ -38,12 +24,18 @@ def manager_and_vm(request, cfy, ssh_key, module_tmpdir, test_config,
     vm.upload_files = False
     vm.image_name = test_config.platform['centos_7_image']
     vm.username = test_config['test_os_usernames']['centos_7']
+
+    passed = True
+
     try:
         hosts.create()
         manager.use()
         yield hosts.instances
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)
 
 
 @pytest.fixture(scope='function')

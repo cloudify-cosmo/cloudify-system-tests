@@ -1,0 +1,9 @@
+namespace: teardown
+on_success:
+  description: Whether to tear down test resources if the test passes.
+  default: true
+  valid_values: [true, false]
+on_failure:
+  description: Whether to tear down test resources if the test fails.
+  default: false
+  valid_value: [true, false]

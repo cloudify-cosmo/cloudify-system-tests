@@ -9,7 +9,7 @@ from cosmo_tester.framework.util import (
 )
 from cosmo_tester.framework.test_hosts import (
     get_image,
-    TestHosts as Hosts,
+    Hosts,
 )
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cli import get_image_and_username
@@ -39,17 +39,25 @@ def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
 
     cli_hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
-        test_config, logger, instances=instances, request=request,
+        test_config, logger, request, instances=instances,
         upload_plugins=False,
     )
-    cli_hosts.create()
 
-    yield {
-        'cli_hosts': cli_hosts,
-        'username': instances[1].username,
-        'url_key': request.param[1],
-    }
-    cli_hosts.destroy()
+    passed = True
+
+    try:
+        cli_hosts.create()
+
+        yield {
+            'cli_hosts': cli_hosts,
+            'username': instances[1].username,
+            'url_key': request.param[1],
+        }
+    except Exception:
+        passed = False
+        raise
+    finally:
+        cli_hosts.destroy(passed=passed)
 
 
 def test_cli_on_linux(linux_cli_tester, module_tmpdir, ssh_key, logger,

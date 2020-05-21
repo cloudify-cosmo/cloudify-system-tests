@@ -2,7 +2,7 @@ import time
 import pytest
 from copy import deepcopy
 
-from cosmo_tester.framework.test_hosts import TestHosts as Hosts
+from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
@@ -18,13 +18,14 @@ POST_BOOTSTRAP_NET = 'network_3'
 
 
 @pytest.fixture(scope='module')
-def managers_and_vms(cfy, ssh_key, module_tmpdir, test_config, logger):
+def managers_and_vms(cfy, ssh_key, module_tmpdir, test_config, logger,
+                     request):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack.
     Also provides VMs for testing, on separate networks.
     """
 
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger,
+        cfy, ssh_key, module_tmpdir, test_config, logger, request,
         number_of_instances=5,
         bootstrappable=True,
         multi_net=True,
@@ -38,12 +39,17 @@ def managers_and_vms(cfy, ssh_key, module_tmpdir, test_config, logger):
         hosts.instances[inst].username = test_config[
             'test_os_usernames']['centos_7']
 
+    passed = True
+
     try:
         hosts.create()
         prepare_managers(hosts.instances[:2], logger)
         yield hosts.instances
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)
 
 
 def prepare_managers(managers, logger):
@@ -173,7 +179,7 @@ def _add_new_network(manager, logger, restart=True):
 @pytest.fixture(scope='function')
 def proxy_hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger, 3,
+        cfy, ssh_key, module_tmpdir, test_config, logger, request, 3,
         bootstrappable=True,)
     proxy, manager, vm = hosts.instances
 
@@ -182,12 +188,17 @@ def proxy_hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
     vm.upload_files = False
     vm.image_name = test_config.platform['centos_7_image']
 
+    passed = True
+
     try:
         hosts.create()
         proxy_prepare_hosts(hosts.instances, logger)
         yield hosts.instances
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)
 
 
 PROXY_SERVICE_TEMPLATE = """

@@ -3,14 +3,17 @@ from cosmo_tester.test_suites.agent import get_test_prerequisites
 
 
 def test_windows_with_service_user(cfy, ssh_key, module_tmpdir, test_config,
-                                   logger):
+                                   logger, request):
     hosts, username, password = get_test_prerequisites(
-        cfy, ssh_key, module_tmpdir, test_config, logger, 'windows_2012',
+        cfy, ssh_key, module_tmpdir, test_config, logger, request,
+        'windows_2012',
     )
     manager, vm = hosts.instances
 
     service_user = '.\\testuser'
     service_password = 'svcpasS45'
+
+    passed = True
 
     try:
         hosts.create()
@@ -35,5 +38,8 @@ def test_windows_with_service_user(cfy, ssh_key, module_tmpdir, test_config,
         example.inputs['service_password'] = service_password
         example.upload_and_verify_install()
         example.uninstall()
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)
