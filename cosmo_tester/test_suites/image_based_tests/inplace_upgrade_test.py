@@ -15,7 +15,7 @@ def manager_and_vm(request, cfy, ssh_key, module_tmpdir, test_config,
                    logger):
     hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
                   2)
-    hosts.instances[0] = get_image(request.param)
+    hosts.instances[0] = get_image(request.param, test_config)
     manager, vm = hosts.instances
 
     manager.upload_files = False

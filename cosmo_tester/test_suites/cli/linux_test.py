@@ -29,8 +29,8 @@ def get_linux_image_settings():
 def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
                      logger, install_dev_tools=True):
     instances = [
-        get_image('centos'),
-        get_image('master'),
+        get_image('centos', test_config),
+        get_image('master', test_config),
     ]
 
     image, username = get_image_and_username(request.param[0], test_config)

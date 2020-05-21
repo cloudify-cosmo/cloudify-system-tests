@@ -24,15 +24,14 @@ def get_windows_image_settings():
 def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
                        logger):
 
-    image, username = get_image_and_username(request.param[0], test_config)
+    _, username = get_image_and_username(request.param[0], test_config)
 
     cli_hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
         test_config, logger, request, 2, upload_plugins=False,
     )
-    cli_hosts.instances[0] = get_image('centos')
-    cli_hosts.instances[0].prepare_for_windows(image,
-                                               username)
+    cli_hosts.instances[0] = get_image('centos', test_config)
+    cli_hosts.instances[0].prepare_for_windows(request.param[0])
     cli_hosts.create()
 
     cli_hosts.instances[0].wait_for_winrm()
