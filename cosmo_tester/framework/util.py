@@ -69,10 +69,6 @@ def get_resource_path(resource, resources_dir=None):
     return os.path.join(resources_dir, resource)
 
 
-def get_yaml_as_dict(yaml_path):
-    return yaml.load(Path(yaml_path).text())
-
-
 def create_rest_client(
         manager_ip,
         username=None,
@@ -159,27 +155,9 @@ def get_cli_package_url(platform, test_config):
     return url
 
 
-def _get_contents_from_github(repo, resource_path):
-    branch = os.environ.get('BRANCH_NAME_CORE', 'master')
-    url = (
-        'https://raw.githubusercontent.com/cloudify-cosmo/'
-        '{repo}/{branch}/{resource_path}'
-    ).format(repo=repo, branch=branch, resource_path=resource_path)
-    session = get_authenticated_git_session()
-    r = session.get(url)
-    if not r.ok:
-        raise RuntimeError(
-            'Error retrieving github content from {url}'.format(url=url)
-        )
-    return r.text
-
-
 def _get_package_url(filename, test_config):
-    """Gets the package URL(s).
-    They will be retrieved either from GitHub (if (GITHUB_TOKEN exists in env)
-    or locally if the cloudify-premium or cloudify-versions repository is
-    checked out under the same folder the cloudify-system-tests repo is
-    checked out.
+    """Gets the package URL(s) from the local premium or versions repo.
+    See the package_urls section of the test config for details.
     """
     package_urls_key = 'premium' if test_config['premium'] else 'community'
 
@@ -193,97 +171,6 @@ def _get_package_url(filename, test_config):
 
     with open(package_url_file):
         return package_url_file.read()
-
-
-class YamlPatcher(object):
-
-    pattern = re.compile(r'(.+)\[(\d+)\]')
-    set_pattern = re.compile(r'(.+)\[(\d+|append)\]')
-
-    def __init__(self, yaml_path, is_json=False, default_flow_style=True):
-        self.yaml_path = Path(yaml_path)
-        self.obj = yaml.load(self.yaml_path.text()) or {}
-        self.is_json = is_json
-        self.default_flow_style = default_flow_style
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_type:
-            output = json.dumps(self.obj) if self.is_json else yaml.safe_dump(
-                self.obj, default_flow_style=self.default_flow_style)
-            self.yaml_path.write_text(output)
-
-    def merge_obj(self, obj_prop_path, merged_props):
-        obj = self._get_object_by_path(obj_prop_path)
-        for key, value in merged_props.items():
-            obj[key] = value
-
-    def set_value(self, prop_path, new_value):
-        obj, prop_name = self._get_parent_obj_prop_name_by_path(prop_path)
-        list_item_match = self.set_pattern.match(prop_name)
-        if list_item_match:
-            prop_name = list_item_match.group(1)
-            obj = obj[prop_name]
-            if not isinstance(obj, list):
-                raise AssertionError('Cannot set list value for not list item '
-                                     'in {0}'.format(prop_path))
-            raw_index = list_item_match.group(2)
-            if raw_index == 'append':
-                obj.append(new_value)
-            else:
-                obj[int(raw_index)] = new_value
-        else:
-            obj[prop_name] = new_value
-
-    def append_value(self, prop_path, value):
-        obj, prop_name = self._get_parent_obj_prop_name_by_path(prop_path)
-        obj[prop_name] = obj[prop_name] + value
-
-    def _split_path(self, path):
-        # allow escaping '.' with '\.'
-        parts = re.split(r'(?<![^\\]\\)\.', path)
-        return [p.replace(r'\.', '.').replace('\\\\', '\\') for p in parts]
-
-    def _get_object_by_path(self, prop_path):
-        current = self.obj
-        for prop_segment in self._split_path(prop_path):
-            match = self.pattern.match(prop_segment)
-            if match:
-                index = int(match.group(2))
-                property_name = match.group(1)
-                if property_name not in current:
-                    self._raise_illegal(prop_path)
-                if type(current[property_name]) != list:
-                    self._raise_illegal(prop_path)
-                current = current[property_name][index]
-            else:
-                if prop_segment not in current:
-                    current[prop_segment] = {}
-                current = current[prop_segment]
-        return current
-
-    def delete_property(self, prop_path, raise_if_missing=True):
-        obj, prop_name = self._get_parent_obj_prop_name_by_path(prop_path)
-        if prop_name in obj:
-            obj.pop(prop_name)
-        elif raise_if_missing:
-            raise KeyError('cannot delete property {0} as its not a key in '
-                           'object {1}'.format(prop_name, obj))
-
-    def _get_parent_obj_prop_name_by_path(self, prop_path):
-        split = self._split_path(prop_path)
-        if len(split) == 1:
-            return self.obj, prop_path
-        parent_path = '.'.join(p.replace('.', r'\.') for p in split[:-1])
-        parent_obj = self._get_object_by_path(parent_path)
-        prop_name = split[-1]
-        return parent_obj, prop_name
-
-    @staticmethod
-    def _raise_illegal(prop_path):
-        raise RuntimeError('illegal path: {0}'.format(prop_path))
 
 
 @retrying.retry(stop_max_attempt_number=20, wait_fixed=5000)
@@ -360,10 +247,6 @@ def mkdirs(folder_path):
             raise
 
 
-def is_redhat():
-    return 'redhat' in platform.platform()
-
-
 def run(command, retries=0, stdin=b'', ignore_failures=False,
         globx=False, shell=False, env=None, stdout=None, logger=logging):
     def subprocess_preexec():
@@ -394,16 +277,6 @@ def run(command, retries=0, stdin=b'', ignore_failures=False,
                 command_str, proc.aggr_stderr)
             raise ProcessExecutionError(msg, proc.returncode)
     return proc
-
-
-def sudo(command, *args, **kwargs):
-    if isinstance(command, str):
-        command = shlex.split(command)
-    if 'env' in kwargs:
-        command = ['sudo', '-E'] + command
-    else:
-        command.insert(0, 'sudo')
-    return run(command=command, *args, **kwargs)
 
 
 def write_to_tempfile(contents, json_dump=False):
@@ -613,52 +486,3 @@ def wait_for_execution(manager, execution, logger):
         )
     logger.info('Execution complete')
     return execution
-
-
-def _get_release_dict_by_name(
-        item_name, dict_or_list):
-    if isinstance(dict_or_list, dict):
-        return dict_or_list.get(item_name)
-    elif isinstance(dict_or_list, list):
-        for item in dict_or_list:
-            if item['name'] == item_name:
-                return item
-    raise Exception('No item named {0} in {1}'.format(
-        item_name, dict_or_list)
-    )
-
-
-def get_authenticated_git_session(git_token=None):
-    git_token = git_token or os.environ.get('GITHUB_TOKEN')
-    session = requests.Session()
-    if git_token:
-        session.headers['Authorization'] = 'token %s' % git_token
-    return session
-
-
-def download_asset(repository_path,
-                   release_name,
-                   asset_name,
-                   save_location,
-                   git_token=None):
-
-    session = get_authenticated_git_session(git_token)
-    releases = session.get(
-        'https://api.github.com/repos/{0}/releases'.format(
-            repository_path))
-    if not releases.ok:
-        raise RuntimeError(
-            'Failed to authenticate to {0}, reason: {1}'.format(
-                releases.url, releases.reason))
-
-    release = _get_release_dict_by_name(release_name, releases.json())
-    asset = _get_release_dict_by_name(asset_name, release['assets'])
-    session.headers['Accept'] = 'application/octet-stream'
-
-    with session.get(asset['url'], stream=True) as response:
-        if not response.ok:
-            raise Exception(
-                'Failed to download {0}'.format(asset['url']))
-        with open(save_location, 'wb') as f:
-            for chunk in response.iter_content(1024):
-                f.write(chunk)
