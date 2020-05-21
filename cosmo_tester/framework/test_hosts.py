@@ -29,15 +29,17 @@ SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 
 class VM(object):
 
-    def __init__(self, image_type):
+    def __init__(self, image_type, test_config):
         self.image_type = image_type
         self.upload_plugins = None
         self.image_name = None
         self.userdata = ""
+        self.username = None
         self.enable_ssh_wait = True
         self.should_finalize = True
         self.restservice_expected = False
         self.upload_files = True
+        self._test_config = test_config
 
     def assign(
             self,
@@ -47,7 +49,6 @@ class VM(object):
             rest_client,
             ssh_key,
             cfy,
-            test_config,
             logger,
             tmpdir,
             upload_plugins,  # Ignored
@@ -61,7 +62,6 @@ class VM(object):
         self.deleted = False
         self._ssh_key = ssh_key
         self._cfy = cfy
-        self._test_config = test_config
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
         os.makedirs(self._tmpdir)
@@ -71,11 +71,17 @@ class VM(object):
         self.deployment_id = deployment_id
         self.server_id = server_id
         # For backwards compatabilitish, keeping defaults here
-        self.image_name = self._test_config.platform['centos_7_image']
-        self.username = test_config['test_os_usernames']['centos_7']
+        self.image_name = (
+            self.image_name or self._test_config.platform['centos_7_image']
+        )
+        self.username = (
+            self.username or self._test_config['test_os_usernames']['centos_7']
+        )
 
-    def prepare_for_windows(self, image, user):
+    def prepare_for_windows(self, version):
         """Prepare this VM to be created as a windows VM."""
+        image = self._test_config.platform['{}_image'.format(version)]
+        user = self._test_config['test_os_usernames'][version]
         add_firewall_cmd = "&netsh advfirewall firewall add rule"
         password = 'AbCdEfG123456!'
 
@@ -111,8 +117,12 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     @retrying.retry(stop_max_attempt_number=120, wait_fixed=3000)
     def wait_for_winrm(self):
         self._logger.info('Checking Windows VM %s is up...', self.ip_address)
-        self.run_windows_command('Write-Output "Testing winrm."',
-                                 powershell=True)
+        try:
+            self.run_windows_command('Write-Output "Testing winrm."',
+                                     powershell=True)
+        except Exception as err:
+            self._logger.warn('...failed: {err}'.format(err=err))
+            raise
         self._logger.info('...Windows VM is up.')
 
     def run_windows_command(self, command, powershell=False,
@@ -310,6 +320,9 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         # (thanks, ruamel)
         return str(node_id_parts[1].strip())
 
+    def set_image_details(self):
+        pass
+
     image_type = 'centos'
 
 
@@ -323,7 +336,6 @@ class _CloudifyManager(VM):
             rest_client,
             ssh_key,
             cfy,
-            test_config,
             logger,
             tmpdir,
             upload_plugins,
@@ -338,7 +350,6 @@ class _CloudifyManager(VM):
         self.networks = networks
         self._ssh_key = ssh_key
         self._cfy = cfy
-        self._test_config = test_config
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
@@ -539,13 +550,14 @@ class _CloudifyManager(VM):
                         'service {0} is in {1} state'.format(
                             service['display_name'], instance['SubState'])
 
-    def set_image_details(self, test_config):
-        distro = test_config['test_manager']['distro']
-        image_names = test_config['manager_image_names_{}'.format(distro)]
+    def set_image_details(self):
+        distro = self._test_config['test_manager']['distro']
+        image_names = self._test_config[
+            'manager_image_names_{}'.format(distro)]
         self.image_name = image_names[self.image_type.replace('.', '_')]
 
         username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
-        self.username = test_config['test_os_usernames'][username_key]
+        self.username = self._test_config['test_os_usernames'][username_key]
 
     @property
     def api_version(self):
@@ -745,7 +757,7 @@ class _CloudifyManager(VM):
             self.run_command('ifup eth{0}'.format(i), use_sudo=True)
 
 
-def get_image(version):
+def get_image(version, test_config):
     supported = [
         '4.3.1', '4.4', '4.5', '4.5.5', '4.6', '5.0.5', 'master',
         'centos',
@@ -763,7 +775,7 @@ def get_image(version):
     else:
         img_cls = _CloudifyManager
 
-    return img_cls(version)
+    return img_cls(version, test_config)
 
 
 class Hosts(object):
@@ -796,7 +808,7 @@ class Hosts(object):
         self.preconfigure_callback = None
         if instances is None:
             self.instances = [
-                get_image('master')
+                get_image('master', test_config)
                 for _ in range(number_of_instances)]
         else:
             self.instances = instances
@@ -870,7 +882,7 @@ class Hosts(object):
 
             # Deploy hosts
             for index, instance in enumerate(self.instances):
-                instance.set_image_details(self._test_config)
+                instance.set_image_details()
                 self._deploy_test_vm(instance.image_name, index,
                                      test_identifier)
 
@@ -1228,7 +1240,6 @@ class Hosts(object):
             rest_client,
             self._ssh_key,
             self._cfy,
-            self._test_config,
             self._logger,
             self._tmpdir,
             self.upload_plugins,
