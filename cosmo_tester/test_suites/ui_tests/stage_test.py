@@ -25,5 +25,5 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     logger.info('Using test host at {0}'.format(
         os.environ["STAGE_E2E_SELENIUM_HOST"]))
     os.environ["STAGE_E2E_MANAGER_URL"] = test_ui_manager.ip_address
-    subprocess.call(['npm', 'run', 'e2e'],
-                    cwd=test_config['ui']['stage_repo'])
+    subprocess.check_call(['npm', 'run', 'e2e'],
+                          cwd=test_config['ui']['stage_repo'])
