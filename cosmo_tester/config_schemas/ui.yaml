@@ -1,0 +1,11 @@
+namespace: ui
+update:
+  description: Whether to update the manager's UI based on the local packages.
+  valid_values: [true, false]
+  default: false
+composer_repo:
+  description: Path to the a local clone of the composer repo. Must be set to run UI tests.
+  default: ../cloudify-blueprint-composer
+stage_repo:
+  description: Path to the a local clone of the stage repo. Must be set to run UI tests.
+  default: ../cloudify-stage
