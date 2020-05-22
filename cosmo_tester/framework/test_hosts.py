@@ -31,7 +31,6 @@ class VM(object):
 
     def __init__(self, image_type, test_config):
         self.image_type = image_type
-        self.upload_plugins = None
         self.image_name = None
         self.userdata = ""
         self.username = None
@@ -40,6 +39,7 @@ class VM(object):
         self.restservice_expected = False
         self.upload_files = True
         self._test_config = test_config
+        self.windows = False
 
     def assign(
             self,
@@ -51,7 +51,6 @@ class VM(object):
             cfy,
             logger,
             tmpdir,
-            upload_plugins,  # Ignored
             node_instance_id,
             deployment_id,
             server_id,
@@ -59,7 +58,6 @@ class VM(object):
         self.ip_address = public_ip_address
         self.private_ip_address = private_ip_address
         self.client = rest_client
-        self.deleted = False
         self._ssh_key = ssh_key
         self._cfy = cfy
         self._logger = logger
@@ -91,6 +89,7 @@ class VM(object):
         self.should_finalize = False
         self.image_name = image
         self.username = user
+        self.windows = True
 
         self.userdata = """#ps1_sysnative
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
@@ -225,9 +224,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def wait_for_manager(self):
         return True
 
-    def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
-        return True
-
     def upload_necessary_files(self):
         return True
 
@@ -338,7 +334,6 @@ class _CloudifyManager(VM):
             cfy,
             logger,
             tmpdir,
-            upload_plugins,
             node_instance_id,
             deployment_id,
             server_id,
@@ -346,18 +341,12 @@ class _CloudifyManager(VM):
         self.ip_address = public_ip_address
         self.private_ip_address = private_ip_address
         self.client = rest_client
-        self.deleted = False
         self.networks = networks
         self._ssh_key = ssh_key
         self._cfy = cfy
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
-        # Only set this if it wasn't explicitly set elsewhere.
-        # (otherwise multiple test managers cannot have different settings for
-        # this value due to the way we deploy them)
-        if self.upload_plugins is None:
-            self.upload_plugins = upload_plugins
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
@@ -413,44 +402,6 @@ class _CloudifyManager(VM):
             fabric_ssh.sudo('chmod 440 {sanity_mode}'.format(
                 sanity_mode=SANITY_MODE_FILE_PATH,
             ))
-
-    def upload_plugin(self, plugin_name, tenant_name=DEFAULT_TENANT_NAME):
-        # Included in VM so that bootstrapped managers can use it
-        all_plugins = util.get_plugin_wagon_urls()
-        plugins = [p for p in all_plugins if p['name'] == plugin_name]
-        if len(plugins) != 1:
-            self._logger.error(
-                '%s plugin wagon not found in:%s%s',
-                plugin_name,
-                os.linesep,
-                json.dumps(all_plugins, indent=2))
-            raise RuntimeError(
-                '{} plugin not found in wagons list'.format(plugin_name))
-        plugin = plugins[0]
-        self._logger.info('Uploading %s plugin [%s] to %s..',
-                          plugin_name,
-                          plugin['wgn_url'],
-                          self)
-
-        yaml_snippet = '--yaml-path {0}'.format(
-            plugin['plugin_yaml_url'])
-        try:
-            with self.ssh() as fabric_ssh:
-                # This will only work for images as cfy is pre-installed there.
-
-                # from some reason this method is usually less error prone.
-                fabric_ssh.run(
-                    'cfy plugins upload {0} -t {1} {2}'.format(
-                        plugin['wgn_url'], tenant_name, yaml_snippet
-                    ))
-        except Exception:
-            self.use()
-            command = [plugin['wgn_url'], '-t', tenant_name]
-            if yaml_snippet:
-                command += ['--yaml-path', plugin['plugin_yaml_url']]
-            self._cfy.plugins.upload(command)
-
-        self.wait_for_all_executions()
 
     def upload_test_plugin(self, tenant_name=DEFAULT_TENANT_NAME):
         self._logger.info('Uploading test plugin to %s', tenant_name)
@@ -789,7 +740,6 @@ class Hosts(object):
                  request,
                  number_of_instances=1,
                  instances=None,
-                 upload_plugins=True,
                  flavor=None,
                  multi_net=False,
                  bootstrappable=False,
@@ -813,7 +763,6 @@ class Hosts(object):
         else:
             self.instances = instances
         self._request = request
-        self.upload_plugins = upload_plugins
         self.tenant = None
         self.deployments = []
         self.blueprints = []
@@ -1242,7 +1191,6 @@ class Hosts(object):
             self._cfy,
             self._logger,
             self._tmpdir,
-            self.upload_plugins,
             node_instance_id,
             deployment_id,
             server_id,
@@ -1250,11 +1198,11 @@ class Hosts(object):
 
     def _save_manager_logs(self):
         self._logger.debug('_save_manager_logs started')
-        logs_dir = os.environ.get('CFY_LOGS_PATH_LOCAL')
+        logs_dir = self._test_config['logs_path']
         test_path = self._tmpdir.name
         if not logs_dir:
-            self._logger.debug('CFY_LOGS_PATH_LOCAL has not been set, not '
-                               'saving the logs.')
+            self._logger.debug("Test config 'logs_path' has not been set, "
+                               'not saving the logs.')
             return
 
         self._logger.info(
@@ -1262,47 +1210,40 @@ class Hosts(object):
         logs_dir = os.path.join(os.path.expanduser(logs_dir), test_path)
         util.mkdirs(logs_dir)
         for i, instance in enumerate(self.instances):
-            instance_deleted = getattr(instance, "deleted", None)
-            if instance_deleted:
-                self._logger.info('Cannot save logs for server with index '
-                                  '%d, since server has been deleted or not '
-                                  'initialized.', i)
-            else:
-                self._save_logs_for_instance(instance, logs_dir, i)
+            self._save_logs_for_instance(instance, logs_dir, i)
 
         self._logger.debug('_save_manager_logs completed')
 
     @retry(stop_max_attempt_number=3, wait_fixed=5000)
     def _save_logs_for_instance(self, instance, logs_dir, instance_index):
-        def _generate_prefix():
-            """
-            :return: log tar file prefix in the following format:
-                <instance_class_name>__[<pytest_params_if_exist>__] +
-                    + <index_number_in_instances_list>__<server_id>__
-            """
-            prefix = '{}__'.format(instance.__class__.__name__)
-            if self._request and hasattr(self._request, 'param'):
-                prefix += '{}__'.format(self._request.param)
-            prefix += 'index_{}__'.format(instance_index)
-            return prefix
+        if instance.windows:
+            self._logger.info(
+                'Skipping windows instance %(id)s',
+                {
+                    'id': instance.server_id,
+                },
+            )
+            return
+
+        # Generate log tar file prefix in the following format:
+        # <instance_class_name>__<pytest_params_if_exist>__<instance index>
+        prefix = '{}__'.format(instance.__class__.__name__)
+        if self._request and hasattr(self._request, 'param'):
+            prefix += '{}__'.format(self._request.param)
+        prefix += 'index_{}__'.format(instance_index)
 
         self._logger.info('Attempting to download logs for Cloudify Manager '
                           'with ID: %s...', instance.server_id)
-        self._logger.info('Switching profiles...')
         try:
-            instance.use()
-            logs_filename = '{}__{}_logs.tar.gz'.format(_generate_prefix(),
+            logs_filename = '{}__{}_logs.tar.gz'.format(prefix,
                                                         instance.server_id)
-            target = os.path.join(logs_dir, logs_filename)
-            self._logger.info('Force updating the profile...')
-            self._cfy.profiles.set(
-                ssh_key=instance.ssh_key.private_key_path,
-                ssh_user=instance.username,
-                skip_credentials_validation=True)
-            self._logger.info('Starting to download the logs...')
-            self._cfy.logs.download(output_path=target)
-            self._logger.info('Purging the logs...')
-            self._cfy.logs.purge(force=True)
+            logs_path = os.path.join(logs_dir, logs_filename)
+
+            self._logger.info('Compressing logs...')
+            instance.run_command('tar -czf /tmp/logs.tar.gz /var/log',
+                                 use_sudo=True)
+            self._logger.info('Downloading logs...')
+            instance.get_remote_file('/tmp/logs.tar.gz', logs_path)
         except Exception as err:
             self._logger.warning(
                 'Failed to download logs for node with ID %(id)s, due to '

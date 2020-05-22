@@ -128,7 +128,6 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
         for node in hosts.instances:
             node.verify_services_are_running = skip
             node.upload_necessary_files = skip
-            node.upload_plugin = skip
 
         hosts.create()
 

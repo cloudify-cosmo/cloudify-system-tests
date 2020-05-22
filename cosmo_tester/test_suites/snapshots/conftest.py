@@ -9,7 +9,7 @@ def hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
         test_config, logger, request,
-        number_of_instances=3, upload_plugins=False,
+        number_of_instances=3,
     )
 
     hosts.instances[0].image_type = request.param

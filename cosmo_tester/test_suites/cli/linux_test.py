@@ -40,7 +40,6 @@ def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
     cli_hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
         test_config, logger, request, instances=instances,
-        upload_plugins=False,
     )
 
     passed = True

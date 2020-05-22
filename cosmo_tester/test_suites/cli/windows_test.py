@@ -28,7 +28,7 @@ def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
 
     cli_hosts = Hosts(
         cfy, ssh_key, module_tmpdir,
-        test_config, logger, request, 2, upload_plugins=False,
+        test_config, logger, request, 2,
     )
     cli_hosts.instances[0] = get_image('centos', test_config)
     cli_hosts.instances[0].prepare_for_windows(request.param[0])
