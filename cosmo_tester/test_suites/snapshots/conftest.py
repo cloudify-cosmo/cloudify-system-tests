@@ -15,7 +15,6 @@ def hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
     hosts.instances[0].image_type = request.param
 
     vm = hosts.instances[2]
-    vm.upload_files = False
     vm.image_name = test_config.platform['centos_7_image']
     vm.username = test_config['test_os_usernames']['centos_7']
 

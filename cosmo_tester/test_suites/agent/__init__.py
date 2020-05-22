@@ -8,10 +8,8 @@ def get_test_prerequisites(cfy, ssh_key, module_tmpdir, test_config, logger,
     hosts.instances[1] = get_image('centos', test_config)
     manager, vm = hosts.instances
 
-    manager.upload_files = False
     manager.restservice_expected = True
 
-    vm.upload_files = False
     image_name = test_config.platform['{}_image'.format(vm_os)]
     username = test_config['test_os_usernames'][vm_os]
 
