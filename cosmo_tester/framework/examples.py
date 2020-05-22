@@ -18,7 +18,6 @@ class BaseExample(object):
         self.ssh_key = ssh_key
         self.tenant = tenant
         self.inputs = {
-            'path': '/tmp/test_file',
             'content': 'Test',
         }
         if using_agent:
@@ -69,6 +68,10 @@ class BaseExample(object):
                 self.blueprint_file, self.blueprint_id)
 
     def create_deployment(self, skip_plugins_validation=False, wait=True):
+        if 'path' not in self.inputs:
+            self.inputs['path'] = '/home/{user}/test_file'.format(
+                user=self.example_host.username,
+            )
         self.logger.info(
                 'Creating deployment [id=%s] with the following inputs:\n%s',
                 self.deployment_id,
