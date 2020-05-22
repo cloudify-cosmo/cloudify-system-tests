@@ -54,17 +54,6 @@ pytest --pdb -s cosmo_tester/test_suites/image_based_tests/simple_deployment_tes
 --pdb is recommended for manual test runs as this will pause test execution on failure and may allow you to gain valuable insight into the cause of the failure.
 -s is recommended in order to ensure all test output is shown.
 
-### Saving the Cloudify Manager's logs
-In order to save the logs of tests, specify the path via an environment variable as follows:
-
-`export CFY_LOGS_PATH_LOCAL=<YOUR-PATH-HERE>`
-
-For example you may use:
-```bash
-export CFY_LOGS_PATH_LOCAL=~/cfy_logs/
-```
-which will save the logs to `~/cfy/_logs/` of only the failed tests.
-
 ## Using the config in tests
 There are two supported ways of accessing the config within tests.
 
