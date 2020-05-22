@@ -9,7 +9,6 @@ import re
 import time
 import uuid
 import yaml
-from retrying import retry
 from contextlib import contextmanager
 
 import retrying
@@ -873,85 +872,80 @@ class Hosts(object):
                     'under tenant {}'.format(self.test_identifier)
                 )
                 return
-        try:
-            self._save_manager_logs()
-        except Exception as e:
+
+        self._logger.info('Destroying test hosts..')
+        if self.tenant:
             self._logger.info(
-                "Unable to save logs due to exception: %s", str(e))
-        finally:
-            self._logger.info('Destroying test hosts..')
-            if self.tenant:
-                self._logger.info(
-                    'Switching profile to %s on %s',
-                    self.tenant,
-                    self._test_config['infrastructure_manager']['address'],
-                )
-                self._cfy.profiles.use(
-                    self._test_config['infrastructure_manager']['address'],
-                )
-                self._cfy.profiles.set('--manager-tenant', self.tenant)
+                'Switching profile to %s on %s',
+                self.tenant,
+                self._test_config['infrastructure_manager']['address'],
+            )
+            self._cfy.profiles.use(
+                self._test_config['infrastructure_manager']['address'],
+            )
+            self._cfy.profiles.set('--manager-tenant', self.tenant)
 
-                self._logger.info('Ensuring executions are stopped.')
-                execs = json.loads(self._cfy.executions.list('--json').stdout)
-                for execution in execs:
-                    if execution['workflow_id'] != (
-                        'create_deployment_environment'
-                    ):
-                        self._logger.info(
-                            'Ensuring %s (%s) is not running.',
-                            execution['id'],
-                            execution['workflow_id'],
-                        )
-                        self._cfy.executions.cancel(
-                            '--force', '--kill', execution['id'],
-                        )
-                    else:
-                        self._logger.info(
-                            'Skipping %s (%s).',
-                            execution['id'],
-                            execution['workflow_id'],
-                        )
-
-                # Remove tenants in the opposite order to the order they were
-                # deployed in, so that we don't try to remove the
-                # infrastructure before removing the VMs using it.
-                self._logger.info('Uninstalling and removing deployments.')
-                for deployment in reversed(self.deployments):
-                    self._logger.info('Uninstalling %s', deployment)
-                    self._cfy.executions.start(
-                        "--deployment-id", deployment,
-                        "uninstall",
+            self._logger.info('Ensuring executions are stopped.')
+            execs = json.loads(self._cfy.executions.list('--json').stdout)
+            for execution in execs:
+                if execution['workflow_id'] != (
+                    'create_deployment_environment'
+                ):
+                    self._logger.info(
+                        'Ensuring %s (%s) is not running.',
+                        execution['id'],
+                        execution['workflow_id'],
                     )
-                    self._logger.info('Deleting %s', deployment)
-                    self._cfy.deployments.delete(deployment)
+                    self._cfy.executions.cancel(
+                        '--force', '--kill', execution['id'],
+                    )
+                else:
+                    self._logger.info(
+                        'Skipping %s (%s).',
+                        execution['id'],
+                        execution['workflow_id'],
+                    )
 
-                self._logger.info('Deleting blueprints.')
-                for blueprint in self.blueprints:
-                    self._logger.info('Deleting %s', blueprint)
-                    self._cfy.blueprints.delete(blueprint)
+            # Remove tenants in the opposite order to the order they were
+            # deployed in, so that we don't try to remove the
+            # infrastructure before removing the VMs using it.
+            self._logger.info('Uninstalling and removing deployments.')
+            for deployment in reversed(self.deployments):
+                self._logger.info('Uninstalling %s', deployment)
+                self._cfy.executions.start(
+                    "--deployment-id", deployment,
+                    "uninstall",
+                )
+                self._logger.info('Deleting %s', deployment)
+                self._cfy.deployments.delete(deployment)
 
-                self._logger.info('Deleting plugins.')
-                plugins = json.loads(self._cfy.plugins.list('--json').stdout)
-                for plugin in plugins:
-                    if plugin["tenant_name"] != self.tenant:
-                        self._logger.info(
-                            'Skipping shared %s (%s)',
-                            plugin['package_name'],
-                            plugin['id'],
-                        )
-                    else:
-                        self._logger.info(
-                            'Deleting %s (%s)',
-                            plugin['package_name'],
-                            plugin['id'],
-                        )
-                        self._cfy.plugins.delete(plugin['id'])
+            self._logger.info('Deleting blueprints.')
+            for blueprint in self.blueprints:
+                self._logger.info('Deleting %s', blueprint)
+                self._cfy.blueprints.delete(blueprint)
 
-                self._logger.info('Switching back to default tenant.')
-                self._cfy.profiles.set('--manager-tenant', 'default_tenant')
-                self._logger.info('Deleting tenant %s', self.tenant)
-                self._cfy.tenants.delete(self.tenant)
-                self.tenant = None
+            self._logger.info('Deleting plugins.')
+            plugins = json.loads(self._cfy.plugins.list('--json').stdout)
+            for plugin in plugins:
+                if plugin["tenant_name"] != self.tenant:
+                    self._logger.info(
+                        'Skipping shared %s (%s)',
+                        plugin['package_name'],
+                        plugin['id'],
+                    )
+                else:
+                    self._logger.info(
+                        'Deleting %s (%s)',
+                        plugin['package_name'],
+                        plugin['id'],
+                    )
+                    self._cfy.plugins.delete(plugin['id'])
+
+            self._logger.info('Switching back to default tenant.')
+            self._cfy.profiles.set('--manager-tenant', 'default_tenant')
+            self._logger.info('Deleting tenant %s', self.tenant)
+            self._cfy.tenants.delete(self.tenant)
+            self.tenant = None
 
     def _upload_secrets_to_infrastructure_manager(self):
         self._logger.info(
@@ -1195,61 +1189,3 @@ class Hosts(object):
             deployment_id,
             server_id,
         )
-
-    def _save_manager_logs(self):
-        self._logger.debug('_save_manager_logs started')
-        logs_dir = self._test_config['logs_path']
-        test_path = self._tmpdir.name
-        if not logs_dir:
-            self._logger.debug("Test config 'logs_path' has not been set, "
-                               'not saving the logs.')
-            return
-
-        self._logger.info(
-            'Attempting to save manager logs for test:  {0}'.format(test_path))
-        logs_dir = os.path.join(os.path.expanduser(logs_dir), test_path)
-        util.mkdirs(logs_dir)
-        for i, instance in enumerate(self.instances):
-            self._save_logs_for_instance(instance, logs_dir, i)
-
-        self._logger.debug('_save_manager_logs completed')
-
-    @retry(stop_max_attempt_number=3, wait_fixed=5000)
-    def _save_logs_for_instance(self, instance, logs_dir, instance_index):
-        if instance.windows:
-            self._logger.info(
-                'Skipping windows instance %(id)s',
-                {
-                    'id': instance.server_id,
-                },
-            )
-            return
-
-        # Generate log tar file prefix in the following format:
-        # <instance_class_name>__<pytest_params_if_exist>__<instance index>
-        prefix = '{}__'.format(instance.__class__.__name__)
-        if self._request and hasattr(self._request, 'param'):
-            prefix += '{}__'.format(self._request.param)
-        prefix += 'index_{}__'.format(instance_index)
-
-        self._logger.info('Attempting to download logs for Cloudify Manager '
-                          'with ID: %s...', instance.server_id)
-        try:
-            logs_filename = '{}__{}_logs.tar.gz'.format(prefix,
-                                                        instance.server_id)
-            logs_path = os.path.join(logs_dir, logs_filename)
-
-            self._logger.info('Compressing logs...')
-            instance.run_command('tar -czf /tmp/logs.tar.gz /var/log',
-                                 use_sudo=True)
-            self._logger.info('Downloading logs...')
-            instance.get_remote_file('/tmp/logs.tar.gz', logs_path)
-        except Exception as err:
-            self._logger.warning(
-                'Failed to download logs for node with ID %(id)s, due to '
-                'error: %(err)s',
-                {
-                    'id': instance.server_id,
-                    'err': str(err),
-                },
-            )
