@@ -23,5 +23,5 @@ def test_composer(test_ui_manager, ssh_key, logger, test_config):
 
     logger.info('Starting Composer system tests...')
     os.environ["COMPOSER_E2E_MANAGER_URL"] = test_ui_manager.ip_address
-    subprocess.call(['npm', 'run', 'e2e'],
-                    cwd=test_config['ui']['composer_repo'])
+    subprocess.check_call(['npm', 'run', 'e2e'],
+                          cwd=test_config['ui']['composer_repo'])
