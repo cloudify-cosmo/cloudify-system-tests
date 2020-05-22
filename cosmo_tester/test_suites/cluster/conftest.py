@@ -127,7 +127,6 @@ def _get_hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
     try:
         for node in hosts.instances:
             node.verify_services_are_running = skip
-            node.upload_necessary_files = skip
 
         hosts.create()
 
@@ -284,11 +283,9 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
         return
 
     if pre_cluster_rabbit and rabbit_num == 1:
-        node.bootstrap(blocking=True, enter_sanity_mode=False,
-                       restservice_expected=False)
+        node.bootstrap(blocking=True, restservice_expected=False)
     else:
-        node.bootstrap(blocking=False, enter_sanity_mode=False,
-                       restservice_expected=False)
+        node.bootstrap(blocking=False, restservice_expected=False)
 
 
 def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
@@ -338,8 +335,7 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
     if node.friendly_name in skip_bootstrap_list:
         return
 
-    node.bootstrap(blocking=False, enter_sanity_mode=False,
-                   restservice_expected=False)
+    node.bootstrap(blocking=False, restservice_expected=False)
 
 
 def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,

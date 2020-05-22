@@ -33,7 +33,6 @@ def managers_and_vms(cfy, ssh_key, module_tmpdir, test_config, logger,
     )
 
     for inst in [2, 3, 4]:
-        hosts.instances[inst].upload_files = False
         hosts.instances[inst].image_name = test_config.platform[
             'centos_7_image']
         hosts.instances[inst].username = test_config[
@@ -183,9 +182,7 @@ def proxy_hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
         bootstrappable=True,)
     proxy, manager, vm = hosts.instances
 
-    proxy.upload_files = False
     proxy.image_name = test_config.platform['centos_7_image']
-    vm.upload_files = False
     vm.image_name = test_config.platform['centos_7_image']
 
     passed = True

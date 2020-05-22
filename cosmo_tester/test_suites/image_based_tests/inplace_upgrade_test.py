@@ -18,10 +18,8 @@ def manager_and_vm(request, cfy, ssh_key, module_tmpdir, test_config,
     hosts.instances[0] = get_image(request.param, test_config)
     manager, vm = hosts.instances
 
-    manager.upload_files = False
     manager.restservice_expected = True
 
-    vm.upload_files = False
     vm.image_name = test_config.platform['centos_7_image']
     vm.username = test_config['test_os_usernames']['centos_7']
 
@@ -75,7 +73,6 @@ def test_inplace_upgrade(cfy,
         fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
     manager.bootstrap()
     manager.use()
-    manager.upload_necessary_files()
     cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
 
     with manager.ssh() as fabric_ssh:

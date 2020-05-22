@@ -21,9 +21,6 @@ from cosmo_tester.framework import util
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
 HEALTHY_STATE = 'OK'
-REMOTE_PRIVATE_KEY_PATH = '/etc/cloudify/key.pem'
-REMOTE_PUBLIC_KEY_PATH = '/etc/cloudify/public_key'
-SANITY_MODE_FILE_PATH = '/opt/manager/sanity_mode'
 
 
 class VM(object):
@@ -36,7 +33,6 @@ class VM(object):
         self.enable_ssh_wait = True
         self.should_finalize = True
         self.restservice_expected = False
-        self.upload_files = True
         self._test_config = test_config
         self.windows = False
 
@@ -83,7 +79,6 @@ class VM(object):
         password = 'AbCdEfG123456!'
 
         self.enable_ssh_wait = False
-        self.upload_files = False
         self.restservice_expected = False
         self.should_finalize = False
         self.image_name = image
@@ -211,8 +206,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self.use()
             self._logger.info('Applying license.')
             self.apply_license()
-        if self.upload_files:
-            self.upload_necessary_files()
 
     def verify_services_are_running(self):
         return True
@@ -221,9 +214,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         return True
 
     def wait_for_manager(self):
-        return True
-
-    def upload_necessary_files(self):
         return True
 
     @property
@@ -363,45 +353,6 @@ class _CloudifyManager(VM):
             },
         }
 
-    def upload_necessary_files(self):
-        self._logger.info('Uploading necessary files to %s', self)
-
-        self.put_remote_file(REMOTE_PRIVATE_KEY_PATH,
-                             self._ssh_key.private_key_path)
-        self.put_remote_file(REMOTE_PUBLIC_KEY_PATH,
-                             self._ssh_key.public_key_path)
-
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.sudo('chown cfyuser:cfyuser {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
-            fabric_ssh.sudo('chown cfyuser:cfyuser {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
-
-            fabric_ssh.sudo('chmod 400 {key_file}'.format(
-                key_file=REMOTE_PRIVATE_KEY_PATH,
-            ))
-            fabric_ssh.sudo('chmod 440 {key_file}'.format(
-                key_file=REMOTE_PUBLIC_KEY_PATH,
-            ))
-
-            self.enter_sanity_mode()
-
-    def enter_sanity_mode(self):
-        """
-        Test Managers should be in sanity mode to skip Cloudify license
-        validations.
-        """
-        self.put_remote_file_content(SANITY_MODE_FILE_PATH, 'sanity')
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.sudo('chown cfyuser:cfyuser {sanity_mode}'.format(
-                sanity_mode=SANITY_MODE_FILE_PATH,
-            ))
-            fabric_ssh.sudo('chmod 440 {sanity_mode}'.format(
-                sanity_mode=SANITY_MODE_FILE_PATH,
-            ))
-
     def upload_test_plugin(self, tenant_name=DEFAULT_TENANT_NAME):
         self._logger.info('Uploading test plugin to %s', tenant_name)
         with util.set_client_tenant(self, tenant_name):
@@ -411,16 +362,6 @@ class _CloudifyManager(VM):
                 ),
             )
             self.wait_for_all_executions()
-
-    @property
-    def remote_private_key_path(self):
-        """Returns the private key path on the manager."""
-        return REMOTE_PRIVATE_KEY_PATH
-
-    @property
-    def remote_public_key_path(self):
-        """Returns the public key path on the manager."""
-        return REMOTE_PUBLIC_KEY_PATH
 
     def __str__(self):
         return 'Cloudify manager [{}]'.format(self.ip_address)
@@ -541,7 +482,7 @@ class _CloudifyManager(VM):
         license = util.get_resource_path('test_valid_paying_license.yaml')
         self.client.license.upload(license)
 
-    def bootstrap(self, enter_sanity_mode=True, upload_license=False,
+    def bootstrap(self, upload_license=False,
                   blocking=True, restservice_expected=True):
         self.wait_for_ssh()
         self.restservice_expected = restservice_expected
@@ -585,8 +526,6 @@ class _CloudifyManager(VM):
                     break
                 else:
                     time.sleep(5)
-            if enter_sanity_mode:
-                self.enter_sanity_mode()
             self.finalize_preparation()
 
     def bootstrap_is_complete(self):

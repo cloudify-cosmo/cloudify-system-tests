@@ -359,8 +359,6 @@ def test_broker_management(brokers_and_manager, logger):
     # operations increases to the point that extra tests are needed.
     broker1, broker2, manager = brokers_and_manager
 
-    manager.enter_sanity_mode()
-
     expected_1 = {
         'port': 5671,
         'networks': {'default': str(broker1.private_ip_address)},
