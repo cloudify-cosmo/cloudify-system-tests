@@ -4,3 +4,7 @@ target_platform:
   description: Which platform to deploy test resources on.
   default: openstack
   valid_values: [openstack]
+logs_path:
+  description: Path for logs downloaded from all linux test hosts. If not set, logs will not be downloaded.
+  default: null
+  validate_optional_dir: true
