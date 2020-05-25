@@ -19,18 +19,16 @@ import json
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.examples import AbstractExample
 from . import constants
 
 
-class AbstractRegionalCluster(AbstractExample):
+class AbstractRegionalCluster(object):
     REPOSITORY_URL = 'https://{0}@github.com/' \
                      'cloudify-cosmo/cloudify-spire-plugin.git'.format(
                          os.environ['GITHUB_TOKEN'])
     TRANSFER_AGENTS = None
 
     def __init__(self, *args, **kwargs):
-        super(AbstractRegionalCluster, self).__init__(*args, **kwargs)
         self._deployed = False
 
     @property
@@ -360,7 +358,6 @@ class AbstractRegionalCluster(AbstractExample):
                         blueprint_file, self.blueprint_id)
 
     def install(self, timeout=3600):
-        super(AbstractRegionalCluster, self).install(timeout)
         self._populate_status_output()
 
     def clean_blueprints(self):
@@ -374,7 +371,6 @@ class AbstractRegionalCluster(AbstractExample):
         self.cfy.deployments.capabilities(self.deployment_id)
 
     def verify_installation(self):
-        super(AbstractRegionalCluster, self).verify_installation()
         assert self.cluster_endpoint
 
     def deploy_and_validate(self, timeout=3600):
