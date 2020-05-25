@@ -32,7 +32,9 @@ fixed_ip_clusters = []
 floating_ip_clusters = []
 
 central_hosts = None
-ATTRIBUTES = util.get_attributes()
+# This won't work at all, and has just been set like this to make pytest's
+# collectonly work. This will be fixed as part of CY-2607
+ATTRIBUTES = {}
 
 
 @pytest.fixture(scope='module')  # NOQA
@@ -258,9 +260,9 @@ def _do_regional_heal(regional_cluster):
     regional_cluster.execute_hello_world_workflow('uninstall')
 
 
-@pytest.mark.skipif(util.is_redhat(),
+@pytest.mark.skipif(False,
                     reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
+@pytest.mark.skipif(False,
                     reason='Cloudify Community version does '
                            'not support clustering')
 def test_regional_cluster_with_floating_ip(
@@ -306,9 +308,9 @@ def test_regional_cluster_with_floating_ip(
     first_cluster.clean_blueprints()
 
 
-@pytest.mark.skipif(util.is_redhat(),
+@pytest.mark.skipif(False,
                     reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
+@pytest.mark.skipif(False,
                     reason='Cloudify Community version does '
                            'not support clustering')
 def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
