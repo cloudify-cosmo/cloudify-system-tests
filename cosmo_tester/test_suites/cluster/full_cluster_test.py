@@ -26,7 +26,7 @@ def test_full_cluster(full_cluster, logger, cfy):
     create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')
-    restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
+    restore_snapshot(mgr2, snapshot_id, logger, force=True,
                      cert_path=mgr2.local_ca)
 
     check_managers(mgr1, mgr2)
@@ -43,7 +43,7 @@ def test_cluster_single_db(cluster_with_single_db, logger, cfy):
     create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')
-    restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
+    restore_snapshot(mgr2, snapshot_id, logger, force=True,
                      cert_path=mgr2.local_ca)
 
     check_managers(mgr1, mgr2)

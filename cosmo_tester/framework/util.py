@@ -14,7 +14,6 @@ from tempfile import mkstemp
 import time
 import yaml
 
-from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
 from cloudify_rest_client.exceptions import (
     CloudifyClientError,
@@ -61,9 +60,9 @@ def create_rest_client(
         **kwargs):
     return CloudifyClient(
         host=manager_ip,
-        username=username or cli_env.get_username(),
-        password=password or cli_env.get_password(),
-        tenant=tenant or cli_env.get_tenant_name(),
+        username=username or 'admin',
+        password=password or 'admin',
+        tenant=tenant or 'default_tenant',
         **kwargs)
 
 

@@ -41,7 +41,7 @@ from cosmo_tester.test_suites.snapshots import (
 
 
 def test_restore_snapshot_and_agents_upgrade_multitenant(
-        cfy, hosts, logger, tmpdir, ssh_key, test_config):
+        hosts, logger, tmpdir, ssh_key, test_config):
     if not test_config['premium']:
         pytest.skip('Multi tenant snapshots are not valid for community.')
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
@@ -104,23 +104,23 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         for tenant in tenants
     }
 
-    change_salt_on_new_manager(cfy, logger, new_manager)
-    prepare_credentials_tests(cfy, logger, old_manager)
+    change_salt_on_new_manager(new_manager, logger)
+    prepare_credentials_tests(old_manager, logger)
 
     create_snapshot(old_manager, SNAPSHOT_ID, logger)
     download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)
     upload_snapshot(new_manager, local_snapshot_path, SNAPSHOT_ID, logger)
 
-    restore_snapshot(new_manager, SNAPSHOT_ID, cfy, logger,
+    restore_snapshot(new_manager, SNAPSHOT_ID, logger,
                      wait_for_post_restore_commands=False)
 
     wait_for_restore(new_manager, logger)
 
-    update_credentials(cfy, logger, new_manager)
+    update_credentials(new_manager, new_manager)
 
     verify_services_status(new_manager, logger)
 
-    check_credentials(cfy, logger, new_manager)
+    check_credentials(new_manager, logger)
 
     # Use the new manager for the test deployments
     for example in example_mappings.values():
@@ -155,7 +155,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         [from_source_tenant], logger,
     )
 
-    upgrade_agents(cfy, new_manager, logger, test_config)
+    upgrade_agents(new_manager, logger, test_config)
 
     # The old manager needs to exist until the agents install is run
     stop_manager(old_manager, logger)
