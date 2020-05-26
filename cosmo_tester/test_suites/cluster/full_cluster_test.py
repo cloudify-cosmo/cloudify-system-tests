@@ -134,7 +134,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
         cfy.agents.list('--json',
                         '--all-tenants').stdout)[0]['id']
     lb.client._client.cert = lb.local_ca
-    with set_client_tenant(lb, example.tenant):
+    with set_client_tenant(lb.client, example.tenant):
         node_instances = lb.client.node_instances.list().items
     agent_manager_ip = None
     for instance in node_instances:
@@ -202,7 +202,7 @@ def test_workflow_resume_manager_failover(minimal_cluster, cfy,
     example.create_deployment()
     _wait_for_deployment_creation(cfy, example)
     execution_start_time = time.time()
-    with set_client_tenant(mgr1, example.tenant):
+    with set_client_tenant(mgr1.client, example.tenant):
         exec_id = mgr1.client.executions.start(example.deployment_id,
                                                'install').id
     time.sleep(3)   # wait for mgmtworker to get the execution

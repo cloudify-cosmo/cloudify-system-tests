@@ -26,7 +26,7 @@ def get_linux_image_settings():
 @pytest.fixture(
     scope='module',
     params=get_linux_image_settings())
-def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
+def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
                      logger, install_dev_tools=True):
     instances = [
         get_image('centos', test_config),
@@ -38,7 +38,7 @@ def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
     instances[0].username = username
 
     cli_hosts = Hosts(
-        cfy, ssh_key, module_tmpdir,
+        ssh_key, module_tmpdir,
         test_config, logger, request, instances=instances,
     )
 

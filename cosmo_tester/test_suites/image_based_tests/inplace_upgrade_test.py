@@ -11,10 +11,9 @@ from cosmo_tester.framework.test_hosts import (
 
 
 @pytest.fixture(scope='module', params=['5.0.5', 'master'])
-def manager_and_vm(request, cfy, ssh_key, module_tmpdir, test_config,
+def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
                    logger):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
-                  2)
+    hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request, 2)
     hosts.instances[0] = get_image(request.param, test_config)
     manager, vm = hosts.instances
 

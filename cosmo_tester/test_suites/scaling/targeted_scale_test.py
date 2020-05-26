@@ -3,6 +3,7 @@ import os
 from cloudify_cli.utils import (
     ExecutionFailed,
     get_deployment_environment_execution,
+    run_blocking_execution,
     wait_for_execution,
 )
 from cloudify_cli.constants import CREATE_DEPLOYMENT
@@ -44,21 +45,13 @@ def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
     creation_execution = get_deployment_environment_execution(
         manager.client, entity_id, CREATE_DEPLOYMENT)
     wait_for_execution(
-        manager,
+        manager.client,
         creation_execution,
         logger,
     )
 
     logger.info('Running install for {dep}'.format(dep=entity_id))
-    execution = manager.client.executions.start(
-        entity_id,
-        'install',
-    )
-    wait_for_execution(
-        manager,
-        execution,
-        logger,
-    )
+    run_blocking_execution(manager.client, entity_id, 'install', logger)
 
 
 def _get_deployed_instances(deployment, manager, logger):
@@ -88,7 +81,7 @@ def _test_error_message(manager,
     )
 
     try:
-        wait_for_execution(manager, execution, logger)
+        wait_for_execution(manager.client, execution, logger)
         return (
             'Execution unexpected succeeded for {test_name}'.format(
                 test_name=test_name,
@@ -261,16 +254,14 @@ def test_scale_down_target_node_instance(image_based_manager, logger):
     delta = 3
     targets = nodes_instances[:delta]
     expected = nodes_instances[delta:]
-    execution = image_based_manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'fakevm',
             'delta': '-{}'.format(delta),
             'include_instances': targets,
         },
     )
-    wait_for_execution(image_based_manager, execution, logger)
 
     after_nodes_instances = _get_deployed_instances(entity_id,
                                                     image_based_manager,
@@ -286,16 +277,14 @@ def test_do_not_scale_down_excluded_node_instance(image_based_manager,
     nodes_instances = _get_deployed_instances(entity_id, image_based_manager,
                                               logger)
 
-    execution = image_based_manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'fakevm',
             'delta': '-49',
             'exclude_instances': nodes_instances[-1],
         },
     )
-    wait_for_execution(image_based_manager, execution, logger)
 
     after_nodes_instances = _get_deployed_instances(entity_id,
                                                     image_based_manager,
@@ -315,17 +304,15 @@ def test_scale_down_target_node_instance_with_exclusions(image_based_manager,
     included = nodes_instances[0:24]
     excluded = nodes_instances[24:48]
     optional = nodes_instances[48:]
-    execution = image_based_manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'fakevm',
             'delta': '-25',
             'include_instances': included,
             'exclude_instances': excluded,
         },
     )
-    wait_for_execution(image_based_manager, execution, logger)
 
     after_nodes_instances = _get_deployed_instances(entity_id,
                                                     image_based_manager,
@@ -355,16 +342,14 @@ def test_scale_down_target_group_member(image_based_manager, logger):
     groups_instances = _get_deployed_instances(entity_id, image_based_manager,
                                                logger)
 
-    execution = image_based_manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'vmgroup',
             'delta': '-3',
             'include_instances': groups_instances[0],
         },
     )
-    wait_for_execution(image_based_manager, execution, logger)
 
     after_groups_instances = _get_deployed_instances(entity_id,
                                                      image_based_manager,
@@ -382,16 +367,14 @@ def test_scale_down_do_not_target_excluded_group_member(image_based_manager,
     groups_instances = _get_deployed_instances(entity_id, image_based_manager,
                                                logger)
 
-    execution = image_based_manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'vmgroup',
             'delta': '-19',
             'exclude_instances': groups_instances[0],
         },
     )
-    wait_for_execution(image_based_manager, execution, logger)
 
     after_groups_instances = _get_deployed_instances(entity_id,
                                                      image_based_manager,

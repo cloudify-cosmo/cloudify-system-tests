@@ -21,13 +21,13 @@ def get_windows_image_settings():
 @pytest.fixture(
     scope='module',
     params=get_windows_image_settings())
-def windows_cli_tester(request, cfy, ssh_key, module_tmpdir, test_config,
+def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
                        logger):
 
     _, username = get_image_and_username(request.param[0], test_config)
 
     cli_hosts = Hosts(
-        cfy, ssh_key, module_tmpdir,
+        ssh_key, module_tmpdir,
         test_config, logger, request, 2,
     )
     cli_hosts.instances[0] = get_image('centos', test_config)

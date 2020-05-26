@@ -103,7 +103,7 @@ def _wait_for_deployment_update_to_finish(func):
                wait_fixed=5000,
                retry_on_result=lambda r: not r)
         def repetitive_check():
-            with set_client_tenant(manager, tenant):
+            with set_client_tenant(manager.client, tenant):
                 dep_updates_list = manager.client.deployment_updates.list(
                         deployment_id=deployment_id)
                 executions_list = manager.client.executions.list(

@@ -8,9 +8,9 @@ from cosmo_tester.test_suites.snapshots import restore_snapshot
 
 
 @pytest.fixture(scope='module')
-def managers_and_vm(cfy, ssh_key, module_tmpdir, test_config, logger,
+def managers_and_vm(ssh_key, module_tmpdir, test_config, logger,
                     request):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, test_config, logger, request,
+    hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request,
                   3)
 
     passed = True
@@ -35,7 +35,7 @@ def managers_and_vm(cfy, ssh_key, module_tmpdir, test_config, logger,
 
 
 @pytest.fixture(scope='function')
-def example(managers_and_vm, cfy, ssh_key, tmpdir, logger, test_config):
+def example(managers_and_vm, ssh_key, tmpdir, logger, test_config):
     manager = managers_and_vm[0]
     vm = managers_and_vm[2]
 
@@ -90,7 +90,7 @@ def test_old_agent_stopped_after_agent_upgrade(
 
 
 def _assert_agent_not_running(manager, vm, node_name, tenant):
-    with util.set_client_tenant(manager, tenant):
+    with util.set_client_tenant(manager.client, tenant):
         node = manager.client.node_instances.list(node_id=node_name)[0]
     agent = node.runtime_properties['cloudify_agent']
     ssh_command = 'sudo service cloudify-worker-{name} status'.format(

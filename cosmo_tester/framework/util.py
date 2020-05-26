@@ -19,12 +19,12 @@ from cloudify_rest_client.exceptions import (
     CloudifyClientError,
     UserUnauthorizedError,
 )
-from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 
 from .exceptions import ProcessExecutionError
 
 import cosmo_tester
 from cosmo_tester import resources
+from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 
 def sh_bake(command):
@@ -156,11 +156,11 @@ def assert_snapshot_created(manager, snapshot_id):
 
 
 @contextmanager
-def set_client_tenant(manager, tenant):
+def set_client_tenant(client, tenant):
     if tenant:
-        original = manager.client._client.headers[CLOUDIFY_TENANT_HEADER]
+        original = client._client.headers[CLOUDIFY_TENANT_HEADER]
 
-        manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = tenant
+        client._client.headers[CLOUDIFY_TENANT_HEADER] = tenant
 
     try:
         yield
@@ -168,7 +168,7 @@ def set_client_tenant(manager, tenant):
         raise
     finally:
         if tenant:
-            manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
+            client._client.headers[CLOUDIFY_TENANT_HEADER] = original
 
 
 def prepare_and_get_test_tenant(test_param, manager, test_config):
@@ -409,8 +409,12 @@ class ExecutionFailed(Exception):
     """Raised by `wait_for_execution` if the execution fails."""
 
 
-def wait_for_execution(manager, execution, logger, tenant=None,
-                       new_password=None, timeout=(5*60)):
+def wait_for_execution(client, execution, logger, tenant=None,
+                       new_password=None, timeout=(5*60), manager=None):
+    if new_password and not manager:
+        raise RuntimeError('wait_for_execution cannot use new_password '
+                           'without manager being provided.')
+
     logger.info(
         'Getting workflow execution [id={execution}]'.format(
             execution=execution['id'],
@@ -420,12 +424,12 @@ def wait_for_execution(manager, execution, logger, tenant=None,
     # Timeout after ~5 minutes
     timeout_time = current_time + timeout
     password_updated = False
-    output_events(manager, execution, logger, to_time=current_time)
+    output_events(client, execution, logger, to_time=current_time)
 
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(client, tenant):
         while True:
             try:
-                execution = manager.client.executions.get(execution['id'])
+                execution = client.executions.get(execution['id'])
             except UserUnauthorizedError:
                 if new_password and not password_updated:
                     # This will happen on a restore with modified users
@@ -438,7 +442,7 @@ def wait_for_execution(manager, execution, logger, tenant=None,
             prev_time = current_time
             current_time = time.time()
 
-            output_events(manager, execution, logger, prev_time, current_time)
+            output_events(client, execution, logger, prev_time, current_time)
 
             if time.time() >= timeout_time:
                 raise ExecutionTimeout(
@@ -450,8 +454,7 @@ def wait_for_execution(manager, execution, logger, tenant=None,
             if execution.status in execution.END_STATES:
                 # Give time for any last second events
                 time.sleep(2)
-                output_events(manager, execution, logger,
-                              current_time)
+                output_events(client, execution, logger, current_time)
 
                 if execution.status != execution.TERMINATED:
                     logger.warning('Execution failed')
@@ -471,18 +474,18 @@ def wait_for_execution(manager, execution, logger, tenant=None,
     return execution
 
 
-def run_blocking_execution(manager, deployment_id, workflow_id, logger,
+def run_blocking_execution(client, deployment_id, workflow_id, logger,
                            params=None, tenant=None, timeout=(5*60)):
-    with set_client_tenant(manager, tenant):
-        execution = manager.client.executions.start(
+    with set_client_tenant(client, tenant):
+        execution = client.executions.start(
             deployment_id, workflow_id, parameters=params,
         )
-    wait_for_execution(manager, execution, logger,
+    wait_for_execution(client, execution, logger,
                        tenant=tenant, timeout=timeout)
 
 
-def output_events(manager, execution, logger, from_time=None, to_time=None):
-    events = manager.client.events.list(
+def output_events(client, execution, logger, from_time=None, to_time=None):
+    events = client.events.list(
         execution_id=execution.id,
         _size=1000,
         include_logs=True,

@@ -321,7 +321,7 @@ class AbstractRegionalCluster(object):
                          self.blueprint_id)
 
         if self.first_deployment:
-            with util.set_client_tenant(self.manager, self.tenant):
+            with util.set_client_tenant(self.manager.client, self.tenant):
                 self.manager.client.blueprints.upload(
                     namespace_blueprint_file, namespace_blueprint_id)
                 self.manager.client.blueprints.upload(
@@ -369,7 +369,7 @@ class AbstractRegionalCluster(object):
             'backup_params': []
         }
         util.run_blocking_execution(
-            self.manager, self.deployment_id, 'backup', self.logger,
+            self.manager.client, self.deployment_id, 'backup', self.logger,
             params=backup_params, tenant=self.tenant,
         )
         self.logger.info('Backup completed successfully')
@@ -379,7 +379,7 @@ class AbstractRegionalCluster(object):
         self._cleanup_required = True
         try:
             util.run_blocking_execution(
-                self.manager, self.deployment_id, 'scale', self.logger,
+                self.manager.client, self.deployment_id, 'scale', self.logger,
                 parameters={
                     'scalable_entity_name': 'workers_group', 'delta': 1,
                 },
@@ -395,7 +395,7 @@ class AbstractRegionalCluster(object):
         self._cleanup_required = True
         try:
             util.run_blocking_execution(
-                self.manager, self.deployment_id, 'heal', self.logger,
+                self.manager.client, self.deployment_id, 'heal', self.logger,
                 params={'node_instance_id': instance_id}, tenant=self.tenant,
             )
         except Exception as e:
@@ -417,7 +417,7 @@ class AbstractRegionalCluster(object):
         }
 
         util.run_blocking_execution(
-            self.manager, self.deployment_id, 'execute_workflow',
+            self.manager.client, self.deployment_id, 'execute_workflow',
             params=workflow_params,
         )
 
@@ -541,7 +541,7 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
                          self.blueprint_id)
 
         if self.first_deployment:
-            with util.set_client_tenant(self.manager, self.tenant):
+            with util.set_client_tenant(self.manager.client, self.tenant):
                 self.manager.client.blueprints.upload(
                     namespace_blueprint_file, namespace_blueprint_id)
                 self.manager.client.blueprints.upload(
@@ -659,7 +659,7 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
 
         # Temporarily change the tenant in the REST client, to access a secret
         # on this tenant
-        with util.set_client_tenant(self, tenant):
+        with util.set_client_tenant(self.client, tenant):
             string_secret_value = self.client.secrets.get(
                 constants.SECRET_STRING_KEY).value
             assert string_secret_value == constants.SECRET_STRING_VALUE

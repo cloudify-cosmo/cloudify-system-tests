@@ -142,7 +142,7 @@ def prepared_manager(image_based_manager, cfy, logger):
 
     deployment_ids = []
     for tenant in tenants:
-        with set_client_tenant(image_based_manager, tenant):
+        with set_client_tenant(image_based_manager.client, tenant):
             for blueprint, bp_path in BLUEPRINTS.items():
                 image_based_manager.client.blueprints.upload(
                     path=bp_path,

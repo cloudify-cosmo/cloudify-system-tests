@@ -18,14 +18,14 @@ POST_BOOTSTRAP_NET = 'network_3'
 
 
 @pytest.fixture(scope='module')
-def managers_and_vms(cfy, ssh_key, module_tmpdir, test_config, logger,
+def managers_and_vms(ssh_key, module_tmpdir, test_config, logger,
                      request):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack.
     Also provides VMs for testing, on separate networks.
     """
 
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger, request,
+        ssh_key, module_tmpdir, test_config, logger, request,
         number_of_instances=5,
         bootstrappable=True,
         multi_net=True,
@@ -176,9 +176,9 @@ def _add_new_network(manager, logger, restart=True):
 
 
 @pytest.fixture(scope='function')
-def proxy_hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
+def proxy_hosts(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger, request, 3,
+        ssh_key, module_tmpdir, test_config, logger, request, 3,
         bootstrappable=True,)
     proxy, manager, vm = hosts.instances
 

@@ -40,7 +40,7 @@ class BaseExample(object):
     def set_agent_key_secret(self):
         with open(self.ssh_key.private_key_path) as key_handle:
             ssh_key = key_handle.read()
-        with set_client_tenant(self.manager, self.tenant):
+        with set_client_tenant(self.manager.client, self.tenant):
             self.manager.client.secrets.create(
                 'agent_key',
                 ssh_key,
@@ -63,7 +63,7 @@ class BaseExample(object):
         if self.create_secret:
             self.set_agent_key_secret()
 
-        with set_client_tenant(self.manager, self.tenant):
+        with set_client_tenant(self.manager.client, self.tenant):
             self.manager.client.blueprints.upload(
                 self.blueprint_file, self.blueprint_id)
 
@@ -76,7 +76,7 @@ class BaseExample(object):
                 'Creating deployment [id=%s] with the following inputs:\n%s',
                 self.deployment_id,
                 json.dumps(self.inputs, indent=2))
-        with set_client_tenant(self.manager, self.tenant):
+        with set_client_tenant(self.manager.client, self.tenant):
             self.manager.client.deployments.create(
                 deployment_id=self.deployment_id,
                 blueprint_id=self.blueprint_id,
@@ -91,7 +91,7 @@ class BaseExample(object):
     def wait_for_deployment_environment_creation(self):
         self.logger.info('Waiting for deployment env creation.')
         while True:
-            with set_client_tenant(self.manager, self.tenant):
+            with set_client_tenant(self.manager.client, self.tenant):
                 executions = self.manager.client.executions.list(
                     _include=['status'],
                     deployment_id=self.deployment_id,
@@ -116,13 +116,14 @@ class BaseExample(object):
     def execute(self, workflow_id, parameters=None):
         self.logger.info('Starting workflow: {}'.format(workflow_id))
         try:
-            with set_client_tenant(self.manager, self.tenant):
+            with set_client_tenant(self.manager.client, self.tenant):
                 execution = self.manager.client.executions.start(
                     deployment_id=self.deployment_id,
                     workflow_id=workflow_id,
                     parameters=parameters,
                 )
-                wait_for_execution(self.manager, execution, self.logger)
+                wait_for_execution(self.manager.client, execution,
+                                   self.logger)
         except Exception as err:
             self.logger.error('Error on deployment execution: %s', err)
             raise
@@ -172,7 +173,7 @@ class BaseExample(object):
 
     def assert_deployment_events_exist(self):
         self.logger.info('Verifying deployment events..')
-        with set_client_tenant(self.manager, self.tenant):
+        with set_client_tenant(self.manager.client, self.tenant):
             executions = self.manager.client.executions.list(
                 deployment_id=self.deployment_id,
             )
