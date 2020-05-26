@@ -1,6 +1,10 @@
 import os
 
-from cloudify_cli.utils import get_deployment_environment_execution
+from cloudify_cli.utils import (
+    ExecutionFailed,
+    get_deployment_environment_execution,
+    wait_for_execution,
+)
 from cloudify_cli.constants import CREATE_DEPLOYMENT
 import retrying
 
@@ -24,24 +28,6 @@ SCALING_TEST_BLUEPRINTS = {
 
 
 manager = image_based_manager_without_plugins
-
-
-class ExecutionWaiting(Exception):
-    """
-    raised by `wait_for_execution` if it should be retried
-    """
-    pass
-
-
-class ExecutionFailed(Exception):
-    """
-    raised by `wait_for_execution` if a bad state is reached
-    """
-    pass
-
-
-def retry_if_not_failed(exception):
-    return not isinstance(exception, ExecutionFailed)
 
 
 def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
@@ -81,33 +67,6 @@ def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
         execution,
         logger,
     )
-
-
-@retrying.retry(
-    stop_max_delay=5 * 60 * 1000,
-    wait_fixed=10000,
-    retry_on_exception=retry_if_not_failed,
-)
-def wait_for_execution(manager, execution, logger):
-    logger.info(
-        'Getting workflow execution [id={execution}]'.format(
-            execution=execution['id'],
-        )
-    )
-    execution = manager.client.executions.get(execution['id'])
-    logger.info('- execution.status = %s', execution.status)
-    if execution.status not in execution.END_STATES:
-        raise ExecutionWaiting(execution.status)
-    if execution.status != execution.TERMINATED:
-        logger.warning('Execution failed')
-        raise ExecutionFailed(
-            '{status}: {error}'.format(
-                status=execution.status,
-                error=execution['error'],
-            )
-        )
-    logger.info('Execution complete')
-    return execution
 
 
 def _get_deployed_instances(deployment, manager, logger):

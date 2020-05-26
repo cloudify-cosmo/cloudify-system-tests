@@ -7,10 +7,11 @@ import retrying
 from cloudify.snapshots import STATES
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
-    create_rest_client,
+    change_rest_client_password,
+    ExecutionFailed,
     set_client_tenant,
+    wait_for_execution,
 )
-from cloudify_rest_client.exceptions import UserUnauthorizedError
 
 
 SNAPSHOT_ID = 'testsnapshot'
@@ -53,61 +54,6 @@ def stop_manager(manager, logger):
     logger.info('Stopping {version} manager..'.format(
         version=manager.image_type))
     manager.stop()
-
-
-class ExecutionWaiting(Exception):
-    """
-    raised by `wait_for_execution` if it should be retried
-    """
-    pass
-
-
-class ExecutionFailed(Exception):
-    """
-    raised by `wait_for_execution` if a bad state is reached
-    """
-    pass
-
-
-def retry_if_not_failed(exception):
-    return not isinstance(exception, ExecutionFailed)
-
-
-@retrying.retry(
-    # Wait up to 5 seconds
-    stop_max_delay=5 * 60 * 1000,
-    # With a delay of 20 seconds between each
-    wait_fixed=20000,
-    retry_on_exception=retry_if_not_failed,
-)
-def wait_for_execution(manager, execution, logger, tenant=None,
-                       change_manager_password=True):
-    _log(
-        'Getting workflow execution [id={execution}]'.format(
-            execution=execution['id'],
-        ),
-        logger,
-        tenant,
-    )
-    password_updated = False
-    try:
-        with set_client_tenant(manager, tenant):
-            execution = manager.client.executions.get(execution['id'])
-    except UserUnauthorizedError:
-        if change_manager_password and not password_updated:
-            # This will happen on a restore with modified users
-            change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
-            password_updated = True
-        else:
-            # We either shouldn't change the password, or did already.
-            raise
-
-    logger.info('- execution.status = %s', execution.status)
-    if execution.status not in execution.END_STATES:
-        raise ExecutionWaiting(execution.status)
-    if execution.status != execution.TERMINATED:
-        raise ExecutionFailed(execution.status)
-    return execution
 
 
 def check_from_source_plugin(manager, plugin, deployment_id, logger,
@@ -187,7 +133,7 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
             manager,
             restore_execution,
             logger,
-            change_manager_password=change_manager_password)
+            new_password=CHANGED_ADMIN_PASSWORD)
     except ExecutionFailed:
         # See any errors
         cfy.executions.list(['--include-system-workflows'])
@@ -223,12 +169,6 @@ def update_credentials(cfy, logger, manager):
 def check_credentials(cfy, logger, manager):
     logger.info('Checking test user still works')
     test_user('testuser', 'testpass', cfy, logger, CHANGED_ADMIN_PASSWORD)
-
-
-def change_rest_client_password(manager, new_password):
-    manager.client = create_rest_client(manager.ip_address,
-                                        tenant='default_tenant',
-                                        password=new_password)
 
 
 def create_user(username, password, cfy):
