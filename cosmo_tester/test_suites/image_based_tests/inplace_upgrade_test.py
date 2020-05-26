@@ -8,6 +8,12 @@ from cosmo_tester.framework.test_hosts import (
     Hosts,
     get_image,
 )
+from cosmo_tester.snapshots import (
+    create_snapshot,
+    download_snapshot,
+    restore_snapshot,
+    upload_snapshot,
+)
 
 
 @pytest.fixture(scope='module', params=['5.0.5', 'master'])
@@ -49,8 +55,7 @@ def example(manager_and_vm, ssh_key, tmpdir, logger, test_config):
             example.uninstall()
 
 
-def test_inplace_upgrade(cfy,
-                         manager_and_vm,
+def test_inplace_upgrade(manager_and_vm,
                          example,
                          ssh_key,
                          module_tmpdir,
@@ -62,9 +67,8 @@ def test_inplace_upgrade(cfy,
 
     example.upload_and_verify_install()
 
-    cfy.snapshots.create([snapshot_name])
-    manager.wait_for_all_executions()
-    cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
+    create_snapshot(manager, snapshot_name, logger)
+    download_snapshot(manager, snapshot_path, snapshot_name, logger)
     manager.teardown()
     with manager.ssh() as fabric_ssh:
         # The teardown doesn't properly clean up rabbitmq
@@ -72,13 +76,14 @@ def test_inplace_upgrade(cfy,
         fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
     manager.bootstrap()
     manager.use()
-    cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
+    upload_snapshot(manager, snapshot_path, snapshot_name, logger)
 
     with manager.ssh() as fabric_ssh:
         # Perform the restore after opening the ssh session and don't wait for
         # the execution to finish to avoid a race condition that occasionally
         # causes test failures when we don't ssh in before the shutdown.
-        cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
+        restore_snapshot(manager, snapshot_name, logger,
+                         restore_certificates=True, wait_for_execution=False)
         retry_delay = 1
         max_attempts = 240
         reboot_triggered = False
