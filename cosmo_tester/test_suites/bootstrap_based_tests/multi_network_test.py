@@ -97,7 +97,6 @@ def examples(managers_and_vms, ssh_key, tmpdir, logger, test_config):
 
 def test_multiple_networks(managers_and_vms,
                            examples,
-                           cfy,
                            logger,
                            tmpdir,
                            test_config):
