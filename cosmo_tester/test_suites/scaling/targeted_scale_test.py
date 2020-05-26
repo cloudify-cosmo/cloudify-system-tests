@@ -6,11 +6,6 @@ from cloudify_cli.utils import (
     wait_for_execution,
 )
 from cloudify_cli.constants import CREATE_DEPLOYMENT
-import retrying
-
-from cosmo_tester.framework.fixtures import (
-    image_based_manager_without_plugins,
-)
 
 
 NODES_BLUEPRINT_PATH = os.path.abspath(
@@ -25,9 +20,6 @@ SCALING_TEST_BLUEPRINTS = {
     'nodes': NODES_BLUEPRINT_PATH,
     'groups': GROUPS_BLUEPRINT_PATH,
 }
-
-
-manager = image_based_manager_without_plugins
 
 
 def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
@@ -133,15 +125,17 @@ def _test_error_message(manager,
             )
 
 
-def test_targeted_scale_error_messages(manager, logger):
-    _deploy_test_deployments('nodes', manager, logger)
-    _deploy_test_deployments('groups', manager, logger)
+def test_targeted_scale_error_messages(image_based_manager, logger):
+    _deploy_test_deployments('nodes', image_based_manager, logger)
+    _deploy_test_deployments('groups', image_based_manager, logger)
 
-    nodes_instances = _get_deployed_instances('nodes', manager, logger)
-    groups_instances = _get_deployed_instances('groups', manager, logger)
+    nodes_instances = _get_deployed_instances('nodes', image_based_manager,
+                                              logger)
+    groups_instances = _get_deployed_instances('groups', image_based_manager,
+                                               logger)
 
     base_call = {
-        'manager': manager,
+        'manager': image_based_manager,
         'logger': logger,
     }
 
@@ -257,16 +251,17 @@ def test_targeted_scale_error_messages(manager, logger):
     assert not issues
 
 
-def test_scale_down_target_node_instance(manager, logger):
+def test_scale_down_target_node_instance(image_based_manager, logger):
     entity_id = 'testnodesinclude'
-    _deploy_test_deployments('nodes', manager, logger,
+    _deploy_test_deployments('nodes', image_based_manager, logger,
                              entity_id=entity_id)
-    nodes_instances = _get_deployed_instances(entity_id, manager, logger)
+    nodes_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                              logger)
 
     delta = 3
     targets = nodes_instances[:delta]
     expected = nodes_instances[delta:]
-    execution = manager.client.executions.start(
+    execution = image_based_manager.client.executions.start(
         entity_id,
         'scale',
         parameters={
@@ -275,20 +270,23 @@ def test_scale_down_target_node_instance(manager, logger):
             'include_instances': targets,
         },
     )
-    wait_for_execution(manager, execution, logger)
+    wait_for_execution(image_based_manager, execution, logger)
 
-    after_nodes_instances = _get_deployed_instances(entity_id, manager,
+    after_nodes_instances = _get_deployed_instances(entity_id,
+                                                    image_based_manager,
                                                     logger)
     assert set(expected) == set(after_nodes_instances)
 
 
-def test_do_not_scale_down_excluded_node_instance(manager, logger):
+def test_do_not_scale_down_excluded_node_instance(image_based_manager,
+                                                  logger):
     entity_id = 'testnodesexclude'
-    _deploy_test_deployments('nodes', manager, logger,
+    _deploy_test_deployments('nodes', image_based_manager, logger,
                              entity_id=entity_id)
-    nodes_instances = _get_deployed_instances(entity_id, manager, logger)
+    nodes_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                              logger)
 
-    execution = manager.client.executions.start(
+    execution = image_based_manager.client.executions.start(
         entity_id,
         'scale',
         parameters={
@@ -297,24 +295,27 @@ def test_do_not_scale_down_excluded_node_instance(manager, logger):
             'exclude_instances': nodes_instances[-1],
         },
     )
-    wait_for_execution(manager, execution, logger)
+    wait_for_execution(image_based_manager, execution, logger)
 
-    after_nodes_instances = _get_deployed_instances(entity_id, manager,
+    after_nodes_instances = _get_deployed_instances(entity_id,
+                                                    image_based_manager,
                                                     logger)
 
     assert [nodes_instances[-1]] == after_nodes_instances
 
 
-def test_scale_down_target_node_instance_with_exclusions(manager, logger):
+def test_scale_down_target_node_instance_with_exclusions(image_based_manager,
+                                                         logger):
     entity_id = 'testnodesincludeandexclude'
-    _deploy_test_deployments('nodes', manager, logger,
+    _deploy_test_deployments('nodes', image_based_manager, logger,
                              entity_id=entity_id)
-    nodes_instances = _get_deployed_instances(entity_id, manager, logger)
+    nodes_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                              logger)
 
     included = nodes_instances[0:24]
     excluded = nodes_instances[24:48]
     optional = nodes_instances[48:]
-    execution = manager.client.executions.start(
+    execution = image_based_manager.client.executions.start(
         entity_id,
         'scale',
         parameters={
@@ -324,9 +325,10 @@ def test_scale_down_target_node_instance_with_exclusions(manager, logger):
             'exclude_instances': excluded,
         },
     )
-    wait_for_execution(manager, execution, logger)
+    wait_for_execution(image_based_manager, execution, logger)
 
-    after_nodes_instances = _get_deployed_instances(entity_id, manager,
+    after_nodes_instances = _get_deployed_instances(entity_id,
+                                                    image_based_manager,
                                                     logger)
 
     logger.info('Confirming correct number of instances remaining')
@@ -346,13 +348,14 @@ def test_scale_down_target_node_instance_with_exclusions(manager, logger):
     )
 
 
-def test_scale_down_target_group_member(manager, logger):
+def test_scale_down_target_group_member(image_based_manager, logger):
     entity_id = 'testgroupinclude'
-    _deploy_test_deployments('groups', manager, logger,
+    _deploy_test_deployments('groups', image_based_manager, logger,
                              entity_id=entity_id)
-    groups_instances = _get_deployed_instances(entity_id, manager, logger)
+    groups_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                               logger)
 
-    execution = manager.client.executions.start(
+    execution = image_based_manager.client.executions.start(
         entity_id,
         'scale',
         parameters={
@@ -361,22 +364,25 @@ def test_scale_down_target_group_member(manager, logger):
             'include_instances': groups_instances[0],
         },
     )
-    wait_for_execution(manager, execution, logger)
+    wait_for_execution(image_based_manager, execution, logger)
 
-    after_groups_instances = _get_deployed_instances(entity_id, manager,
+    after_groups_instances = _get_deployed_instances(entity_id,
+                                                     image_based_manager,
                                                      logger)
 
     assert len(after_groups_instances) == 34
     assert groups_instances[0] not in after_groups_instances
 
 
-def test_scale_down_do_not_target_excluded_group_member(manager, logger):
+def test_scale_down_do_not_target_excluded_group_member(image_based_manager,
+                                                        logger):
     entity_id = 'testgroupexclude'
-    _deploy_test_deployments('groups', manager, logger,
+    _deploy_test_deployments('groups', image_based_manager, logger,
                              entity_id=entity_id)
-    groups_instances = _get_deployed_instances(entity_id, manager, logger)
+    groups_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                               logger)
 
-    execution = manager.client.executions.start(
+    execution = image_based_manager.client.executions.start(
         entity_id,
         'scale',
         parameters={
@@ -385,9 +391,10 @@ def test_scale_down_do_not_target_excluded_group_member(manager, logger):
             'exclude_instances': groups_instances[0],
         },
     )
-    wait_for_execution(manager, execution, logger)
+    wait_for_execution(image_based_manager, execution, logger)
 
-    after_groups_instances = _get_deployed_instances(entity_id, manager,
+    after_groups_instances = _get_deployed_instances(entity_id,
+                                                     image_based_manager,
                                                      logger)
 
     assert len(after_groups_instances) == 2

@@ -38,19 +38,3 @@ def image_based_manager(
         yield hosts.instances[0]
     finally:
         hosts.destroy()
-
-
-@pytest.fixture(scope='module')
-def image_based_manager_without_plugins(
-        request, cfy, ssh_key, module_tmpdir, test_config, logger):
-    """Creates a cloudify manager from an image in rackspace OpenStack."""
-    hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger, request)
-    try:
-        hosts.create()
-        hosts.instances[0].restservice_expected = True
-        hosts.instances[0].finalize_preparation()
-        hosts.instances[0].use()
-        yield hosts.instances[0]
-    finally:
-        hosts.destroy()
