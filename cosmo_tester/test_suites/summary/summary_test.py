@@ -5,15 +5,8 @@ import time
 import pytest
 
 from cloudify_rest_client.exceptions import CloudifyClientError
-from cosmo_tester.framework.fixtures import (  # noqa
-    image_based_manager_without_plugins,
-)
-from cosmo_tester.framework.util import (
-    set_client_tenant,
-)
+from cosmo_tester.framework.util import set_client_tenant
 
-
-manager = image_based_manager_without_plugins
 
 SMALL_BLUEPRINT_PATH = os.path.abspath(
     os.path.join(
@@ -131,7 +124,7 @@ def _create_sites(manager, deployment_ids):
 
 
 @pytest.fixture(scope='module')
-def prepared_manager(manager, cfy, logger):
+def prepared_manager(image_based_manager, cfy, logger):
     tenants = sorted(TENANT_DEPLOYMENT_COUNTS.keys())
 
     for tenant in tenants:
@@ -142,16 +135,16 @@ def prepared_manager(manager, cfy, logger):
         for attempt in xrange(30):
             try:
                 if tenant != 'default_tenant':
-                    manager.client.tenants.create(tenant)
+                    image_based_manager.client.tenants.create(tenant)
                     break
             except CloudifyClientError:
                 time.sleep(2)
 
     deployment_ids = []
     for tenant in tenants:
-        with set_client_tenant(manager, tenant):
+        with set_client_tenant(image_based_manager, tenant):
             for blueprint, bp_path in BLUEPRINTS.items():
-                manager.client.blueprints.upload(
+                image_based_manager.client.blueprints.upload(
                     path=bp_path,
                     entity_id=blueprint,
                 )
@@ -159,22 +152,22 @@ def prepared_manager(manager, cfy, logger):
             for bp_name, count in TENANT_DEPLOYMENT_COUNTS[tenant].items():
                 for i in xrange(count):
                     deployment_id = bp_name + str(i)
-                    manager.client.deployments.create(
+                    image_based_manager.client.deployments.create(
                         blueprint_id=bp_name,
                         deployment_id=deployment_id,
                     )
                     deployment_ids.append(deployment_id)
-                manager.wait_for_all_executions()
+                image_based_manager.wait_for_all_executions()
                 for i in xrange(count):
                     deployment_id = bp_name + str(i)
-                    manager.client.executions.start(
+                    image_based_manager.client.executions.start(
                         deployment_id,
                         'install',
                     )
-                manager.wait_for_all_executions()
+                image_based_manager.wait_for_all_executions()
 
-    _create_sites(manager, deployment_ids)
-    yield manager
+    _create_sites(image_based_manager, deployment_ids)
+    yield image_based_manager
 
 
 @pytest.mark.parametrize("summary_type", [
