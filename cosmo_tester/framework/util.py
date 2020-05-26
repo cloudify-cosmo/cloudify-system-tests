@@ -471,6 +471,16 @@ def wait_for_execution(manager, execution, logger, tenant=None,
     return execution
 
 
+def run_blocking_execution(manager, deployment_id, workflow_id, logger,
+                           params=None, tenant=None, timeout=(5*60)):
+    with set_client_tenant(manager, tenant):
+        execution = manager.client.executions.start(
+            deployment_id, workflow_id, parameters=params,
+        )
+    wait_for_execution(manager, execution, logger,
+                       tenant=tenant, timeout=timeout)
+
+
 def output_events(manager, execution, logger, from_time=None, to_time=None):
     events = manager.client.events.list(
         execution_id=execution.id,
@@ -511,3 +521,32 @@ def change_rest_client_password(manager, new_password):
     manager.client = create_rest_client(manager.ip_address,
                                         tenant='default_tenant',
                                         password=new_password)
+
+
+def list_snapshots(manager, logger):
+    logger.info('Listing snapshots:')
+    snapshots = manager.client.snapshots.list()
+    for snapshot in snapshots:
+        logger.info('%(id)s - %(status)s - %(error)s', **snapshot)
+
+
+def list_executions(manager, logger):
+    logger.info('Listing executions:')
+    executions = manager.client.executions.list(include_system_workflows=True)
+    for execution in executions:
+        logger.info('%(id)s (%(workflow_id)s) - %(status_display)s',
+                    **execution)
+        if execution.get('error'):
+            logger.warn('Execution %(id)s had error: %(error)s',
+                        **execution)
+
+
+def list_capabilities(manager, deployment_id, logger):
+    logger.info('Listing capabilities for %s', deployment_id)
+    capabilities = manager.client.deployments.capabilities.get(
+        deployment_id).capabilities
+    for name, value in capabilities.items():
+        logger.info(
+            '%(dep)s capability %(name)s: %(value)s',
+            {'dep': deployment_id, 'name': name, 'value': value},
+        )

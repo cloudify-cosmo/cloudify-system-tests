@@ -10,6 +10,8 @@ from cosmo_tester.framework.util import (
     change_rest_client_password,
     create_rest_client,
     ExecutionFailed,
+    list_executions,
+    list_snapshots,
     set_client_tenant,
     wait_for_execution,
 )
@@ -111,24 +113,6 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
     logger.info('Uploaded snapshot:%s%s',
                 os.linesep,
                 json.dumps(snapshot, indent=2))
-
-
-def list_snapshots(manager, logger):
-    logger.info('Listing snapshots:')
-    snapshots = manager.client.snapshots.list()
-    for snapshot in snapshots:
-        logger.info('%(id)s - %(status)s - %(error)s', **snapshot)
-
-
-def list_executions(manager, logger):
-    logger.info('Listing executions:')
-    executions = manager.client.executions.list(include_system_workflows=True)
-    for execution in executions:
-        logger.info('%(id)s (%(workflow_id)s) - %(status_display)s',
-                    **execution)
-        if execution.get('error'):
-            logger.warn('Execution %(id)s had error: %(error)s',
-                        **execution)
 
 
 def restore_snapshot(manager, snapshot_id, logger,
