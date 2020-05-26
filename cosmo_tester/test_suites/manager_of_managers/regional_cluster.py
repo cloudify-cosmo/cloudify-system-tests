@@ -1,20 +1,4 @@
-########
-# Copyright (c) 2018 Cloudify Platform Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import os
-import json
 
 from cloudify_cli.constants import DEFAULT_TENANT_NAME
 
@@ -321,7 +305,7 @@ class AbstractRegionalCluster(object):
     def cluster_endpoint_certificate(self):
         return self.outputs['endpoint_certificate']
 
-    def upload_blueprint(self, use_cfy=False):
+    def upload_blueprint(self):
         self.clone_example()
         namespace_blueprint_file = self._cloned_to / \
             'blueprints/infrastructure-examples/openstack/' \
@@ -336,25 +320,12 @@ class AbstractRegionalCluster(object):
                          blueprint_file,
                          self.blueprint_id)
 
-        if use_cfy:
-            self.cfy.profile.set([
-                '-t', self.tenant,
-            ])
-            self.cfy.blueprint.upload([
-                '-b', namespace_blueprint_id,
-                namespace_blueprint_file
-            ])
-            self.cfy.blueprint.upload([
-                '-b', self.blueprint_id,
-                blueprint_file
-            ])
-        else:
-            if self.first_deployment:
-                with util.set_client_tenant(self.manager, self.tenant):
-                    self.manager.client.blueprints.upload(
-                        namespace_blueprint_file, namespace_blueprint_id)
-                    self.manager.client.blueprints.upload(
-                        blueprint_file, self.blueprint_id)
+        if self.first_deployment:
+            with util.set_client_tenant(self.manager, self.tenant):
+                self.manager.client.blueprints.upload(
+                    namespace_blueprint_file, namespace_blueprint_id)
+                self.manager.client.blueprints.upload(
+                    blueprint_file, self.blueprint_id)
 
     def install(self, timeout=3600):
         self._populate_status_output()
@@ -366,8 +337,8 @@ class AbstractRegionalCluster(object):
 
     def _populate_status_output(self):
         # This workflow populates the deployment outputs with status info
-        self.cfy.executions.start('get_status', '-d', self.deployment_id)
-        self.cfy.deployments.capabilities(self.deployment_id)
+        self.manager.client.executions.start(self.deployment_id, 'get_status')
+        util.list_capabilities(self.manager, self.deployment_id, self.logger)
 
     def verify_installation(self):
         assert self.cluster_endpoint
@@ -397,9 +368,9 @@ class AbstractRegionalCluster(object):
             'snapshot_id': self.deployment_id,
             'backup_params': []
         }
-        self.cfy.executions.start(
-            'backup', '-d', self.deployment_id,
-            '-p', json.dumps(backup_params)
+        util.run_blocking_execution(
+            self.manager, self.deployment_id, 'backup', self.logger,
+            params=backup_params, tenant=self.tenant,
         )
         self.logger.info('Backup completed successfully')
 
@@ -407,34 +378,29 @@ class AbstractRegionalCluster(object):
         self.logger.info('Scaling deployment...')
         self._cleanup_required = True
         try:
-            self.cfy.executions.start.scale(
-                ['-d', self.deployment_id,
-                 '-p', 'scalable_entity_name=workers_group',
-                 '-p', 'delta=1',
-                 '-t', self.tenant,
-                 '--timeout', '3600'])
+            util.run_blocking_execution(
+                self.manager, self.deployment_id, 'scale', self.logger,
+                parameters={
+                    'scalable_entity_name': 'workers_group', 'delta': 1,
+                },
+                tenant=self.tenant,
+            )
         except Exception as e:
-            if 'if there is a running system-wide' in e.message:
-                self.logger.error('Error on deployment execution: %s', e)
-                self.logger.info('Listing executions..')
-                self.cfy.executions.list(['-d', self.deployment_id])
-                self.cfy.executions.list(['--include-system-workflows'])
+            self.logger.error('Error on deployment execution: %s', e)
+            util.list_executions(self.manager, self.logger)
             raise
 
     def heal(self, instance_id):
         self.logger.info('Healing node {0}...'.format(instance_id))
         self._cleanup_required = True
         try:
-            self.cfy.executions.start.heal(
-                ['-d', self.deployment_id,
-                 '-p', 'node_instance_id={0}'.format(instance_id),
-                 '-t', self.tenant])
+            util.run_blocking_execution(
+                self.manager, self.deployment_id, 'heal', self.logger,
+                params={'node_instance_id': instance_id}, tenant=self.tenant,
+            )
         except Exception as e:
-            if 'if there is a running system-wide' in e.message:
-                self.logger.error('Error on deployment execution: %s', e)
-                self.logger.info('Listing executions..')
-                self.cfy.executions.list(['-d', self.deployment_id])
-                self.cfy.executions.list(['--include-system-workflows'])
+            self.logger.error('Error on deployment execution: %s', e)
+            util.list_executions(self.manager, self.logger)
             raise
 
     def execute_hello_world_workflow(self, workflow_id):
@@ -450,11 +416,11 @@ class AbstractRegionalCluster(object):
             'tenant_name': constants.TENANT_1
         }
 
-        self.cfy.executions.start([
-            'execute_workflow',
-            '-d', self.deployment_id,
-            '-p', json.dumps(workflow_params)
-        ])
+        util.run_blocking_execution(
+            self.manager, self.deployment_id, 'execute_workflow',
+            params=workflow_params,
+        )
+
         self.logger.info(
             'Successfully executed workflow {0} on deployment {1} '
             'on a Regional cluster'.format(
@@ -559,7 +525,7 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
     def validate(self):
         pass
 
-    def upload_blueprint(self, use_cfy=False):
+    def upload_blueprint(self):
         self.clone_example()
         namespace_blueprint_file = self._cloned_to / \
             'blueprints/infrastructure-examples/openstack/' \
@@ -574,25 +540,12 @@ class FixedIpRegionalCluster(AbstractRegionalCluster):
                          blueprint_file,
                          self.blueprint_id)
 
-        if use_cfy:
-            self.cfy.profile.set([
-                '-t', self.tenant,
-            ])
-            self.cfy.blueprint.upload([
-                '-b', namespace_blueprint_id,
-                namespace_blueprint_file
-            ])
-            self.cfy.blueprint.upload([
-                '-b', self.blueprint_id,
-                blueprint_file
-            ])
-        else:
-            if self.first_deployment:
-                with util.set_client_tenant(self.manager, self.tenant):
-                    self.manager.client.blueprints.upload(
-                        namespace_blueprint_file, namespace_blueprint_id)
-                    self.manager.client.blueprints.upload(
-                        blueprint_file, self.blueprint_id)
+        if self.first_deployment:
+            with util.set_client_tenant(self.manager, self.tenant):
+                self.manager.client.blueprints.upload(
+                    namespace_blueprint_file, namespace_blueprint_id)
+                self.manager.client.blueprints.upload(
+                    blueprint_file, self.blueprint_id)
 
 
 class FloatingIpRegionalCluster(AbstractRegionalCluster):
