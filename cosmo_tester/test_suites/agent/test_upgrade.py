@@ -68,7 +68,7 @@ def test_old_agent_stopped_after_agent_upgrade(
     new_manager.use()
 
     cfy.snapshots.upload([local_snapshot_path, '-s', snapshot_id])
-    restore_snapshot(new_manager, snapshot_id, cfy, logger)
+    restore_snapshot(new_manager, snapshot_id, logger)
 
     # Before upgrading the agents, the old agent should still be up
     old_manager.use()

@@ -241,7 +241,7 @@ def _do_central_upgrade(regional_cluster, central_manager,
     restore_snapshot(
         central_manager,
         constants.CENTRAL_MANAGER_SNAP_ID,
-        cfy, logger, restore_certificates=True)
+        logger, restore_certificates=True)
 
     cfy.agents.install()
 

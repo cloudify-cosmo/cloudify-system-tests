@@ -134,13 +134,13 @@ def test_multiple_networks(managers_and_vms,
     new_manager.use()
 
     upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
-    restore_snapshot(new_manager, snapshot_id, cfy, logger,
+    restore_snapshot(new_manager, snapshot_id, logger,
                      change_manager_password=False,
                      wait_for_post_restore_commands=False)
 
     wait_for_restore(new_manager, logger)
 
-    upgrade_agents(cfy, new_manager, logger, test_config)
+    upgrade_agents(new_manager, logger, test_config)
     stop_manager(old_manager, logger)
 
     for example in examples:
