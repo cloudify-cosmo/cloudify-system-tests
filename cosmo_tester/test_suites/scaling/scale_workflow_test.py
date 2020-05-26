@@ -16,7 +16,10 @@
 import pytest
 
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import set_client_tenant
+from cosmo_tester.framework.util import (
+    run_blocking_execution,
+    set_client_tenant,
+)
 
 
 @pytest.fixture(scope='function')
@@ -27,13 +30,19 @@ def on_manager_example(image_based_manager, ssh_key, logger, test_config):
     yield example
 
 
-def _scale(cfy, deployment_id, delta, tenant):
-    cfy.executions.start.scale([
-        '-d', deployment_id,
-        '-p', 'scalable_entity_name=file',
-        '-p', 'delta={}'.format(delta),
-        '-p', 'scale_compute=true',
-        '--tenant-name', tenant])
+def _scale(client, deployment_id, delta, tenant, logger):
+    run_blocking_execution(
+        client,
+        deployment_id,
+        'scale',
+        logger,
+        params={
+            'scalable_entity_name': 'file',
+            'delta': delta,
+            'scale_compute': True,
+        },
+        tenant=tenant,
+    )
 
 
 def _assert_scale(manager, deployment_id, expected_instances,
@@ -46,12 +55,12 @@ def _assert_scale(manager, deployment_id, expected_instances,
     assert len(instances) == expected_instances
 
 
-def test_scaling(cfy, image_based_manager, on_manager_example, logger):
+def test_scaling(image_based_manager, on_manager_example, logger):
     on_manager_example.upload_and_verify_install()
 
     logger.info('Performing scale out +2..')
-    _scale(cfy, on_manager_example.deployment_id, delta=2,
-           tenant=on_manager_example.tenant)
+    _scale(image_based_manager.client, on_manager_example.deployment_id,
+           delta=2, tenant=on_manager_example.tenant, logger=logger)
     _assert_scale(
             image_based_manager,
             on_manager_example.deployment_id,
@@ -60,8 +69,8 @@ def test_scaling(cfy, image_based_manager, on_manager_example, logger):
     on_manager_example.check_files()
 
     logger.info('Performing scale in -1..')
-    _scale(cfy, on_manager_example.deployment_id, delta=-1,
-           tenant=on_manager_example.tenant)
+    _scale(image_based_manager.client, on_manager_example.deployment_id,
+           delta=-1, tenant=on_manager_example.tenant, logger=logger)
     _assert_scale(
             image_based_manager,
             on_manager_example.deployment_id,
