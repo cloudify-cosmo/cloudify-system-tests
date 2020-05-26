@@ -1,13 +1,10 @@
 namespace: openstack
 plugin_package_name:
-  description: Package name of plugin for this platform, used to determine if it is already installed on the infrastructure manager.
+  description: Package name of plugin for this platform. This plugin must be installed on the infrastructure manager with visibility=global.
   default: cloudify-openstack-plugin
-plugin_url:
-  description: URL of plugin for this platform. Will be used to install the platform plugin if it is not present.
-  default: http://repository.cloudifysource.org/cloudify/wagons/cloudify-openstack-plugin/3.2.10/cloudify_openstack_plugin-3.2.10-py27-none-linux_x86_64-centos-Core.wgn
-plugin_yaml_url:
-  description: URL of plugin yaml for this platform. Will be used to install the platform plugin if it is not present.
-  default: http://www.getcloudify.org/spec/openstack-plugin/3.2.10/plugin.yaml
+plugin_version:
+  description: The expected version of this plugin.
+  default: 3.2.10
 linux_size:
   description: Size to use for linux on this platform.
   default: m1.medium

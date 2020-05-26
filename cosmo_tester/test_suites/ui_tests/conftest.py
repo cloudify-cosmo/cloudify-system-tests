@@ -11,7 +11,7 @@ class MissingRepoError(Exception):
 
 
 @pytest.fixture()
-def test_ui_manager(test_config, cfy, ssh_key, module_tmpdir, logger,
+def test_ui_manager(test_config, ssh_key, module_tmpdir, logger,
                     request):
     repos_present = True
     for repo in ['stage', 'composer']:
@@ -38,7 +38,7 @@ def test_ui_manager(test_config, cfy, ssh_key, module_tmpdir, logger,
         raise
 
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger, request)
+        ssh_key, module_tmpdir, test_config, logger, request)
     try:
         hosts.create()
         hosts.instances[0].restservice_expected = True

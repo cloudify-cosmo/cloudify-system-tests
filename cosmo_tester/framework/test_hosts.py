@@ -18,7 +18,7 @@ import winrm
 
 from cosmo_tester.framework import util
 
-from cloudify_cli.constants import DEFAULT_TENANT_NAME
+from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 HEALTHY_STATE = 'OK'
 
@@ -43,7 +43,6 @@ class VM(object):
             networks,
             rest_client,
             ssh_key,
-            cfy,
             logger,
             tmpdir,
             node_instance_id,
@@ -54,7 +53,6 @@ class VM(object):
         self.private_ip_address = private_ip_address
         self.client = rest_client
         self._ssh_key = ssh_key
-        self._cfy = cfy
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
         os.makedirs(self._tmpdir)
@@ -202,15 +200,10 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         if self.restservice_expected:
             self._logger.info('Checking rest service.')
             self.wait_for_manager()
-            self._logger.info('Using rest service.')
-            self.use()
             self._logger.info('Applying license.')
             self.apply_license()
 
     def verify_services_are_running(self):
-        return True
-
-    def use(self, tenant=None):
         return True
 
     def wait_for_manager(self):
@@ -320,7 +313,6 @@ class _CloudifyManager(VM):
             networks,
             rest_client,
             ssh_key,
-            cfy,
             logger,
             tmpdir,
             node_instance_id,
@@ -332,7 +324,6 @@ class _CloudifyManager(VM):
         self.client = rest_client
         self.networks = networks
         self._ssh_key = ssh_key
-        self._cfy = cfy
         self._logger = logger
         self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
         os.makedirs(self._tmpdir)
@@ -353,9 +344,9 @@ class _CloudifyManager(VM):
             },
         }
 
-    def upload_test_plugin(self, tenant_name=DEFAULT_TENANT_NAME):
+    def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
-        with util.set_client_tenant(self, tenant_name):
+        with util.set_client_tenant(self.client, tenant_name):
             self.client.plugins.upload(
                 util.get_resource_path(
                     'plugin/test_plugin-1.0.0-py27-none-any.zip'
@@ -365,20 +356,6 @@ class _CloudifyManager(VM):
 
     def __str__(self):
         return 'Cloudify manager [{}]'.format(self.ip_address)
-
-    @retrying.retry(stop_max_attempt_number=3, wait_fixed=3000)
-    def use(self, tenant=None, profile_name=None, cert_path=None):
-        kwargs = {}
-        if profile_name is not None:
-            kwargs['profile_name'] = profile_name
-        if cert_path:
-            kwargs['rest_certificate'] = cert_path
-        self._cfy.profiles.use([
-            self.ip_address,
-            '-u', self._test_config['test_manager']['username'],
-            '-p', self._test_config['test_manager']['password'],
-            '-t', tenant or self._test_config['test_manager']['tenant'],
-        ], **kwargs)
 
     def verify_services_are_running(self):
         if self.image_type.startswith('4'):
@@ -456,10 +433,6 @@ class _CloudifyManager(VM):
             return 'v3'
         else:
             return 'v3.1'
-
-    # passed to cfy. To be overridden in pre-4.0 versions
-    restore_tenant_name = None
-    tenant_name = 'default_tenant'
 
     def teardown(self):
         with self.ssh() as fabric_ssh:
@@ -588,7 +561,14 @@ class _CloudifyManager(VM):
         manager_status = self.client.manager.get_status()
         if manager_status['status'] != HEALTHY_STATE:
             raise StandardError(
-                'Timed out: Reboot did not complete successfully'
+                'Timed out: Manager services did not start successfully. '
+                'Inactive services: {}'.format(
+                    ', '.join([
+                        item['extra_info']['systemd']['unit_id']
+                        for item in manager_status['services'].values()
+                        if item['status'] != 'Active'
+                    ])
+                )
             )
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
@@ -600,7 +580,10 @@ class _CloudifyManager(VM):
                        service in ['postgresql', 'rabbitmq']):
                     if instance['state'] != 'running':
                         raise StandardError(
-                            'Timed out: Reboot did not complete successfully'
+                            'Timed out: Manager services did not start '
+                            'successfully. Status: {}'.format(
+                                status,
+                            )
                         )
 
     def enable_nics(self):
@@ -670,7 +653,6 @@ def get_image(version, test_config):
 class Hosts(object):
 
     def __init__(self,
-                 cfy,
                  ssh_key,
                  tmpdir,
                  test_config,
@@ -692,7 +674,6 @@ class Hosts(object):
         self._test_config = test_config
         self._tmpdir = tmpdir
         self._ssh_key = ssh_key
-        self._cfy = cfy
         self.preconfigure_callback = None
         if instances is None:
             self.instances = [
@@ -708,6 +689,13 @@ class Hosts(object):
 
         self.multi_net = multi_net
         self.vm_net_mappings = vm_net_mappings or {}
+
+        infra_mgr_config = self._test_config['infrastructure_manager']
+        self._infra_client = util.create_rest_client(
+            infra_mgr_config['address'],
+            username='admin',
+            password=infra_mgr_config['admin_password'],
+        )
 
         if flavor:
             self.server_flavor = flavor
@@ -743,23 +731,12 @@ class Hosts(object):
         )
         self.test_identifier = test_identifier
 
-        # Connect to the infrastructure manager for setting up the tests
-        infra_mgr_config = self._test_config['infrastructure_manager']
-        self._cfy.profiles.use(
-            "--manager-username", "admin",
-            "--manager-password", infra_mgr_config['admin_password'],
-            "--manager-tenant", "default_tenant",
-            infra_mgr_config['address'],
-        )
-
         try:
             self._logger.info('Creating test tenant')
-            self._cfy.tenants.create(test_identifier)
+            self._infra_client.tenants.create(test_identifier)
+            self._infra_client._client.headers[
+                CLOUDIFY_TENANT_HEADER] = test_identifier
             self.tenant = test_identifier
-            self._logger.info('Using test tenant')
-            self._cfy.profiles.set(
-                "--manager-tenant", test_identifier,
-            )
 
             self._upload_secrets_to_infrastructure_manager()
             self._upload_plugins_to_infrastructure_manager()
@@ -814,18 +791,9 @@ class Hosts(object):
 
         self._logger.info('Destroying test hosts..')
         if self.tenant:
-            self._logger.info(
-                'Switching profile to %s on %s',
-                self.tenant,
-                self._test_config['infrastructure_manager']['address'],
-            )
-            self._cfy.profiles.use(
-                self._test_config['infrastructure_manager']['address'],
-            )
-            self._cfy.profiles.set('--manager-tenant', self.tenant)
-
             self._logger.info('Ensuring executions are stopped.')
-            execs = json.loads(self._cfy.executions.list('--json').stdout)
+            cancelled = []
+            execs = self._infra_client.executions.list()
             for execution in execs:
                 if execution['workflow_id'] != (
                     'create_deployment_environment'
@@ -835,9 +803,10 @@ class Hosts(object):
                         execution['id'],
                         execution['workflow_id'],
                     )
-                    self._cfy.executions.cancel(
-                        '--force', '--kill', execution['id'],
+                    self._infra_client.executions.cancel(
+                        execution['id'], force=True, kill=True
                     )
+                    cancelled.append(execution['id'])
                 else:
                     self._logger.info(
                         'Skipping %s (%s).',
@@ -845,26 +814,52 @@ class Hosts(object):
                         execution['workflow_id'],
                     )
 
+            cancel_complete = []
+            for execution_id in cancelled:
+                self._logger.info('Checking {} is cancelled.'.format(
+                    execution_id,
+                ))
+                for _ in range(30):
+                    execution = self._infra_client.executions.get(
+                        execution_id)
+                    self._logger.info('{} is in state {}.'.format(
+                        execution_id,
+                        execution['status'],
+                    ))
+                    if execution['status'] == 'cancelled':
+                        cancel_complete.append(execution_id)
+                        break
+                    else:
+                        time.sleep(3)
+
+            cancel_failures = set(cancelled).difference(cancel_complete)
+            if cancel_failures:
+                self._logger.error(
+                    'Teardown failed due to the following executions not '
+                    'entering the correct state after kill-cancel: {}'.format(
+                        ', '.join(cancel_failures),
+                    )
+                )
+                raise RuntimeError('Could not complete teardown.')
+
             # Remove tenants in the opposite order to the order they were
             # deployed in, so that we don't try to remove the
             # infrastructure before removing the VMs using it.
             self._logger.info('Uninstalling and removing deployments.')
             for deployment in reversed(self.deployments):
                 self._logger.info('Uninstalling %s', deployment)
-                self._cfy.executions.start(
-                    "--deployment-id", deployment,
-                    "uninstall",
-                )
-                self._logger.info('Deleting %s', deployment)
-                self._cfy.deployments.delete(deployment)
+                util.run_blocking_execution(
+                    self._infra_client, deployment, 'uninstall', self._logger)
+                util.delete_deployment(self._infra_client, deployment,
+                                       self._logger)
 
             self._logger.info('Deleting blueprints.')
             for blueprint in self.blueprints:
                 self._logger.info('Deleting %s', blueprint)
-                self._cfy.blueprints.delete(blueprint)
+                self._infra_client.blueprints.delete(blueprint)
 
             self._logger.info('Deleting plugins.')
-            plugins = json.loads(self._cfy.plugins.list('--json').stdout)
+            plugins = self._infra_client.plugins.list()
             for plugin in plugins:
                 if plugin["tenant_name"] != self.tenant:
                     self._logger.info(
@@ -878,12 +873,12 @@ class Hosts(object):
                         plugin['package_name'],
                         plugin['id'],
                     )
-                    self._cfy.plugins.delete(plugin['id'])
+                    self._infra_client.plugins.delete(plugin['id'])
 
-            self._logger.info('Switching back to default tenant.')
-            self._cfy.profiles.set('--manager-tenant', 'default_tenant')
             self._logger.info('Deleting tenant %s', self.tenant)
-            self._cfy.tenants.delete(self.tenant)
+            self._infra_client._client.headers[
+                CLOUDIFY_TENANT_HEADER] = 'default_tenant'
+            self._infra_client.tenants.delete(self.tenant)
             self.tenant = None
 
     def _upload_secrets_to_infrastructure_manager(self):
@@ -898,30 +893,30 @@ class Hosts(object):
             "region",
         ]:
             secret_name = 'keystone_' + config_key
-            self._cfy.secrets.create(
-                "--secret-string", self._test_config['openstack'][config_key],
-                secret_name,
+            self._infra_client.secrets.create(
+                secret_name, self._test_config['openstack'][config_key],
             )
-        self._cfy.secrets.create(
-            "--secret-file", self._ssh_key.public_key_path,
-            "ssh_public_key",
+        with open(self._ssh_key.public_key_path) as ssh_pubkey_handle:
+            ssh_pubkey = ssh_pubkey_handle.read()
+        self._infra_client.secrets.create(
+            "ssh_public_key", ssh_pubkey,
         )
 
     def _upload_plugins_to_infrastructure_manager(self):
         plugin_details = self._test_config.platform
-        current_plugins = json.loads(self._cfy.plugins.list('--json').stdout)
+        current_plugins = self._infra_client.plugins.list(_all_tenants=True)
         if any(
             plugin["package_name"] == plugin_details['plugin_package_name']
+            and plugin["package_version"] == plugin_details['plugin_version']
             for plugin in current_plugins
         ):
             self._logger.info('Openstack plugin already present.')
         else:
-            self._logger.info(
-                'Uploading openstack plugin to infrastructure manager.'
-            )
-            self._cfy.plugins.upload(
-                "--yaml-path", plugin_details['plugin_yaml_url'],
-                plugin_details['plugin_url'],
+            raise RuntimeError(
+                'The manager must have a plugin called {}. '
+                'This should be uploaded with --visibility=global.'.format(
+                    plugin_details['plugin_package_name'],
+                )
             )
 
     def _upload_blueprints_to_infrastructure_manager(self):
@@ -929,13 +924,13 @@ class Hosts(object):
             'Uploading test blueprints to infrastructure manager.'
         )
         suffix = '-multi-net' if self.multi_net else ""
-        self._cfy.blueprints.upload(
-            "--blueprint-id", "infrastructure",
+        self._infra_client.blueprints.upload(
             util.get_resource_path(
                 'infrastructure_blueprints/infrastructure{}.yaml'.format(
                     suffix,
                 )
             ),
+            "infrastructure",
         )
         self.blueprints.append('infrastructure')
         test_vm_suffixes = ['']
@@ -943,13 +938,13 @@ class Hosts(object):
             test_vm_suffixes.append('-multi-net')
 
         for suffix in test_vm_suffixes:
-            self._cfy.blueprints.upload(
-                "--blueprint-id", "test_vm{}".format(suffix),
+            self._infra_client.blueprints.upload(
                 util.get_resource_path(
                     'infrastructure_blueprints/vm{}.yaml'.format(
                         suffix,
                     )
                 ),
+                "test_vm{}".format(suffix),
             )
             self.blueprints.append('test_vm{}'.format(suffix))
 
@@ -962,6 +957,7 @@ class Hosts(object):
                 # properly generic once we add another platform
                 'openstack']['floating_network_id']
         }
+        # Written to disk to aid in troubleshooting
         infrastructure_inputs_path = self._tmpdir / 'infra_inputs.yaml'
         with open(infrastructure_inputs_path, 'w') as inp_handle:
             inp_handle.write(json.dumps(infrastructure_inputs))
@@ -969,22 +965,20 @@ class Hosts(object):
         self._logger.info(
             'Creating test infrastructure using infrastructure manager.'
         )
-        self._cfy.deployments.create(
-            "--blueprint-id", "infrastructure",
-            "--inputs", infrastructure_inputs_path,
-            "infrastructure"
+        util.create_deployment(
+            self._infra_client, 'infrastructure', 'infrastructure',
+            self._logger, inputs=infrastructure_inputs,
         )
         self.deployments.append('infrastructure')
-        self._cfy.executions.start(
-            "--deployment-id", "infrastructure",
-            "install",
-        )
+        util.run_blocking_execution(
+            self._infra_client, "infrastructure", "install", self._logger)
 
         if self.multi_net:
             network_mappings = {}
             for sn in range(1, 4):
-                subnet_details = self._get_node(
-                    'test_subnet_{}'.format(sn), 'infrastructure',
+                subnet_details = self._infra_client.get(
+                    'infrastructure',
+                    'test_subnet_{}'.format(sn)
                 )['properties']['resource_config']
                 network_mappings['network_{}'.format(sn)] = ip_network(
                     # Has to be unicode for ipaddress library.
@@ -1029,21 +1023,19 @@ class Hosts(object):
                 vm_inputs['use_net'] = self.vm_net_mappings.get(index, 1)
             else:
                 blueprint_id = blueprint_id + '-multi-net'
+        # Dumped to file to aid in troubleshooting
         vm_inputs_path = self._tmpdir / '{}_{}.yaml'.format(vm_id, index)
         with open(vm_inputs_path, 'w') as inp_handle:
             inp_handle.write(json.dumps(vm_inputs))
 
         self._logger.info('Deploying instance %d of %s', index, image_id)
-        self._cfy.deployments.create(
-            "--blueprint-id", blueprint_id,
-            "--inputs", vm_inputs_path,
-            vm_id,
+        util.create_deployment(
+            self._infra_client, blueprint_id, vm_id, self._logger,
+            inputs=vm_inputs,
         )
         self.deployments.append(vm_id)
-        self._cfy.executions.start(
-            "--deployment-id", vm_id,
-            "install",
-        )
+        util.run_blocking_execution(self._infra_client, vm_id, 'install',
+                                    self._logger)
 
         self._logger.info('Retrieving deployed instance details.')
         node_instance = self._get_node_instances('test_host', vm_id)[0]
@@ -1057,26 +1049,17 @@ class Hosts(object):
     def _get_node_instances(self, node_name, deployment_id):
         node_instances = []
 
-        node_instance_list = json.loads(self._cfy(
-            "node-instances", "list", "--json",
-            "--deployment-id", deployment_id,
-        ).stdout)
+        node_instance_list = self._infra_client.node_instances.list(
+            deployment_id=deployment_id,
+        )
 
         for inst in node_instance_list:
             if inst['node_id'] == node_name:
-                node_instances.append(json.loads(self._cfy(
-                    "node-instances", "get", "--json",
+                node_instances.append(self._infra_client.node_instances.get(
                     inst['id'],
-                ).stdout))
+                ))
 
         return node_instances
-
-    def _get_node(self, node_name, deployment_id):
-        return json.loads(self._cfy(
-            "nodes", "get", "--json",
-            "--deployment-id", deployment_id,
-            node_name,
-        ).stdout)
 
     def _update_instance(self, instance, node_instance):
         runtime_props = node_instance['runtime_properties']
@@ -1121,7 +1104,6 @@ class Hosts(object):
             networks,
             rest_client,
             self._ssh_key,
-            self._cfy,
             self._logger,
             self._tmpdir,
             node_instance_id,

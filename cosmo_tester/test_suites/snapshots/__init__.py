@@ -133,10 +133,11 @@ def restore_snapshot(manager, snapshot_id, logger,
 
     try:
         wait_for_execution(
-            manager,
+            manager.client,
             restore_execution,
             logger,
-            new_password=CHANGED_ADMIN_PASSWORD)
+            new_password=CHANGED_ADMIN_PASSWORD,
+            manager=manager)
     except ExecutionFailed:
         logger.error('Snapshot execution failed.')
         list_executions(manager, logger)
@@ -326,7 +327,7 @@ def verify_services_status(manager, logger):
 
 
 def get_plugins_list(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(manager.client, tenant):
         return [
             (
                 item['package_name'],
@@ -338,14 +339,14 @@ def get_plugins_list(manager, tenant=None):
 
 
 def get_deployments_list(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(manager.client, tenant):
         return [
             item['id'] for item in manager.client.deployments.list()
         ]
 
 
 def get_secrets_list(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(manager.client, tenant):
         return [
             item['key'] for item in manager.client.secrets.list()
         ]

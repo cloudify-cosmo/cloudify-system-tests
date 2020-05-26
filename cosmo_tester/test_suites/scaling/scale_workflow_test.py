@@ -38,7 +38,7 @@ def _scale(cfy, deployment_id, delta, tenant):
 
 def _assert_scale(manager, deployment_id, expected_instances,
                   tenant):
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(manager.client, tenant):
         instances = manager.client.node_instances.list(
             deployment_id=deployment_id,
             _include=['id'],

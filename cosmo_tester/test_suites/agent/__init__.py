@@ -1,10 +1,10 @@
 from cosmo_tester.framework.test_hosts import get_image, Hosts
 
 
-def get_test_prerequisites(cfy, ssh_key, module_tmpdir, test_config, logger,
+def get_test_prerequisites(ssh_key, module_tmpdir, test_config, logger,
                            request, vm_os):
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir, test_config, logger, request, 2)
+        ssh_key, module_tmpdir, test_config, logger, request, 2)
     hosts.instances[1] = get_image('centos', test_config)
     manager, vm = hosts.instances
 

@@ -5,9 +5,9 @@ from cosmo_tester.test_suites.snapshots import get_multi_tenant_versions_list
 
 
 @pytest.fixture(scope='function', params=get_multi_tenant_versions_list())
-def hosts(request, cfy, ssh_key, module_tmpdir, test_config, logger):
+def hosts(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(
-        cfy, ssh_key, module_tmpdir,
+        ssh_key, module_tmpdir,
         test_config, logger, request,
         number_of_instances=3,
     )

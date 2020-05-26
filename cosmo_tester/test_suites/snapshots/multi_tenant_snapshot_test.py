@@ -182,7 +182,7 @@ def create_tenant_secrets(manager, tenants, logger):
     """
     logger.info('Creating secrets...')
     for tenant in tenants:
-        with set_client_tenant(manager, tenant):
+        with set_client_tenant(manager.client, tenant):
             manager.client.secrets.create(
                 key=tenant,
                 value=tenant,
