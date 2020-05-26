@@ -1,37 +1,25 @@
-########
-# Copyright (c) 2014 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
-import os
-import sys
+from contextlib import contextmanager
+import errno
 import glob
 import json
-import yaml
-import errno
-import shlex
-import socket
 import logging
+import os
 import requests
 import retrying
+import shlex
+import socket
 import subprocess
-from os import makedirs
+import sys
 from tempfile import mkstemp
-from contextlib import contextmanager
+import time
+import yaml
 
 from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
-from cloudify_rest_client.exceptions import CloudifyClientError
+from cloudify_rest_client.exceptions import (
+    CloudifyClientError,
+    UserUnauthorizedError,
+)
 from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
 
 from .exceptions import ProcessExecutionError
@@ -208,7 +196,7 @@ def prepare_and_get_test_tenant(test_param, manager, test_config):
 
 def mkdirs(folder_path):
     try:
-        makedirs(folder_path)
+        os.makedirs(folder_path)
     except OSError as exc:
         if exc.errno == errno.EEXIST and os.path.isdir(folder_path):
             pass
@@ -414,44 +402,113 @@ def generate_ca_cert(ca_cert_path, ca_key_path):
     ])
 
 
-class ExecutionWaiting(Exception):
-    """
-    raised by `wait_for_execution` if it should be retried
-    """
+class ExecutionTimeout(Exception):
+    """Raised by `wait_for_execution` if the execution takes too long."""
 
 
 class ExecutionFailed(Exception):
-    """
-    raised by `wait_for_execution` if a bad state is reached
-    """
+    """Raised by `wait_for_execution` if the execution fails."""
 
 
-def retry_if_not_failed(exception):
-    return not isinstance(exception, ExecutionFailed)
-
-
-@retrying.retry(
-    stop_max_delay=5 * 60 * 1000,
-    wait_fixed=10000,
-    retry_on_exception=retry_if_not_failed,
-)
-def wait_for_execution(manager, execution, logger):
+def wait_for_execution(manager, execution, logger, tenant=None,
+                       new_password=None, timeout=(5*60)):
     logger.info(
         'Getting workflow execution [id={execution}]'.format(
             execution=execution['id'],
         )
     )
-    execution = manager.client.executions.get(execution['id'])
-    logger.info('- execution.status = %s', execution.status)
-    if execution.status not in execution.END_STATES:
-        raise ExecutionWaiting(execution.status)
-    if execution.status != execution.TERMINATED:
-        logger.warning('Execution failed')
-        raise ExecutionFailed(
-            '{status}: {error}'.format(
-                status=execution.status,
-                error=execution['error'],
-            )
-        )
-    logger.info('Execution complete')
+    current_time = time.time()
+    # Timeout after ~5 minutes
+    timeout_time = current_time + timeout
+    password_updated = False
+    output_events(manager, execution, logger, to_time=current_time)
+
+    with set_client_tenant(manager, tenant):
+        while True:
+            try:
+                execution = manager.client.executions.get(execution['id'])
+            except UserUnauthorizedError:
+                if new_password and not password_updated:
+                    # This will happen on a restore with modified users
+                    change_rest_client_password(manager, new_password)
+                    password_updated = True
+                else:
+                    # We either shouldn't change the password, or did already.
+                    raise
+
+            prev_time = current_time
+            current_time = time.time()
+
+            output_events(manager, execution, logger, prev_time, current_time)
+
+            if time.time() >= timeout_time:
+                raise ExecutionTimeout(
+                    'Execution timed out in state: {status}'.format(
+                        status=execution.status,
+                    )
+                )
+
+            if execution.status in execution.END_STATES:
+                # Give time for any last second events
+                time.sleep(2)
+                output_events(manager, execution, logger,
+                              current_time)
+
+                if execution.status != execution.TERMINATED:
+                    logger.warning('Execution failed')
+                    raise ExecutionFailed(
+                        '{status}: {error}'.format(
+                            status=execution.status,
+                            error=execution['error'],
+                        )
+                    )
+
+                logger.info('Execution completed in state {status}'.format(
+                        status=execution.status,
+                    )
+                )
+                break
+
     return execution
+
+
+def output_events(manager, execution, logger, from_time=None, to_time=None):
+    events = manager.client.events.list(
+        execution_id=execution.id,
+        _size=1000,
+        include_logs=True,
+        sort='reported_timestamp',
+        from_datetime=convert_epoch_to_time_string(from_time),
+        to_datetime=convert_epoch_to_time_string(to_time),
+    )
+    log_methods = {
+        'debug': logger.debug,
+        'info': logger.info,
+        'warn': logger.warn,
+        'warning': logger.warn,
+        'error': logger.error,
+    }
+    for event in events:
+        if event.get('type') == 'cloudify_event':
+            level = 'info'
+        else:
+            level = event.get('level')
+
+        if level not in log_methods:
+            logger.warn('Event level {} was unknown.'.format(level))
+            logger.warn('Event was: {}'.format(event))
+        else:
+            log_methods[level](event.get('message', 'Message not found'))
+
+
+def convert_epoch_to_time_string(inp):
+    if inp:
+        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(inp))
+    else:
+        return None
+
+
+def change_rest_client_password(manager, new_password):
+    manager.client = create_rest_client(manager.ip_address,
+                                        tenant='default_tenant',
+                                        password=new_password)
