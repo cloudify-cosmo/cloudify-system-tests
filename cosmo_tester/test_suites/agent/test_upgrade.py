@@ -4,7 +4,12 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.test_hosts import Hosts
 
-from cosmo_tester.test_suites.snapshots import restore_snapshot
+from cosmo_tester.test_suites.snapshots import (
+    create_snapshot,
+    download_snapshot,
+    restore_snapshot,
+    upload_snapshot,
+)
 
 
 @pytest.fixture(scope='module')
@@ -50,34 +55,33 @@ def example(managers_and_vm, ssh_key, tmpdir, logger, test_config):
 
 
 def test_old_agent_stopped_after_agent_upgrade(
-        managers_and_vm, example, cfy, logger, tmpdir
+        managers_and_vm, example, logger, tmpdir
 ):
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
     snapshot_id = 'snap'
 
     old_manager, new_manager, vm = managers_and_vm
 
-    old_manager.use()
-
     example.upload_and_verify_install()
 
-    cfy.snapshots.create([snapshot_id])
+    create_snapshot(old_manager, snapshot_id, logger)
     old_manager.wait_for_all_executions()
-    cfy.snapshots.download([snapshot_id, '-o', local_snapshot_path])
+    download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
 
-    new_manager.use()
-
-    cfy.snapshots.upload([local_snapshot_path, '-s', snapshot_id])
+    upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(new_manager, snapshot_id, logger)
 
     # Before upgrading the agents, the old agent should still be up
-    old_manager.use()
-    cfy.agents.validate('--tenant-name', example.tenant)
+    old_manager.run_command('cfy agents validate --tenant-name {}'.format(
+        example.tenant,
+    ))
 
     # Upgrade to new agents and stop old agents
-    new_manager.use()
-    cfy.agents.install('--stop-old-agent',
-                       '--tenant-name', example.tenant)
+    new_manager.run_command(
+        'cfy agents install --stop-old-agent --tenant-name {}'.format(
+            example.tenant,
+        )
+    )
 
     logger.info('Validating the old agent is indeed down')
     _assert_agent_not_running(old_manager, vm, 'vm', example.tenant)

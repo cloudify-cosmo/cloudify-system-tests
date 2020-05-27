@@ -15,10 +15,10 @@ from cosmo_tester.test_suites.agent import get_test_prerequisites
     'rhel_7',
     'windows_2012',
 ])
-def test_agent_reboot(cfy, ssh_key, module_tmpdir, test_config, logger, vm_os,
+def test_agent_reboot(ssh_key, module_tmpdir, test_config, logger, vm_os,
                       request):
     hosts, username, password = get_test_prerequisites(
-        cfy, ssh_key, module_tmpdir, test_config, logger, request, vm_os,
+        ssh_key, module_tmpdir, test_config, logger, request, vm_os,
     )
     manager, vm = hosts.instances
 

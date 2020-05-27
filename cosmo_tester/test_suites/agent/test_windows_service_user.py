@@ -2,10 +2,10 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.agent import get_test_prerequisites
 
 
-def test_windows_with_service_user(cfy, ssh_key, module_tmpdir, test_config,
+def test_windows_with_service_user(ssh_key, module_tmpdir, test_config,
                                    logger, request):
     hosts, username, password = get_test_prerequisites(
-        cfy, ssh_key, module_tmpdir, test_config, logger, request,
+        ssh_key, module_tmpdir, test_config, logger, request,
         'windows_2012',
     )
     manager, vm = hosts.instances
