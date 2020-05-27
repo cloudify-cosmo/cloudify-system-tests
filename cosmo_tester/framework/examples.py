@@ -2,6 +2,7 @@ import os
 import json
 
 from cosmo_tester.framework.util import (
+    create_deployment,
     get_resource_path,
     prepare_and_get_test_tenant,
     set_client_tenant,
@@ -77,11 +78,11 @@ class BaseExample(object):
                 self.deployment_id,
                 json.dumps(self.inputs, indent=2))
         with set_client_tenant(self.manager.client, self.tenant):
-            self.manager.client.deployments.create(
-                deployment_id=self.deployment_id,
-                blueprint_id=self.blueprint_id,
-                inputs=self.inputs,
-                skip_plugins_validation=skip_plugins_validation)
+            create_deployment(
+                self.manager.client, self.blueprint_id, self.deployment_id,
+                self.logger, inputs=self.inputs,
+                skip_plugins_validation=skip_plugins_validation,
+            )
             self.logger.info('Deployments for tenant {}'.format(self.tenant))
             for deployment in self.manager.client.deployments.list():
                 self.logger.info(deployment['id'])
