@@ -3,7 +3,7 @@ import retrying
 from cosmo_tester.test_suites.cluster import check_managers
 
 
-def test_remove_db_node(full_cluster, logger, cfy):
+def test_remove_db_node(full_cluster, logger):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
 
     # To aid troubleshooting in case of issues
@@ -40,7 +40,7 @@ def test_remove_db_node(full_cluster, logger, cfy):
     check_managers(mgr1, mgr2)
 
 
-def test_add_db_node(cluster_missing_one_db, logger, cfy):
+def test_add_db_node(cluster_missing_one_db, logger):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = \
         cluster_missing_one_db
 
@@ -69,7 +69,7 @@ def test_add_db_node(cluster_missing_one_db, logger, cfy):
     check_managers(mgr1, mgr2)
 
 
-def test_db_set_master(dbs, logger, cfy):
+def test_db_set_master(dbs, logger):
     db1, db2, db3 = dbs
 
     for attempt in range(3):
@@ -103,7 +103,7 @@ def test_db_set_master(dbs, logger, cfy):
     _check_cluster(after_change)
 
 
-def test_db_reinit(dbs, logger, cfy):
+def test_db_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
     # Ideally we'd test this by damaging a node so that it needed a reinit,
@@ -118,7 +118,7 @@ def test_db_reinit(dbs, logger, cfy):
     _check_cluster(listing)
 
 
-def test_fail_to_remove_db_leader(dbs, logger, cfy):
+def test_fail_to_remove_db_leader(dbs, logger):
     db1, db2, db3 = dbs
 
     listing = _get_db_listing([db1])[0]
@@ -132,7 +132,7 @@ def test_fail_to_remove_db_leader(dbs, logger, cfy):
     assert 'cannot be removed' in result
 
 
-def test_fail_to_reinit(dbs, logger, cfy):
+def test_fail_to_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
     listing = _get_db_listing([db1])[0]
