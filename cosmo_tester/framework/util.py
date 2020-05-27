@@ -585,7 +585,7 @@ def create_deployment(client, blueprint_id, deployment_id, logger,
             )
             return
     raise DeploymentCreationError(
-        'Deployment environment creation workflow not found for %s'.format(
+        'Deployment environment creation workflow not found for {}'.format(
             deployment_id,
         )
     )
