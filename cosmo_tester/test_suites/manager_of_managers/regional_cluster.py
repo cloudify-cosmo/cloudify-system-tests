@@ -418,7 +418,7 @@ class AbstractRegionalCluster(object):
 
         util.run_blocking_execution(
             self.manager.client, self.deployment_id, 'execute_workflow',
-            params=workflow_params,
+            self.logger, params=workflow_params,
         )
 
         self.logger.info(
