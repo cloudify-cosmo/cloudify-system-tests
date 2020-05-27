@@ -5,7 +5,7 @@ import time
 import pytest
 
 from cloudify_rest_client.exceptions import CloudifyClientError
-from cosmo_tester.framework.util import set_client_tenant
+from cosmo_tester.framework.util import create_deployment, set_client_tenant
 
 
 SMALL_BLUEPRINT_PATH = os.path.abspath(
@@ -152,9 +152,9 @@ def prepared_manager(image_based_manager, logger):
             for bp_name, count in TENANT_DEPLOYMENT_COUNTS[tenant].items():
                 for i in xrange(count):
                     deployment_id = bp_name + str(i)
-                    image_based_manager.client.deployments.create(
-                        blueprint_id=bp_name,
-                        deployment_id=deployment_id,
+                    create_deployment(
+                        image_based_manager.client, bp_name, deployment_id,
+                        logger,
                     )
                     deployment_ids.append(deployment_id)
                 image_based_manager.wait_for_all_executions()
