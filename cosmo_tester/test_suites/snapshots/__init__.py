@@ -119,7 +119,7 @@ def restore_snapshot(manager, snapshot_id, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
                      wait_timeout=20, change_manager_password=True,
-                     cert_path=None):
+                     cert_path=None, wait_for_execution=True):
     list_snapshots(manager, logger)
 
     logger.info('Restoring snapshot on latest manager..')
@@ -131,21 +131,23 @@ def restore_snapshot(manager, snapshot_id, logger,
 
     _assert_restore_status(manager)
 
-    try:
-        wait_for_execution(
-            manager.client,
-            restore_execution,
-            logger,
-            new_password=CHANGED_ADMIN_PASSWORD,
-            manager=manager)
-    except ExecutionFailed:
-        logger.error('Snapshot execution failed.')
-        list_executions(manager, logger)
-        raise
+    if wait_for_execution:
+        try:
+            wait_for_execution(
+                manager.client,
+                restore_execution,
+                logger,
+                new_password=CHANGED_ADMIN_PASSWORD,
+                manager=manager)
+        except ExecutionFailed:
+            logger.error('Snapshot execution failed.')
+            list_executions(manager, logger)
+            raise
 
-    # wait a while to allow the restore-snapshot post-workflow commands to run
-    if wait_for_post_restore_commands:
-        sleep(wait_timeout)
+        # wait a while to allow the restore-snapshot post-workflow commands to
+        # run
+        if wait_for_post_restore_commands:
+            sleep(wait_timeout)
 
 
 def change_salt_on_new_manager(manager, logger):
