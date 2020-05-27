@@ -207,7 +207,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         return True
 
     def wait_for_manager(self):
-        return True
+        raise RuntimeError('This is not a manager')
 
     @property
     def ssh_key(self):
