@@ -7,10 +7,6 @@ Cloudify System Tests
 The system tests framework uses pytest fixtures in order to create the required
 resources for testing Cloudify.
 
-## Updating requirements.txt
-
-Install pip-tools, update dependencies as desired and run `pip-compile`, as noted in the requirements.txt header.
-
 ## Installation
 
 ### Install system tests framework
@@ -24,10 +20,18 @@ Install pip-tools, update dependencies as desired and run `pip-compile`, as note
 The test framework requires a cloudify manager in order to create and manage test instances.
 You will need to know the address of this manager and its admin password.
 This manager will need to have network access to the platform you wish it to manage.
+This manager will need to have the necessary plugin for your platform uploaded and shared with visibility set to global.
+
+You will also need to have checked out the following repositories:
+For all tests: cloudify-versions
+For premium tests: cloudify-premium
+For UI tests: cloudify-blueprint-composer, cloudify-stage
+They are expected to exist in the same directory that the cloudify-system-tests directory exists, but this can be changed in the config.
 
 The test framework assumes that manager images will exist, as defined in the schema.
-To see expected images, look in the config under your platform's namespace, e.g. 'openstack'.
-To see the schema, run:
+To see expected images, look in the config under manager_image_names_centos and manager_image_names_rhel.
+
+To see the schema including default values, run:
 ```bash
 test-config schema
 ```
@@ -74,3 +78,7 @@ To see available keys in the schema, with descriptions:
 ```bash
 test-config schema
 ```
+
+## Updating requirements.txt
+
+Install pip-tools, update dependencies as desired and run `pip-compile`, as noted in the requirements.txt header.
