@@ -216,6 +216,14 @@ class Config(NameSpace):
                                 )
                             )
                             config_valid = False
+
+                    if key_value is None and not schema[key].get('nullable'):
+                        self._logger.error(
+                            "{key} is not set, but is not nullable.".format(
+                                key=display_key,
+                            )
+                        )
+                        config_valid = False
             else:
                 self._logger.warn(
                     '{key} is in config, but not defined in the schema. '
