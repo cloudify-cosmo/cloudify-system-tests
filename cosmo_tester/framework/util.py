@@ -591,6 +591,10 @@ def create_deployment(client, blueprint_id, deployment_id, logger,
     )
 
 
+class DeploymentDeletionError(Exception):
+    """Raised when deployment delete takes too long."""
+
+
 def delete_deployment(client, deployment_id, logger):
     logger.info('Deleting deployment %s', deployment_id)
     client.deployments.delete(deployment_id)
