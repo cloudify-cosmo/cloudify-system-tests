@@ -83,7 +83,7 @@ def test_inplace_upgrade(manager_and_vm,
         # the execution to finish to avoid a race condition that occasionally
         # causes test failures when we don't ssh in before the shutdown.
         restore_snapshot(manager, snapshot_name, logger,
-                         restore_certificates=True, wait_for_execution=False)
+                         restore_certificates=True, blocking=False)
         retry_delay = 1
         max_attempts = 240
         reboot_triggered = False

@@ -119,7 +119,7 @@ def restore_snapshot(manager, snapshot_id, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
                      wait_timeout=20, change_manager_password=True,
-                     cert_path=None, wait_for_execution=True):
+                     cert_path=None, blocking=True):
     list_snapshots(manager, logger)
 
     logger.info('Restoring snapshot on latest manager..')
@@ -131,7 +131,7 @@ def restore_snapshot(manager, snapshot_id, logger,
 
     _assert_restore_status(manager)
 
-    if wait_for_execution:
+    if blocking:
         try:
             wait_for_execution(
                 manager.client,
