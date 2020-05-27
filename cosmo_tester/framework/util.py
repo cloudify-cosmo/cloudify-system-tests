@@ -507,7 +507,11 @@ def output_events(manager, execution, logger, from_time=None, to_time=None):
             logger.warn('Event level {} was unknown.'.format(level))
             logger.warn('Event was: {}'.format(event))
         else:
-            log_methods[level](event.get('message', 'Message not found'))
+            message = event.get('message', 'Message not found')
+            if message.strip().endswith('nothing to do'):
+                # All well and good, but let's not bloat the logs
+                continue
+            log_methods[level](message)
 
 
 def convert_epoch_to_time_string(inp):
@@ -549,4 +553,61 @@ def list_capabilities(manager, deployment_id, logger):
         logger.info(
             '%(dep)s capability %(name)s: %(value)s',
             {'dep': deployment_id, 'name': name, 'value': value},
+        )
+
+
+class DeploymentCreationError(Exception):
+    """Raised when deployment creation fails due to lack of workflow."""
+
+
+def create_deployment(client, blueprint_id, deployment_id, logger,
+                      inputs=None, skip_plugins_validation=False):
+    logger.info('Creating deployment for %s', deployment_id)
+    client.deployments.create(
+        blueprint_id=blueprint_id,
+        deployment_id=deployment_id,
+        inputs=inputs or {},
+        skip_plugins_validation=skip_plugins_validation,
+    )
+
+    logger.info('Waiting for deployment env creation for %s',
+                deployment_id)
+    executions = client.executions.list(deployment_id=deployment_id)
+    for execution in executions:
+        if execution.workflow_id == 'create_deployment_environment':
+            wait_for_execution(
+                client,
+                execution,
+                logger,
+            )
+            return
+    raise DeploymentCreationError(
+        'Deployment environment creation workflow not found for %s'.format(
+            deployment_id,
+        )
+    )
+
+
+def delete_deployment(client, deployment_id, logger):
+    logger.info('Deleting deployment %s', deployment_id)
+    client.deployments.delete(deployment_id)
+    # Allow a short delay to allow some time for the deletion
+    time.sleep(0.5)
+
+    for _ in range(20):
+        found = False
+        deployments = client.deployments.list()
+        for deployment in deployments:
+            if deployment['id'] == deployment_id:
+                found = True
+                logger.info('Still waiting for deployment %s to delete',
+                            deployment_id)
+                time.sleep(2)
+                break
+
+    if found:
+        raise DeploymentDeletionError(
+            'Deployment {} did not finish deleting.'.format(
+                deployment_id,
+            )
         )
