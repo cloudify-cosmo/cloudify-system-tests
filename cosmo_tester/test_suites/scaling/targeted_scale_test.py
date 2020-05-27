@@ -1,12 +1,11 @@
 import os
 
 from cloudify_cli.utils import (
+    create_deployment,
     ExecutionFailed,
-    get_deployment_environment_execution,
     run_blocking_execution,
     wait_for_execution,
 )
-from cloudify_cli.constants import CREATE_DEPLOYMENT
 
 
 NODES_BLUEPRINT_PATH = os.path.abspath(
@@ -34,21 +33,7 @@ def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
         entity_id=entity_id,
     )
 
-    logger.info('Creating deployment for {dep}'.format(dep=entity_id))
-    manager.client.deployments.create(
-        blueprint_id=entity_id,
-        deployment_id=entity_id,
-    )
-
-    logger.info('Waiting for deployment env creation for '
-                '{dep}'.format(dep=entity_id))
-    creation_execution = get_deployment_environment_execution(
-        manager.client, entity_id, CREATE_DEPLOYMENT)
-    wait_for_execution(
-        manager.client,
-        creation_execution,
-        logger,
-    )
+    create_deployment(manager.client, entity_id, entity_id, logger)
 
     logger.info('Running install for {dep}'.format(dep=entity_id))
     run_blocking_execution(manager.client, entity_id, 'install', logger)
