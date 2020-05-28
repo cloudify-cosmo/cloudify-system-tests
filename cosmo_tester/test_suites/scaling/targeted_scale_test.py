@@ -1,6 +1,6 @@
 import os
 
-from cloudify_cli.utils import (
+from cosmo_tester.framework.utils import (
     create_deployment,
     ExecutionFailed,
     run_blocking_execution,
