@@ -129,6 +129,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         self._logger.info('- status_code: %d', result.status_code)
         if not warn_only:
             assert result.status_code == 0
+        # To allow the same calling conventions as linux commands
+        result.stdout = result.std_out
         return result
 
     def get_windows_remote_file_content(self, path):
