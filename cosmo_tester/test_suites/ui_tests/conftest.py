@@ -43,7 +43,6 @@ def test_ui_manager(test_config, ssh_key, module_tmpdir, logger,
         hosts.create()
         hosts.instances[0].restservice_expected = True
         hosts.instances[0].finalize_preparation()
-        hosts.instances[0].use()
         yield hosts.instances[0]
     finally:
         hosts.destroy()

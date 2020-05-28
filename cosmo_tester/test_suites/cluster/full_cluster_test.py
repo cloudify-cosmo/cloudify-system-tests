@@ -172,7 +172,6 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 def test_workflow_resume_manager_failover(minimal_cluster,
                                           logger, ssh_key, test_config):
     broker, db, mgr1, mgr2 = minimal_cluster
-    mgr1.use(cert_path=mgr1.local_ca)
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'workflow_resume_manager_failover',

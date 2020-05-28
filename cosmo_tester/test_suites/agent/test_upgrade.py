@@ -87,7 +87,6 @@ def test_old_agent_stopped_after_agent_upgrade(
     _assert_agent_not_running(old_manager, vm, 'vm', example.tenant)
     old_manager.stop()
 
-    new_manager.use()
     example.manager = new_manager
     example.check_files()
     example.uninstall()

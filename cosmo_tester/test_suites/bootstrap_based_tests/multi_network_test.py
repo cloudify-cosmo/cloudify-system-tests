@@ -130,8 +130,6 @@ def test_multiple_networks(managers_and_vms,
     create_snapshot(old_manager, snapshot_id, logger)
     download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
 
-    new_manager.use()
-
     upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
     restore_snapshot(new_manager, snapshot_id, logger,
                      change_manager_password=False,
@@ -268,8 +266,6 @@ def test_agent_via_proxy(proxy_hosts,
                 fabric.sudo(
                     'iptables -I INPUT -p tcp -s {0} --dport {1} -j ACCEPT'
                     .format(ip, port))
-
-    manager.use()
 
     example = get_example_deployment(
         manager, ssh_key, logger, 'agent_via_proxy', test_config, vm)

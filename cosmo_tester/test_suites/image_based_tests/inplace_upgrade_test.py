@@ -32,7 +32,6 @@ def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
 
     try:
         hosts.create()
-        manager.use()
         yield hosts.instances
     except Exception:
         passed = False
@@ -75,7 +74,6 @@ def test_inplace_upgrade(manager_and_vm,
         fabric_ssh.sudo('pkill -f rabbitmq')
         fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
     manager.bootstrap()
-    manager.use()
     upload_snapshot(manager, snapshot_path, snapshot_name, logger)
 
     with manager.ssh() as fabric_ssh:

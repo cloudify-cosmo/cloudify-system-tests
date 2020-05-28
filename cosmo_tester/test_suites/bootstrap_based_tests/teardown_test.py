@@ -21,7 +21,6 @@ pre_bootstrap_state = None
 def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
     check_pre_bootstrap_state(bootstrap_test_manager)
     bootstrap_test_manager.bootstrap()
-    bootstrap_test_manager.use()
 
     bootstrapped_state = _get_system_state(bootstrap_test_manager)
     expected_diffs = {}
