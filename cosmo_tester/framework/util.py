@@ -125,8 +125,8 @@ def _get_package_url(filename, test_config):
         )
     )
 
-    with open(package_url_file):
-        return package_url_file.read()
+    with open(package_url_file) as package_url_handle:
+        return package_url_handle.read()
 
 
 @retrying.retry(stop_max_attempt_number=20, wait_fixed=5000)
