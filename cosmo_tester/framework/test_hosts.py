@@ -145,7 +145,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 # But single quotes must be represented in such a string with
                 # double single quotes
                 content.replace("'", "''"),
-            )
+            ),
+            powershell=True,
         )
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=3000)
@@ -307,6 +308,10 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
 
 
 class _CloudifyManager(VM):
+
+    def __init__(self, *args, **kwargs):
+        super(_CloudifyManager, self).__init__(*args, **kwargs)
+        self.restservice_expected = True
 
     def assign(
             self,
