@@ -19,20 +19,23 @@ def _prepare(run, example, paths, logger):
     )
 
     logger.info('Creating secret')
-    run('{cfy} secrets create --secret-file {ssh_key} ssh_public_key'
+    run('{cfy} secrets create --secret-file {ssh_key} agent_key'
         .format(**paths))
 
 
 def _test_upload_and_install(run, example, paths, logger):
     logger.info('Uploading blueprint')
-    run('{cfy} blueprints upload -b test_bp {blueprint}'.format(**paths))
+    run('{cfy} blueprints upload -b {bp_id} {blueprint}'.format(
+        bp_id=example.blueprint_id, **paths))
 
     logger.info('Creating deployment')
-    run('{cfy} deployments create -b test_bp -i {inputs_path} test_dep '
-        .format(**paths))
+    run('{cfy} deployments create -b {bp_id} -i {inputs_path} {dep_id} '
+        .format(bp_id=example.blueprint_id, dep_id=example.deployment_id,
+                **paths))
 
     logger.info('Executing install workflow')
-    run('{cfy} executions start install -d test_dep'.format(**paths))
+    run('{cfy} executions start install -d {dep_id}'.format(
+        dep_id=example.deployment_id, **paths))
 
     example.check_files()
 
@@ -56,12 +59,14 @@ def _test_cfy_install(run, example, paths, logger):
 
 def _test_teardown(run, example, paths, logger):
     logger.info('Starting uninstall workflow')
-    run('{cfy} executions start uninstall -d test_dep'.format(**paths))
+    run('{cfy} executions start uninstall -d {dep_id}'.format(
+        dep_id=example.deployment_id, **paths))
 
     example.check_all_test_files_deleted()
 
     logger.info('Deleting deployment')
-    run('{cfy} deployments delete test_dep'.format(**paths))
+    run('{cfy} deployments delete {dep_id}'.format(
+        dep_id=example.deployment_id, **paths))
     # With a sleep because this returns before the DB is updated
     time.sleep(4)
 
@@ -72,7 +77,7 @@ def _test_teardown(run, example, paths, logger):
     assert len(deployments) == 0
 
     logger.info('Deleting secret')
-    run('{cfy} secrets delete ssh_public_key'.format(**paths))
+    run('{cfy} secrets delete agent_key'.format(**paths))
 
     logger.info('Checking secret has been deleted.')
     secrets = json.loads(
@@ -81,7 +86,8 @@ def _test_teardown(run, example, paths, logger):
     assert len(secrets) == 0
 
     logger.info('Deleting blueprint')
-    run('{cfy} blueprints delete test_bp'.format(**paths))
+    run('{cfy} blueprints delete {bp_id}'.format(
+        bp_id=example.blueprint_id, **paths))
     # With a sleep because this returns before the DB is updated
     time.sleep(4)
 

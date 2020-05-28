@@ -78,12 +78,11 @@ def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
         cli_host, manager_host = cli_hosts.instances
 
         logger.info('Downloading CLI package')
-        cli_package_url = get_cli_package_url(linux_cli_tester['url_key'],
-                                              test_config)
+        cli_package_url = get_cli_package_url(url_key, test_config)
         logger.info('Using CLI package: {url}'.format(
             url=cli_package_url,
         ))
-        cli_host.run_command('wget {url} -O cloudify-cli.{pkg_type}'.format(
+        cli_host.run_command('curl -Lo cloudify-cli.{pkg_type} {url}'.format(
             url=cli_package_url, pkg_type=pkg_type,
         ))
 
