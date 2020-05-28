@@ -43,7 +43,7 @@ def _test_cfy_install(run, example, paths, logger):
         '{cfy} install --blueprint-id {blueprint} '
         '--deployment-id {deployment} --inputs {inputs_path} '
         '{blueprint_path}'.format(
-            paths['cfy'],
+            cfy=paths['cfy'],
             blueprint=example.blueprint_id,
             deployment=example.deployment_id,
             inputs_path=paths['inputs'],
