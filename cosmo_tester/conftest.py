@@ -5,7 +5,7 @@ from path import Path
 
 from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
-from cosmo_tester.framework.fixtures import *  # noqa
+from cosmo_tester.framework.test_hosts import Hosts
 
 
 @pytest.fixture(scope='module')
@@ -89,3 +89,18 @@ def pytest_runtest_makereport(item, call):
             else:
                 item.session.testsskipped = 1
         # No need to handle failed, there's a builtin hook for that
+
+
+@pytest.fixture(scope='module')
+def image_based_manager(
+        request, ssh_key, module_tmpdir, test_config, logger):
+    """Creates a cloudify manager from an image in rackspace OpenStack."""
+    hosts = Hosts(
+        ssh_key, module_tmpdir, test_config, logger, request)
+    try:
+        hosts.create()
+        hosts.instances[0].restservice_expected = True
+        hosts.instances[0].finalize_preparation()
+        yield hosts.instances[0]
+    finally:
+        hosts.destroy()
