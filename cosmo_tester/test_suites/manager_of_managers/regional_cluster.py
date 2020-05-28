@@ -1,7 +1,5 @@
 import os
 
-from cloudify_cli.constants import DEFAULT_TENANT_NAME
-
 from cosmo_tester.framework import util
 from . import constants
 
@@ -608,7 +606,7 @@ class FloatingIpRegionalCluster(AbstractRegionalCluster):
         )
         tenants = self.client.tenants.list(_include=['name'])
         tenant_names = {t['name'] for t in tenants}
-        assert tenant_names == {DEFAULT_TENANT_NAME,
+        assert tenant_names == {'default_tenant',
                                 constants.TENANT_1,
                                 constants.TENANT_2}
         self.logger.info('Tenants validated successfully')
