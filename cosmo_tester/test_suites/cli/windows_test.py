@@ -22,7 +22,7 @@ def test_cli_deployment_flow_windows(windows_cli_tester, logger):
     example = windows_cli_tester['example']
     paths = windows_cli_tester['paths']
 
-    _prepare(cli_host.run_windows_command, paths, logger)
+    _prepare(cli_host.run_windows_command, example, paths, logger)
 
     _test_upload_and_install(
         cli_host.run_windows_command, example, paths, logger)
@@ -35,7 +35,7 @@ def test_cli_install_flow_windows(windows_cli_tester, logger):
     example = windows_cli_tester['example']
     paths = windows_cli_tester['paths']
 
-    _prepare(cli_host.run_windows_command, paths, logger)
+    _prepare(cli_host.run_windows_command, example, paths, logger)
 
     _test_cfy_install(cli_host.run_windows_command, example, paths, logger)
 
@@ -105,7 +105,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
 
         example = get_example_deployment(
             manager_host, ssh_key, logger, url_key, test_config)
-        example.use_windows()
+        example.use_windows(cli_host.username, cli_host.password)
         example.inputs['path'] = '/tmp/{}'.format(url_key)
 
         logger.info('Copying blueprint to CLI host')
@@ -128,7 +128,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
                                                  ssh_key_data)
 
         yield {
-            'cli_host': cli_hosts.instances,
+            'cli_host': cli_host,
             'example': example,
             'paths': {
                 'blueprint': remote_blueprint_path,
