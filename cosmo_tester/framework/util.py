@@ -121,7 +121,7 @@ def _get_package_url(filename, test_config):
         os.path.join(
             os.path.dirname(cosmo_tester.__file__), '..',
             test_config['package_urls'][package_urls_key],
-            'package-urls', filename,
+            'packages-urls', filename,
         )
     )
 
