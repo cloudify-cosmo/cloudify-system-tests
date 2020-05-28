@@ -1,10 +1,5 @@
 import json
 
-from cosmo_tester.framework.fixtures import image_based_manager
-
-
-manager = image_based_manager
-
 REMOTE_CERT_PATH = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
 REMOTE_CONF_PATH = '/opt/manager/rest-security.conf'
 REMOTE_HOOKS_PATH = '/opt/mgmtworker/config/hooks.conf'
@@ -36,15 +31,16 @@ with open('%s', 'w') as f:
 ''' % MQ_PASSWORDS_PATH
 
 
-def test_cfy_manager_configure(manager, logger, tmpdir, test_config):
+def test_cfy_manager_configure(image_based_manager, logger, tmpdir,
+                               test_config):
     logger.info('Putting code to get decrypted passwords on manager...')
-    manager.put_remote_file_content(
+    image_based_manager.put_remote_file_content(
         remote_path=GET_MQ_PASSWORDS_CODE_PATH,
         content=GET_MQ_PASSWORDS_CODE
     )
 
     logger.info('Getting current CA cert from the manager...')
-    old_cert = manager.get_remote_file_content(REMOTE_CERT_PATH)
+    old_cert = image_based_manager.get_remote_file_content(REMOTE_CERT_PATH)
 
     tenants_to_check = ['default_tenant']
 
@@ -52,37 +48,38 @@ def test_cfy_manager_configure(manager, logger, tmpdir, test_config):
     if test_config['premium']:
         logger.info('Creating new tenant and '
                     'validating RMQ user was created...')
-        manager.client.tenants.create(NEW_TENANT)
+        image_based_manager.client.tenants.create(NEW_TENANT)
         tenants_to_check.append(NEW_TENANT)
 
-    mq_passwords = _get_mq_passwords(manager)
+    mq_passwords = _get_mq_passwords(image_based_manager)
 
     for tenant in tenants_to_check:
         assert 'rabbitmq_user_{0}'.format(tenant) in mq_passwords
 
     logger.info('Editing security config file on the manager...')
-    _edit_security_config(manager)
+    _edit_security_config(image_based_manager)
 
     logger.info('Editing hooks.conf file on the manager...')
-    manager.put_remote_file_content(REMOTE_HOOKS_PATH, NEW_HOOKS)
+    image_based_manager.put_remote_file_content(REMOTE_HOOKS_PATH, NEW_HOOKS)
 
     logger.info('Running `cfy_manager configure`...')
-    manager.run_command('cfy_manager configure')
+    image_based_manager.run_command('cfy_manager configure')
 
     logger.info('Verifying certificates unchanged after configure...')
-    new_cert = manager.get_remote_file_content(REMOTE_CERT_PATH)
+    new_cert = image_based_manager.get_remote_file_content(REMOTE_CERT_PATH)
     assert old_cert == new_cert
 
     logger.info('Validating security config file on the manager persists...')
     security_config = json.loads(
-        manager.get_remote_file_content(REMOTE_CONF_PATH)
+        image_based_manager.get_remote_file_content(REMOTE_CONF_PATH)
     )
 
     assert NEW_KEY in security_config
     assert security_config[NEW_KEY] == NEW_VALUE
 
     logger.info('Validating hooks.conf file unchanged after configure...')
-    hooks_content = manager.get_remote_file_content(REMOTE_HOOKS_PATH)
+    hooks_content = image_based_manager.get_remote_file_content(
+        REMOTE_HOOKS_PATH)
 
     assert hooks_content == NEW_HOOKS
 
@@ -90,7 +87,7 @@ def test_cfy_manager_configure(manager, logger, tmpdir, test_config):
     # We expect the command to fail if the password has changed or
     # if the any of the users weren't recreated in RMQ
     for mq_user, mq_password in mq_passwords.items():
-        manager.run_command(
+        image_based_manager.run_command(
             AUTH_MQ_USER_CMD.format(user=mq_user, password=mq_password),
             use_sudo=True
         )
