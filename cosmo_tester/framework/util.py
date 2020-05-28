@@ -507,14 +507,19 @@ def output_events(client, execution, logger, from_time=None, to_time=None):
             level = event.get('level')
 
         if level not in log_methods:
-            logger.warn('Event level {} was unknown.'.format(level))
-            logger.warn('Event was: {}'.format(event))
+            logger.warn('Event level %s was unknown.', level)
+            logger.warn('Event was: %s', event)
         else:
             message = event.get('message', 'Message not found')
+            node_instance = event.get('node_instance_id')
             if message.strip().endswith('nothing to do'):
                 # All well and good, but let's not bloat the logs
                 continue
-            log_methods[level](message)
+            log_methods[level](
+                '%s%s',
+                '({}) '.format(node_instance) if node_instance else '',
+                message,
+            )
 
 
 def convert_epoch_to_time_string(inp):
