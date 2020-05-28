@@ -475,7 +475,7 @@ def wait_for_execution(client, execution, logger, tenant=None,
 
 
 def run_blocking_execution(client, deployment_id, workflow_id, logger,
-                           params=None, tenant=None, timeout=(5*60)):
+                           params=None, tenant=None, timeout=(15*60)):
     with set_client_tenant(client, tenant):
         execution = client.executions.start(
             deployment_id, workflow_id, parameters=params,
