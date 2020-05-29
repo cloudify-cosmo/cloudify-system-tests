@@ -554,7 +554,9 @@ class _CloudifyManager(VM):
         for execution in executions:
             if execution['status'] != 'terminated':
                 raise StandardError(
-                    'Timed out: An execution did not terminate'
+                    'Timed out: Execution {} did not terminate'.format(
+                        execution['id'],
+                    )
                 )
 
     def wait_for_manager(self):
@@ -570,11 +572,11 @@ class _CloudifyManager(VM):
             raise StandardError(
                 'Timed out: Manager services did not start successfully. '
                 'Inactive services: {}'.format(
-                    ', '.join([
+                    ', '.join(
                         item['extra_info']['systemd']['unit_id']
                         for item in manager_status['services'].values()
                         if item['status'] != 'Active'
-                    ])
+                    )
                 )
             )
 
