@@ -1,3 +1,5 @@
+import pytest
+
 from cloudify_rest_client.exceptions import CloudifyClientError
 
 
@@ -5,13 +7,8 @@ def test_tenant_creation_no_rabbitmq(image_based_manager):
     image_based_manager.run_command(
         'systemctl stop cloudify-rabbitmq', use_sudo=True)
 
-    try:
+    with pytest.raises(CloudifyClientError):
         image_based_manager.client.tenants.create('badtenant')
-        assert False, (
-            'Tenant creation should have raised an exception'
-        )
-    except CloudifyClientError:
-        pass
 
     image_based_manager.run_command(
         'systemctl start cloudify-rabbitmq', use_sudo=True)
