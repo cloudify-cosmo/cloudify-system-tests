@@ -402,11 +402,11 @@ def generate_ca_cert(ca_cert_path, ca_key_path):
 
 
 class ExecutionTimeout(Exception):
-    """Raised by `wait_for_execution` if the execution takes too long."""
+    """Execution timed out."""
 
 
 class ExecutionFailed(Exception):
-    """Raised by `wait_for_execution` if the execution fails."""
+    """Execution failed."""
 
 
 def wait_for_execution(client, execution, logger, tenant=None,
@@ -565,7 +565,7 @@ def list_capabilities(manager, deployment_id, logger):
 
 
 class DeploymentCreationError(Exception):
-    """Raised when deployment creation fails due to lack of workflow."""
+    """Deployment creation failed."""
 
 
 def create_deployment(client, blueprint_id, deployment_id, logger,
@@ -597,7 +597,7 @@ def create_deployment(client, blueprint_id, deployment_id, logger,
 
 
 class DeploymentDeletionError(Exception):
-    """Raised when deployment delete takes too long."""
+    """Deployment deletion failed."""
 
 
 def delete_deployment(client, deployment_id, logger):
