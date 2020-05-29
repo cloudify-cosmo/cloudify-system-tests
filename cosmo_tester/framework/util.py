@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 import errno
 import glob
 import json
@@ -411,9 +412,8 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60):
             execution=execution['id'],
         )
     )
-    current_time = time.time()
-    # Timeout after ~5 minutes
-    timeout_time = current_time + timeout
+    current_time = datetime.now()
+    timeout_time = current_time + timedelta(seconds=timeout)
     output_events(client, execution, logger, to_time=current_time)
 
     with set_client_tenant(client, tenant):
@@ -421,11 +421,11 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60):
             execution = client.executions.get(execution['id'])
 
             prev_time = current_time
-            current_time = time.time()
+            current_time = datetime.now()
 
             output_events(client, execution, logger, prev_time, current_time)
 
-            if time.time() >= timeout_time:
+            if current_time >= timeout_time:
                 raise ExecutionTimeout(
                     'Execution timed out in state: {status}'.format(
                         status=execution.status,
@@ -471,8 +471,8 @@ def output_events(client, execution, logger, from_time=None, to_time=None):
         _size=1000,
         include_logs=True,
         sort='reported_timestamp',
-        from_datetime=convert_epoch_to_time_string(from_time),
-        to_datetime=convert_epoch_to_time_string(to_time),
+        from_datetime=from_time.strftime('%Y-%m-%d %H:%M:%S'),
+        to_datetime=to_time.strftime('%Y-%m-%d %H:%M:%S'),
     )
     log_methods = {
         'debug': logger.debug,
@@ -501,13 +501,6 @@ def output_events(client, execution, logger, from_time=None, to_time=None):
                 '({}) '.format(node_instance) if node_instance else '',
                 message,
             )
-
-
-def convert_epoch_to_time_string(inp):
-    if inp:
-        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(inp))
-    else:
-        return None
 
 
 def list_snapshots(manager, logger):
