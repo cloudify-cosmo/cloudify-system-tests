@@ -301,7 +301,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         # (thanks, ruamel)
         return str(node_id_parts[1].strip())
 
-    def set_image_details(self):
+    def set_image_details(self, bootstrappable):
         pass
 
     image_type = 'centos'
@@ -425,11 +425,17 @@ class _CloudifyManager(VM):
                         'service {0} is in {1} state'.format(
                             service['display_name'], instance['SubState'])
 
-    def set_image_details(self):
+    def set_image_details(self, bootstrappable=False):
         distro = self._test_config['test_manager']['distro']
         image_names = self._test_config[
             'manager_image_names_{}'.format(distro)]
-        self.image_name = image_names[self.image_type.replace('.', '_')]
+        if bootstrappable:
+            self.image_name = image_names['installer']
+            self.should_finalize = False
+        else:
+            self.image_name = image_names[self.image_type.replace('.', '_')]
+            self.should_finalize = True
+            self.restservice_expected = True
 
         username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
         self.username = self._test_config['test_os_usernames'][username_key]
@@ -711,14 +717,8 @@ class Hosts(object):
         else:
             self.server_flavor = self._test_config.platform['linux_size']
 
-        if bootstrappable:
-            for instance in self.instances:
-                instance.image_name = self.bootstrappable_image_name
-                instance.should_finalize = False
-
-    @property
-    def bootstrappable_image_name(self):
-        return self._test_config.platform['installer_image']
+        for instance in self.instances:
+            instance.set_image_details(bootstrappable)
 
     def create(self):
         """Creates the infrastructure for a Cloudify manager."""
@@ -755,7 +755,6 @@ class Hosts(object):
 
             # Deploy hosts
             for index, instance in enumerate(self.instances):
-                instance.set_image_details()
                 self._deploy_test_vm(instance.image_name, index,
                                      test_identifier)
 
