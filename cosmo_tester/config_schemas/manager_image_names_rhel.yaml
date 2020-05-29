@@ -2,6 +2,9 @@ namespace: manager_image_names_rhel
 master:
   description: Name of main manager image to test. This will be used in all manager tests.
   default: cloudify-manager-premium-5.1.0.dev1-rhel
+installer:
+  description: Name of image with manager installer for bootstrap or cluster installs.
+  default: cfy-installer-premium-5.1.0.dev1-rhel
 "5_0_5":
   description: Name of manager image for 5.0.5. All non master images are only used for upgrade (snapshot) tests.
   default: cloudify-manager-premium-5.0.5-rhel
