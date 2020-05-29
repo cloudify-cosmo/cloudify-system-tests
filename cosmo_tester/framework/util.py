@@ -427,7 +427,8 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60):
 
             if current_time >= timeout_time:
                 raise ExecutionTimeout(
-                    'Execution timed out in state: {status}'.format(
+                    'Execution {exc_id} timed out in state: {status}'.format(
+                        exc_id=execution['id'],
                         status=execution.status,
                     )
                 )
