@@ -15,16 +15,12 @@ import time
 import yaml
 
 from cloudify_rest_client import CloudifyClient
-from cloudify_rest_client.exceptions import (
-    CloudifyClientError,
-    UserUnauthorizedError,
-)
-
-from .exceptions import ProcessExecutionError
+from cloudify_rest_client.exceptions import CloudifyClientError
 
 import cosmo_tester
 from cosmo_tester import resources
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
+from cosmo_tester.framework.exceptions import ProcessExecutionError
 
 
 def sh_bake(command):
@@ -409,12 +405,7 @@ class ExecutionFailed(Exception):
     """Execution failed."""
 
 
-def wait_for_execution(client, execution, logger, tenant=None,
-                       new_password=None, timeout=(5*60), manager=None):
-    if new_password and not manager:
-        raise RuntimeError('wait_for_execution cannot use new_password '
-                           'without manager being provided.')
-
+def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60):
     logger.info(
         'Getting workflow execution [id={execution}]'.format(
             execution=execution['id'],
@@ -423,21 +414,11 @@ def wait_for_execution(client, execution, logger, tenant=None,
     current_time = time.time()
     # Timeout after ~5 minutes
     timeout_time = current_time + timeout
-    password_updated = False
     output_events(client, execution, logger, to_time=current_time)
 
     with set_client_tenant(client, tenant):
         while True:
-            try:
-                execution = client.executions.get(execution['id'])
-            except UserUnauthorizedError:
-                if new_password and not password_updated:
-                    # This will happen on a restore with modified users
-                    change_rest_client_password(manager, new_password)
-                    password_updated = True
-                else:
-                    # We either shouldn't change the password, or did already.
-                    raise
+            execution = client.executions.get(execution['id'])
 
             prev_time = current_time
             current_time = time.time()
@@ -527,12 +508,6 @@ def convert_epoch_to_time_string(inp):
         return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(inp))
     else:
         return None
-
-
-def change_rest_client_password(manager, new_password):
-    manager.client = create_rest_client(manager.ip_address,
-                                        tenant='default_tenant',
-                                        password=new_password)
 
 
 def list_snapshots(manager, logger):

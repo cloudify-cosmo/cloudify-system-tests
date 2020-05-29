@@ -5,9 +5,10 @@ from time import sleep
 import retrying
 
 from cloudify.snapshots import STATES
+from cloudify_rest_client.exceptions import UserUnauthorizedError
+
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
-    change_rest_client_password,
     create_rest_client,
     ExecutionFailed,
     list_executions,
@@ -115,6 +116,12 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
                 json.dumps(snapshot, indent=2))
 
 
+def change_rest_client_password(manager, new_password):
+    manager.client = create_rest_client(manager.ip_address,
+                                        tenant='default_tenant',
+                                        password=new_password)
+
+
 def restore_snapshot(manager, snapshot_id, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
@@ -133,12 +140,17 @@ def restore_snapshot(manager, snapshot_id, logger,
 
     if blocking:
         try:
-            wait_for_execution(
-                manager.client,
-                restore_execution,
-                logger,
-                new_password=CHANGED_ADMIN_PASSWORD,
-                manager=manager)
+            try:
+                wait_for_execution(
+                    manager.client,
+                    restore_execution,
+                    logger)
+            except UserUnauthorizedError:
+                change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+                wait_for_execution(
+                    manager.client,
+                    restore_execution,
+                    logger)
         except ExecutionFailed:
             logger.error('Snapshot execution failed.')
             list_executions(manager, logger)
