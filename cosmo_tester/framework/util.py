@@ -488,10 +488,10 @@ def output_events(client, execution, logger, from_time=None, to_time=None):
             level = event.get('level')
 
         if level not in log_methods:
-            logger.warn('Event level %s was unknown.', level)
+            logger.warn('Unknown event level %s.', level)
             logger.warn('Event was: %s', event)
         else:
-            message = event.get('message', 'Message not found')
+            message = event.get('message', '<MESSSAGE NOT FOUND>')
             node_instance = event.get('node_instance_id')
             if message.strip().endswith('nothing to do'):
                 # All well and good, but let's not bloat the logs
