@@ -508,7 +508,7 @@ def list_snapshots(manager, logger):
     logger.info('Listing snapshots:')
     snapshots = manager.client.snapshots.list()
     for snapshot in snapshots:
-        logger.info('%(id)s - %(status)s - %(error)s', **snapshot)
+        logger.info('%(id)s - %(status)s - %(error)s', snapshot)
 
 
 def list_executions(manager, logger):
@@ -516,10 +516,10 @@ def list_executions(manager, logger):
     executions = manager.client.executions.list(include_system_workflows=True)
     for execution in executions:
         logger.info('%(id)s (%(workflow_id)s) - %(status_display)s',
-                    **execution)
+                    execution)
         if execution.get('error'):
             logger.warn('Execution %(id)s had error: %(error)s',
-                        **execution)
+                        execution)
 
 
 def list_capabilities(manager, deployment_id, logger):
