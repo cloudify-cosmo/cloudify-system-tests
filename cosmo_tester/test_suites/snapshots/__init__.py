@@ -118,7 +118,6 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
 
 def change_rest_client_password(manager, new_password):
     manager.client = create_rest_client(manager.ip_address,
-                                        tenant='default_tenant',
                                         password=new_password)
 
 
