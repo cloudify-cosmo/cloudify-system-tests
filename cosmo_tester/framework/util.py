@@ -467,13 +467,17 @@ def run_blocking_execution(client, deployment_id, workflow_id, logger,
 
 
 def output_events(client, execution, logger, from_time=None, to_time=None):
+    if from_time:
+        from_time = from_time.strftime('%Y-%m-%d %H:%M:%S')
+    if to_time:
+        to_time = to_time.strftime('%Y-%m-%d %H:%M:%S')
     events = client.events.list(
         execution_id=execution.id,
         _size=1000,
         include_logs=True,
         sort='reported_timestamp',
-        from_datetime=from_time.strftime('%Y-%m-%d %H:%M:%S'),
-        to_datetime=to_time.strftime('%Y-%m-%d %H:%M:%S'),
+        from_datetime=from_time,
+        to_datetime=to_time,
     )
     log_methods = {
         'debug': logger.debug,
