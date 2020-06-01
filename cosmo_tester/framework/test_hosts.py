@@ -512,7 +512,6 @@ class _CloudifyManager(VM):
                     break
                 else:
                     time.sleep(5)
-            self.finalize_preparation()
 
     def bootstrap_is_complete(self):
         with self.ssh() as fabric_ssh:
