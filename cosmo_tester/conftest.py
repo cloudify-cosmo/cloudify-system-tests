@@ -99,8 +99,6 @@ def image_based_manager(
         ssh_key, module_tmpdir, test_config, logger, request)
     try:
         hosts.create()
-        hosts.instances[0].restservice_expected = True
-        hosts.instances[0].finalize_preparation()
         yield hosts.instances[0]
     finally:
         hosts.destroy()

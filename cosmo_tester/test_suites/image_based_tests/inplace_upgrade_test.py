@@ -23,8 +23,6 @@ def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
     hosts.instances[0] = get_image(request.param, test_config)
     manager, vm = hosts.instances
 
-    manager.restservice_expected = True
-
     vm.image_name = test_config.platform['centos_7_image']
     vm.username = test_config['test_os_usernames']['centos_7']
 

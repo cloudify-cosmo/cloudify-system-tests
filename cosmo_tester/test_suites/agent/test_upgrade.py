@@ -21,11 +21,7 @@ def managers_and_vm(ssh_key, module_tmpdir, test_config, logger,
     passed = True
 
     try:
-        managers = hosts.instances[:2]
         vm = hosts.instances[2]
-
-        managers[0].restservice_expected = True
-        managers[1].restservice_expected = True
 
         vm.image_name = test_config.platform['centos_7_image']
         vm.username = test_config['test_os_usernames']['centos_7']
