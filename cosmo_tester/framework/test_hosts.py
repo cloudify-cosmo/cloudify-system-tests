@@ -457,7 +457,7 @@ class _CloudifyManager(VM):
             '/tmp/test_valid_paying_license.yaml' if upload_license else ''
         self.install_config['manager'][
             'cloudify_license_path'] = cloudify_license_path
-        install_config_str = yaml.dump(self.install_config)
+        install_config_str = yaml.safe_dump(self.install_config)
 
         self._logger.info(
             'Install config:\n%s', str(install_config_str))
