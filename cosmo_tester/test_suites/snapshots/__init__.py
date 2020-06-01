@@ -97,8 +97,7 @@ def create_snapshot(manager, snapshot_id, logger):
         include_logs=True,
         include_events=True
     )
-    password = CHANGED_ADMIN_PASSWORD
-    assert_snapshot_created(manager, snapshot_id, password)
+    assert_snapshot_created(manager, snapshot_id)
 
 
 def download_snapshot(manager, local_path, snapshot_id, logger):
