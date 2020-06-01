@@ -24,14 +24,6 @@ from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 from cosmo_tester.framework.exceptions import ProcessExecutionError
 
 
-def sh_bake(command):
-    """Make the command also print its stderr and stdout to our stdout/err."""
-    # we need to pass the received lines back to the process._stdout/._stderr
-    # so that they're not only printed out, but also saved as .stderr/.sdtout
-    # on the return value or on the exception.
-    return command.bake(_out=pass_stdout, _err=pass_stderr)
-
-
 def pass_stdout(line, input_queue, process):
     output = line.encode(process.call_args['encoding'], 'replace')
     process._stdout.append(output)
