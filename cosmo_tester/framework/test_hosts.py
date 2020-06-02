@@ -983,9 +983,9 @@ class Hosts(object):
         if self.multi_net:
             network_mappings = {}
             for sn in range(1, 4):
-                subnet_details = self._infra_client.get(
-                    'infrastructure',
-                    'test_subnet_{}'.format(sn)
+                subnet_details = self._infra_client.nodes.get(
+                    deployment_id='infrastructure',
+                    node_id='test_subnet_{}'.format(sn)
                 )['properties']['resource_config']
                 network_mappings['network_{}'.format(sn)] = ip_network(
                     # Has to be unicode for ipaddress library.
