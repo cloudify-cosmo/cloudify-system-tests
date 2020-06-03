@@ -23,7 +23,6 @@ setup(
     packages=['cosmo_tester'],
     license='LICENSE',
     description='Cosmo system tests framework',
-    zip_safe=False,
     install_requires=[
         'fabric',
         'PyYAML',
@@ -40,11 +39,11 @@ setup(
         'pytest',
         'pytest-xdist',
         'testtools',
-        'openstacksdk'
     ],
+    include_package_data=True,
     entry_points={
         'console_scripts': [
-            'cfy-systests = cosmo_tester.cli:main'
+            'test-config = cosmo_tester.conf_cli:main',
         ]
     },
 

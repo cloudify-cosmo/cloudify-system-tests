@@ -1,47 +1,27 @@
-########
-# Copyright (c) 2017 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
-# import pytest
-
-from cosmo_tester.framework.fixtures import image_based_manager
-
 import subprocess
 import os
 
-manager = image_based_manager
 
-
-def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
-
+def test_composer(test_ui_manager, ssh_key, logger, test_config):
     logger.info('Installing dependencies to run system tests...')
     subprocess.call(['npm', 'ci'],
-                    cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
-    if os.environ["UPDATE_COMPOSER_ON_MANAGER"] == 'true':
+                    cwd=test_config['ui']['composer_repo'])
+    if test_config['ui']['update']:
         logger.info('Starting update of Composer package on Manager...')
-        os.environ["MANAGER_IP"] = manager.ip_address
-        os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         logger.info('Creating Composer package...')
         subprocess.call(['bower', 'install'],
-                        cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
+                        cwd=test_config['ui']['composer_repo'])
         subprocess.call(['grunt', 'pack'],
-                        cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
+                        cwd=test_config['ui']['composer_repo'])
+
         logger.info('Uploading Composer package...')
+        os.environ["MANAGER_USER"] = test_ui_manager.username
+        os.environ["MANAGER_IP"] = test_ui_manager.ip_address
+        os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         subprocess.call(['npm', 'run', 'upload'],
-                        cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
+                        cwd=test_config['ui']['composer_repo'])
 
     logger.info('Starting Composer system tests...')
-    os.environ["COMPOSER_E2E_MANAGER_URL"] = manager.ip_address
-    subprocess.call(['npm', 'run', 'e2e'],
-                    cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
+    os.environ["COMPOSER_E2E_MANAGER_URL"] = test_ui_manager.ip_address
+    subprocess.check_call(['npm', 'run', 'e2e'],
+                          cwd=test_config['ui']['composer_repo'])

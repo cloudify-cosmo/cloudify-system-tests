@@ -13,6 +13,7 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
+import pytest
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
     check_credentials,
@@ -40,7 +41,9 @@ from cosmo_tester.test_suites.snapshots import (
 
 
 def test_restore_snapshot_and_agents_upgrade_multitenant(
-        cfy, hosts, attributes, logger, tmpdir, ssh_key):
+        hosts, logger, tmpdir, ssh_key, test_config):
+    if not test_config['premium']:
+        pytest.skip('Multi tenant snapshots are not valid for community.')
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     from_source_tenant = 'from_source'
@@ -63,18 +66,19 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     # Note: This needs to be a central executor plugin or the later check will
     # fail.
     example_mappings[from_source_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, from_source_tenant,
+        old_manager, ssh_key, logger, from_source_tenant, test_config,
         using_agent=False, upload_plugin=False,
     )
 
     # A 'normal' deployment
     example_mappings[standard_deployment_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, standard_deployment_tenant, vm,
+        old_manager, ssh_key, logger, standard_deployment_tenant, test_config,
+        vm,
     )
 
     # A deployment that hasn't been installed
     example_mappings[noinstall_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, noinstall_tenant, vm,
+        old_manager, ssh_key, logger, noinstall_tenant, test_config, vm,
     )
 
     for tenant in install_tenants:
@@ -100,23 +104,23 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         for tenant in tenants
     }
 
-    change_salt_on_new_manager(cfy, logger, new_manager)
-    prepare_credentials_tests(cfy, logger, old_manager)
+    change_salt_on_new_manager(new_manager, logger)
+    prepare_credentials_tests(old_manager, logger)
 
-    create_snapshot(old_manager, SNAPSHOT_ID, attributes, logger)
+    create_snapshot(old_manager, SNAPSHOT_ID, logger)
     download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)
     upload_snapshot(new_manager, local_snapshot_path, SNAPSHOT_ID, logger)
 
-    restore_snapshot(new_manager, SNAPSHOT_ID, cfy, logger,
+    restore_snapshot(new_manager, SNAPSHOT_ID, logger,
                      wait_for_post_restore_commands=False)
 
     wait_for_restore(new_manager, logger)
 
-    update_credentials(cfy, logger, new_manager)
+    update_credentials(new_manager, new_manager)
 
     verify_services_status(new_manager, logger)
 
-    check_credentials(cfy, logger, new_manager)
+    check_credentials(new_manager, logger)
 
     # Use the new manager for the test deployments
     for example in example_mappings.values():
@@ -151,7 +155,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         [from_source_tenant], logger,
     )
 
-    upgrade_agents(cfy, new_manager, logger)
+    upgrade_agents(new_manager, logger, test_config)
 
     # The old manager needs to exist until the agents install is run
     stop_manager(old_manager, logger)
@@ -178,7 +182,7 @@ def create_tenant_secrets(manager, tenants, logger):
     """
     logger.info('Creating secrets...')
     for tenant in tenants:
-        with set_client_tenant(manager, tenant):
+        with set_client_tenant(manager.client, tenant):
             manager.client.secrets.create(
                 key=tenant,
                 value=tenant,

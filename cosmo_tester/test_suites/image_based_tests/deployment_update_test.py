@@ -1,21 +1,3 @@
-########
-# Copyright (c) 2016 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
-import json
-import uuid
-
 import pytest
 
 from retrying import retry
@@ -29,32 +11,36 @@ update_counter = 0
 
 
 @pytest.fixture(scope='function')
-def example_deployment(cfy, image_based_manager, ssh_key, logger):
+def example_deployment(image_based_manager, ssh_key, logger,
+                       test_config):
     example = get_example_deployment(
-        image_based_manager, ssh_key, logger, 'dep_update')
+        image_based_manager, ssh_key, logger, 'dep_update', test_config)
 
     yield example
     example.uninstall()
 
 
-def test_simple_deployment_update(cfy,
-                                  image_based_manager,
+def test_simple_deployment_update(image_based_manager,
                                   example_deployment,
-                                  tmpdir,
                                   logger):
     example_deployment.upload_and_verify_install()
 
     modified_blueprint_path = util.get_resource_path(
         'blueprints/compute/example_2_files.yaml'
     )
+    blueprint_id = 'updated'
+    with set_client_tenant(image_based_manager.client,
+                           example_deployment.tenant):
+        image_based_manager.client.blueprints.upload(
+            modified_blueprint_path,
+            blueprint_id,
+        )
 
     logger.info('Updating example deployment...')
-    _update_deployment(cfy,
-                       image_based_manager,
+    _update_deployment(image_based_manager,
                        example_deployment.deployment_id,
                        example_deployment.tenant,
-                       modified_blueprint_path,
-                       tmpdir,
+                       blueprint_id,
                        skip_reinstall=True)
 
     logger.info('Checking old files still exist')
@@ -65,12 +51,10 @@ def test_simple_deployment_update(cfy,
                                    expected_content='I like cake')
 
     logger.info('Updating deployment to use different path and content')
-    _update_deployment(cfy,
-                       image_based_manager,
+    _update_deployment(image_based_manager,
                        example_deployment.deployment_id,
                        example_deployment.tenant,
-                       example_deployment.blueprint_file,
-                       tmpdir,
+                       example_deployment.blueprint_id,
                        inputs={'path': '/tmp/new_test',
                                'content': 'Where are the elephants?'})
 
@@ -90,19 +74,18 @@ def test_simple_deployment_update(cfy,
 
 
 def _wait_for_deployment_update_to_finish(func):
-    def _update_and_wait_to_finish(cfy,
-                                   manager,
+    def _update_and_wait_to_finish(manager,
                                    deployment_id,
                                    tenant,
                                    *args,
                                    **kwargs):
-        func(cfy, manager, deployment_id, tenant, *args, **kwargs)
+        func(manager, deployment_id, tenant, *args, **kwargs)
 
         @retry(stop_max_attempt_number=10,
                wait_fixed=5000,
                retry_on_result=lambda r: not r)
         def repetitive_check():
-            with set_client_tenant(manager, tenant):
+            with set_client_tenant(manager.client, tenant):
                 dep_updates_list = manager.client.deployment_updates.list(
                         deployment_id=deployment_id)
                 executions_list = manager.client.executions.list(
@@ -126,22 +109,18 @@ def _wait_for_deployment_update_to_finish(func):
 
 
 @_wait_for_deployment_update_to_finish
-def _update_deployment(cfy,
-                       manager,
+def _update_deployment(manager,
                        deployment_id,
                        tenant,
-                       blueprint_path,
-                       tmpdir,
+                       blueprint_id,
                        skip_reinstall=False,
                        inputs=None):
-    kwargs = {}
-    if inputs:
-        kwargs['inputs'] = json.dumps(inputs)
     global update_counter
     update_counter += 1
-    cfy.deployments.update(deployment_id,
-                           blueprint_id='b-{0}'.format(uuid.uuid4()),
-                           blueprint_path=blueprint_path,
-                           tenant_name=tenant,
-                           skip_reinstall=skip_reinstall,
-                           **kwargs)
+    with set_client_tenant(manager.client, tenant):
+        manager.client.deployment_updates.update_with_existing_blueprint(
+            deployment_id=deployment_id,
+            blueprint_id=blueprint_id,
+            skip_reinstall=skip_reinstall,
+            inputs=inputs,
+        )

@@ -1,11 +1,10 @@
 import os
 
-from cloudify_cli.utils import get_deployment_environment_execution
-from cloudify_cli.constants import CREATE_DEPLOYMENT
-import retrying
-
-from cosmo_tester.framework.fixtures import (
-    image_based_manager_without_plugins,
+from cosmo_tester.framework.utils import (
+    create_deployment,
+    ExecutionFailed,
+    run_blocking_execution,
+    wait_for_execution,
 )
 
 
@@ -23,27 +22,6 @@ SCALING_TEST_BLUEPRINTS = {
 }
 
 
-manager = image_based_manager_without_plugins
-
-
-class ExecutionWaiting(Exception):
-    """
-    raised by `wait_for_execution` if it should be retried
-    """
-    pass
-
-
-class ExecutionFailed(Exception):
-    """
-    raised by `wait_for_execution` if a bad state is reached
-    """
-    pass
-
-
-def retry_if_not_failed(exception):
-    return not isinstance(exception, ExecutionFailed)
-
-
 def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
     if entity_id is None:
         entity_id = dep_type
@@ -55,59 +33,10 @@ def _deploy_test_deployments(dep_type, manager, logger, entity_id=None):
         entity_id=entity_id,
     )
 
-    logger.info('Creating deployment for {dep}'.format(dep=entity_id))
-    manager.client.deployments.create(
-        blueprint_id=entity_id,
-        deployment_id=entity_id,
-    )
-
-    logger.info('Waiting for deployment env creation for '
-                '{dep}'.format(dep=entity_id))
-    creation_execution = get_deployment_environment_execution(
-        manager.client, entity_id, CREATE_DEPLOYMENT)
-    wait_for_execution(
-        manager,
-        creation_execution,
-        logger,
-    )
+    create_deployment(manager.client, entity_id, entity_id, logger)
 
     logger.info('Running install for {dep}'.format(dep=entity_id))
-    execution = manager.client.executions.start(
-        entity_id,
-        'install',
-    )
-    wait_for_execution(
-        manager,
-        execution,
-        logger,
-    )
-
-
-@retrying.retry(
-    stop_max_delay=5 * 60 * 1000,
-    wait_fixed=10000,
-    retry_on_exception=retry_if_not_failed,
-)
-def wait_for_execution(manager, execution, logger):
-    logger.info(
-        'Getting workflow execution [id={execution}]'.format(
-            execution=execution['id'],
-        )
-    )
-    execution = manager.client.executions.get(execution['id'])
-    logger.info('- execution.status = %s', execution.status)
-    if execution.status not in execution.END_STATES:
-        raise ExecutionWaiting(execution.status)
-    if execution.status != execution.TERMINATED:
-        logger.warning('Execution failed')
-        raise ExecutionFailed(
-            '{status}: {error}'.format(
-                status=execution.status,
-                error=execution['error'],
-            )
-        )
-    logger.info('Execution complete')
-    return execution
+    run_blocking_execution(manager.client, entity_id, 'install', logger)
 
 
 def _get_deployed_instances(deployment, manager, logger):
@@ -137,7 +66,7 @@ def _test_error_message(manager,
     )
 
     try:
-        wait_for_execution(manager, execution, logger)
+        wait_for_execution(manager.client, execution, logger)
         return (
             'Execution unexpected succeeded for {test_name}'.format(
                 test_name=test_name,
@@ -174,15 +103,17 @@ def _test_error_message(manager,
             )
 
 
-def test_targeted_scale_error_messages(manager, logger):
-    _deploy_test_deployments('nodes', manager, logger)
-    _deploy_test_deployments('groups', manager, logger)
+def test_targeted_scale_error_messages(image_based_manager, logger):
+    _deploy_test_deployments('nodes', image_based_manager, logger)
+    _deploy_test_deployments('groups', image_based_manager, logger)
 
-    nodes_instances = _get_deployed_instances('nodes', manager, logger)
-    groups_instances = _get_deployed_instances('groups', manager, logger)
+    nodes_instances = _get_deployed_instances('nodes', image_based_manager,
+                                              logger)
+    groups_instances = _get_deployed_instances('groups', image_based_manager,
+                                               logger)
 
     base_call = {
-        'manager': manager,
+        'manager': image_based_manager,
         'logger': logger,
     }
 
@@ -298,76 +229,78 @@ def test_targeted_scale_error_messages(manager, logger):
     assert not issues
 
 
-def test_scale_down_target_node_instance(manager, logger):
+def test_scale_down_target_node_instance(image_based_manager, logger):
     entity_id = 'testnodesinclude'
-    _deploy_test_deployments('nodes', manager, logger,
+    _deploy_test_deployments('nodes', image_based_manager, logger,
                              entity_id=entity_id)
-    nodes_instances = _get_deployed_instances(entity_id, manager, logger)
+    nodes_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                              logger)
 
     delta = 3
     targets = nodes_instances[:delta]
     expected = nodes_instances[delta:]
-    execution = manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'fakevm',
             'delta': '-{}'.format(delta),
             'include_instances': targets,
         },
     )
-    wait_for_execution(manager, execution, logger)
 
-    after_nodes_instances = _get_deployed_instances(entity_id, manager,
+    after_nodes_instances = _get_deployed_instances(entity_id,
+                                                    image_based_manager,
                                                     logger)
     assert set(expected) == set(after_nodes_instances)
 
 
-def test_do_not_scale_down_excluded_node_instance(manager, logger):
+def test_do_not_scale_down_excluded_node_instance(image_based_manager,
+                                                  logger):
     entity_id = 'testnodesexclude'
-    _deploy_test_deployments('nodes', manager, logger,
+    _deploy_test_deployments('nodes', image_based_manager, logger,
                              entity_id=entity_id)
-    nodes_instances = _get_deployed_instances(entity_id, manager, logger)
+    nodes_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                              logger)
 
-    execution = manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'fakevm',
             'delta': '-49',
             'exclude_instances': nodes_instances[-1],
         },
     )
-    wait_for_execution(manager, execution, logger)
 
-    after_nodes_instances = _get_deployed_instances(entity_id, manager,
+    after_nodes_instances = _get_deployed_instances(entity_id,
+                                                    image_based_manager,
                                                     logger)
 
     assert [nodes_instances[-1]] == after_nodes_instances
 
 
-def test_scale_down_target_node_instance_with_exclusions(manager, logger):
+def test_scale_down_target_node_instance_with_exclusions(image_based_manager,
+                                                         logger):
     entity_id = 'testnodesincludeandexclude'
-    _deploy_test_deployments('nodes', manager, logger,
+    _deploy_test_deployments('nodes', image_based_manager, logger,
                              entity_id=entity_id)
-    nodes_instances = _get_deployed_instances(entity_id, manager, logger)
+    nodes_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                              logger)
 
     included = nodes_instances[0:24]
     excluded = nodes_instances[24:48]
     optional = nodes_instances[48:]
-    execution = manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'fakevm',
             'delta': '-25',
             'include_instances': included,
             'exclude_instances': excluded,
         },
     )
-    wait_for_execution(manager, execution, logger)
 
-    after_nodes_instances = _get_deployed_instances(entity_id, manager,
+    after_nodes_instances = _get_deployed_instances(entity_id,
+                                                    image_based_manager,
                                                     logger)
 
     logger.info('Confirming correct number of instances remaining')
@@ -387,48 +320,49 @@ def test_scale_down_target_node_instance_with_exclusions(manager, logger):
     )
 
 
-def test_scale_down_target_group_member(manager, logger):
+def test_scale_down_target_group_member(image_based_manager, logger):
     entity_id = 'testgroupinclude'
-    _deploy_test_deployments('groups', manager, logger,
+    _deploy_test_deployments('groups', image_based_manager, logger,
                              entity_id=entity_id)
-    groups_instances = _get_deployed_instances(entity_id, manager, logger)
+    groups_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                               logger)
 
-    execution = manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'vmgroup',
             'delta': '-3',
             'include_instances': groups_instances[0],
         },
     )
-    wait_for_execution(manager, execution, logger)
 
-    after_groups_instances = _get_deployed_instances(entity_id, manager,
+    after_groups_instances = _get_deployed_instances(entity_id,
+                                                     image_based_manager,
                                                      logger)
 
     assert len(after_groups_instances) == 34
     assert groups_instances[0] not in after_groups_instances
 
 
-def test_scale_down_do_not_target_excluded_group_member(manager, logger):
+def test_scale_down_do_not_target_excluded_group_member(image_based_manager,
+                                                        logger):
     entity_id = 'testgroupexclude'
-    _deploy_test_deployments('groups', manager, logger,
+    _deploy_test_deployments('groups', image_based_manager, logger,
                              entity_id=entity_id)
-    groups_instances = _get_deployed_instances(entity_id, manager, logger)
+    groups_instances = _get_deployed_instances(entity_id, image_based_manager,
+                                               logger)
 
-    execution = manager.client.executions.start(
-        entity_id,
-        'scale',
-        parameters={
+    run_blocking_execution(
+        image_based_manager.client, entity_id, 'scale', logger,
+        params={
             'scalable_entity_name': 'vmgroup',
             'delta': '-19',
             'exclude_instances': groups_instances[0],
         },
     )
-    wait_for_execution(manager, execution, logger)
 
-    after_groups_instances = _get_deployed_instances(entity_id, manager,
+    after_groups_instances = _get_deployed_instances(entity_id,
+                                                     image_based_manager,
                                                      logger)
 
     assert len(after_groups_instances) == 2

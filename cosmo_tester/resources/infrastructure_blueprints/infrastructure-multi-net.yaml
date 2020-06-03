@@ -14,9 +14,9 @@ dsl_definitions:
     password: { get_secret: keystone_password }
     project_domain_name: default
     user_domain_name: default
-    tenant_name: { get_secret: keystone_tenant_name }
+    tenant_name: { get_secret: keystone_tenant }
     auth_url: { get_secret: keystone_url }
-    region_name: { get_secret: region }
+    region_name: { get_secret: keystone_region }
 
 node_templates:
   test_keypair:

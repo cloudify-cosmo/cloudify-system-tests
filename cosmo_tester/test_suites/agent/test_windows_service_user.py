@@ -2,15 +2,18 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.agent import get_test_prerequisites
 
 
-def test_windows_with_service_user(cfy, ssh_key, module_tmpdir, attributes,
-                                   logger):
+def test_windows_with_service_user(ssh_key, module_tmpdir, test_config,
+                                   logger, request):
     hosts, username, password = get_test_prerequisites(
-        cfy, ssh_key, module_tmpdir, attributes, logger, 'windows_2012',
+        ssh_key, module_tmpdir, test_config, logger, request,
+        'windows_2012',
     )
     manager, vm = hosts.instances
 
     service_user = '.\\testuser'
     service_password = 'svcpasS45'
+
+    passed = True
 
     try:
         hosts.create()
@@ -27,12 +30,16 @@ def test_windows_with_service_user(cfy, ssh_key, module_tmpdir, attributes,
         )
 
         example = get_example_deployment(
-            manager, ssh_key, logger, 'windows_service_user', vm=vm,
+            manager, ssh_key, logger, 'windows_service_user', test_config,
+            vm=vm,
         )
         example.use_windows(username, password)
         example.inputs['service_user'] = service_user
         example.inputs['service_password'] = service_password
         example.upload_and_verify_install()
         example.uninstall()
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)

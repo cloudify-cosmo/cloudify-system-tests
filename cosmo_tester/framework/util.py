@@ -1,100 +1,27 @@
-########
-# Copyright (c) 2014 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
-import os
-import re
-import sys
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+import errno
 import glob
 import json
-import yaml
-import errno
-import shlex
-import socket
 import logging
-import platform
+import os
 import requests
 import retrying
+import shlex
+import socket
 import subprocess
-from os import makedirs
+import sys
 from tempfile import mkstemp
-from contextlib import contextmanager
+import time
+import yaml
 
-import pkg_resources
-from openstack import connection as openstack_connection
-from path import Path
-
-from cloudify_cli import env as cli_env
 from cloudify_rest_client import CloudifyClient
 from cloudify_rest_client.exceptions import CloudifyClientError
-from cloudify_cli.constants import CLOUDIFY_TENANT_HEADER
-
-from .exceptions import ProcessExecutionError
 
 import cosmo_tester
 from cosmo_tester import resources
-
-
-OS_USERNAME_ENV = 'OS_USERNAME'
-OS_PASSWORD_ENV = 'OS_PASSWORD'
-OS_TENANT_NAME_ENV = 'OS_TENANT_NAME'
-OS_PROJECT_NAME_ENV = 'OS_PROJECT_NAME'
-OS_AUTH_URL_ENV = 'OS_AUTH_URL'
-
-
-class AttributesDict(dict):
-    __getattr__ = dict.__getitem__
-
-
-def get_attributes(logger=logging, resources_dir=None):
-    attributes_file = get_resource_path('attributes.yaml', resources_dir)
-    logger.info('Loading attributes from: %s', attributes_file)
-    with open(attributes_file, 'r') as f:
-        attrs = AttributesDict(yaml.load(f))
-        return attrs
-
-
-def get_cli_version():
-    return pkg_resources.require('cloudify')[0].version
-
-
-def get_openstack_config():
-    return {
-        'username': os.environ[OS_USERNAME_ENV],
-        'password': os.environ[OS_PASSWORD_ENV],
-        'tenant_name': os.environ.get(OS_TENANT_NAME_ENV,
-                                      os.environ[OS_PROJECT_NAME_ENV]),
-        'auth_url': os.environ[OS_AUTH_URL_ENV]
-    }
-
-
-def create_openstack_client():
-    conn = openstack_connection.Connection(
-        auth_url=os.environ[OS_AUTH_URL_ENV].replace('v3', 'v2.0'),
-        project_name=os.environ[OS_PROJECT_NAME_ENV],
-        username=os.environ[OS_USERNAME_ENV],
-        password=os.environ[OS_PASSWORD_ENV]
-    )
-    return conn
-
-
-def sh_bake(command):
-    """Make the command also print its stderr and stdout to our stdout/err."""
-    # we need to pass the received lines back to the process._stdout/._stderr
-    # so that they're not only printed out, but also saved as .stderr/.sdtout
-    # on the return value or on the exception.
-    return command.bake(_out=pass_stdout, _err=pass_stderr)
+from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
+from cosmo_tester.framework.exceptions import ProcessExecutionError
 
 
 def pass_stdout(line, input_queue, process):
@@ -114,10 +41,6 @@ def get_resource_path(resource, resources_dir=None):
     return os.path.join(resources_dir, resource)
 
 
-def get_yaml_as_dict(yaml_path):
-    return yaml.load(Path(yaml_path).text())
-
-
 def create_rest_client(
         manager_ip,
         username=None,
@@ -126,37 +49,10 @@ def create_rest_client(
         **kwargs):
     return CloudifyClient(
         host=manager_ip,
-        username=username or cli_env.get_username(),
-        password=password or cli_env.get_password(),
-        tenant=tenant or cli_env.get_tenant_name(),
+        username=username or 'admin',
+        password=password or 'admin',
+        tenant=tenant or 'default_tenant',
         **kwargs)
-
-
-def get_plugin_wagon_urls():
-    """Get plugin wagon urls from the cloudify-versions repository."""
-
-    def _fetch(branch):
-        plugin_urls_location = url_format.format(branch=branch)
-        return requests.get(plugin_urls_location)
-
-    branch = os.environ.get('BRANCH_NAME_CORE', 'master')
-    url_format = 'https://raw.githubusercontent.com/cloudify-cosmo/' \
-                 'cloudify-versions/{branch}/packages-urls/plugin-urls.yaml'
-    response = _fetch(branch=branch)
-    if response.status_code != 200:
-        if branch == 'master':
-            raise RuntimeError(
-                'Fetching the versions yaml from the {0} branch of '
-                '"cloudify-versions" failed. Status was {1}'.format(
-                    branch, response.status_code))
-        response = _fetch(branch='master')
-        if response.status_code != 200:
-            raise RuntimeError(
-                'Fetching the versions yaml from the master branch of '
-                '"cloudify-versions" failed. '
-                'Status was {0}'.format(response.status_code))
-
-    return yaml.load(response.text)['plugins']
 
 
 def test_cli_package_url(url):
@@ -183,168 +79,47 @@ def test_cli_package_url(url):
         )
 
 
-def get_cli_package_url(platform):
+def get_cli_package_url(platform, test_config):
     # Override URLs if they are provided in the config
-    config_cli_urls = get_attributes()['cli_urls_override']
+    config_cli_urls = test_config['cli_urls_override']
 
     if config_cli_urls.get(platform):
         url = config_cli_urls[platform]
     else:
-        if is_community():
-            filename = 'cli-packages.yaml'
-            packages_key = 'cli_packages_urls'
-        else:
+        if test_config['premium']:
             filename = 'cli-premium-packages.yaml'
             packages_key = 'cli_premium_packages_urls'
-        url = yaml.load(_get_package_url(filename))[packages_key][platform]
+        else:
+            filename = 'cli-packages.yaml'
+            packages_key = 'cli_packages_urls'
+        url = yaml.load(_get_package_url(filename, test_config))[
+            packages_key][platform]
 
     test_cli_package_url(url)
 
     return url
 
 
-def get_manager_install_rpm_url():
-    return yaml.load(_get_package_url('manager-install-rpm.yaml'))
-
-
-def _get_contents_from_github(repo, resource_path):
-    branch = os.environ.get('BRANCH_NAME_CORE', 'master')
-    url = (
-        'https://raw.githubusercontent.com/cloudify-cosmo/'
-        '{repo}/{branch}/{resource_path}'
-    ).format(repo=repo, branch=branch, resource_path=resource_path)
-    session = get_authenticated_git_session()
-    r = session.get(url)
-    if not r.ok:
-        raise RuntimeError(
-            'Error retrieving github content from {url}'.format(url=url)
-        )
-    return r.text
-
-
-def _get_package_url(filename):
-    """Gets the package URL(s).
-    They will be retrieved either from GitHub (if (GITHUB_TOKEN exists in env)
-    or locally if the cloudify-premium or cloudify-versions repository is
-    checked out under the same folder the cloudify-system-tests repo is
-    checked out.
+def _get_package_url(filename, test_config):
+    """Gets the package URL(s) from the local premium or versions repo.
+    See the package_urls section of the test config for details.
     """
-    if is_community():
-        repo = 'cloudify-versions'
-    else:
-        repo = 'cloudify-premium'
+    package_urls_key = 'premium' if test_config['premium'] else 'community'
 
-    if os.environ.get('GITHUB_TOKEN'):
-        return _get_contents_from_github(
-            repo=repo,
-            resource_path='packages-urls/{filename}'.format(
-                filename=filename,
-            )
+    package_url_file = os.path.abspath(
+        os.path.join(
+            os.path.dirname(cosmo_tester.__file__), '..',
+            test_config['package_urls'][package_urls_key],
+            'packages-urls', filename,
         )
-    else:
-        package_url_file = (
-            Path(cosmo_tester.__file__).dirname() /
-            '..' / '..' / repo / 'packages-urls' / filename
-        ).abspath()
-        if not package_url_file.exists():
-            raise IOError('File containing {0} URL not '
-                          'found: {1}'.format(filename, package_url_file))
-        return package_url_file.text()
+    )
 
-
-class YamlPatcher(object):
-
-    pattern = re.compile(r'(.+)\[(\d+)\]')
-    set_pattern = re.compile(r'(.+)\[(\d+|append)\]')
-
-    def __init__(self, yaml_path, is_json=False, default_flow_style=True):
-        self.yaml_path = Path(yaml_path)
-        self.obj = yaml.load(self.yaml_path.text()) or {}
-        self.is_json = is_json
-        self.default_flow_style = default_flow_style
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_type:
-            output = json.dumps(self.obj) if self.is_json else yaml.safe_dump(
-                self.obj, default_flow_style=self.default_flow_style)
-            self.yaml_path.write_text(output)
-
-    def merge_obj(self, obj_prop_path, merged_props):
-        obj = self._get_object_by_path(obj_prop_path)
-        for key, value in merged_props.items():
-            obj[key] = value
-
-    def set_value(self, prop_path, new_value):
-        obj, prop_name = self._get_parent_obj_prop_name_by_path(prop_path)
-        list_item_match = self.set_pattern.match(prop_name)
-        if list_item_match:
-            prop_name = list_item_match.group(1)
-            obj = obj[prop_name]
-            if not isinstance(obj, list):
-                raise AssertionError('Cannot set list value for not list item '
-                                     'in {0}'.format(prop_path))
-            raw_index = list_item_match.group(2)
-            if raw_index == 'append':
-                obj.append(new_value)
-            else:
-                obj[int(raw_index)] = new_value
-        else:
-            obj[prop_name] = new_value
-
-    def append_value(self, prop_path, value):
-        obj, prop_name = self._get_parent_obj_prop_name_by_path(prop_path)
-        obj[prop_name] = obj[prop_name] + value
-
-    def _split_path(self, path):
-        # allow escaping '.' with '\.'
-        parts = re.split(r'(?<![^\\]\\)\.', path)
-        return [p.replace(r'\.', '.').replace('\\\\', '\\') for p in parts]
-
-    def _get_object_by_path(self, prop_path):
-        current = self.obj
-        for prop_segment in self._split_path(prop_path):
-            match = self.pattern.match(prop_segment)
-            if match:
-                index = int(match.group(2))
-                property_name = match.group(1)
-                if property_name not in current:
-                    self._raise_illegal(prop_path)
-                if type(current[property_name]) != list:
-                    self._raise_illegal(prop_path)
-                current = current[property_name][index]
-            else:
-                if prop_segment not in current:
-                    current[prop_segment] = {}
-                current = current[prop_segment]
-        return current
-
-    def delete_property(self, prop_path, raise_if_missing=True):
-        obj, prop_name = self._get_parent_obj_prop_name_by_path(prop_path)
-        if prop_name in obj:
-            obj.pop(prop_name)
-        elif raise_if_missing:
-            raise KeyError('cannot delete property {0} as its not a key in '
-                           'object {1}'.format(prop_name, obj))
-
-    def _get_parent_obj_prop_name_by_path(self, prop_path):
-        split = self._split_path(prop_path)
-        if len(split) == 1:
-            return self.obj, prop_path
-        parent_path = '.'.join(p.replace('.', r'\.') for p in split[:-1])
-        parent_obj = self._get_object_by_path(parent_path)
-        prop_name = split[-1]
-        return parent_obj, prop_name
-
-    @staticmethod
-    def _raise_illegal(prop_path):
-        raise RuntimeError('illegal path: {0}'.format(prop_path))
+    with open(package_url_file) as package_url_handle:
+        return package_url_handle.read()
 
 
 @retrying.retry(stop_max_attempt_number=20, wait_fixed=5000)
-def assert_snapshot_created(manager, snapshot_id, attributes):
+def assert_snapshot_created(manager, snapshot_id):
     snapshots = manager.client.snapshots.list()
 
     existing_snapshots = {
@@ -369,36 +144,12 @@ def assert_snapshot_created(manager, snapshot_id, attributes):
     )
 
 
-def is_community():
-    image_type = get_attributes()['image_type']
-
-    # We check the image type is valid to avoid unanticipated effects from
-    # typos.
-    community_image_types = [
-        'community',
-    ]
-    valid_image_types = community_image_types + [
-        'premium',
-    ]
-
-    if image_type not in valid_image_types:
-        raise ValueError(
-            'Invalid image_type: {specified}.\n'
-            'Valid image types are: {valid}'.format(
-                specified=image_type,
-                valid=', '.join(valid_image_types),
-            )
-        )
-
-    return image_type in community_image_types
-
-
 @contextmanager
-def set_client_tenant(manager, tenant):
+def set_client_tenant(client, tenant):
     if tenant:
-        original = manager.client._client.headers[CLOUDIFY_TENANT_HEADER]
+        original = client._client.headers[CLOUDIFY_TENANT_HEADER]
 
-        manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = tenant
+        client._client.headers[CLOUDIFY_TENANT_HEADER] = tenant
 
     try:
         yield
@@ -406,22 +157,16 @@ def set_client_tenant(manager, tenant):
         raise
     finally:
         if tenant:
-            manager.client._client.headers[CLOUDIFY_TENANT_HEADER] = original
+            client._client.headers[CLOUDIFY_TENANT_HEADER] = original
 
 
-def prepare_and_get_test_tenant(test_param, manager, upload=True):
+def prepare_and_get_test_tenant(test_param, manager, test_config):
     """
         Prepares a tenant for testing based on the test name (or other
         identifier passed in as 'test_param'), and returns the name of the
         tenant that should be used for this test.
     """
-    default_openstack_plugin = get_attributes()['default_openstack_plugin']
-
-    if is_community():
-        tenant = 'default_tenant'
-        # It is expected that the plugin is already uploaded for the
-        # default tenant
-    else:
+    if test_config['premium']:
         tenant = test_param
         try:
             manager.client.tenants.create(tenant)
@@ -430,24 +175,21 @@ def prepare_and_get_test_tenant(test_param, manager, upload=True):
                 pass
             else:
                 raise
-        if upload:
-            manager.upload_plugin(default_openstack_plugin,
-                                  tenant_name=tenant)
+    else:
+        tenant = 'default_tenant'
+        # It is expected that the plugin is already uploaded for the
+        # default tenant
     return tenant
 
 
 def mkdirs(folder_path):
     try:
-        makedirs(folder_path)
+        os.makedirs(folder_path)
     except OSError as exc:
         if exc.errno == errno.EEXIST and os.path.isdir(folder_path):
             pass
         else:
             raise
-
-
-def is_redhat():
-    return 'redhat' in platform.platform()
 
 
 def run(command, retries=0, stdin=b'', ignore_failures=False,
@@ -480,16 +222,6 @@ def run(command, retries=0, stdin=b'', ignore_failures=False,
                 command_str, proc.aggr_stderr)
             raise ProcessExecutionError(msg, proc.returncode)
     return proc
-
-
-def sudo(command, *args, **kwargs):
-    if isinstance(command, str):
-        command = shlex.split(command)
-    if 'env' in kwargs:
-        command = ['sudo', '-E'] + command
-    else:
-        command.insert(0, 'sudo')
-    return run(command=command, *args, **kwargs)
 
 
 def write_to_tempfile(contents, json_dump=False):
@@ -658,93 +390,201 @@ def generate_ca_cert(ca_cert_path, ca_key_path):
     ])
 
 
-class ExecutionWaiting(Exception):
-    """
-    raised by `wait_for_execution` if it should be retried
-    """
+class ExecutionTimeout(Exception):
+    """Execution timed out."""
 
 
 class ExecutionFailed(Exception):
-    """
-    raised by `wait_for_execution` if a bad state is reached
-    """
+    """Execution failed."""
 
 
-def retry_if_not_failed(exception):
-    return not isinstance(exception, ExecutionFailed)
-
-
-@retrying.retry(
-    stop_max_delay=5 * 60 * 1000,
-    wait_fixed=10000,
-    retry_on_exception=retry_if_not_failed,
-)
-def wait_for_execution(manager, execution, logger):
+def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60):
     logger.info(
         'Getting workflow execution [id={execution}]'.format(
             execution=execution['id'],
         )
     )
-    execution = manager.client.executions.get(execution['id'])
-    logger.info('- execution.status = %s', execution.status)
-    if execution.status not in execution.END_STATES:
-        raise ExecutionWaiting(execution.status)
-    if execution.status != execution.TERMINATED:
-        logger.warning('Execution failed')
-        raise ExecutionFailed(
-            '{status}: {error}'.format(
-                status=execution.status,
-                error=execution['error'],
-            )
-        )
-    logger.info('Execution complete')
+    current_time = datetime.now()
+    timeout_time = current_time + timedelta(seconds=timeout)
+    output_events(client, execution, logger, to_time=current_time)
+
+    with set_client_tenant(client, tenant):
+        while True:
+            execution = client.executions.get(execution['id'])
+
+            prev_time = current_time
+            current_time = datetime.now()
+
+            output_events(client, execution, logger, prev_time, current_time)
+
+            if current_time >= timeout_time:
+                raise ExecutionTimeout(
+                    'Execution {exc_id} timed out in state: {status}'.format(
+                        exc_id=execution['id'],
+                        status=execution.status,
+                    )
+                )
+
+            if execution.status in execution.END_STATES:
+                # Give time for any last second events
+                time.sleep(2)
+                output_events(client, execution, logger, current_time)
+
+                if execution.status != execution.TERMINATED:
+                    logger.warning('Execution failed')
+                    raise ExecutionFailed(
+                        '{status}: {error}'.format(
+                            status=execution.status,
+                            error=execution['error'],
+                        )
+                    )
+
+                logger.info('Execution completed in state {status}'.format(
+                        status=execution.status,
+                    )
+                )
+                break
+
     return execution
 
 
-def _get_release_dict_by_name(
-        item_name, dict_or_list):
-    if isinstance(dict_or_list, dict):
-        return dict_or_list.get(item_name)
-    elif isinstance(dict_or_list, list):
-        for item in dict_or_list:
-            if item['name'] == item_name:
-                return item
-    raise Exception('No item named {0} in {1}'.format(
-        item_name, dict_or_list)
+def run_blocking_execution(client, deployment_id, workflow_id, logger,
+                           params=None, tenant=None, timeout=(15*60)):
+    with set_client_tenant(client, tenant):
+        execution = client.executions.start(
+            deployment_id, workflow_id, parameters=params,
+        )
+    wait_for_execution(client, execution, logger,
+                       tenant=tenant, timeout=timeout)
+
+
+def output_events(client, execution, logger, from_time=None, to_time=None):
+    if from_time:
+        from_time = from_time.strftime('%Y-%m-%d %H:%M:%S')
+    if to_time:
+        to_time = to_time.strftime('%Y-%m-%d %H:%M:%S')
+    events = client.events.list(
+        execution_id=execution.id,
+        _size=1000,
+        include_logs=True,
+        sort='reported_timestamp',
+        from_datetime=from_time,
+        to_datetime=to_time,
+    )
+    log_methods = {
+        'debug': logger.debug,
+        'info': logger.info,
+        'warn': logger.warn,
+        'warning': logger.warn,
+        'error': logger.error,
+    }
+    for event in events:
+        if event.get('type') == 'cloudify_event':
+            level = 'info'
+        else:
+            level = event.get('level')
+
+        if level not in log_methods:
+            logger.warn('Unknown event level %s.', level)
+            logger.warn('Event was: %s', event)
+        else:
+            message = event.get('message', '<MESSSAGE NOT FOUND>')
+            node_instance = event.get('node_instance_id')
+            if message.strip().endswith('nothing to do'):
+                # All well and good, but let's not bloat the logs
+                continue
+            log_methods[level](
+                '%s%s',
+                '({}) '.format(node_instance) if node_instance else '',
+                message,
+            )
+
+
+def list_snapshots(manager, logger):
+    logger.info('Listing snapshots:')
+    snapshots = manager.client.snapshots.list()
+    for snapshot in snapshots:
+        logger.info('%(id)s - %(status)s - %(error)s', snapshot)
+
+
+def list_executions(manager, logger):
+    logger.info('Listing executions:')
+    executions = manager.client.executions.list(include_system_workflows=True)
+    for execution in executions:
+        logger.info('%(id)s (%(workflow_id)s) - %(status_display)s',
+                    execution)
+        if execution.get('error'):
+            logger.warn('Execution %(id)s had error: %(error)s',
+                        execution)
+
+
+def list_capabilities(manager, deployment_id, logger):
+    logger.info('Listing capabilities for %s', deployment_id)
+    capabilities = manager.client.deployments.capabilities.get(
+        deployment_id).capabilities
+    for name, value in capabilities.items():
+        logger.info(
+            '%(dep)s capability %(name)s: %(value)s',
+            {'dep': deployment_id, 'name': name, 'value': value},
+        )
+
+
+class DeploymentCreationError(Exception):
+    """Deployment creation failed."""
+
+
+def create_deployment(client, blueprint_id, deployment_id, logger,
+                      inputs=None, skip_plugins_validation=False):
+    logger.info('Creating deployment for %s', deployment_id)
+    client.deployments.create(
+        blueprint_id=blueprint_id,
+        deployment_id=deployment_id,
+        inputs=inputs or {},
+        skip_plugins_validation=skip_plugins_validation,
+    )
+
+    logger.info('Waiting for deployment env creation for %s',
+                deployment_id)
+    executions = client.executions.list(deployment_id=deployment_id)
+    for execution in executions:
+        if execution.workflow_id == 'create_deployment_environment':
+            wait_for_execution(
+                client,
+                execution,
+                logger,
+            )
+            return
+    raise DeploymentCreationError(
+        'Deployment environment creation workflow not found for {}'.format(
+            deployment_id,
+        )
     )
 
 
-def get_authenticated_git_session(git_token=None):
-    git_token = git_token or os.environ.get('GITHUB_TOKEN')
-    session = requests.Session()
-    if git_token:
-        session.headers['Authorization'] = 'token %s' % git_token
-    return session
+class DeploymentDeletionError(Exception):
+    """Deployment deletion failed."""
 
 
-def download_asset(repository_path,
-                   release_name,
-                   asset_name,
-                   save_location,
-                   git_token=None):
+def delete_deployment(client, deployment_id, logger):
+    logger.info('Deleting deployment %s', deployment_id)
+    client.deployments.delete(deployment_id)
+    # Allow a short delay to allow some time for the deletion
+    time.sleep(0.5)
 
-    session = get_authenticated_git_session(git_token)
-    releases = session.get(
-        'https://api.github.com/repos/{0}/releases'.format(
-            repository_path))
-    if not releases.ok:
-        raise RuntimeError(
-            'Failed to authenticate to {0}, reason: {1}'.format(
-                releases.url, releases.reason))
+    for _ in range(20):
+        found = False
+        deployments = client.deployments.list()
+        for deployment in deployments:
+            if deployment['id'] == deployment_id:
+                found = True
+                logger.info('Still waiting for deployment %s to delete',
+                            deployment_id)
+                time.sleep(2)
+                break
 
-    release = _get_release_dict_by_name(release_name, releases.json())
-    asset = _get_release_dict_by_name(asset_name, release['assets'])
-    session.headers['Accept'] = 'application/octet-stream'
-
-    with session.get(asset['url'], stream=True) as response:
-        if not response.ok:
-            raise Exception(
-                'Failed to download {0}'.format(asset['url']))
-        with open(save_location, 'wb') as f:
-            for chunk in response.iter_content(1024):
-                f.write(chunk)
+    if found:
+        raise DeploymentDeletionError(
+            'Deployment {} did not finish deleting.'.format(
+                deployment_id,
+            )
+        )

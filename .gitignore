@@ -67,3 +67,5 @@ suite-envs/
 # When running system tests locally, this directory is created.
 .cloudify/
 
+# Test configuration, may contain secrets
+test_config.yaml

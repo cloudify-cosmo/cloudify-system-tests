@@ -1,26 +1,14 @@
-########
-# Copyright (c) 2018 Cloudify Platform Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import os
-from time import sleep
 
 import pytest
 
 from cosmo_tester.framework import util
-from cosmo_tester.framework.fixtures import image_based_manager # NOQA
-from cosmo_tester.test_suites.snapshots import restore_snapshot
+from cosmo_tester.test_suites.snapshots import (
+    create_snapshot,
+    download_snapshot,
+    restore_snapshot,
+    upload_snapshot,
+)
 
 from . import constants
 from .regional_cluster import (
@@ -32,22 +20,22 @@ fixed_ip_clusters = []
 floating_ip_clusters = []
 
 central_hosts = None
-ATTRIBUTES = util.get_attributes()
+# This won't work at all, and has just been set like this to make pytest's
+# collectonly work. This will be fixed as part of CY-2607
+ATTRIBUTES = {}
 
 
-@pytest.fixture(scope='module')  # NOQA
-def central_manager(cfy,
-                    ssh_key,
+@pytest.fixture(scope='module')
+def central_manager(ssh_key,
                     module_tmpdir,
                     attributes,
                     logger,
-                    image_based_manager):  # NOQA
-    _upload_resources_to_central_manager(
-        cfy, image_based_manager, logger)
+                    image_based_manager):
+    _upload_resources_to_central_manager(image_based_manager, logger)
     yield image_based_manager
 
 
-def _upload_resources_to_central_manager(cfy, manager, logger):
+def _upload_resources_to_central_manager(manager, logger):
     root_resource_dir = os.path.dirname(__file__)
 
     license_path = os.path.abspath(
@@ -59,45 +47,13 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
         'sudo chown cfyuser:cfyuser '
         '/etc/cloudify/license.yaml')
 
-    # At the moment, we don't have a way for the SHBaked CLI
-    # to upload the wagon from a private repo.
-    # So we download it and upload the local file.
-    wagon_save_path = os.path.abspath(
-        os.path.join(
-            root_resource_dir, constants.MOM_PLUGIN_WGN_NAME))
-
-    util.download_asset(
-        constants.MOM_PLUGIN_REPO_PATH,
-        constants.MOM_PLUGIN_RELEASE_NAME,
-        constants.MOM_PLUGIN_WGN_NAME,
-        wagon_save_path,
-        os.environ.get('SPIRE_GIT_TOKEN')
-    )
-
-    plugin_yaml_save_path = os.path.abspath(
-        os.path.join(
-            root_resource_dir, 'plugin.yaml'))
-
-    util.download_asset(
-        constants.MOM_PLUGIN_REPO_PATH,
-        constants.MOM_PLUGIN_RELEASE_NAME,
-        'plugin.yaml',
-        plugin_yaml_save_path,
-        os.environ.get('SPIRE_GIT_TOKEN')
-    )
-
-    cfy.plugins.upload(
-        wagon_save_path,
-        '-y', plugin_yaml_save_path
-    )
-    cfy.plugins.upload(
-        constants.OS_PLUGIN_WGN_URL,
-        '-y', constants.OS_PLUGIN_YAML_URL
-    )
-    cfy.plugins.upload(
-        constants.ANSIBLE_PLUGIN_WGN_URL,
-        '-y', constants.ANSIBLE_PLUGIN_YAML_URL
-    )
+    # TODO: Here we need to upload the spire plugin (in a zip with its yaml)
+    # This has been temporarily removed as it should be added into the config
+    # rather than relying on env vars that are only obvious if you know about
+    # them or if you wait for a bunch of VMs to be deployed and then see them
+    # in an exception.
+    # This was previously uploading the spire, openstack, and ansible plugins.
+    # Related jira: CY-2607
 
     manager_install_rpm = \
         ATTRIBUTES.cloudify_manager_install_rpm_url.strip() or \
@@ -153,15 +109,12 @@ def _upload_resources_to_central_manager(cfy, manager, logger):
     }
 
     for k, v in secrets_to_create.items():
-        while k not in cfy.secrets.list():
-            cfy.secrets.create(k, '-s', v)
-            sleep(0.5)
+        manager.secrets.create(k, v)
     logger.info('Created all password secrets.')
 
 
 @pytest.fixture(scope='module')
-def floating_ip_2_regional_clusters(cfy,
-                                    central_manager,
+def floating_ip_2_regional_clusters(central_manager,
                                     attributes,
                                     ssh_key,
                                     module_tmpdir,
@@ -174,7 +127,7 @@ def floating_ip_2_regional_clusters(cfy,
             'cfy_manager_floating_ip',
             2,
             FloatingIpRegionalCluster,
-            cfy, logger, module_tmpdir, attributes, ssh_key, central_manager
+            logger, module_tmpdir, attributes, ssh_key, central_manager
         )
 
     yield floating_ip_clusters
@@ -183,7 +136,7 @@ def floating_ip_2_regional_clusters(cfy,
 
 
 @pytest.fixture(scope='module')
-def fixed_ip_2_regional_clusters(cfy, central_manager,
+def fixed_ip_2_regional_clusters(central_manager,
                                  attributes, ssh_key, module_tmpdir, logger):
     """ Yield 2 Regional clusters set up with fixed private IPs """
 
@@ -193,7 +146,7 @@ def fixed_ip_2_regional_clusters(cfy, central_manager,
             'cfy_manager_fixed_ip',
             2,
             FixedIpRegionalCluster,
-            cfy, logger, module_tmpdir, attributes, ssh_key, central_manager
+            logger, module_tmpdir, attributes, ssh_key, central_manager
         )
 
     yield fixed_ip_clusters
@@ -201,13 +154,13 @@ def fixed_ip_2_regional_clusters(cfy, central_manager,
 
 
 def _get_regional_clusters(resource_id, number_of_deps, cluster_class,
-                           cfy, logger, tmpdir, attributes, ssh_key,
+                           logger, tmpdir, attributes, ssh_key,
                            central_manager):
     clusters = []
 
     for i in range(number_of_deps):
         cluster = cluster_class(
-            cfy, central_manager, attributes,
+            central_manager, attributes,
             ssh_key, logger, tmpdir, suffix=resource_id
         )
         cluster.blueprint_id = '{0}_bp'.format(resource_id)
@@ -219,29 +172,27 @@ def _get_regional_clusters(resource_id, number_of_deps, cluster_class,
 
 
 def _do_central_upgrade(regional_cluster, central_manager,
-                        cfy, tmpdir, logger):
+                        tmpdir, logger):
 
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     regional_cluster.deploy_and_validate()
 
-    cfy.snapshots.create([constants.CENTRAL_MANAGER_SNAP_ID])
-    central_manager.wait_for_all_executions()
-    cfy.snapshots.download(
-        [constants.CENTRAL_MANAGER_SNAP_ID, '-o', local_snapshot_path]
-    )
+    create_snapshot(constants.CENTRAL_MANAGER_SNAP_ID)
+    download_snapshot(central_manager,
+                      local_snapshot_path,
+                      constants.CENTRAL_MANAGER_SNAP_ID,
+                      logger)
 
     central_manager.teardown()
     central_manager.bootstrap()
-    central_manager.use()
-    cfy.snapshots.upload(
-        [local_snapshot_path, '-s', constants.CENTRAL_MANAGER_SNAP_ID])
-    restore_snapshot(
-        central_manager,
-        constants.CENTRAL_MANAGER_SNAP_ID,
-        cfy, logger, restore_certificates=True)
 
-    cfy.agents.install()
+    upload_snapshot(central_manager, local_snapshot_path,
+                    constants.CENTRAL_MANAGER_SNAP_ID, logger)
+    restore_snapshot(central_manager, constants.CENTRAL_MANAGER_SNAP_ID,
+                     logger)
+
+    central_manager.run_command('cfy agents install')
 
 
 def _do_regional_scale(regional_cluster):
@@ -258,15 +209,15 @@ def _do_regional_heal(regional_cluster):
     regional_cluster.execute_hello_world_workflow('uninstall')
 
 
-@pytest.mark.skipif(util.is_redhat(),
+@pytest.mark.skipif(False,
                     reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
+@pytest.mark.skipif(False,
                     reason='Cloudify Community version does '
                            'not support clustering')
 def test_regional_cluster_with_floating_ip(
         floating_ip_2_regional_clusters,
         central_manager,
-        cfy, tmpdir, logger):
+        tmpdir, logger):
     """
     In this scenario the second cluster is created _alongside_ the first one
     with different floating IPs
@@ -292,23 +243,22 @@ def test_regional_cluster_with_floating_ip(
     # Upgrade central manager
     _do_central_upgrade(second_cluster,
                         central_manager,
-                        cfy,
                         tmpdir,
                         logger)
 
     second_cluster.uninstall(timeout=6000)
 
     # Clean deployments for both clusters
-    first_cluster.delete_deployment(use_cfy=True)
-    second_cluster.delete_deployment(use_cfy=True)
+    first_cluster.delete_deployment()
+    second_cluster.delete_deployment()
 
     # Clean blueprint resource
     first_cluster.clean_blueprints()
 
 
-@pytest.mark.skipif(util.is_redhat(),
+@pytest.mark.skipif(False,
                     reason='MoM plugin is only available on Centos')
-@pytest.mark.skipif(util.is_community(),
+@pytest.mark.skipif(False,
                     reason='Cloudify Community version does '
                            'not support clustering')
 def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
@@ -347,8 +297,8 @@ def test_regional_cluster_with_fixed_ip(fixed_ip_2_regional_clusters):
     second_cluster.uninstall(timeout=6000)
 
     # Clean deployments for both clusters
-    first_cluster.delete_deployment(use_cfy=True)
-    second_cluster.delete_deployment(use_cfy=True)
+    first_cluster.delete_deployment()
+    second_cluster.delete_deployment()
 
     # Clean blueprint resource
     first_cluster.clean_blueprints()

@@ -1,126 +1,143 @@
-########
-# Copyright (c) 2017 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import json
-import os
 
 import pytest
 
-from cosmo_tester.framework.util import (
-    get_attributes,
-    get_cli_package_url,
-    get_resource_path,
-)
+from cosmo_tester.framework.util import get_cli_package_url
 from cosmo_tester.framework.test_hosts import (
     get_image,
-    TestHosts as Hosts,
+    Hosts,
 )
 from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.test_suites.cli import (
+    _prepare,
+    _test_cfy_install,
+    _test_teardown,
+    _test_upload_and_install,
+    get_image_and_username,
+)
+
+
+def test_cli_deployment_flow_linux(linux_cli_tester, logger):
+    cli_host = linux_cli_tester['cli_host']
+    example = linux_cli_tester['example']
+    paths = linux_cli_tester['paths']
+
+    _prepare(cli_host.run_command, example, paths, logger)
+
+    _test_upload_and_install(cli_host.run_command, example, paths, logger)
+
+    _test_teardown(cli_host.run_command, example, paths, logger)
+
+
+def test_cli_install_flow_linux(linux_cli_tester, logger):
+    cli_host = linux_cli_tester['cli_host']
+    example = linux_cli_tester['example']
+    paths = linux_cli_tester['paths']
+
+    _prepare(cli_host.run_command, example, paths, logger)
+
+    _test_cfy_install(cli_host.run_command, example, paths, logger)
+
+    _test_teardown(cli_host.run_command, example, paths, logger)
 
 
 def get_linux_image_settings():
-    attrs = get_attributes()
     return [
-        (attrs.centos_7_image_name, attrs.centos_7_username,
-         'rhel_centos_cli_package_url'),
-        (attrs.ubuntu_14_04_image_name, attrs.ubuntu_14_04_username,
-         'debian_cli_package_url'),
-        (attrs.rhel_7_image_name, attrs.rhel_7_username,
-         'rhel_centos_cli_package_url'),
+        ('centos_7', 'rhel_centos_cli_package_url', 'rpm'),
+        ('ubuntu_14_04', 'debian_cli_package_url', 'deb'),
+        ('rhel_7', 'rhel_centos_cli_package_url', 'rpm'),
     ]
 
 
 @pytest.fixture(
     scope='module',
     params=get_linux_image_settings())
-def linux_cli_tester(request, cfy, ssh_key, module_tmpdir, attributes,
+def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
                      logger, install_dev_tools=True):
     instances = [
-        get_image('centos'),
-        get_image('master'),
+        get_image('centos', test_config),
+        get_image('master', test_config),
     ]
 
-    instances[0].image_name = request.param[0]
-    instances[0].username = request.param[1]
+    image, username = get_image_and_username(request.param[0], test_config)
+    instances[0].image_name = image
+    instances[0].username = username
 
     cli_hosts = Hosts(
-        cfy, ssh_key, module_tmpdir,
-        attributes, logger, instances=instances, request=request,
-        upload_plugins=False,
-    )
-    cli_hosts.create()
-
-    yield {
-        'cli_hosts': cli_hosts,
-        'username': instances[1].username,
-        'url_key': request.param[2],
-    }
-    cli_hosts.destroy()
-
-
-def test_cli_on_linux(linux_cli_tester, module_tmpdir, ssh_key, logger):
-    cli_host, manager_host = linux_cli_tester['cli_hosts'].instances
-
-    local_install_script_path = get_resource_path(
-        'scripts/linux-cli-test-install'
-    )
-    remote_install_script_path = '/tmp/linux-cli-test-install'
-    cli_host.put_remote_file(
-        remote_path=remote_install_script_path,
-        local_path=local_install_script_path,
-    )
-    cli_host.run_command('chmod 500 {}'.format(remote_install_script_path))
-
-    local_uninstall_script_path = get_resource_path(
-        'scripts/linux-cli-test-uninstall'
-    )
-    remote_uninstall_script_path = '/tmp/linux-cli-test-uninstall'
-    cli_host.put_remote_file(
-        remote_path=remote_uninstall_script_path,
-        local_path=local_uninstall_script_path,
-    )
-    cli_host.run_command('chmod 500 {}'.format(remote_uninstall_script_path))
-
-    example = get_example_deployment(
-        manager_host, ssh_key, logger, linux_cli_tester['url_key'])
-    example.set_agent_key_secret()
-    example.inputs['path'] = '/tmp/{}'.format(linux_cli_tester['url_key'])
-    cli_host.run_command('mkdir -p /tmp/test_blueprint')
-    cli_host.put_remote_file(
-        remote_path='/tmp/test_blueprint/blueprint.yaml',
-        local_path=example.blueprint_file,
-    )
-    local_inputs_path = os.path.join(
-        module_tmpdir, linux_cli_tester['url_key'] + '_inputs.yaml',
-    )
-    with open(local_inputs_path, 'w') as inputs_handle:
-        inputs_handle.write(json.dumps(example.inputs))
-    cli_host.put_remote_file(
-        remote_path='/tmp/test_blueprint/inputs.yaml',
-        local_path=local_inputs_path,
+        ssh_key, module_tmpdir,
+        test_config, logger, request, instances=instances,
     )
 
-    cli_host.run_command(
-        '{script} {cli_url} {mgr_priv} {tenant}'.format(
-            script=remote_install_script_path,
-            cli_url=get_cli_package_url(linux_cli_tester['url_key']),
-            mgr_priv=manager_host.private_ip_address,
-            tenant=example.tenant,
+    passed = True
+
+    try:
+        cli_hosts.create()
+
+        url_key = request.param[1]
+        pkg_type = request.param[2]
+        cli_host, manager_host = cli_hosts.instances
+
+        logger.info('Downloading CLI package')
+        cli_package_url = get_cli_package_url(url_key, test_config)
+        logger.info('Using CLI package: {url}'.format(
+            url=cli_package_url,
+        ))
+        cli_host.run_command('curl -Lo cloudify-cli.{pkg_type} {url}'.format(
+            url=cli_package_url, pkg_type=pkg_type,
+        ))
+
+        logger.info('Installing CLI package')
+        install_cmd = {
+            'rpm': 'rpm',
+            'deb': 'dpkg',
+        }[pkg_type]
+        cli_host.run_command(
+            '{install_cmd} -i cloudify-cli.{pkg_type}'.format(
+                install_cmd=install_cmd,
+                pkg_type=pkg_type,
+            ),
+            use_sudo=True,
         )
-    )
-    example.check_files()
 
-    cli_host.run_command(remote_uninstall_script_path)
-    example.check_all_test_files_deleted()
+        example = get_example_deployment(
+            manager_host, ssh_key, logger, url_key, test_config)
+        example.inputs['path'] = '/tmp/{}'.format(url_key)
+
+        logger.info('Copying blueprint to CLI host')
+        cli_host.run_command('mkdir -p /tmp/test_blueprint')
+        remote_blueprint_path = '/tmp/test_blueprint/blueprint.yaml'
+        cli_host.put_remote_file(
+            remote_path=remote_blueprint_path,
+            local_path=example.blueprint_file,
+        )
+
+        logger.info('Copying inputs to CLI host')
+        remote_inputs_path = '/tmp/test_blueprint/inputs.yaml'
+        cli_host.put_remote_file_content(
+            remote_path=remote_inputs_path,
+            content=json.dumps(example.inputs),
+        )
+
+        logger.info('Copying agent ssh key to CLI host for secret')
+        remote_ssh_key_path = '/tmp/cli_test_ssh_key.pem'
+        cli_host.put_remote_file(
+            remote_path=remote_ssh_key_path,
+            local_path=ssh_key.private_key_path,
+        )
+
+        yield {
+            'cli_host': cli_host,
+            'example': example,
+            'paths': {
+                'blueprint': remote_blueprint_path,
+                'inputs': remote_inputs_path,
+                'ssh_key': remote_ssh_key_path,
+                # Expected to be in path on linux systems
+                'cfy': 'cfy',
+            },
+        }
+    except Exception:
+        passed = False
+        raise
+    finally:
+        cli_hosts.destroy(passed=passed)

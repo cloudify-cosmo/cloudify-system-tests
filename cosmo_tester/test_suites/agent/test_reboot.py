@@ -15,17 +15,21 @@ from cosmo_tester.test_suites.agent import get_test_prerequisites
     'rhel_7',
     'windows_2012',
 ])
-def test_agent_reboot(cfy, ssh_key, module_tmpdir, attributes, logger, vm_os):
+def test_agent_reboot(ssh_key, module_tmpdir, test_config, logger, vm_os,
+                      request):
     hosts, username, password = get_test_prerequisites(
-        cfy, ssh_key, module_tmpdir, attributes, logger, vm_os,
+        ssh_key, module_tmpdir, test_config, logger, request, vm_os,
     )
     manager, vm = hosts.instances
+
+    passed = True
 
     try:
         hosts.create()
 
         example = get_example_deployment(
-            manager, ssh_key, logger, 'agent_reboot_{}'.format(vm_os), vm=vm,
+            manager, ssh_key, logger, 'agent_reboot_{}'.format(vm_os),
+            test_config, vm=vm,
         )
         if 'windows' in vm_os:
             example.use_windows(username, password)
@@ -40,5 +44,8 @@ def test_agent_reboot(cfy, ssh_key, module_tmpdir, attributes, logger, vm_os):
         time.sleep(10)
 
         example.uninstall()
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)

@@ -5,13 +5,17 @@ from time import sleep
 import retrying
 
 from cloudify.snapshots import STATES
+from cloudify_rest_client.exceptions import UserUnauthorizedError
+
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
     create_rest_client,
-    is_community,
+    ExecutionFailed,
+    list_executions,
+    list_snapshots,
     set_client_tenant,
+    wait_for_execution,
 )
-from cloudify_rest_client.exceptions import UserUnauthorizedError
 
 
 SNAPSHOT_ID = 'testsnapshot'
@@ -41,78 +45,21 @@ MULTI_TENANT_MANAGERS = (
 
 
 def get_multi_tenant_versions_list():
-    if is_community():
-        # Community only works single tenanted
-        return ()
-    else:
-        return MULTI_TENANT_MANAGERS
+    return MULTI_TENANT_MANAGERS
 
 
-def upgrade_agents(cfy, manager, logger):
+def upgrade_agents(manager, logger, test_config):
     logger.info('Upgrading agents')
-    args = [] if is_community() else ['--all-tenants']
-    cfy.agents.install(args)
+    command = 'cfy agents install'
+    if test_config['premium']:
+        command += ' --all-tenants'
+    manager.run_command(command)
 
 
 def stop_manager(manager, logger):
     logger.info('Stopping {version} manager..'.format(
         version=manager.image_type))
     manager.stop()
-
-
-class ExecutionWaiting(Exception):
-    """
-    raised by `wait_for_execution` if it should be retried
-    """
-    pass
-
-
-class ExecutionFailed(Exception):
-    """
-    raised by `wait_for_execution` if a bad state is reached
-    """
-    pass
-
-
-def retry_if_not_failed(exception):
-    return not isinstance(exception, ExecutionFailed)
-
-
-@retrying.retry(
-    # Wait up to 5 seconds
-    stop_max_delay=5 * 60 * 1000,
-    # With a delay of 20 seconds between each
-    wait_fixed=20000,
-    retry_on_exception=retry_if_not_failed,
-)
-def wait_for_execution(manager, execution, logger, tenant=None,
-                       change_manager_password=True):
-    _log(
-        'Getting workflow execution [id={execution}]'.format(
-            execution=execution['id'],
-        ),
-        logger,
-        tenant,
-    )
-    password_updated = False
-    try:
-        with set_client_tenant(manager, tenant):
-            execution = manager.client.executions.get(execution['id'])
-    except UserUnauthorizedError:
-        if change_manager_password and not password_updated:
-            # This will happen on a restore with modified users
-            change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
-            password_updated = True
-        else:
-            # We either shouldn't change the password, or did already.
-            raise
-
-    logger.info('- execution.status = %s', execution.status)
-    if execution.status not in execution.END_STATES:
-        raise ExecutionWaiting(execution.status)
-    if execution.status != execution.TERMINATED:
-        raise ExecutionFailed(execution.status)
-    return execution
 
 
 def check_from_source_plugin(manager, plugin, deployment_id, logger,
@@ -141,7 +88,7 @@ def confirm_manager_empty(manager):
     assert get_deployments_list(manager) == []
 
 
-def create_snapshot(manager, snapshot_id, attributes, logger):
+def create_snapshot(manager, snapshot_id, logger):
     logger.info('Creating snapshot on manager {image_name}'
                 .format(image_name=manager.image_name))
     manager.client.snapshots.create(
@@ -150,8 +97,7 @@ def create_snapshot(manager, snapshot_id, attributes, logger):
         include_logs=True,
         include_events=True
     )
-    password = CHANGED_ADMIN_PASSWORD
-    assert_snapshot_created(manager, snapshot_id, password)
+    assert_snapshot_created(manager, snapshot_id)
 
 
 def download_snapshot(manager, local_path, snapshot_id, logger):
@@ -169,14 +115,17 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
                 json.dumps(snapshot, indent=2))
 
 
-def restore_snapshot(manager, snapshot_id, cfy, logger,
+def change_rest_client_password(manager, new_password):
+    manager.client = create_rest_client(manager.ip_address,
+                                        password=new_password)
+
+
+def restore_snapshot(manager, snapshot_id, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
                      wait_timeout=20, change_manager_password=True,
-                     cert_path=None):
-    # Show the snapshots, to aid troubleshooting on failures
-    manager.use(cert_path=cert_path)
-    cfy.snapshots.list()
+                     cert_path=None, blocking=True):
+    list_snapshots(manager, logger)
 
     logger.info('Restoring snapshot on latest manager..')
     restore_execution = manager.client.snapshots.restore(
@@ -187,83 +136,62 @@ def restore_snapshot(manager, snapshot_id, cfy, logger,
 
     _assert_restore_status(manager)
 
-    try:
-        wait_for_execution(
-            manager,
-            restore_execution,
-            logger,
-            change_manager_password=change_manager_password)
-    except ExecutionFailed:
-        # See any errors
-        cfy.executions.list(['--include-system-workflows'])
-        raise
+    if blocking:
+        try:
+            try:
+                wait_for_execution(
+                    manager.client,
+                    restore_execution,
+                    logger)
+            except UserUnauthorizedError:
+                change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+                wait_for_execution(
+                    manager.client,
+                    restore_execution,
+                    logger)
+        except ExecutionFailed:
+            logger.error('Snapshot execution failed.')
+            list_executions(manager, logger)
+            raise
 
-    # wait a while to allow the restore-snapshot post-workflow commands to run
-    if wait_for_post_restore_commands:
-        sleep(wait_timeout)
+        # wait a while to allow the restore-snapshot post-workflow commands to
+        # run
+        if wait_for_post_restore_commands:
+            sleep(wait_timeout)
 
 
-def change_salt_on_new_manager(cfy, logger, manager):
-    manager.use()
-    change_salt(manager, 'this_is_a_test_salt', cfy, logger)
+def change_salt_on_new_manager(manager, logger):
+    change_salt(manager, 'this_is_a_test_salt', logger)
 
 
-def prepare_credentials_tests(cfy, logger, manager):
-    manager.use()
-
+def prepare_credentials_tests(manager, logger):
     logger.info('Creating test user')
-    create_user('testuser', 'testpass', cfy)
+    create_user('testuser', 'testpass', manager)
     logger.info('Updating admin password')
-    update_admin_password(CHANGED_ADMIN_PASSWORD, cfy)
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
-def update_credentials(cfy, logger, manager):
+def update_credentials(manager, logger):
     logger.info('Changing to modified admin credentials')
-    change_profile_credentials('admin', CHANGED_ADMIN_PASSWORD, cfy,
-                               validate=False)
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
-def check_credentials(cfy, logger, manager):
+def check_credentials(manager, logger):
     logger.info('Checking test user still works')
-    test_user('testuser', 'testpass', cfy, logger, CHANGED_ADMIN_PASSWORD)
+    test_user('testuser', 'testpass', manager, logger)
 
 
-def change_rest_client_password(manager, new_password):
-    manager.client = create_rest_client(manager.ip_address,
-                                        tenant='default_tenant',
-                                        password=new_password)
+def create_user(username, password, manager):
+    manager.client.users.create(username, password, 'sys_admin')
 
 
-def create_user(username, password, cfy):
-    cfy.users.create(['-r', 'sys_admin', '-p', password, username])
-
-
-def change_password(username, password, cfy):
-    cfy.users(['set-password', '-p', password, username])
-
-
-def test_user(username, password, cfy, logger, admin_password='admin'):
+def test_user(username, password, manager, logger):
     logger.info('Checking {user} can log in.'.format(user=username))
-    # This command will fail noisily if the credentials don't work
-    cfy.profiles.set(['-u', username, '-p', password])
-
-    # Now revert to the admin user
-    cfy.profiles.set(['-u', 'admin', '-p', admin_password])
-
-
-def change_profile_credentials(username, password, cfy, validate=True):
-    cmd = ['-u', username, '-p', password]
-    if not validate:
-        cmd.append('--skip-credentials-validation')
-    cfy.profiles.set(cmd)
-
-
-def update_admin_password(new_password, cfy):
-    # Update the admin user on the manager then in our profile
-    change_password('admin', new_password, cfy)
-    change_profile_credentials('admin', new_password, cfy)
+    create_rest_client(
+        manager.ip,
+        username,
+        password,
+    ).get_status()
 
 
 def get_security_conf(manager):
@@ -274,7 +202,7 @@ def get_security_conf(manager):
     return json.loads(output)
 
 
-def change_salt(manager, new_salt, cfy, logger):
+def change_salt(manager, new_salt, logger):
     """Change the salt on the manager so that we don't incorrectly succeed
     while testing non-admin users due to both copies of the master image
     having the same hash salt value."""
@@ -299,16 +227,14 @@ def change_salt(manager, new_salt, cfy, logger):
         fabric_ssh.sudo('systemctl restart cloudify-restservice')
 
     logger.info('Fixing admin credentials...')
-    fix_admin_account(manager, new_salt, cfy)
+    fix_admin_account(manager, new_salt, logger)
 
     logger.info('Hash updated.')
 
 
-def fix_admin_account(manager, salt, cfy):
+def fix_admin_account(manager, salt, logger):
     manager.run_command('cfy_manager reset-admin-password admin')
-
-    # This will confirm that the hash change worked... or it'll fail.
-    change_profile_credentials('admin', 'admin', cfy)
+    test_user('admin', 'admin', manager, logger)
 
 
 def check_plugins(manager, old_plugins, logger, tenant='default_tenant'):
@@ -413,7 +339,7 @@ def verify_services_status(manager, logger):
 
 
 def get_plugins_list(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(manager.client, tenant):
         return [
             (
                 item['package_name'],
@@ -425,14 +351,14 @@ def get_plugins_list(manager, tenant=None):
 
 
 def get_deployments_list(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(manager.client, tenant):
         return [
             item['id'] for item in manager.client.deployments.list()
         ]
 
 
 def get_secrets_list(manager, tenant=None):
-    with set_client_tenant(manager, tenant):
+    with set_client_tenant(manager.client, tenant):
         return [
             item['key'] for item in manager.client.secrets.list()
         ]

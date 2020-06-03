@@ -1,6 +1,4 @@
-import json
 import time
-from os import path
 
 import sh
 import retrying
@@ -18,15 +16,15 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import set_client_tenant
 
 
-def test_full_cluster(full_cluster, logger, attributes, cfy):
+def test_full_cluster(full_cluster, logger):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
 
     logger.info('Creating snapshot')
     snapshot_id = 'cluster_test_snapshot'
-    create_snapshot(mgr1, snapshot_id, attributes, logger)
+    create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')
-    restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
+    restore_snapshot(mgr2, snapshot_id, logger, force=True,
                      cert_path=mgr2.local_ca)
 
     check_managers(mgr1, mgr2)
@@ -35,30 +33,29 @@ def test_full_cluster(full_cluster, logger, attributes, cfy):
 # This is to confirm that we work with a single DB endpoint set (e.g. on a
 # PaaS).
 # It is not intended that a single external DB be used in production.
-def test_cluster_single_db(cluster_with_single_db, logger, attributes, cfy):
+def test_cluster_single_db(cluster_with_single_db, logger):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
 
     logger.info('Creating snapshot')
     snapshot_id = 'cluster_test_snapshot'
-    create_snapshot(mgr1, snapshot_id, attributes, logger)
+    create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')
-    restore_snapshot(mgr2, snapshot_id, cfy, logger, force=True,
+    restore_snapshot(mgr2, snapshot_id, logger, force=True,
                      cert_path=mgr2.local_ca)
 
     check_managers(mgr1, mgr2)
 
 
 def test_queue_node_failover(cluster_with_single_db, logger,
-                             module_tmpdir, attributes, ssh_key, cfy):
+                             module_tmpdir, ssh_key, test_config):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
 
-    # cfy commands will use mgr1
-    mgr1.use(cert_path=mgr1.local_ca)
-    example = get_example_deployment(mgr1, ssh_key, logger, 'queue_failover')
+    example = get_example_deployment(mgr1, ssh_key, logger, 'queue_failover',
+                                     test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(cfy, example.tenant)
+    _validate_cluster_and_agents(mgr1, example.tenant)
     agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
     )
@@ -73,7 +70,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         broker_ssh.run('sudo service cloudify-rabbitmq stop')
 
     # the agent should now pick another broker
-    _validate_cluster_and_agents(cfy, example.tenant,
+    _validate_cluster_and_agents(mgr1, example.tenant,
                                  expected_broker_status='Degraded')
     agent_broker_ip2 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
@@ -97,7 +94,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
             if broker.private_ip_address == new_agent_broker_ip:
                 agent_broker = broker
                 break
-        _wait_for_healthy_broker_cluster(cfy)
+        _wait_for_healthy_broker_cluster(mgr1.client)
         with agent_broker.ssh() as broker_ssh:
             broker_ssh.run('sudo service cloudify-rabbitmq stop')
         agent_broker_ip = new_agent_broker_ip
@@ -116,24 +113,22 @@ def test_queue_node_failover(cluster_with_single_db, logger,
 
 
 def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
-                               attributes, ssh_key, cfy):
+                               ssh_key, test_config):
     broker, db, mgr1, mgr2, mgr3, lb = cluster_with_lb
 
-    lb.use(cert_path=lb.local_ca)
-    _wait_for_cfy_node_to_start_serving(cfy)  # where the cfy node = the LB
+    lb.wait_for_manager()
 
     example = get_example_deployment(mgr1, ssh_key, logger,
-                                     'manager_failover')
+                                     'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(cfy, example.tenant)
+    _validate_cluster_and_agents(lb, example.tenant)
 
     # get agent's manager node
-    agent_host = json.loads(
-        cfy.agents.list('--json',
-                        '--all-tenants').stdout)[0]['id']
+    agent_host = lb.client.agents.list(_all_tenants=True)[0]['id']
+
     lb.client._client.cert = lb.local_ca
-    with set_client_tenant(lb, example.tenant):
+    with set_client_tenant(lb.client, example.tenant):
         node_instances = lb.client.node_instances.list().items
     agent_manager_ip = None
     for instance in node_instances:
@@ -148,12 +143,11 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
             break
 
     # stop the manager connected to the agent
-    with agent_mgr.ssh() as manager_ssh:
-        manager_ssh.run('cfy_manager stop')
+    agent_mgr.run_command('cfy_manager stop')
 
-    _wait_for_cfy_node_to_start_serving(cfy)
+    lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
-    _validate_cluster_and_agents(cfy, example.tenant,
+    _validate_cluster_and_agents(lb, example.tenant,
                                  expected_managers_status='Degraded')
 
     # restart the manager connected to the agent
@@ -161,47 +155,32 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
         manager_ssh.run('cfy_manager start')
 
     time.sleep(5)
-    _validate_cluster_and_agents(cfy, example.tenant)
+    _validate_cluster_and_agents(lb, example.tenant)
 
     # stop two managers
-    with mgr2.ssh() as manager_ssh:
-        manager_ssh.run('cfy_manager stop')
-    with mgr3.ssh() as manager_ssh:
-        manager_ssh.run('cfy_manager stop')
+    mgr2.run_command('cfy_manager stop')
+    mgr3.run_command('cfy_manager stop')
 
-    _wait_for_cfy_node_to_start_serving(cfy)
+    lb.wait_for_manager()
     time.sleep(5)
-    _validate_cluster_and_agents(cfy, example.tenant,
+    _validate_cluster_and_agents(lb, example.tenant,
                                  expected_managers_status='Degraded')
 
     example.uninstall()
 
 
-def _wait_for_cfy_node_to_start_serving(cfy, timeout=15):
-    for _ in range(timeout):
-        time.sleep(1)
-        try:
-            cfy.status()
-            return
-        except Exception:
-            continue
-    raise TimeoutException
-
-
-def test_workflow_resume_manager_failover(minimal_cluster, cfy,
-                                          logger, ssh_key):
+def test_workflow_resume_manager_failover(minimal_cluster,
+                                          logger, ssh_key, test_config):
     broker, db, mgr1, mgr2 = minimal_cluster
-    mgr1.use(cert_path=mgr1.local_ca)
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'workflow_resume_manager_failover',
-                                     using_agent=False)
+                                     test_config, using_agent=False)
     example.inputs['wait'] = 60
     example.upload_blueprint()
     example.create_deployment()
-    _wait_for_deployment_creation(cfy, example)
     execution_start_time = time.time()
-    with set_client_tenant(mgr1, example.tenant):
+    with set_client_tenant(mgr1.client, example.tenant):
         exec_id = mgr1.client.executions.start(example.deployment_id,
                                                'install').id
     time.sleep(3)   # wait for mgmtworker to get the execution
@@ -217,57 +196,40 @@ def test_workflow_resume_manager_failover(minimal_cluster, cfy,
         other_manager = ({mgr1, mgr2} - {executing_manager}).pop()
 
     # kill the first manager and  wait for execution to finish
-    with executing_manager.ssh() as manager_ssh:
-        manager_ssh.run('cfy_manager stop')
+    executing_manager.run_command('cfy_manager stop')
     manager_failover_time = time.time()
     assert manager_failover_time - execution_start_time < 60
     time.sleep(60)
-    other_manager.use(cert_path=other_manager.local_ca)
 
     # verify on the second manager that the execution completed successfully
-    executions = json.loads(cfy.executions.list(
-        '--tenant-name', example.tenant,
-        '--json').stdout)
+    with set_client_tenant(other_manager.client, example.tenant):
+        executions = other_manager.client.executions.list()
     installs = [execution for execution in executions
                 if execution['workflow_id'] == 'install']
     assert len(installs) == 1
     assert installs[0]['status'] == 'completed'
 
 
-def _wait_for_deployment_creation(cfy, example, timeout=30):
-    for _ in range(timeout):
-        time.sleep(1)
-        args = [
-            '--json',
-            '--deployment-id', example.deployment_id,
-            '--tenant-name', example.tenant,
-        ]
-        deployment_create_execs = json.loads(cfy.executions.list(args).stdout)
-        if (len(deployment_create_execs) > 0 and
-                deployment_create_execs[0]['status'] == 'completed'):
-            return
-    raise TimeoutException
-
-
-def _wait_for_healthy_broker_cluster(cfy, timeout=15):
+def _wait_for_healthy_broker_cluster(client, timeout=15):
     for _ in range(timeout):
         time.sleep(2)
-        cluster_status = _get_cluster_status(cfy)
+        cluster_status = client.cluster_status.get_status()
         if cluster_status['services']['broker']['status'] == \
                 ServiceStatus.HEALTHY:
             return
     raise TimeoutException
 
 
-def _validate_cluster_and_agents(cfy,
+def _validate_cluster_and_agents(manager,
                                  tenant,
                                  expected_broker_status='OK',
                                  expected_managers_status='OK'):
-    validate_agents = cfy.agents.validate('--tenant-name', tenant)
+    validate_agents = manager.run_command(
+        'cfy agents validate --tenant-name {}'.format(tenant)).stdout
     assert 'Task succeeded' in validate_agents
 
-    cluster_status = _get_cluster_status(cfy)['services']
-    manager_status = _get_manager_status(cfy)
+    cluster_status = manager.client.cluster_status.get_status()['services']
+    manager_status = manager.client.manager.get_status()
     assert manager_status['status'] == ServiceStatus.HEALTHY
     assert cluster_status['manager']['status'] == expected_managers_status
     assert cluster_status['db']['status'] == ServiceStatus.HEALTHY
@@ -287,36 +249,33 @@ def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
     assert connection_established   # error if no connection on rabbit port
 
 
-def test_cluster_status(full_cluster, logger, cfy, module_tmpdir):
+def test_cluster_status(full_cluster, logger, module_tmpdir):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
-    cert_path = path.join(module_tmpdir, 'ca.crt')
-    mgr1.get_remote_file(mgr1.remote_ca, cert_path)
-    mgr1.use(cert_path=cert_path)
 
-    _assert_cluster_status(cfy)
-    _verify_status_when_syncthing_inactive(mgr1, mgr2, cert_path, logger, cfy)
-    _verify_status_when_postgres_inactive(db1, db2, logger, cfy)
-    _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger, cfy)
+    _assert_cluster_status(mgr1.client)
+    _verify_status_when_syncthing_inactive(mgr1, mgr2, logger)
+    _verify_status_when_postgres_inactive(db1, db2, logger, mgr1.client)
+    _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
+                                        mgr1.client)
 
 
-def _verify_status_when_syncthing_inactive(mgr1, mgr2, cert_path, logger, cfy):
+def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     logger.info('Stopping syncthing on one of the manager nodes')
     mgr1.run_command('systemctl stop cloudify-syncthing', use_sudo=True)
 
     # Syncthing is down, mgr1 in Fail state
-    manager_status = _get_manager_status(cfy)
+    manager_status = mgr1.client.manager.get_status()
     assert manager_status['status'] == ServiceStatus.FAIL
     assert manager_status['services']['File Sync Service']['status'] == \
         NodeServiceStatus.INACTIVE
     time.sleep(10)
 
     # mgr2 is the last healthy manager in a cluster
-    mgr2.use(cert_path=cert_path)
-    cluster_status = _get_cluster_status(cfy)
+    cluster_status = mgr2.client.cluster_status.get_status()
     manager_service = cluster_status['services']['manager']
     assert cluster_status['status'] == ServiceStatus.DEGRADED
     assert manager_service['status'] == ServiceStatus.DEGRADED
-    manager_status = _get_manager_status(cfy)
+    manager_status = mgr2.client.manager.get_status()
     assert manager_status['status'] == ServiceStatus.HEALTHY
     assert manager_status['services']['File Sync Service']['status'] == \
         NodeServiceStatus.ACTIVE
@@ -325,14 +284,14 @@ def _verify_status_when_syncthing_inactive(mgr1, mgr2, cert_path, logger, cfy):
     logger.info('Starting syncthing on the failed manager')
     mgr1.run_command('systemctl start cloudify-syncthing', use_sudo=True)
     time.sleep(10)
-    _assert_cluster_status(cfy)
+    _assert_cluster_status(mgr1.client)
 
 
-def _verify_status_when_postgres_inactive(db1, db2, logger, cfy):
+def _verify_status_when_postgres_inactive(db1, db2, logger, client):
     logger.info('Stopping one of the db nodes')
     db1.run_command('systemctl stop patroni etcd', use_sudo=True)
     db_service = _assert_cluster_status_after_db_changes(
-        ServiceStatus.DEGRADED, logger, cfy
+        ServiceStatus.DEGRADED, logger, client,
     )
     assert db_service['nodes'][db1.hostname]['status'] == ServiceStatus.FAIL
 
@@ -340,7 +299,7 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, cfy):
     db2.run_command('systemctl stop patroni etcd', use_sudo=True)
 
     try:
-        _get_cluster_status(cfy)
+        client.cluster_status.get_status()
     except sh.ErrorReturnCode_1:
         logger.info('DB cluster is not healthy, must have minimum 2 nodes')
         pass
@@ -348,22 +307,23 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, cfy):
     logger.info('Starting Patroni and Etcd on the failed db nodes')
     db1.run_command('systemctl start patroni etcd', use_sudo=True)
     db2.run_command('systemctl start patroni etcd', use_sudo=True)
-    _assert_cluster_status_after_db_changes(ServiceStatus.HEALTHY, logger, cfy)
+    _assert_cluster_status_after_db_changes(ServiceStatus.HEALTHY, logger,
+                                            client)
 
 
 def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
-                                        cfy):
+                                        client):
     logger.info('Stopping one of the rabbit nodes')
     broker1.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
     time.sleep(10)
 
-    cluster_status = _get_cluster_status(cfy)
+    cluster_status = client.cluster_status.get_status()
     broker_service = cluster_status['services']['broker']
     assert cluster_status['status'] == ServiceStatus.DEGRADED
     assert broker_service['status'] == ServiceStatus.DEGRADED
     assert broker_service['nodes'][broker1.hostname]['status'] == \
         ServiceStatus.FAIL
-    manager_status = _get_manager_status(cfy)
+    manager_status = client.manager.get_status()
     assert manager_status['status'] == ServiceStatus.HEALTHY
 
     logger.info('Stopping the other rabbit nodes')
@@ -371,39 +331,29 @@ def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
     broker3.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
     time.sleep(10)
 
-    cluster_status = _get_cluster_status(cfy)
+    cluster_status = client.cluster_status.get_status()
     assert cluster_status['status'] == 'Fail'
     assert cluster_status['services']['broker']['status'] == ServiceStatus.FAIL
     assert cluster_status['services']['manager']['status'] == \
         ServiceStatus.FAIL
     assert cluster_status['services']['db']['status'] == ServiceStatus.HEALTHY
-    manager_status = _get_manager_status(cfy)
+    manager_status = client.manager.get_status()
     assert manager_status['status'] == 'Fail'
 
 
-def _assert_cluster_status(cfy):
-    cluster_status = _get_cluster_status(cfy)
-    assert cluster_status['status'] == ServiceStatus.HEALTHY
-
-
-def _get_cluster_status(cfy):
-    cluster_status = cfy.cluster.status('--json').stdout
-    return json.loads(cluster_status.strip('\033[0m'))
-
-
-def _get_manager_status(cfy):
-    manager_status = cfy.status('--json').stdout
-    return json.loads(manager_status.strip('\033[0m'))
+def _assert_cluster_status(client):
+    assert client.cluster_status.get_status()[
+        'status'] == ServiceStatus.HEALTHY
 
 
 @retrying.retry(stop_max_attempt_number=4, wait_fixed=10000)
-def _assert_cluster_status_after_db_changes(status, logger, cfy):
+def _assert_cluster_status_after_db_changes(status, logger, client):
     logger.info('Check cluster status after DB changes')
-    cluster_status = _get_cluster_status(cfy)
+    cluster_status = client.cluster_status.get_status()
     db_service = cluster_status['services']['db']
     assert cluster_status['status'] == status
     assert db_service['status'] == status
-    manager_status = _get_manager_status(cfy)
+    manager_status = client.manager.get_status()
     assert manager_status['status'] == ServiceStatus.HEALTHY
     logger.info('The cluster status is valid after DB changes')
     return db_service

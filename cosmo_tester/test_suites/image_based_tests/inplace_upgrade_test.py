@@ -1,18 +1,3 @@
-########
-# Copyright (c) 2015 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 from time import sleep
 from os.path import join
 
@@ -20,46 +5,45 @@ import pytest
 
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.test_hosts import (
-    TestHosts as Hosts,
+    Hosts,
     get_image,
 )
-from cosmo_tester.framework.util import is_community, get_attributes
-
-ATTRIBUTES = get_attributes()
-
-if is_community():
-    VERSIONS = ['master']
-else:
-    VERSIONS = ['5.0.5', 'master']
+from cosmo_tester.snapshots import (
+    create_snapshot,
+    download_snapshot,
+    restore_snapshot,
+    upload_snapshot,
+)
 
 
-@pytest.fixture(scope='module', params=VERSIONS)
-def manager_and_vm(request, cfy, ssh_key, module_tmpdir, attributes,
+@pytest.fixture(scope='module', params=['5.0.5', 'master'])
+def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
                    logger):
-    hosts = Hosts(cfy, ssh_key, module_tmpdir, attributes, logger, 2)
-    hosts.instances[0] = get_image(request.param)
+    hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request, 2)
+    hosts.instances[0] = get_image(request.param, test_config)
     manager, vm = hosts.instances
 
-    manager.upload_files = False
-    manager.restservice_expected = True
+    vm.image_name = test_config.platform['centos_7_image']
+    vm.username = test_config['test_os_usernames']['centos_7']
 
-    vm.upload_files = False
-    vm.image_name = ATTRIBUTES['centos_7_image_name']
-    vm.username = ATTRIBUTES['centos_7_username']
+    passed = True
+
     try:
         hosts.create()
-        manager.use()
         yield hosts.instances
+    except Exception:
+        passed = False
+        raise
     finally:
-        hosts.destroy()
+        hosts.destroy(passed=passed)
 
 
 @pytest.fixture(scope='function')
-def example(manager_and_vm, ssh_key, tmpdir, attributes, logger):
+def example(manager_and_vm, ssh_key, tmpdir, logger, test_config):
     manager, vm = manager_and_vm
 
     example = get_example_deployment(
-        manager, ssh_key, logger, 'inplace_upgrade', vm)
+        manager, ssh_key, logger, 'inplace_upgrade', test_config, vm)
 
     try:
         yield example
@@ -68,10 +52,8 @@ def example(manager_and_vm, ssh_key, tmpdir, attributes, logger):
             example.uninstall()
 
 
-def test_inplace_upgrade(cfy,
-                         manager_and_vm,
+def test_inplace_upgrade(manager_and_vm,
                          example,
-                         attributes,
                          ssh_key,
                          module_tmpdir,
                          logger):
@@ -82,24 +64,22 @@ def test_inplace_upgrade(cfy,
 
     example.upload_and_verify_install()
 
-    cfy.snapshots.create([snapshot_name])
-    manager.wait_for_all_executions()
-    cfy.snapshots.download([snapshot_name, '-o', snapshot_path])
+    create_snapshot(manager, snapshot_name, logger)
+    download_snapshot(manager, snapshot_path, snapshot_name, logger)
     manager.teardown()
     with manager.ssh() as fabric_ssh:
         # The teardown doesn't properly clean up rabbitmq
         fabric_ssh.sudo('pkill -f rabbitmq')
         fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
     manager.bootstrap()
-    manager.use()
-    manager.upload_necessary_files()
-    cfy.snapshots.upload([snapshot_path, '-s', snapshot_name])
+    upload_snapshot(manager, snapshot_path, snapshot_name, logger)
 
     with manager.ssh() as fabric_ssh:
         # Perform the restore after opening the ssh session and don't wait for
         # the execution to finish to avoid a race condition that occasionally
         # causes test failures when we don't ssh in before the shutdown.
-        cfy.snapshots.restore([snapshot_name, '--restore-certificates'])
+        restore_snapshot(manager, snapshot_name, logger,
+                         restore_certificates=True, blocking=False)
         retry_delay = 1
         max_attempts = 240
         reboot_triggered = False
@@ -120,9 +100,9 @@ def test_inplace_upgrade(cfy,
                     break
                 else:
                     sleep(retry_delay)
-            except Exception as err:
+            except Exception:
                 if attempt == max_attempts - 1:
-                    raise(err)
+                    raise
                 sleep(retry_delay)
         if not reboot_triggered:
             log_tail = fabric_ssh.run(
