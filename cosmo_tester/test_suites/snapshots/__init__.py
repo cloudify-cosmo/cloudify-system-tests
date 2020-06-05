@@ -144,8 +144,6 @@ def restore_snapshot(manager, snapshot_id, logger,
         force=force
     )
 
-    _assert_restore_status(manager)
-
     if blocking:
         try:
             try:
@@ -379,18 +377,6 @@ def _log(message, logger, tenant=None):
     if tenant:
         message += ' for {tenant}'.format(tenant=tenant)
     logger.info(message)
-
-
-@retrying.retry(
-    stop_max_attempt_number=10,
-    wait_fixed=1000
-)
-def _assert_restore_status(manager):
-    """
-    Assert the snapshot-status REST endpoint is working properly
-    """
-    restore_status = manager.client.snapshots.get_status()
-    assert restore_status['status'] == STATES.RUNNING
 
 
 # There is a short delay after the snapshot finishes restoring before the
