@@ -152,7 +152,8 @@ def restore_snapshot(manager, snapshot_id, logger,
                 wait_for_execution(
                     manager.client,
                     restore_execution,
-                    logger)
+                    logger,
+                    allow_client_error=True)
             except UserUnauthorizedError:
                 change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
                 wait_for_execution(
