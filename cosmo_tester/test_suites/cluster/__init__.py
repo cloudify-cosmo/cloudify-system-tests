@@ -1,9 +1,9 @@
-def check_managers(mgr1, mgr2):
-    # Run sanity checks on each manager independently to confirm they can
-    # independently run workflows
+def check_managers(mgr1, mgr2, example):
+    # Check each manager can run workflows independently
     mgr2.run_command('sudo systemctl stop cloudify-mgmtworker')
-    mgr1.run_command('cfy_manager sanity-check')
+    example.uninstall()
     mgr2.run_command('sudo systemctl start cloudify-mgmtworker')
     mgr1.run_command('sudo systemctl stop cloudify-mgmtworker')
-    mgr2.run_command('cfy_manager sanity-check')
+    example.install()
+    example.check_files()
     mgr1.run_command('sudo systemctl start cloudify-mgmtworker')

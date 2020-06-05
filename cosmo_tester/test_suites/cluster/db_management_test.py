@@ -1,10 +1,16 @@
 import retrying
 
+from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cluster import check_managers
 
 
-def test_remove_db_node(full_cluster, logger):
+def test_remove_db_node(full_cluster, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+
+    example = get_example_deployment(mgr1, ssh_key, logger, 'remove_db_node',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
 
     # To aid troubleshooting in case of issues
     _get_db_listing([mgr1])
@@ -37,12 +43,17 @@ def test_remove_db_node(full_cluster, logger):
 
     mgr1.run_command('cfy maintenance deactivate')
 
-    check_managers(mgr1, mgr2)
+    check_managers(mgr1, mgr2, example)
 
 
-def test_add_db_node(cluster_missing_one_db, logger):
+def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = \
         cluster_missing_one_db
+
+    example = get_example_deployment(mgr1, ssh_key, logger, 'add_db_node',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
 
     # To aid troubleshooting in case of issues
     _get_db_listing([mgr1])
@@ -66,7 +77,7 @@ def test_add_db_node(cluster_missing_one_db, logger):
 
     mgr1.run_command('cfy maintenance deactivate')
 
-    check_managers(mgr1, mgr2)
+    check_managers(mgr1, mgr2, example)
 
 
 def test_db_set_master(dbs, logger):
