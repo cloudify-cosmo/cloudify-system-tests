@@ -120,6 +120,16 @@ def change_rest_client_password(manager, new_password):
                                         password=new_password)
 
 
+def _retry_if_file_not_found(exception):
+    return 'no such file or directory' in str(exception).lower()
+
+
+# Retry if the snapshot was not found to work around syncthing delays
+@retrying.retry(
+    retry_on_exception=_retry_if_file_not_found,
+    stop_max_attempt_number=10,
+    wait_fixed=1500,
+)
 def restore_snapshot(manager, snapshot_id, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
