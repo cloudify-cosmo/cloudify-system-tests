@@ -8,7 +8,7 @@ from cosmo_tester.framework.test_hosts import (
     Hosts,
     get_image,
 )
-from cosmo_tester.snapshots import (
+from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
     restore_snapshot,
