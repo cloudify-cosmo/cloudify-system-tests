@@ -700,6 +700,8 @@ class Hosts(object):
         self.deployments = []
         self.blueprints = []
         self.test_identifier = None
+        self._test_vm_installs = {}
+        self._test_vm_uninstalls = {}
 
         self.multi_net = multi_net
         self.vm_net_mappings = vm_net_mappings or {}
@@ -752,10 +754,11 @@ class Hosts(object):
 
             self._deploy_test_infrastructure(test_identifier)
 
-            # Deploy hosts
+            # Deploy hosts in parallel
             for index, instance in enumerate(self.instances):
-                self._deploy_test_vm(instance.image_name, index,
-                                     test_identifier)
+                self._start_deploy_test_vm(instance.image_name, index,
+                                           test_identifier)
+            self._finish_deploy_test_vms()
 
             for instance in self.instances:
                 if instance.should_finalize:
@@ -849,16 +852,15 @@ class Hosts(object):
                 )
                 raise RuntimeError('Could not complete teardown.')
 
-            # Remove tenants in the opposite order to the order they were
-            # deployed in, so that we don't try to remove the
-            # infrastructure before removing the VMs using it.
-            self._logger.info('Uninstalling and removing deployments.')
-            for deployment in reversed(self.deployments):
-                self._logger.info('Uninstalling %s', deployment)
-                util.run_blocking_execution(
-                    self._infra_client, deployment, 'uninstall', self._logger)
-                util.delete_deployment(self._infra_client, deployment,
-                                       self._logger)
+            self._start_undeploy_test_vms()
+            self._finish_undeploy_test_vms()
+
+            self._logger.info('Uninstalling infrastructure')
+            util.run_blocking_execution(
+                self._infra_client, 'infrastructure', 'uninstall',
+                self._logger)
+            util.delete_deployment(self._infra_client, 'infrastructure',
+                                   self._logger)
 
             self._logger.info('Deleting blueprints.')
             for blueprint in self.blueprints:
@@ -994,7 +996,7 @@ class Hosts(object):
                 )
             self.network_mappings = network_mappings
 
-    def _deploy_test_vm(self, image_id, index, test_identifier):
+    def _start_deploy_test_vm(self, image_id, index, test_identifier):
         self._logger.info(
             'Preparing to deploy instance %d of image %s',
             index,
@@ -1041,17 +1043,44 @@ class Hosts(object):
             inputs=vm_inputs,
         )
         self.deployments.append(vm_id)
-        util.run_blocking_execution(self._infra_client, vm_id, 'install',
+        self._test_vm_installs[vm_id] = (
+            self._infra_client.executions.start(
+                vm_id, 'install',
+            ),
+            index,
+        )
+
+    def _finish_deploy_test_vms(self):
+        for vm_id, details in self._test_vm_installs.items():
+            execution, index = details
+            util.wait_for_execution(self._infra_client, execution,
                                     self._logger)
 
-        self._logger.info('Retrieving deployed instance details.')
-        node_instance = self._get_node_instances('test_host', vm_id)[0]
+            self._logger.info('Retrieving deployed instance details.')
+            node_instance = self._get_node_instances('test_host', vm_id)[0]
 
-        self._logger.info('Storing instance details.')
-        self._update_instance(
-            self.instances[index],
-            node_instance,
-        )
+            self._logger.info('Storing instance details.')
+            self._update_instance(
+                self.instances[index],
+                node_instance,
+            )
+
+    def _start_undeploy_test_vms(self):
+        # Operate on all deployments except the infrastructure one
+        for vm_id in self.deployments[1:]:
+            self._logger.info('Uninstalling %s', vm_id)
+            self._test_vm_uninstalls[vm_id] = (
+                self._infra_client.executions.start(
+                    vm_id, 'uninstall',
+                )
+            )
+
+    def _finish_undeploy_test_vms(self):
+        for vm_id, execution in self._test_vm_uninstalls.items():
+            util.wait_for_execution(self._infra_client, execution,
+                                    self._logger)
+            util.delete_deployment(self._infra_client, vm_id,
+                                   self._logger)
 
     def _get_node_instances(self, node_name, deployment_id):
         node_instances = []
