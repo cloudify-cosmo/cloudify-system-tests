@@ -1,11 +1,11 @@
 import time
 
-import sh
 import retrying
 
 from cloudify.constants import BROKER_PORT_SSL
 from cloudify.exceptions import TimeoutException
 from cloudify.cluster_status import ServiceStatus, NodeServiceStatus
+from cloudify_rest_client.exceptions import CloudifyClientError
 
 from cosmo_tester.test_suites.cluster import check_managers
 from cosmo_tester.test_suites.snapshots import (
@@ -311,7 +311,7 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, client):
 
     try:
         client.cluster_status.get_status()
-    except sh.ErrorReturnCode_1:
+    except CloudifyClientError:
         logger.info('DB cluster is not healthy, must have minimum 2 nodes')
         pass
 
@@ -352,6 +352,9 @@ def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
     assert manager_status['status'] == 'Fail'
 
 
+# It sometimes takes a little time for the status reporter to return healthy
+# We'll allow up to a minute in case of slow test platform
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
 def _assert_cluster_status(client):
     assert client.cluster_status.get_status()[
         'status'] == ServiceStatus.HEALTHY
