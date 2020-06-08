@@ -64,7 +64,8 @@ def test_scaling(image_based_manager, on_manager_example, logger):
     _assert_scale(
             image_based_manager,
             on_manager_example.deployment_id,
-            expected_instances=6,
+            # 3 lots of (1 vm node, 1 file node, 1 wait node)
+            expected_instances=9,
             tenant=on_manager_example.tenant)
     on_manager_example.check_files()
 
@@ -74,7 +75,8 @@ def test_scaling(image_based_manager, on_manager_example, logger):
     _assert_scale(
             image_based_manager,
             on_manager_example.deployment_id,
-            expected_instances=4,
+            # 2 lots of (1 vm node, 1 file node, 1 wait node)
+            expected_instances=6,
             tenant=on_manager_example.tenant)
     on_manager_example.check_files()
 
