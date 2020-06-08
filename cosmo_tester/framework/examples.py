@@ -1,5 +1,7 @@
-import os
 import json
+import os
+
+import retrying
 
 from cosmo_tester.framework.util import (
     create_deployment,
@@ -151,6 +153,8 @@ class BaseExample(object):
                         file_path)
                 assert data == expected_content
 
+    # Proxy test has been suffering temporary ssh timeout issues
+    @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
     def check_all_test_files_deleted(self, path=None):
         if path is None:
             path = self.inputs['path']
