@@ -1,11 +1,11 @@
 import time
 
-import sh
 import retrying
 
 from cloudify.constants import BROKER_PORT_SSL
 from cloudify.exceptions import TimeoutException
 from cloudify.cluster_status import ServiceStatus, NodeServiceStatus
+from cloudify_rest_client.exceptions import CloudifyClientError
 
 from cosmo_tester.test_suites.cluster import check_managers
 from cosmo_tester.test_suites.snapshots import (
@@ -16,8 +16,13 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import set_client_tenant
 
 
-def test_full_cluster(full_cluster, logger):
+def test_full_cluster(full_cluster, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+
+    example = get_example_deployment(mgr1, ssh_key, logger, 'full_cluster',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
 
     logger.info('Creating snapshot')
     snapshot_id = 'cluster_test_snapshot'
@@ -27,14 +32,20 @@ def test_full_cluster(full_cluster, logger):
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
                      cert_path=mgr2.local_ca)
 
-    check_managers(mgr1, mgr2)
+    check_managers(mgr1, mgr2, example)
 
 
 # This is to confirm that we work with a single DB endpoint set (e.g. on a
 # PaaS).
 # It is not intended that a single external DB be used in production.
-def test_cluster_single_db(cluster_with_single_db, logger):
+def test_cluster_single_db(cluster_with_single_db, logger, ssh_key,
+                           test_config):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
+
+    example = get_example_deployment(mgr1, ssh_key, logger, 'cluster_1_db',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
 
     logger.info('Creating snapshot')
     snapshot_id = 'cluster_test_snapshot'
@@ -44,7 +55,7 @@ def test_cluster_single_db(cluster_with_single_db, logger):
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
                      cert_path=mgr2.local_ca)
 
-    check_managers(mgr1, mgr2)
+    check_managers(mgr1, mgr2, example)
 
 
 def test_queue_node_failover(cluster_with_single_db, logger,
@@ -300,7 +311,7 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, client):
 
     try:
         client.cluster_status.get_status()
-    except sh.ErrorReturnCode_1:
+    except CloudifyClientError:
         logger.info('DB cluster is not healthy, must have minimum 2 nodes')
         pass
 
@@ -341,6 +352,9 @@ def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
     assert manager_status['status'] == 'Fail'
 
 
+# It sometimes takes a little time for the status reporter to return healthy
+# We'll allow up to a minute in case of slow test platform
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
 def _assert_cluster_status(client):
     assert client.cluster_status.get_status()[
         'status'] == ServiceStatus.HEALTHY

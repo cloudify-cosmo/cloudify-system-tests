@@ -1,6 +1,6 @@
 import os
 
-from cosmo_tester.framework.utils import (
+from cosmo_tester.framework.util import (
     create_deployment,
     ExecutionFailed,
     run_blocking_execution,

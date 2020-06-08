@@ -434,8 +434,11 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     if node.friendly_name in skip_bootstrap_list:
         return
 
+    upload_license = mgr_num == 1
+
     # We have to block on every manager
-    node.bootstrap(blocking=True, restservice_expected=False)
+    node.bootstrap(blocking=True, restservice_expected=False,
+                   upload_license=upload_license)
 
     # Correctly configure the rest client for the node
     node.client = util.create_rest_client(

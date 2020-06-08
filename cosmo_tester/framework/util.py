@@ -398,7 +398,8 @@ class ExecutionFailed(Exception):
     """Execution failed."""
 
 
-def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60):
+def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60,
+                       allow_client_error=False):
     logger.info(
         'Getting workflow execution [id={execution}]'.format(
             execution=execution['id'],
@@ -410,12 +411,26 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60):
 
     with set_client_tenant(client, tenant):
         while True:
-            execution = client.executions.get(execution['id'])
-
             prev_time = current_time
             current_time = datetime.now()
 
-            output_events(client, execution, logger, prev_time, current_time)
+            try:
+                execution = client.executions.get(execution['id'])
+
+                output_events(client, execution, logger, prev_time,
+                              current_time)
+            except CloudifyClientError as err:
+                if allow_client_error:
+                    logger.warn(
+                        'Error trying to get execution state, retrying: %s',
+                        err
+                    )
+                    if current_time >= timeout_time:
+                        raise
+                    time.sleep(2)
+                    continue
+                else:
+                    raise
 
             if current_time >= timeout_time:
                 raise ExecutionTimeout(

@@ -120,6 +120,16 @@ def change_rest_client_password(manager, new_password):
                                         password=new_password)
 
 
+def _retry_if_file_not_found(exception):
+    return 'no such file or directory' in str(exception).lower()
+
+
+# Retry if the snapshot was not found to work around syncthing delays
+@retrying.retry(
+    retry_on_exception=_retry_if_file_not_found,
+    stop_max_attempt_number=10,
+    wait_fixed=1500,
+)
 def restore_snapshot(manager, snapshot_id, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
@@ -134,15 +144,14 @@ def restore_snapshot(manager, snapshot_id, logger,
         force=force
     )
 
-    _assert_restore_status(manager)
-
     if blocking:
         try:
             try:
                 wait_for_execution(
                     manager.client,
                     restore_execution,
-                    logger)
+                    logger,
+                    allow_client_error=True)
             except UserUnauthorizedError:
                 change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
                 wait_for_execution(
@@ -368,18 +377,6 @@ def _log(message, logger, tenant=None):
     if tenant:
         message += ' for {tenant}'.format(tenant=tenant)
     logger.info(message)
-
-
-@retrying.retry(
-    stop_max_attempt_number=10,
-    wait_fixed=1000
-)
-def _assert_restore_status(manager):
-    """
-    Assert the snapshot-status REST endpoint is working properly
-    """
-    restore_status = manager.client.snapshots.get_status()
-    assert restore_status['status'] == STATES.RUNNING
 
 
 # There is a short delay after the snapshot finishes restoring before the
