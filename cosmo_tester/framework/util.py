@@ -603,3 +603,24 @@ def delete_deployment(client, deployment_id, logger):
                 deployment_id,
             )
         )
+
+
+@retrying.retry(stop_max_attempt_number=100, wait_fixed=250)
+def wait_for_execution_status(example, execution_id, status):
+    exec_list = example.manager.client.executions.list(id=execution_id)
+    assert exec_list[0].status == status
+
+
+@retrying.retry(stop_max_attempt_number=200, wait_fixed=250)
+def get_deployment_by_blueprint(example, blueprint_id):
+    deployment = example.manager.client.deployments.list(
+        blueprint_id=blueprint_id)[0]
+    return deployment
+
+
+@retrying.retry(stop_max_attempt_number=100, wait_fixed=250)
+def cancel_install(example, deployment_id):
+    exec_list = example.manager.client.executions.list(
+        workflow_id='install', deployment_id=deployment_id)
+    assert exec_list[0].status == 'started'
+    example.manager.client.executions.cancel(exec_list[0].id)
