@@ -27,18 +27,15 @@ setup(
         'fabric',
         'PyYAML',
         'requests>=2.7.0,<3.0.0',
-        'sh',
         'path.py',
         'retrying',
         'Jinja2',
         'pywinrm',
-        'fasteners',
         # Wagon version has been left out since it better reflects the user
         # use-case
         'wagon[venv]',
         'pytest',
         'pytest-xdist',
-        'testtools',
     ],
     include_package_data=True,
     entry_points={
