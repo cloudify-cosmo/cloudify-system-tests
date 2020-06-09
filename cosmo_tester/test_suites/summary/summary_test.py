@@ -89,7 +89,9 @@ DEPLOYMENTS_PER_BLUEPRINT = [
 ]
 
 
-def _sort_summary(summary, sort_key):
+def _sort_summary(summary, sort_key, sort=True):
+    if sort:
+        summary = sorted(summary)
     if isinstance(sort_key, list):
         if len(sort_key) == 1:
             this_sort_key = sort_key[0]
@@ -101,13 +103,13 @@ def _sort_summary(summary, sort_key):
         this_sort_key = sort_key
 
     if isinstance(summary, list):
-        summary = [_sort_summary(item, sort_key) for item in summary]
+        summary = [_sort_summary(item, sort_key, False) for item in summary]
         summary.sort(
             key=lambda x: x[this_sort_key] if isinstance(x, dict) else x
         )
     elif isinstance(summary, dict):
         summary = {
-            key: _sort_summary(value, sort_key=sort_key)
+            key: _sort_summary(value, sort_key, False)
             for key, value in summary.items()
         }
     return summary
@@ -607,6 +609,9 @@ def test_basic_summary_paged(prepared_manager):
         {u'blueprints': 3, u'tenant_name': u'default_tenant'},
     ]
 
+    results.sort()
+    expected.sort()
+
     assert results == expected, (
         '{0} != {1}'.format(results, expected)
     )
@@ -623,6 +628,10 @@ def test_basic_summary_paged(prepared_manager):
     expected = [
         {u'blueprints': 3, u'tenant_name': u'test2'},
     ]
+
+    results.sort()
+    expected.sort()
+
     assert results == expected, (
         '{0} != {1}'.format(results, expected)
     )
