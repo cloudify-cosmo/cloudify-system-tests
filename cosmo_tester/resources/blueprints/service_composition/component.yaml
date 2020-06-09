@@ -1,0 +1,72 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Create an app using another deployment to deploy a VM (as a component)
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+
+inputs:
+  server_ip:
+    default: 127.0.0.1
+  agent_user:
+    default: centos
+  path: {}
+  content: {}
+  os_family:
+    default: linux
+  agent_port:
+    default: 22
+  agent_password:
+    default: ""
+
+
+dsl_definitions:
+  fabric_env: &fabric_env
+      host_string: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, host_private_ip ]}
+      user: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, agent_user ]}
+      key_filename: { get_capability: [ { get_attribute: [ infrastructure, deployment, id ] }, agent_key ]}
+
+node_templates:
+  infrastructure:
+    type: cloudify.nodes.Component
+    properties:
+      resource_config:
+        blueprint:
+          id: infra
+          main_file_name: 'fake_vm.yaml'
+          external_resource: true
+        deployment:
+          inputs:
+            agent_user: { get_input: agent_user }
+            path: { get_input: path }
+
+  app:
+    # Represents an application.
+    type: cloudify.nodes.SoftwareComponent
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: infrastructure
+    interfaces:
+      maintenance:
+        poll:
+          inputs:
+            script_path: scripts/app-poll.sh
+            fabric_env: *fabric_env
+        update:
+          inputs:
+            script_path: scripts/app-update.sh
+            fabric_env: *fabric_env
+        commit:
+          inputs:
+            script_path: scripts/app-commit.py
+            fabric_env: *fabric_env
+
+workflows:
+  # Define a custom workflow called "rollout". The workflow is implemented as a
+  # Python script.
+  rollout:
+    mapping: scripts/rollout.py
+    # In 5.0.5, the default is true. This is going to change to false
+    # in an upcoming patch, and will be false for 5.1 onwards.
+    is_cascading: false
+

@@ -359,7 +359,7 @@ class _CloudifyManager(VM):
                     'plugin/test_plugin-1.0.0-py27-none-any.zip'
                 ),
             )
-            self.wait_for_all_executions()
+            self.wait_for_all_executions(include_system_workflows=True)
 
     def __str__(self):
         return 'Cloudify manager [{}]'.format(self.ip_address)

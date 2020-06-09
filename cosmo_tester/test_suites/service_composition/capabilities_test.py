@@ -1,18 +1,3 @@
-########
-# Copyright (c) 2018-2019 Cloudify Platform Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import pytest
 
 from cosmo_tester.framework import util
@@ -26,11 +11,11 @@ def fake_vm(image_based_manager, ssh_key, logger, test_config):
         test_config, upload_plugin=False)
 
     example.blueprint_file = util.get_resource_path(
-        'blueprints/capabilities/fake_vm.yaml'
+        'blueprints/service_composition/fake_vm.yaml'
     )
     example.blueprint_id = 'fake_vm'
     example.deployment_id = 'fake_vm'
-    example.inputs = {}
+    example.inputs = {'agent_user': image_based_manager.username}
     yield example
 
 
@@ -40,11 +25,12 @@ def proxied_plugin_file(image_based_manager, ssh_key, logger, test_config):
         image_based_manager, ssh_key, logger, 'capability', test_config)
 
     example.blueprint_file = util.get_resource_path(
-        'blueprints/capabilities/capable_file.yaml'
+        'blueprints/service_composition/capable_file.yaml'
     )
     example.blueprint_id = 'proxied_file'
     example.deployment_id = 'proxied_file'
     example.inputs['tenant'] = example.tenant
+    del example.inputs['agent_user']
     # We don't need the secret as we won't be sshing to install the agent
     example.create_secret = False
     yield example
@@ -68,4 +54,3 @@ def test_capabilities(fake_vm,
     logger.info('File successfully validated.')
 
     proxied_plugin_file.uninstall()
-    fake_vm.uninstall(check_files_are_deleted=False)

@@ -1,7 +1,7 @@
 tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
-  Create compute resource for use in capabilities tests.
+  Create compute resource for use in service composition tests.
 
 imports:
   - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
@@ -11,6 +11,7 @@ inputs:
     default: 127.0.0.1
   agent_user:
     default: centos
+  path: {}
 
 node_types:
   cloudify.nodes.ProxyType:
@@ -35,9 +36,12 @@ capabilities:
   host_private_ip:
     description: The private IP of the VM
     value: { get_attribute: [ vm, ip ] }
-  agent_user:
-    description: agent user
-    value: { get_attribute: [ proxy_node, agent_user ] }
   host_instance_id:
     description: The instance ID of the VM node
     value: { get_attribute: [ vm, node_instance_id ] }
+  agent_user:
+    description: agent user
+    value: { get_attribute: [ proxy_node, agent_user ] }
+  agent_key:
+    description: Private agent key
+    value: { get_secret: agent_key }
