@@ -13,7 +13,7 @@ from contextlib import contextmanager
 
 import retrying
 from fabric import Connection
-from paramiko.ssh_exception import NoValidConnectionsError
+from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 import winrm
 
 from cosmo_tester.framework import util
@@ -192,7 +192,14 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             try:
                 self.run_command('echo Still up...')
                 time.sleep(3)
+            except SSHException:
+                # Errors like 'Connection reset by peer' can occur during the
+                # shutdown, but we should wait a little longer to give other
+                # services time to stop
+                time.sleep(3)
+                continue
             except NoValidConnectionsError:
+                # By this point everything should be down.
                 self._logger.info('Server stopped.')
                 break
 
