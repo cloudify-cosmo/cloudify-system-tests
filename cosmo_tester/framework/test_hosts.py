@@ -1064,7 +1064,8 @@ class Hosts(object):
                                     self._logger)
 
             self._logger.info('Retrieving deployed instance details.')
-            node_instance = self._get_node_instances('test_host', vm_id)[0]
+            node_instance = util.get_node_instances('test_host', vm_id,
+                                                    self._infra_client)[0]
 
             self._logger.info('Storing instance details.')
             self._update_instance(
@@ -1088,21 +1089,6 @@ class Hosts(object):
                                     self._logger)
             util.delete_deployment(self._infra_client, vm_id,
                                    self._logger)
-
-    def _get_node_instances(self, node_name, deployment_id):
-        node_instances = []
-
-        node_instance_list = self._infra_client.node_instances.list(
-            deployment_id=deployment_id,
-        )
-
-        for inst in node_instance_list:
-            if inst['node_id'] == node_name:
-                node_instances.append(self._infra_client.node_instances.get(
-                    inst['id'],
-                ))
-
-        return node_instances
 
     def _update_instance(self, instance, node_instance):
         runtime_props = node_instance['runtime_properties']

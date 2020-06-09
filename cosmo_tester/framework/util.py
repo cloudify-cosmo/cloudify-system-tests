@@ -624,3 +624,19 @@ def cancel_install(example, deployment_id):
         workflow_id='install', deployment_id=deployment_id)
     assert exec_list[0].status == 'started'
     example.manager.client.executions.cancel(exec_list[0].id)
+
+
+def get_node_instances(node_name, deployment_id, client):
+    node_instances = []
+
+    node_instance_list = client.node_instances.list(
+        deployment_id=deployment_id,
+    )
+
+    for inst in node_instance_list:
+        if inst['node_id'] == node_name:
+            node_instances.append(client.node_instances.get(
+                inst['id'],
+            ))
+
+    return node_instances
