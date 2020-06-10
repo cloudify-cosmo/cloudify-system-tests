@@ -29,7 +29,7 @@ def _test_upload_and_install(run, example, paths, logger):
         bp_id=example.blueprint_id, **paths))
 
     logger.info('Creating deployment')
-    run('{cfy} deployments create -b {bp_id} -i {inputs_path} {dep_id} '
+    run('{cfy} deployments create -b {bp_id} -i {inputs} {dep_id} '
         .format(bp_id=example.blueprint_id, dep_id=example.deployment_id,
                 **paths))
 
@@ -44,12 +44,12 @@ def _test_cfy_install(run, example, paths, logger):
     logger.info('Running cfy install for blueprint')
     run(
         '{cfy} install --blueprint-id {blueprint} '
-        '--deployment-id {deployment} --inputs {inputs_path} '
+        '--deployment-id {deployment} --inputs {inputs} '
         '{blueprint_path}'.format(
             cfy=paths['cfy'],
             blueprint=example.blueprint_id,
             deployment=example.deployment_id,
-            inputs_path=paths['inputs'],
+            inputs=paths['inputs'],
             blueprint_path=paths['blueprint'],
         )
     )
