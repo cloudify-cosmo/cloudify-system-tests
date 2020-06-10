@@ -21,6 +21,7 @@ def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
                    logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request, 2)
     hosts.instances[0] = get_image(request.param, test_config)
+    hosts.instances[1] = get_image('centos', test_config)
     manager, vm = hosts.instances
 
     vm.image_name = test_config.platform['centos_7_image']
@@ -118,8 +119,8 @@ def test_inplace_upgrade(manager_and_vm,
         if not reboot_performed:
             raise RuntimeError('Expected reboot did not happen.')
 
-    # we need to give the agents enough time to reconnect to the manager;
-    # celery retries with a backoff of up to 32 seconds
+    logger.info('Waiting 50 seconds for agents to reconnect. '
+                'Agent reconnect retries are up to 30 seconds apart.')
     sleep(50)
     manager.wait_for_manager()
 
