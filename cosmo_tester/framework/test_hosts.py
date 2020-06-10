@@ -318,7 +318,7 @@ class _CloudifyManager(VM):
 
     def __init__(self, *args, **kwargs):
         super(_CloudifyManager, self).__init__(*args, **kwargs)
-        self.restservice_expected = True
+        self.set_image_details()
 
     def assign(
             self,
