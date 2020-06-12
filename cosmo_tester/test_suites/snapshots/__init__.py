@@ -135,6 +135,8 @@ def restore_snapshot(manager, snapshot_id, logger,
                      wait_for_post_restore_commands=True,
                      wait_timeout=20, change_manager_password=True,
                      cert_path=None, blocking=True):
+    manager.run_command('systemctl stop cloudify-status-reporter',
+                        use_sudo=True)
     list_snapshots(manager, logger)
 
     logger.info('Restoring snapshot on latest manager..')
