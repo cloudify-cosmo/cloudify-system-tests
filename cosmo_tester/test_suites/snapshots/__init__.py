@@ -186,6 +186,7 @@ def prepare_credentials_tests(manager, logger):
     logger.info('Creating test user')
     create_user('testuser', 'testpass', manager)
     logger.info('Updating admin password')
+    manager.client.users.set_password('admin', CHANGED_ADMIN_PASSWORD)
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
