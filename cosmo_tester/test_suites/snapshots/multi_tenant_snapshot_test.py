@@ -1,6 +1,7 @@
 import pytest
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
+    CHANGED_ADMIN_PASSWORD,
     check_credentials,
     check_deployments,
     verify_services_status,
@@ -115,7 +116,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     wait_for_restore(new_manager, logger)
 
-    update_credentials(new_manager, new_manager)
+    update_credentials(new_manager, logger)
 
     verify_services_status(new_manager, logger)
 
@@ -153,6 +154,9 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         example_mappings[from_source_tenant].deployment_id,
         [from_source_tenant], logger,
     )
+
+    new_manager.run_command('cfy profiles set --manager-password {}'.format(
+                            CHANGED_ADMIN_PASSWORD))
 
     upgrade_agents(new_manager, logger, test_config)
 
