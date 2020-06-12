@@ -65,10 +65,6 @@ def check_pre_bootstrap_state(manager):
         'lib',
         'cloudify-manager-install'
     ]
-    pre_bootstrap_state['folders in /var/log'] += [
-        'yum.log',
-        'cloudify'
-    ]
     pre_bootstrap_state['init_d service files (/etc/rc.d/init.d/)'] += [
         'jexec'
     ]
