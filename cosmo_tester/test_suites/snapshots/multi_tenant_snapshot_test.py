@@ -1,18 +1,3 @@
-########
-# Copyright (c) 2017 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 import pytest
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
@@ -38,6 +23,7 @@ from cosmo_tester.test_suites.snapshots import (
     upload_snapshot,
     wait_for_restore,
 )
+from cosmo_tester.framework.util import get_resource_path
 
 
 def test_restore_snapshot_and_agents_upgrade_multitenant(
@@ -80,6 +66,19 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     example_mappings[noinstall_tenant] = get_example_deployment(
         old_manager, ssh_key, logger, noinstall_tenant, test_config, vm,
     )
+
+    if old_manager.image_type.startswith('4'):
+        # 5.x introduced new types in the types.yaml. so we have to use
+        # an example blueprint with an older types.yaml for older managers
+        for tenant, example in example_mappings.items():
+            if tenant == from_source_tenant:
+                example.blueprint_file = get_resource_path(
+                    'blueprints/compute/central_executor_4_6.yaml'
+                )
+            else:
+                example.blueprint_file = get_resource_path(
+                    'blueprints/compute/example_4_6.yaml'
+                )
 
     for tenant in install_tenants:
         skip_validation = tenant == from_source_tenant
