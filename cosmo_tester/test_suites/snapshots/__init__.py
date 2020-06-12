@@ -147,19 +147,26 @@ def restore_snapshot(manager, snapshot_id, logger,
     )
 
     if blocking:
+        logger.info('Waiting to give time for snapshot to restore')
+        # Because the DB migrations are really temperamental since 5.0.5, so
+        # let's try to give less activity
+        sleep(30)
         try:
-            try:
-                wait_for_execution(
-                    manager.client,
-                    restore_execution,
-                    logger,
-                    allow_client_error=True)
-            except UserUnauthorizedError:
-                change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
-                wait_for_execution(
-                    manager.client,
-                    restore_execution,
-                    logger)
+            # Retry while the password is still being reset
+            attempt = 0
+            while attempt < 30:
+                try:
+                    wait_for_execution(
+                        manager.client,
+                        restore_execution,
+                        logger,
+                        allow_client_error=True)
+                    break
+                except UserUnauthorizedError:
+                    change_rest_client_password(manager,
+                                                CHANGED_ADMIN_PASSWORD)
+                    sleep(2)
+                    attempt += 1
         except ExecutionFailed:
             logger.error('Snapshot execution failed.')
             list_executions(manager, logger)
