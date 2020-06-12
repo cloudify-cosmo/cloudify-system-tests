@@ -207,10 +207,10 @@ def create_user(username, password, manager):
 def test_user(username, password, manager, logger):
     logger.info('Checking {user} can log in.'.format(user=username))
     create_rest_client(
-        manager.ip,
+        manager.ip_address,
         username,
         password,
-    ).get_status()
+    ).manager.get_status()
 
 
 def get_security_conf(manager):
