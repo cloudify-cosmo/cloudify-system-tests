@@ -139,8 +139,8 @@ def test_fail_to_remove_db_leader(dbs, logger):
             _get_leader(listing),
         )
     )
-    assert 'Failed' in result
-    assert 'cannot be removed' in result
+    assert 'Failed' in result.stdout
+    assert 'cannot be removed' in result.stdout
 
 
 def test_fail_to_reinit(dbs, logger):
@@ -153,8 +153,8 @@ def test_fail_to_reinit(dbs, logger):
             _get_leader(listing),
         )
     )
-    assert 'Failed' in result
-    assert 'cannot be reinitialised' in result
+    assert 'Failed' in result.stdout
+    assert 'cannot be reinitialised' in result.stdout
 
 
 def _check_cluster(listing, expected_leader=None):
@@ -221,7 +221,7 @@ def _get_db_listing(nodes):
     for node in nodes:
         result = [
             line for line in
-            node.run_command('cfy_manager dbs list').splitlines()[4:-1]
+            node.run_command('cfy_manager dbs list').stdout.splitlines()[4:-1]
         ]
         results.append(_structure_db_listing(result))
 
