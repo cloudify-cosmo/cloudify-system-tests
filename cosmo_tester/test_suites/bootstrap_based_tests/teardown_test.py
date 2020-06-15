@@ -35,8 +35,7 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
         # Fetch the new users and groups created during the bootstrap
         expected_diffs[key] = (
             set(bootstrapped_state[key]) - set(pre_bootstrap_state[key]))
-    expected_diffs['yum packages'] = {'cloudify-cli'}
-    expected_diffs['folders in /opt'] = {'cfy'}
+    expected_diffs['yum packages'] = {'postgresql95-libs', 'erlang', 'socat'}
 
     bootstrap_test_manager.teardown()
     current_state = _get_system_state(bootstrap_test_manager)
@@ -66,10 +65,6 @@ def check_pre_bootstrap_state(manager):
         'lib',
         'cloudify-manager-install'
     ]
-    pre_bootstrap_state['folders in /var/log'] += [
-        'yum.log',
-        'cloudify'
-    ]
     pre_bootstrap_state['init_d service files (/etc/rc.d/init.d/)'] += [
         'jexec'
     ]
@@ -82,9 +77,6 @@ def _get_system_state(mgr):
         sysconfig = fabric.run('ls /etc/sysconfig').stdout.split()
         opt_dirs = fabric.run('ls /opt').stdout.split()
         etc_dirs = fabric.run('ls /etc').stdout.split()
-        var_log_dirs = _skip_system_logs(
-            fabric.run('ls /var/log').stdout.split()
-        )
 
         packages = fabric.run('rpm -qa').stdout.split()
         # Prettify the packages output
@@ -98,29 +90,7 @@ def _get_system_state(mgr):
         'service config files (/etc/sysconfig)': sysconfig,
         'folders in /opt': opt_dirs,
         'folders in /etc': etc_dirs,
-        'folders in /var/log': var_log_dirs,
         'yum packages': packages,
         'os users': users,
         'os groups': groups,
     }
-
-
-def _skip_system_logs(var_log_dirs):
-    """Omit log dirs that are created by the system.
-
-    We're not interested in directories from /var/log that were created
-    by the OS (eg. snapshots of logs from the previous day created at midnight)
-
-    Example OS log directories:
-        btmp-20190812
-        cron-20190812
-        maillog-20190812
-        messages-20190812
-        secure-20190812
-        spooler-20190812
-    """
-    os_logs = {'btmp', 'cron', 'maillog', 'messages', 'secure', 'spooler'}
-    return [
-        log_dir for log_dir in var_log_dirs
-        if not any(log_dir.startswith(os_dir) for os_dir in os_logs)
-    ]

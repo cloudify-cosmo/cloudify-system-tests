@@ -135,6 +135,8 @@ def restore_snapshot(manager, snapshot_id, logger,
                      wait_for_post_restore_commands=True,
                      wait_timeout=20, change_manager_password=True,
                      cert_path=None, blocking=True):
+    manager.run_command('systemctl stop cloudify-status-reporter',
+                        use_sudo=True)
     list_snapshots(manager, logger)
 
     logger.info('Restoring snapshot on latest manager..')
@@ -145,19 +147,26 @@ def restore_snapshot(manager, snapshot_id, logger,
     )
 
     if blocking:
+        logger.info('Waiting to give time for snapshot to restore')
+        # Because the DB migrations are really temperamental since 5.0.5, so
+        # let's try to give less activity
+        sleep(30)
         try:
-            try:
-                wait_for_execution(
-                    manager.client,
-                    restore_execution,
-                    logger,
-                    allow_client_error=True)
-            except UserUnauthorizedError:
-                change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
-                wait_for_execution(
-                    manager.client,
-                    restore_execution,
-                    logger)
+            # Retry while the password is still being reset
+            attempt = 0
+            while attempt < 30:
+                try:
+                    wait_for_execution(
+                        manager.client,
+                        restore_execution,
+                        logger,
+                        allow_client_error=True)
+                    break
+                except UserUnauthorizedError:
+                    change_rest_client_password(manager,
+                                                CHANGED_ADMIN_PASSWORD)
+                    sleep(2)
+                    attempt += 1
         except ExecutionFailed:
             logger.error('Snapshot execution failed.')
             list_executions(manager, logger)
@@ -177,6 +186,7 @@ def prepare_credentials_tests(manager, logger):
     logger.info('Creating test user')
     create_user('testuser', 'testpass', manager)
     logger.info('Updating admin password')
+    manager.client.users.set_password('admin', CHANGED_ADMIN_PASSWORD)
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
@@ -197,10 +207,10 @@ def create_user(username, password, manager):
 def test_user(username, password, manager, logger):
     logger.info('Checking {user} can log in.'.format(user=username))
     create_rest_client(
-        manager.ip,
+        manager.ip_address,
         username,
         password,
-    ).get_status()
+    ).manager.get_status()
 
 
 def get_security_conf(manager):

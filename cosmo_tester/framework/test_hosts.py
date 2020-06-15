@@ -318,7 +318,7 @@ class _CloudifyManager(VM):
 
     def __init__(self, *args, **kwargs):
         super(_CloudifyManager, self).__init__(*args, **kwargs)
-        self.restservice_expected = True
+        self.set_image_details()
 
     def assign(
             self,
@@ -472,6 +472,9 @@ class _CloudifyManager(VM):
         return config_file
 
     def apply_license(self):
+        if self.image_type in ['4.3.1', '4.4', '4.5', '4.5.5']:
+            # Licenses are not supported on these releases
+            return
         license = util.get_resource_path('test_valid_paying_license.yaml')
         self.client.license.upload(license)
 

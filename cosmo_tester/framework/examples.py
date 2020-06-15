@@ -34,6 +34,10 @@ class BaseExample(object):
             self.blueprint_file = get_resource_path(
                 'blueprints/compute/central_executor.yaml'
             )
+            # This will be running as cfyuser, so we can't put it in the home
+            # dir as we usually do. However, it will be running on centos/rhel
+            # so we can just put it in /tmp rather than using /etc/cloudify
+            self.inputs['path'] = '/tmp/test_file'
         self.blueprint_id = blueprint_id
         self.deployment_id = self.blueprint_id
         self.example_host = manager

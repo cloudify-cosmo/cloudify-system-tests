@@ -16,7 +16,10 @@ import time
 import yaml
 
 from cloudify_rest_client import CloudifyClient
-from cloudify_rest_client.exceptions import CloudifyClientError
+from cloudify_rest_client.exceptions import (
+    CloudifyClientError,
+    UserUnauthorizedError,
+)
 
 import cosmo_tester
 from cosmo_tester import resources
@@ -419,6 +422,10 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=5*60,
 
                 output_events(client, execution, logger, prev_time,
                               current_time)
+            except UserUnauthorizedError:
+                # This is a specific client error which we don't want to catch
+                # as it can't get better with retries.
+                raise
             except CloudifyClientError as err:
                 if allow_client_error:
                     logger.warn(
