@@ -3,8 +3,11 @@ import os
 
 import retrying
 
+from cloudify_rest_client.exceptions import CloudifyClientError
+
 from cosmo_tester.framework.util import (
     create_deployment,
+    delete_deployment,
     get_resource_path,
     prepare_and_get_test_tenant,
     set_client_tenant,
@@ -48,10 +51,22 @@ class BaseExample(object):
         with open(self.ssh_key.private_key_path) as key_handle:
             ssh_key = key_handle.read()
         with set_client_tenant(self.manager.client, self.tenant):
-            self.manager.client.secrets.create(
-                'agent_key',
-                ssh_key,
-            )
+            try:
+                self.manager.client.secrets.create(
+                    'agent_key',
+                    ssh_key,
+                )
+            except CloudifyClientError as err:
+                if self.manager._test_config['premium']:
+                    raise
+                # On community this can happen if multiple tests use the
+                # same manager (because the first will upload the secret and
+                # the later test(s) will then conflict due to it existing).
+                # Premium avoids this with multiple tenants.
+                if 'already exists' in str(err):
+                    pass
+                else:
+                    raise
 
     def use_windows(self, user, password):
         self.inputs['agent_port'] = '5985'
@@ -71,8 +86,20 @@ class BaseExample(object):
             self.set_agent_key_secret()
 
         with set_client_tenant(self.manager.client, self.tenant):
-            self.manager.client.blueprints.upload(
-                self.blueprint_file, self.blueprint_id)
+            try:
+                self.manager.client.blueprints.upload(
+                    self.blueprint_file, self.blueprint_id)
+            except CloudifyClientError as err:
+                if self.manager._test_config['premium']:
+                    raise
+                # On community this can happen if multiple tests use the
+                # same manager (because the first will upload the blueprint;
+                # the later test(s) will then conflict due to it existing).
+                # Premium avoids this with multiple tenants.
+                if 'already exists' in str(err):
+                    pass
+                else:
+                    raise
 
     def create_deployment(self, skip_plugins_validation=False, wait=True):
         if 'path' not in self.inputs:
@@ -113,12 +140,18 @@ class BaseExample(object):
         self.execute('install')
         self.installed = True
 
-    def uninstall(self, check_files_are_deleted=True):
+    def uninstall(self, check_files_are_deleted=True, delete_dep=True):
         self.logger.info('Cleaning up example.')
         self.execute('uninstall')
         self.installed = False
         if check_files_are_deleted:
             self.check_all_test_files_deleted()
+        if delete_dep:
+            # The deployment needs removing to avoid problems with community
+            # when multiple tests use the same manager
+            with set_client_tenant(self.manager.client, self.tenant):
+                delete_deployment(self.manager.client, self.deployment_id,
+                                  self.logger)
 
     def execute(self, workflow_id, parameters=None):
         self.logger.info('Starting workflow: {}'.format(workflow_id))
