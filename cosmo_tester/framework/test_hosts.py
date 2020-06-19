@@ -1,6 +1,4 @@
-from ipaddress import ip_address, ip_network
-import textwrap
-
+from contextlib import contextmanager
 from datetime import datetime
 import hashlib
 import json
@@ -9,15 +7,17 @@ import re
 import time
 import uuid
 import yaml
-from contextlib import contextmanager
 
-import retrying
 from fabric import Connection
+from ipaddress import ip_address, ip_network
 from paramiko.ssh_exception import NoValidConnectionsError, SSHException
+import retrying
+import textwrap
 import winrm
 
-from cosmo_tester.framework import util
+from cloudify_rest_client.exceptions import CloudifyClientError
 
+from cosmo_tester.framework import util
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 HEALTHY_STATE = 'OK'
@@ -361,12 +361,24 @@ class _CloudifyManager(VM):
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
         with util.set_client_tenant(self.client, tenant_name):
-            self.client.plugins.upload(
-                util.get_resource_path(
-                    'plugin/test_plugin-1.0.0-py27-none-any.zip'
-                ),
-            )
-            self.wait_for_all_executions(include_system_workflows=True)
+            try:
+                self.client.plugins.upload(
+                    util.get_resource_path(
+                        'plugin/test_plugin-1.0.0-py27-none-any.zip'
+                    ),
+                )
+                self.wait_for_all_executions(include_system_workflows=True)
+            except CloudifyClientError as err:
+                if self._test_config['premium']:
+                    raise
+                # On community this can happen if multiple tests use the
+                # same manager (because the first will upload the plugin and
+                # the later test(s) will then conflict due to it existing).
+                # Premium avoids this with multiple tenants.
+                if 'already exists' in str(err):
+                    pass
+                else:
+                    raise
 
     def __str__(self):
         return 'Cloudify manager [{}]'.format(self.ip_address)
