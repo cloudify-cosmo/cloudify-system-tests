@@ -18,7 +18,14 @@ inputs:
     default: 22
   agent_password:
     default: ""
-
+  client_ip:
+    default: 127.0.0.1
+  client_tenant:
+    default: default_tenant
+  client_username:
+    default: admin
+  client_password:
+    default: admin
 
 dsl_definitions:
   fabric_env: &fabric_env

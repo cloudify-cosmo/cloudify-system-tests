@@ -17,7 +17,8 @@ def _infra(image_based_manager, ssh_key, logger, tenant, test_config):
 
 
 def _app(image_based_manager, ssh_key, logger, tenant, test_config,
-         blueprint_name, app_name='app'):
+         blueprint_name, app_name='app', client_ip='127.0.0.1',
+         client_username='admin', client_password='admin'):
     example = get_example_deployment(
         image_based_manager, ssh_key, logger, tenant, test_config,
         upload_plugin=False)
@@ -28,6 +29,10 @@ def _app(image_based_manager, ssh_key, logger, tenant, test_config,
     example.blueprint_id = app_name
     example.deployment_id = app_name
     example.inputs['agent_user'] = image_based_manager.username
+    example.inputs['client_ip'] = client_ip
+    example.inputs['client_tenant'] = tenant
+    example.inputs['client_username'] = client_username
+    example.inputs['client_password'] = client_password
     example.create_secret = False   # don't try to create it twice
     return example
 

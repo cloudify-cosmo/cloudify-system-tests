@@ -20,9 +20,14 @@ inputs:
     default: 22
   agent_password:
     default: ""
-  wait:
-    description: How long wait node should delay, in seconds.
-    default: 0
+  client_ip:
+    default: 127.0.0.1
+  client_tenant:
+    default: default_tenant
+  client_username:
+    default: admin
+  client_password:
+    default: admin
 
 node_templates:
   sub_component:
