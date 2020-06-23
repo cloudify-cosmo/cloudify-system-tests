@@ -83,7 +83,7 @@ def examples(managers_and_vms, ssh_key, tmpdir, logger, test_config):
         examples.append(
             get_example_deployment(
                 manager, ssh_key, logger, 'multi_net_{}'.format(idx),
-                test_config, vm)
+                test_config, vm, suffix=str(idx))
         )
         examples[-1].inputs['network'] = 'network_{}'.format(idx)
 

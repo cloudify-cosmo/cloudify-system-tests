@@ -18,7 +18,7 @@ from cosmo_tester.framework.util import (
 class BaseExample(object):
     def __init__(self, manager, ssh_key, logger,
                  blueprint_id, tenant='default_tenant',
-                 using_agent=True):
+                 using_agent=True, suffix=''):
         self.logger = logger
         self.manager = manager
         self.ssh_key = ssh_key
@@ -41,7 +41,7 @@ class BaseExample(object):
             # dir as we usually do. However, it will be running on centos/rhel
             # so we can just put it in /tmp rather than using /etc/cloudify
             self.inputs['path'] = '/tmp/test_file'
-        self.blueprint_id = blueprint_id
+        self.blueprint_id = blueprint_id + suffix
         self.deployment_id = self.blueprint_id
         self.example_host = manager
         self.installed = False
@@ -168,6 +168,9 @@ class BaseExample(object):
             self.logger.error('Error on deployment execution: %s', err)
             raise
 
+    # SSH shouldn't time out at this point, but not all test platforms are
+    # created equal
+    @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
     def check_files(self, path=None, expected_content=None):
         instances = self.manager.client.node_instances.list(
             deployment_id=self.deployment_id,
@@ -241,21 +244,21 @@ class BaseExample(object):
 
 class OnManagerExample(BaseExample):
     def __init__(self, manager, ssh_key, logger, tenant,
-                 using_agent=True):
+                 using_agent=True, suffix=''):
         super(OnManagerExample, self).__init__(
             manager, ssh_key, logger,
             blueprint_id='on_manager_example', tenant=tenant,
-            using_agent=using_agent,
+            using_agent=using_agent, suffix=suffix,
         )
 
 
 class OnVMExample(BaseExample):
     def __init__(self, manager, vm, ssh_key, logger, tenant,
-                 using_agent=True):
+                 using_agent=True, suffix=''):
         super(OnVMExample, self).__init__(
             manager, ssh_key, logger,
             blueprint_id='on_vm_example', tenant=tenant,
-            using_agent=using_agent,
+            using_agent=using_agent, suffix=suffix,
         )
         self.inputs['server_ip'] = vm.ip_address
         self.inputs['agent_user'] = vm.username
@@ -263,7 +266,8 @@ class OnVMExample(BaseExample):
 
 
 def get_example_deployment(manager, ssh_key, logger, tenant_name, test_config,
-                           vm=None, upload_plugin=True, using_agent=True):
+                           vm=None, upload_plugin=True, using_agent=True,
+                           suffix=''):
     tenant = prepare_and_get_test_tenant(tenant_name, manager, test_config)
 
     if upload_plugin:
@@ -271,7 +275,7 @@ def get_example_deployment(manager, ssh_key, logger, tenant_name, test_config,
 
     if vm:
         return OnVMExample(manager, vm, ssh_key, logger, tenant,
-                           using_agent=using_agent)
+                           using_agent=using_agent, suffix=suffix)
     else:
         return OnManagerExample(manager, ssh_key, logger, tenant,
-                                using_agent=using_agent)
+                                using_agent=using_agent, suffix=suffix)
