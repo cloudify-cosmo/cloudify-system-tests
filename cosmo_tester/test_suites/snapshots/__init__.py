@@ -163,8 +163,11 @@ def restore_snapshot(manager, snapshot_id, logger,
                         allow_client_error=True)
                     break
                 except UserUnauthorizedError:
-                    change_rest_client_password(manager,
-                                                CHANGED_ADMIN_PASSWORD)
+                    # We may see this exception even without the password
+                    # being changed due to rest-security.conf updates
+                    if change_manager_password:
+                        change_rest_client_password(manager,
+                                                    CHANGED_ADMIN_PASSWORD)
                     sleep(2)
                     attempt += 1
         except ExecutionFailed:

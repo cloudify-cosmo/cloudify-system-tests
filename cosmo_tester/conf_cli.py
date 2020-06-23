@@ -95,7 +95,7 @@ def apply_platform_config(logger, config, platform):
             os.environ.get("OS_TENANT_NAME")
             or os.environ['OS_PROJECT_NAME']
         )
-        target['url'] = os.environ["OS_AUTH_URL"]
+        target['url'] = os.environ["OS_AUTH_URL"].replace('v2.0', 'v3')
         target['region'] = os.environ.get("OS_REGION_NAME", "RegionOne")
 
 
