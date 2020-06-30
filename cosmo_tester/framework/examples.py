@@ -1,7 +1,13 @@
-import os
 import json
+import os
+
+import retrying
+
+from cloudify_rest_client.exceptions import CloudifyClientError
 
 from cosmo_tester.framework.util import (
+    create_deployment,
+    delete_deployment,
     get_resource_path,
     prepare_and_get_test_tenant,
     set_client_tenant,
@@ -12,13 +18,12 @@ from cosmo_tester.framework.util import (
 class BaseExample(object):
     def __init__(self, manager, ssh_key, logger,
                  blueprint_id, tenant='default_tenant',
-                 using_agent=True):
+                 using_agent=True, suffix=''):
         self.logger = logger
         self.manager = manager
         self.ssh_key = ssh_key
         self.tenant = tenant
         self.inputs = {
-            'path': '/tmp/test_file',
             'content': 'Test',
         }
         if using_agent:
@@ -32,7 +37,11 @@ class BaseExample(object):
             self.blueprint_file = get_resource_path(
                 'blueprints/compute/central_executor.yaml'
             )
-        self.blueprint_id = blueprint_id
+            # This will be running as cfyuser, so we can't put it in the home
+            # dir as we usually do. However, it will be running on centos/rhel
+            # so we can just put it in /tmp rather than using /etc/cloudify
+            self.inputs['path'] = '/tmp/test_file'
+        self.blueprint_id = blueprint_id + suffix
         self.deployment_id = self.blueprint_id
         self.example_host = manager
         self.installed = False
@@ -41,11 +50,23 @@ class BaseExample(object):
     def set_agent_key_secret(self):
         with open(self.ssh_key.private_key_path) as key_handle:
             ssh_key = key_handle.read()
-        with set_client_tenant(self.manager, self.tenant):
-            self.manager.client.secrets.create(
-                'agent_key',
-                ssh_key,
-            )
+        with set_client_tenant(self.manager.client, self.tenant):
+            try:
+                self.manager.client.secrets.create(
+                    'agent_key',
+                    ssh_key,
+                )
+            except CloudifyClientError as err:
+                if self.manager._test_config['premium']:
+                    raise
+                # On community this can happen if multiple tests use the
+                # same manager (because the first will upload the secret and
+                # the later test(s) will then conflict due to it existing).
+                # Premium avoids this with multiple tenants.
+                if 'already exists' in str(err):
+                    pass
+                else:
+                    raise
 
     def use_windows(self, user, password):
         self.inputs['agent_port'] = '5985'
@@ -64,21 +85,37 @@ class BaseExample(object):
         if self.create_secret:
             self.set_agent_key_secret()
 
-        with set_client_tenant(self.manager, self.tenant):
-            self.manager.client.blueprints.upload(
-                self.blueprint_file, self.blueprint_id)
+        with set_client_tenant(self.manager.client, self.tenant):
+            try:
+                self.manager.client.blueprints.upload(
+                    self.blueprint_file, self.blueprint_id)
+            except CloudifyClientError as err:
+                if self.manager._test_config['premium']:
+                    raise
+                # On community this can happen if multiple tests use the
+                # same manager (because the first will upload the blueprint;
+                # the later test(s) will then conflict due to it existing).
+                # Premium avoids this with multiple tenants.
+                if 'already exists' in str(err):
+                    pass
+                else:
+                    raise
 
     def create_deployment(self, skip_plugins_validation=False, wait=True):
+        if 'path' not in self.inputs:
+            self.inputs['path'] = '/home/{user}/test_file'.format(
+                user=self.example_host.username,
+            )
         self.logger.info(
                 'Creating deployment [id=%s] with the following inputs:\n%s',
                 self.deployment_id,
                 json.dumps(self.inputs, indent=2))
-        with set_client_tenant(self.manager, self.tenant):
-            self.manager.client.deployments.create(
-                deployment_id=self.deployment_id,
-                blueprint_id=self.blueprint_id,
-                inputs=self.inputs,
-                skip_plugins_validation=skip_plugins_validation)
+        with set_client_tenant(self.manager.client, self.tenant):
+            create_deployment(
+                self.manager.client, self.blueprint_id, self.deployment_id,
+                self.logger, inputs=self.inputs,
+                skip_plugins_validation=skip_plugins_validation,
+            )
             self.logger.info('Deployments for tenant {}'.format(self.tenant))
             for deployment in self.manager.client.deployments.list():
                 self.logger.info(deployment['id'])
@@ -88,7 +125,7 @@ class BaseExample(object):
     def wait_for_deployment_environment_creation(self):
         self.logger.info('Waiting for deployment env creation.')
         while True:
-            with set_client_tenant(self.manager, self.tenant):
+            with set_client_tenant(self.manager.client, self.tenant):
                 executions = self.manager.client.executions.list(
                     _include=['status'],
                     deployment_id=self.deployment_id,
@@ -103,27 +140,37 @@ class BaseExample(object):
         self.execute('install')
         self.installed = True
 
-    def uninstall(self, check_files_are_deleted=True):
+    def uninstall(self, check_files_are_deleted=True, delete_dep=True):
         self.logger.info('Cleaning up example.')
         self.execute('uninstall')
         self.installed = False
         if check_files_are_deleted:
             self.check_all_test_files_deleted()
+        if delete_dep:
+            # The deployment needs removing to avoid problems with community
+            # when multiple tests use the same manager
+            with set_client_tenant(self.manager.client, self.tenant):
+                delete_deployment(self.manager.client, self.deployment_id,
+                                  self.logger)
 
     def execute(self, workflow_id, parameters=None):
         self.logger.info('Starting workflow: {}'.format(workflow_id))
         try:
-            with set_client_tenant(self.manager, self.tenant):
+            with set_client_tenant(self.manager.client, self.tenant):
                 execution = self.manager.client.executions.start(
                     deployment_id=self.deployment_id,
                     workflow_id=workflow_id,
                     parameters=parameters,
                 )
-                wait_for_execution(self.manager, execution, self.logger)
+                wait_for_execution(self.manager.client, execution,
+                                   self.logger)
         except Exception as err:
             self.logger.error('Error on deployment execution: %s', err)
             raise
 
+    # SSH shouldn't time out at this point, but not all test platforms are
+    # created equal
+    @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
     def check_files(self, path=None, expected_content=None):
         instances = self.manager.client.node_instances.list(
             deployment_id=self.deployment_id,
@@ -146,6 +193,8 @@ class BaseExample(object):
                         file_path)
                 assert data == expected_content
 
+    # Proxy test has been suffering temporary ssh timeout issues
+    @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
     def check_all_test_files_deleted(self, path=None):
         if path is None:
             path = self.inputs['path']
@@ -169,7 +218,7 @@ class BaseExample(object):
 
     def assert_deployment_events_exist(self):
         self.logger.info('Verifying deployment events..')
-        with set_client_tenant(self.manager, self.tenant):
+        with set_client_tenant(self.manager.client, self.tenant):
             executions = self.manager.client.executions.list(
                 deployment_id=self.deployment_id,
             )
@@ -195,37 +244,38 @@ class BaseExample(object):
 
 class OnManagerExample(BaseExample):
     def __init__(self, manager, ssh_key, logger, tenant,
-                 using_agent=True):
+                 using_agent=True, suffix=''):
         super(OnManagerExample, self).__init__(
             manager, ssh_key, logger,
             blueprint_id='on_manager_example', tenant=tenant,
-            using_agent=using_agent,
+            using_agent=using_agent, suffix=suffix,
         )
 
 
 class OnVMExample(BaseExample):
     def __init__(self, manager, vm, ssh_key, logger, tenant,
-                 using_agent=True):
+                 using_agent=True, suffix=''):
         super(OnVMExample, self).__init__(
             manager, ssh_key, logger,
             blueprint_id='on_vm_example', tenant=tenant,
-            using_agent=using_agent,
+            using_agent=using_agent, suffix=suffix,
         )
         self.inputs['server_ip'] = vm.ip_address
         self.inputs['agent_user'] = vm.username
         self.example_host = vm
 
 
-def get_example_deployment(manager, ssh_key, logger, tenant_name,
-                           vm=None, upload_plugin=True, using_agent=True):
-    tenant = prepare_and_get_test_tenant(tenant_name, manager, upload=False)
+def get_example_deployment(manager, ssh_key, logger, tenant_name, test_config,
+                           vm=None, upload_plugin=True, using_agent=True,
+                           suffix=''):
+    tenant = prepare_and_get_test_tenant(tenant_name, manager, test_config)
 
     if upload_plugin:
         manager.upload_test_plugin(tenant)
 
     if vm:
         return OnVMExample(manager, vm, ssh_key, logger, tenant,
-                           using_agent=using_agent)
+                           using_agent=using_agent, suffix=suffix)
     else:
         return OnManagerExample(manager, ssh_key, logger, tenant,
-                                using_agent=using_agent)
+                                using_agent=using_agent, suffix=suffix)

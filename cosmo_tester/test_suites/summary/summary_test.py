@@ -5,15 +5,8 @@ import time
 import pytest
 
 from cloudify_rest_client.exceptions import CloudifyClientError
-from cosmo_tester.framework.fixtures import (  # noqa
-    image_based_manager_without_plugins,
-)
-from cosmo_tester.framework.util import (
-    set_client_tenant,
-)
+from cosmo_tester.framework.util import create_deployment, set_client_tenant
 
-
-manager = image_based_manager_without_plugins
 
 SMALL_BLUEPRINT_PATH = os.path.abspath(
     os.path.join(
@@ -96,7 +89,9 @@ DEPLOYMENTS_PER_BLUEPRINT = [
 ]
 
 
-def _sort_summary(summary, sort_key):
+def _sort_summary(summary, sort_key, sort=True):
+    if sort:
+        summary = sorted(summary)
     if isinstance(sort_key, list):
         if len(sort_key) == 1:
             this_sort_key = sort_key[0]
@@ -108,13 +103,13 @@ def _sort_summary(summary, sort_key):
         this_sort_key = sort_key
 
     if isinstance(summary, list):
-        summary = [_sort_summary(item, sort_key) for item in summary]
+        summary = [_sort_summary(item, sort_key, False) for item in summary]
         summary.sort(
             key=lambda x: x[this_sort_key] if isinstance(x, dict) else x
         )
     elif isinstance(summary, dict):
         summary = {
-            key: _sort_summary(value, sort_key=sort_key)
+            key: _sort_summary(value, sort_key, False)
             for key, value in summary.items()
         }
     return summary
@@ -131,7 +126,7 @@ def _create_sites(manager, deployment_ids):
 
 
 @pytest.fixture(scope='module')
-def prepared_manager(manager, cfy, logger):
+def prepared_manager(image_based_manager, logger):
     tenants = sorted(TENANT_DEPLOYMENT_COUNTS.keys())
 
     for tenant in tenants:
@@ -142,16 +137,16 @@ def prepared_manager(manager, cfy, logger):
         for attempt in xrange(30):
             try:
                 if tenant != 'default_tenant':
-                    manager.client.tenants.create(tenant)
+                    image_based_manager.client.tenants.create(tenant)
                     break
             except CloudifyClientError:
                 time.sleep(2)
 
     deployment_ids = []
     for tenant in tenants:
-        with set_client_tenant(manager, tenant):
+        with set_client_tenant(image_based_manager.client, tenant):
             for blueprint, bp_path in BLUEPRINTS.items():
-                manager.client.blueprints.upload(
+                image_based_manager.client.blueprints.upload(
                     path=bp_path,
                     entity_id=blueprint,
                 )
@@ -159,22 +154,22 @@ def prepared_manager(manager, cfy, logger):
             for bp_name, count in TENANT_DEPLOYMENT_COUNTS[tenant].items():
                 for i in xrange(count):
                     deployment_id = bp_name + str(i)
-                    manager.client.deployments.create(
-                        blueprint_id=bp_name,
-                        deployment_id=deployment_id,
+                    create_deployment(
+                        image_based_manager.client, bp_name, deployment_id,
+                        logger,
                     )
                     deployment_ids.append(deployment_id)
-                manager.wait_for_all_executions()
+                image_based_manager.wait_for_all_executions()
                 for i in xrange(count):
                     deployment_id = bp_name + str(i)
-                    manager.client.executions.start(
+                    image_based_manager.client.executions.start(
                         deployment_id,
                         'install',
                     )
-                manager.wait_for_all_executions()
+                image_based_manager.wait_for_all_executions()
 
-    _create_sites(manager, deployment_ids)
-    yield manager
+    _create_sites(image_based_manager, deployment_ids)
+    yield image_based_manager
 
 
 @pytest.mark.parametrize("summary_type", [
@@ -614,6 +609,9 @@ def test_basic_summary_paged(prepared_manager):
         {u'blueprints': 3, u'tenant_name': u'default_tenant'},
     ]
 
+    results.sort()
+    expected.sort()
+
     assert results == expected, (
         '{0} != {1}'.format(results, expected)
     )
@@ -630,6 +628,10 @@ def test_basic_summary_paged(prepared_manager):
     expected = [
         {u'blueprints': 3, u'tenant_name': u'test2'},
     ]
+
+    results.sort()
+    expected.sort()
+
     assert results == expected, (
         '{0} != {1}'.format(results, expected)
     )
@@ -641,20 +643,21 @@ def _assert_cli_results(results, expected, sort_key):
         expected, sort_key=sort_key)
 
 
-def test_cli_blueprints_summary(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_blueprints_summary(prepared_manager):
     results = json.loads(
-        cfy.blueprints.summary('visibility', '--json').stdout
+        prepared_manager.run_command(
+            'cfy blueprints summary visibility --json'
+        ).stdout
     )
     expected = [{"blueprints": 3, "visibility": "tenant"}]
     _assert_cli_results(results, expected, 'visibility')
 
 
-def test_cli_blueprints_summary_subfield(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_blueprints_summary_subfield(prepared_manager):
     results = json.loads(
-        cfy.blueprints.summary(
-            'tenant_name', 'visibility', '--json', '--all-tenants',
+        prepared_manager.run_command(
+            'cfy blueprints summary tenant_name visibility '
+            '--json --all-tenants'
         ).stdout
     )
     # None values are totals
@@ -675,22 +678,22 @@ def test_cli_blueprints_summary_subfield(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'tenant_name')
 
 
-def test_cli_blueprints_summary_subfield_non_json(prepared_manager, cfy):
+def test_cli_blueprints_summary_subfield_non_json(prepared_manager):
     """
         Ensure that 'TOTAL' appears in non-json output (this should be in
         place of the None used in the json output).
     """
-    prepared_manager.use()
-    results = cfy.blueprints.summary(
-        'tenant_name', 'visibility', '--all-tenants',
+    results = prepared_manager.run_command(
+        'cfy blueprints summary tenant_name visibility --all-tenants'
     ).stdout
     assert 'TOTAL' in results
 
 
-def test_cli_deployments_summary(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_deployments_summary(prepared_manager):
     results = json.loads(
-        cfy.deployments.summary('blueprint_id', '--json').stdout
+        prepared_manager.run_command(
+            'cfy deployments summary blueprint_id --json'
+        ).stdout
     )
     expected = [
         {"deployments": 2, "blueprint_id": "small"},
@@ -700,11 +703,11 @@ def test_cli_deployments_summary(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'blueprint_id')
 
 
-def test_cli_deployments_summary_subfield(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_deployments_summary_subfield(prepared_manager):
     results = json.loads(
-        cfy.deployments.summary(
-            'tenant_name', 'blueprint_id', '--json', '--all-tenants',
+        prepared_manager.run_command(
+            'cfy deployments summary tenant_name blueprint_id '
+            '--json --all-tenants'
         ).stdout
     )
     # None values are totals
@@ -737,22 +740,22 @@ def test_cli_deployments_summary_subfield(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'blueprint_id')
 
 
-def test_cli_deployments_summary_subfield_non_json(prepared_manager, cfy):
+def test_cli_deployments_summary_subfield_non_json(prepared_manager):
     """
         Ensure that 'TOTAL' appears in non-json output (this should be in
         place of the None used in the json output).
     """
-    prepared_manager.use()
-    results = cfy.deployments.summary(
-        'tenant_name', 'blueprint_id', '--all-tenants',
+    results = prepared_manager.run_command(
+        'cfy deployments summary tenant_name blueprint_id --all-tenants'
     ).stdout
     assert 'TOTAL' in results
 
 
-def test_cli_executions_summary(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_executions_summary(prepared_manager):
     results = json.loads(
-        cfy.executions.summary('workflow_id', '--json').stdout
+        prepared_manager.run_command(
+            'cfy executions summary workflow_id --json'
+        ).stdout
     )
     expected = [
         {"workflow_id": "create_deployment_environment", "executions": 6},
@@ -761,11 +764,11 @@ def test_cli_executions_summary(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'workflow_id')
 
 
-def test_cli_executions_summary_subfield(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_executions_summary_subfield(prepared_manager):
     results = json.loads(
-        cfy.executions.summary(
-            'tenant_name', 'workflow_id', '--json', '--all-tenants',
+        prepared_manager.run_command(
+            'cfy executions summary tenant_name workflow_id '
+            '--json --all-tenants'
         ).stdout
     )
     # None values are totals
@@ -792,22 +795,22 @@ def test_cli_executions_summary_subfield(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'workflow_id')
 
 
-def test_cli_executions_summary_subfield_non_json(prepared_manager, cfy):
+def test_cli_executions_summary_subfield_non_json(prepared_manager):
     """
         Ensure that 'TOTAL' appears in non-json output (this should be in
         place of the None used in the json output).
     """
-    prepared_manager.use()
-    results = cfy.executions.summary(
-        'tenant_name', 'workflow_id', '--all-tenants',
+    results = prepared_manager.run_command(
+        'cfy executions summary tenant_name workflow_id --all-tenants'
     ).stdout
     assert 'TOTAL' in results
 
 
-def test_cli_nodes_summary(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_nodes_summary(prepared_manager):
     results = json.loads(
-        cfy.nodes.summary('deployment_id', '--json').stdout
+        prepared_manager.run_command(
+            'cfy nodes summary deployment_id --json'
+        ).stdout
     )
     expected = [
         {"deployment_id": "small1", "nodes": 1},
@@ -820,11 +823,11 @@ def test_cli_nodes_summary(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'deployment_id')
 
 
-def test_cli_nodes_summary_subfield(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_nodes_summary_subfield(prepared_manager):
     results = json.loads(
-        cfy.nodes.summary(
-            'tenant_name', 'deployment_id', '--json', '--all-tenants',
+        prepared_manager.run_command(
+            'cfy nodes summary tenant_name deployment_id '
+            '--json --all-tenants'
         ).stdout
     )
     # None values are totals
@@ -875,22 +878,22 @@ def test_cli_nodes_summary_subfield(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'deployment_id')
 
 
-def test_cli_nodes_summary_subfield_non_json(prepared_manager, cfy):
+def test_cli_nodes_summary_subfield_non_json(prepared_manager):
     """
         Ensure that 'TOTAL' appears in non-json output (this should be in
         place of the None used in the json output).
     """
-    prepared_manager.use()
-    results = cfy.nodes.summary(
-        'tenant_name', 'deployment_id', '--all-tenants',
+    results = prepared_manager.run_command(
+        'cfy nodes summary tenant_name deployment_id --all-tenants'
     ).stdout
     assert 'TOTAL' in results
 
 
-def test_cli_node_instances_summary(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_node_instances_summary(prepared_manager):
     results = json.loads(
-        cfy('node-instances', 'summary', 'node_id', '--json').stdout
+        prepared_manager.run_command(
+            'cfy node-instances summary node_id --json'
+        ).stdout
     )
     expected = [
         {"node_id": "fakeapp1", "node_instances": 6},
@@ -902,12 +905,11 @@ def test_cli_node_instances_summary(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'node_id')
 
 
-def test_cli_node_instances_summary_subfield(prepared_manager, cfy):
-    prepared_manager.use()
+def test_cli_node_instances_summary_subfield(prepared_manager):
     results = json.loads(
-        cfy(
-            'node-instances', 'summary',
-            'tenant_name', 'node_id', '--json', '--all-tenants',
+        prepared_manager.run_command(
+            'cfy node-instances summary tenant_name node_id '
+            '--json --all-tenants'
         ).stdout
     )
     # None values are totals
@@ -952,14 +954,12 @@ def test_cli_node_instances_summary_subfield(prepared_manager, cfy):
     _assert_cli_results(results, expected, 'node_id')
 
 
-def test_cli_node_instances_summary_subfield_non_json(prepared_manager, cfy):
+def test_cli_node_instances_summary_subfield_non_json(prepared_manager):
     """
         Ensure that 'TOTAL' appears in non-json output (this should be in
         place of the None used in the json output).
     """
-    prepared_manager.use()
-    results = cfy(
-        'node-instances', 'summary', 'tenant_name', 'node_id',
-        '--all-tenants',
+    results = prepared_manager.run_command(
+        'cfy node-instances summary tenant_name node_id --all-tenants'
     ).stdout
     assert 'TOTAL' in results

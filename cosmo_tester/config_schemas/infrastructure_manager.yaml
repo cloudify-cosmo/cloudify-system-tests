@@ -1,0 +1,6 @@
+namespace: infrastructure_manager
+admin_password:
+  description: Password for admin account of infrastructure manager.
+  default: admin
+address:
+  description: IP address or hostname of infrastructure manager.

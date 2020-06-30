@@ -1,0 +1,55 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Run test functions on the central executor instead of an agent.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/4.6/types.yaml
+
+plugins:
+    test_plugin:
+      executor: central_deployment_agent
+      package_name: test-plugin
+      package_version: 1.0.0
+      source: test-plugin
+      install: true
+
+node_types:
+  cloudify.test.nodes.File:
+    derived_from: cloudify.nodes.Root
+    properties:
+      path: {}
+      content: {}
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.file.create
+        delete:
+          implementation: test_plugin.test_plugin.file.delete
+
+  cloudify.test.nodes.Wait:
+    derived_from: cloudify.nodes.Root
+    properties:
+      delay: {}
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.wait.wait
+
+inputs:
+  path: {}
+  content: {}
+  wait:
+    default: 0
+
+node_templates:
+  file:
+    type: cloudify.test.nodes.File
+    properties:
+      path: { get_input: path }
+      content: { get_input: content }
+
+  wait:
+    type: cloudify.test.nodes.Wait
+    properties:
+      delay: { get_input: wait }

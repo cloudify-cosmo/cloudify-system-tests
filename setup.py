@@ -23,28 +23,24 @@ setup(
     packages=['cosmo_tester'],
     license='LICENSE',
     description='Cosmo system tests framework',
-    zip_safe=False,
     install_requires=[
         'fabric',
         'PyYAML',
         'requests>=2.7.0,<3.0.0',
-        'sh',
         'path.py',
         'retrying',
         'Jinja2',
         'pywinrm',
-        'fasteners',
         # Wagon version has been left out since it better reflects the user
         # use-case
         'wagon[venv]',
         'pytest',
         'pytest-xdist',
-        'testtools',
-        'openstacksdk'
     ],
+    include_package_data=True,
     entry_points={
         'console_scripts': [
-            'cfy-systests = cosmo_tester.cli:main'
+            'test-config = cosmo_tester.conf_cli:main',
         ]
     },
 

@@ -1,0 +1,1 @@
+CLOUDIFY_TENANT_HEADER = 'Tenant'

@@ -13,12 +13,6 @@
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
 
-from cosmo_tester.framework.test_hosts import (
-    REMOTE_OPENSTACK_CONFIG_PATH,
-    REMOTE_PRIVATE_KEY_PATH,
-    REMOTE_PUBLIC_KEY_PATH
-)
-
 MOM_PLUGIN_REPO_PATH = 'cloudify-cosmo/cloudify-spire-plugin'
 MOM_PLUGIN_VERSION = '3.2.4'
 MOM_PLUGIN_RELEASE_NAME = '{0}'.format(MOM_PLUGIN_VERSION)
@@ -99,29 +93,6 @@ SCRIPT_PY_PATH = '/etc/cloudify/script_2.py'
 SSH_KEY_TMP_PATH = '/etc/cloudify/private.key'
 PUB_KEY_TMP_PATH = '/etc/cloudify/public.key'
 OS_CONFIG_TMP_PATH = '/tmp/openstack_config.json'
-
-SH_SCRIPT = '''#!/usr/bin/env bash
-echo "Moving the SSH key..."
-sudo cp {tmp_ssh_key_path} {ssh_key_path}
-sudo chown cfyuser: {ssh_key_path}
-sudo cp {tmp_ssh_public_key_path} {ssh_key_path}
-sudo chown cfyuser: {tmp_ssh_public_key_path}
-
-echo "Moving the OS config..."
-sudo cp {tmp_os_config_path} {os_config_path}
-sudo chown cfyuser: {os_config_path}
-
-echo "Entering sanity mode..."
-sudo touch /opt/manager/sanity_mode
-sudo chown cfyuser:cfyuser /opt/manager/sanity_mode
-sudo chmod 440 /opt/manager/sanity_mode
-'''.format(
-    tmp_ssh_key_path=SSH_KEY_TMP_PATH,
-    ssh_key_path=REMOTE_PRIVATE_KEY_PATH,
-    tmp_ssh_public_key_path=REMOTE_PUBLIC_KEY_PATH,
-    tmp_os_config_path=OS_CONFIG_TMP_PATH,
-    os_config_path=REMOTE_OPENSTACK_CONFIG_PATH
-)
 
 PY_SCRIPT = '''#!/usr/bin/env python
 print 'Running a python script!'

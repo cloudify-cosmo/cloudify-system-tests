@@ -1,10 +1,16 @@
 import retrying
 
+from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cluster import check_managers
 
 
-def test_remove_db_node(full_cluster, logger, attributes, cfy):
+def test_remove_db_node(full_cluster, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+
+    example = get_example_deployment(mgr1, ssh_key, logger, 'remove_db_node',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
 
     # To aid troubleshooting in case of issues
     _get_db_listing([mgr1])
@@ -37,12 +43,17 @@ def test_remove_db_node(full_cluster, logger, attributes, cfy):
 
     mgr1.run_command('cfy maintenance deactivate')
 
-    check_managers(mgr1, mgr2)
+    check_managers(mgr1, mgr2, example)
 
 
-def test_add_db_node(cluster_missing_one_db, logger, attributes, cfy):
+def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = \
         cluster_missing_one_db
+
+    example = get_example_deployment(mgr1, ssh_key, logger, 'add_db_node',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
 
     # To aid troubleshooting in case of issues
     _get_db_listing([mgr1])
@@ -53,8 +64,7 @@ def test_add_db_node(cluster_missing_one_db, logger, attributes, cfy):
     _check_db_count(mgr1, mgr2, db3, all_present=False)
 
     logger.info('Adding extra DB')
-    db3.bootstrap(blocking=True, enter_sanity_mode=False,
-                  restservice_expected=False)
+    db3.bootstrap(blocking=True, restservice_expected=False)
     db3_node_id = db3.get_node_id()
     mgr1.run_command('cfy_manager dbs add -a {0} -i {1}'.format(
         db3.private_ip_address, db3_node_id
@@ -67,10 +77,10 @@ def test_add_db_node(cluster_missing_one_db, logger, attributes, cfy):
 
     mgr1.run_command('cfy maintenance deactivate')
 
-    check_managers(mgr1, mgr2)
+    check_managers(mgr1, mgr2, example)
 
 
-def test_db_set_master(dbs, logger, attributes, cfy):
+def test_db_set_master(dbs, logger):
     db1, db2, db3 = dbs
 
     for attempt in range(3):
@@ -104,7 +114,7 @@ def test_db_set_master(dbs, logger, attributes, cfy):
     _check_cluster(after_change)
 
 
-def test_db_reinit(dbs, logger, attributes, cfy):
+def test_db_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
     # Ideally we'd test this by damaging a node so that it needed a reinit,
@@ -119,7 +129,7 @@ def test_db_reinit(dbs, logger, attributes, cfy):
     _check_cluster(listing)
 
 
-def test_fail_to_remove_db_leader(dbs, logger, attributes, cfy):
+def test_fail_to_remove_db_leader(dbs, logger):
     db1, db2, db3 = dbs
 
     listing = _get_db_listing([db1])[0]
@@ -129,11 +139,11 @@ def test_fail_to_remove_db_leader(dbs, logger, attributes, cfy):
             _get_leader(listing),
         )
     )
-    assert 'Failed' in result
-    assert 'cannot be removed' in result
+    assert 'Failed' in result.stdout
+    assert 'cannot be removed' in result.stdout
 
 
-def test_fail_to_reinit(dbs, logger, attributes, cfy):
+def test_fail_to_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
     listing = _get_db_listing([db1])[0]
@@ -143,8 +153,8 @@ def test_fail_to_reinit(dbs, logger, attributes, cfy):
             _get_leader(listing),
         )
     )
-    assert 'Failed' in result
-    assert 'cannot be reinitialised' in result
+    assert 'Failed' in result.stdout
+    assert 'cannot be reinitialised' in result.stdout
 
 
 def _check_cluster(listing, expected_leader=None):
@@ -211,7 +221,7 @@ def _get_db_listing(nodes):
     for node in nodes:
         result = [
             line for line in
-            node.run_command('cfy_manager dbs list').splitlines()[4:-1]
+            node.run_command('cfy_manager dbs list').stdout.splitlines()[4:-1]
         ]
         results.append(_structure_db_listing(result))
 

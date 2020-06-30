@@ -1,0 +1,14 @@
+namespace: test_manager
+username:
+  description: Username for managers deployed during tests.
+  default: admin
+password:
+  description: Password for managers deployed during tests.
+  default: admin
+tenant:
+  description: Tenant for managers deployed during tests.
+  default: default_tenant
+distro:
+  description: Distro to use for managers deployed during tests.
+  default: rhel
+  valid_values: [centos, rhel]
