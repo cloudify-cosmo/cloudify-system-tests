@@ -26,16 +26,16 @@ manager = image_based_manager
 def test_ui(cfy, manager, module_tmpdir, attributes, ssh_key, logger):
 
     logger.info('Installing dependencies to run system tests...')
-    subprocess.call(['npm', 'ci'],
+    subprocess.call(['npm', 'run', 'beforebuild'],
                     cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
     if os.environ["UPDATE_COMPOSER_ON_MANAGER"] == 'true':
         logger.info('Starting update of Composer package on Manager...')
         os.environ["MANAGER_IP"] = manager.ip_address
         os.environ["SSH_KEY_PATH"] = ssh_key.private_key_path
         logger.info('Creating Composer package...')
-        subprocess.call(['bower', 'install'],
+        subprocess.call(['npm', 'run', 'build'],
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
-        subprocess.call(['grunt', 'pack'],
+        subprocess.call(['npm', 'run', 'zip'],
                         cwd=os.environ["CLOUDIFY_COMPOSER_REPO_PATH"])
         logger.info('Uploading Composer package...')
         subprocess.call(['npm', 'run', 'upload'],
