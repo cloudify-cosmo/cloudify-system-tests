@@ -34,7 +34,7 @@ CHANGED_ADMIN_PASSWORD = 'changedmin'
 
 # These manager versions support multiple tenant snapshot restores in premium
 MULTI_TENANT_MANAGERS = (
-    '4.3.1',
+    '4.3.3',
     '4.4',
     '4.5',
     '4.5.5',
