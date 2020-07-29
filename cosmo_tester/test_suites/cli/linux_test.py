@@ -88,11 +88,11 @@ def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
 
         logger.info('Installing CLI package')
         install_cmd = {
-            'rpm': 'rpm',
-            'deb': 'dpkg',
+            'rpm': 'yum install -y',
+            'deb': 'dpkg -i',
         }[pkg_type]
         cli_host.run_command(
-            '{install_cmd} -i cloudify-cli.{pkg_type}'.format(
+            '{install_cmd} cloudify-cli.{pkg_type}'.format(
                 install_cmd=install_cmd,
                 pkg_type=pkg_type,
             ),
