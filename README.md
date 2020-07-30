@@ -13,7 +13,7 @@ resources for testing Cloudify.
 
 * Checkout the repository.
 * cd cloudify-system-tests
-* pip install -r requirements.txt && pip install --no-index -e .
+* pip install -r requirements.txt && pip install --no-index --no-deps -e .
 
 ## Running tests
 
