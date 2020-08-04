@@ -98,15 +98,15 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
         cli_host.run_windows_command(
             '''
     cd {0}
-    & .\\{1} /SILENT /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\\Cloudify"'''
+    & .\\{1} /SILENT /VERYSILENT /SUPPRESSMSGBOXES'''
             .format(work_dir, cli_installer_exe_name),
             powershell=True,
         )
 
         example = get_example_deployment(
-            manager_host, ssh_key, logger, url_key, test_config)
+            manager_host, ssh_key, logger, url_key, test_config,
+            vm=cli_host)
         example.use_windows(cli_host.username, cli_host.password)
-        example.inputs['path'] = '/tmp/{}'.format(url_key)
 
         logger.info('Copying blueprint to CLI host')
         remote_blueprint_path = work_dir + '\\Documents\\blueprint.yaml'
@@ -134,7 +134,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
                 'blueprint': remote_blueprint_path,
                 'inputs': remote_inputs_path,
                 'ssh_key': remote_ssh_key_path,
-                'cfy': 'C:\\Cloudify\\embedded\\Scripts\\cfy.exe',
+                'cfy': '"C:\\Program Files\\Cloudify CLI\\Scripts\\cfy.exe"',
             },
         }
     except Exception:
