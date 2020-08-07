@@ -343,7 +343,6 @@ def test_broker_management(brokers_and_manager, logger):
         'name': broker1.hostname,
         'is_external': False,
         'host': broker1.private_ip_address,
-        'node_id': broker1.get_node_id()
     }
     broker_2_nets = {'default': str(broker2.private_ip_address),
                      'testnet': '192.0.2.4'}
@@ -353,7 +352,6 @@ def test_broker_management(brokers_and_manager, logger):
         'name': broker2.hostname,
         'is_external': False,
         'host': broker2.private_ip_address,
-        'node_id': broker2.get_node_id()
     }
 
     logger.info('Confirming list functionality.')
@@ -363,12 +361,10 @@ def test_broker_management(brokers_and_manager, logger):
 
     logger.info('Confirming add functionality.')
     manager.run_command(
-        'cfy cluster brokers add {name} {ip} -n "{net}" '
-        '--node-id "{node_id}"'.format(
+        'cfy cluster brokers add {name} {ip} -n "{net}" '.format(
             name=broker2.hostname,
             ip=str(broker2.private_ip_address),
             net=json.dumps(broker_2_nets),
-            node_id=broker2.get_node_id()
         )
     )
     brokers_list = manager_list_brokers(manager)
