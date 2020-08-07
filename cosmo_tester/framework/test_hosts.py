@@ -299,15 +299,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             else:
                 return fabric_ssh.run(command, warn=warn_only)
 
-    def get_node_id(self):
-        node_id_parts = self.run_command(
-            'cfy_manager node get-id').stdout.split(': ')
-        if len(node_id_parts) < 2:
-            raise RuntimeError('Status reporter is not installed')
-        # This is used in the config.yaml, so can't be unicode
-        # (thanks, ruamel)
-        return str(node_id_parts[1].strip())
-
     def set_image_details(self, bootstrappable):
         pass
 

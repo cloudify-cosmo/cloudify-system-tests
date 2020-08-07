@@ -25,19 +25,16 @@ def test_remove_db_node(full_cluster, logger, ssh_key, test_config):
             db1.private_ip_address,
         )
     )
-    db3_node_id = db3.get_node_id()
     db3.run_command('cfy_manager remove --force')
 
     db1.run_command('cfy_manager dbs remove -a {}'.format(
         db3.private_ip_address,
     ))
 
-    mgr1.run_command('cfy_manager dbs remove -a {0} -i {1}'.format(
-        db3.private_ip_address, db3_node_id
-    ))
-    mgr2.run_command('cfy_manager dbs remove -a {0} -i {1}'.format(
-        db3.private_ip_address, db3_node_id
-    ))
+    mgr1.run_command('cfy_manager dbs remove -a {}'.format(
+        db3.private_ip_address))
+    mgr2.run_command('cfy_manager dbs remove -a {}'.format(
+        db3.private_ip_address))
 
     _check_db_count(mgr1, mgr2, db3, all_present=False)
 
@@ -65,13 +62,10 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
 
     logger.info('Adding extra DB')
     db3.bootstrap(blocking=True, restservice_expected=False)
-    db3_node_id = db3.get_node_id()
-    mgr1.run_command('cfy_manager dbs add -a {0} -i {1}'.format(
-        db3.private_ip_address, db3_node_id
-    ))
-    mgr2.run_command('cfy_manager dbs add -a {0} -i {1}'.format(
-        db3.private_ip_address, db3_node_id
-    ))
+    mgr1.run_command('cfy_manager dbs add -a {}'.format(
+        db3.private_ip_address))
+    mgr2.run_command('cfy_manager dbs add -a {}'.format(
+        db3.private_ip_address))
 
     _check_db_count(mgr1, mgr2)
 
