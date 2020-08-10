@@ -73,7 +73,8 @@ def _test_old_agent_stopped_after_agent_upgrade(ssh_key, module_tmpdir,
         )
 
         logger.info('Validating the old agent is indeed down')
-        _assert_agent_not_running(old_manager, vm, 'vm', example.tenant)
+        _assert_agent_not_running(old_manager, vm, 'vm', example.tenant,
+                                  windows='windows' in vm_os)
         old_manager.stop()
 
         example.manager = new_manager
@@ -86,12 +87,18 @@ def _test_old_agent_stopped_after_agent_upgrade(ssh_key, module_tmpdir,
         hosts.destroy(passed=passed)
 
 
-def _assert_agent_not_running(manager, vm, node_name, tenant):
+def _assert_agent_not_running(manager, vm, node_name, tenant, windows=False):
     with util.set_client_tenant(manager.client, tenant):
         node = manager.client.node_instances.list(node_id=node_name)[0]
     agent = node.runtime_properties['cloudify_agent']
-    ssh_command = 'sudo service cloudify-worker-{name} status'.format(
-        name=agent['name'],
-    )
-    response = vm.run_command(ssh_command, warn_only=True).stdout
-    assert 'inactive' in response
+
+    if windows:
+        service_state = vm.run_windows_command(
+            '(Get-Service {}).status'.format(agent['name']),
+            powershell=True).std_out
+        assert service_state.strip().lower() == 'stopped'
+    else:
+        response = vm.run_command(
+            'sudo service cloudify-worker-{} status'.format(agent['name']),
+            warn_only=True).stdout
+        assert 'inactive' in response.lower()
