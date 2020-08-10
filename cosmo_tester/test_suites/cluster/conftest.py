@@ -1,5 +1,4 @@
 import os
-import json
 import time
 
 import pytest
@@ -169,9 +168,6 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                                     high_security, tempdir, logger,
                                     test_config)
 
-        if len(managers) > 1:
-            _configure_status_reporters(managers, brokers, dbs,
-                                        skip_bootstrap_list, logger)
         if use_load_balancer:
             _bootstrap_lb_node(lb, managers, tempdir, logger)
 
@@ -350,7 +346,6 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     if pre_cluster_rabbit:
         rabbit_nodes = {
             broker.hostname: {
-                'node_id': broker.get_node_id(),
                 'networks': {
                     'default': str(broker.private_ip_address)
                 }
@@ -361,7 +356,6 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         broker = brokers[0]
         rabbit_nodes = {
             broker.hostname: {
-                'node_id': broker.get_node_id(),
                 'networks': {
                     'default': str(broker.private_ip_address)
                 }
@@ -407,7 +401,6 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
             db_nodes = {
                 db.hostname: {
                     'ip': str(db.private_ip_address),
-                    'node_id': db.get_node_id()
                 }
                 for db in dbs
                 if db.friendly_name not in skip_bootstrap_list
@@ -450,35 +443,6 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         cert=node.local_ca,
         protocol='https',
     )
-
-
-def _configure_status_reporters(managers, brokers, dbs, skip_bootstrap_list,
-                                logger):
-    logger.info('Configuring status reporters')
-    reporters_tokens = json.loads(
-        managers[0].run_command(
-            # We pipe through cat to get rid of unhelpful shell escape
-            # characters that cfy adds
-            'cfy_manager status-reporter get-tokens --json 2>/dev/null | cat'
-        ).stdout
-    )
-    managers_ip = ' '.join([manager.private_ip_address
-                            for manager in managers])
-
-    for broker in brokers:
-        if broker.friendly_name in skip_bootstrap_list:
-            continue
-        _configure_status_reporter(
-            broker, managers_ip, reporters_tokens['broker_status_reporter']
-        )
-
-    if len(dbs) > 1:
-        for db in dbs:
-            if db.friendly_name in skip_bootstrap_list:
-                continue
-            _configure_status_reporter(db,
-                                       managers_ip,
-                                       reporters_tokens['db_status_reporter'])
 
 
 def _bootstrap_lb_node(node, managers, tempdir, logger):
