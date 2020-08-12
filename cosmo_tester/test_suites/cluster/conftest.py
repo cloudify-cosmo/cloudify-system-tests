@@ -278,6 +278,8 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
     if node.friendly_name in skip_bootstrap_list:
         return
 
+    _add_monitoring_config(node)
+
     if pre_cluster_rabbit and rabbit_num == 1:
         node.bootstrap(blocking=True, restservice_expected=False)
     else:
@@ -330,6 +332,8 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
     if node.friendly_name in skip_bootstrap_list:
         return
+
+    _add_monitoring_config(node)
 
     node.bootstrap(blocking=False, restservice_expected=False)
 
@@ -429,6 +433,8 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
 
     upload_license = mgr_num == 1
 
+    _add_monitoring_config(node, manager=True)
+
     # We have to block on every manager
     node.bootstrap(blocking=True, restservice_expected=False,
                    upload_license=upload_license)
@@ -475,8 +481,29 @@ def _bootstrap_lb_node(node, managers, tempdir, logger):
     node.run_command('sudo systemctl restart haproxy')
 
 
-def _configure_status_reporter(node, managers_ip, token):
-    node.run_command(
-        'cfy_manager status-reporter configure --managers-ip {0} '
-        '--token {1} --ca-path {2}'.format(managers_ip, token, node.remote_ca)
-    )
+def _add_monitoring_config(node, manager=False):
+    """Add monitoring settings to config."""
+    monitoring_user = 'friendlymonitoringuser'
+    monitoring_pass = 'thisshouldbeareallystrongsecretpassword'
+    config = node.install_config
+
+    config['services_to_install'] = config.get(
+        'services_to_install', []) + ['monitoring_service']
+    config['prometheus'] = {
+        'credentials': {
+            'username': monitoring_user,
+            'password': monitoring_pass,
+        },
+        'cert_path': node.remote_cert,
+        'key_path': node.remote_key,
+        'ca_path': node.remote_ca,
+    }
+
+    if manager:
+        for section_name in ['rabbitmq', 'postgresql_client', 'manager']:
+            section = config[section_name] = config.get(section_name, {})
+            section['monitoring'] = {
+                'username': monitoring_user,
+                'password': monitoring_pass,
+            }
+            config[section_name] = section
