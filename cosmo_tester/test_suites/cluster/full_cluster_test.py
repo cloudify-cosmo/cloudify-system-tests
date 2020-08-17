@@ -1,4 +1,5 @@
 import time
+from os.path import join, dirname
 
 import retrying
 
@@ -219,6 +220,50 @@ def test_workflow_resume_manager_failover(minimal_cluster,
                 if execution['workflow_id'] == 'install']
     assert len(installs) == 1
     assert installs[0]['status'] == 'completed'
+
+
+def test_replace_certificates_on_cluster(full_cluster, logger, ssh_key,
+                                         test_config):
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+
+    example = get_example_deployment(mgr1, ssh_key, logger, 'replace_certs',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
+    _validate_cluster_and_agents(mgr1, example.tenant)
+
+    for host in broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2:
+        mgr1.run_command('cfy_manager generate-test-cert'
+                         ' -s {0},{1}'.format(host.private_ip_address,
+                                              host.hostname))
+    replace_certs_config_path = '~/certificates_replacement_config.yaml'
+
+    _create_replace_certs_config_file(mgr1, replace_certs_config_path,
+                                      ssh_key.private_key_path)
+
+    mgr1.run_command('cfy certificates replace -i {0} -v'.format(
+        replace_certs_config_path))
+    _validate_cluster_and_agents(mgr1, example.tenant)
+
+    example.uninstall()
+
+
+def _create_replace_certs_config_file(manager,
+                                      replace_certs_config_path,
+                                      local_ssh_key_path):
+    script_name = 'create_replace_certs_config_script.py'
+    remote_script_path = '/tmp/' + script_name
+    remote_ssh_key_path = '~/.ssh/ssh_key.pem'
+
+    manager.put_remote_file(remote_ssh_key_path, local_ssh_key_path)
+    manager.run_command('cfy profiles set --ssh-user {0} --ssh-key {1}'.format(
+        manager.username, remote_ssh_key_path))
+
+    manager.put_remote_file(remote_script_path,
+                            join(dirname(__file__), script_name))
+    command = '/opt/cfy/bin/python {0} --output {1}'.format(
+        remote_script_path, replace_certs_config_path)
+    manager.run_command(command)
 
 
 def _wait_for_healthy_broker_cluster(client, timeout=15):
