@@ -33,14 +33,15 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     from_source_tenant = 'from_source'
-    standard_deployment_tenant = 'default_tenant'
+    win_tenant = 'default_tenant'
+    lin_tenant = 'lin_tenant'
     noinstall_tenant = 'noinstall'
 
-    install_tenants = [from_source_tenant, standard_deployment_tenant]
-    tenants = [from_source_tenant, standard_deployment_tenant,
+    install_tenants = [from_source_tenant, win_tenant, lin_tenant]
+    tenants = [from_source_tenant, win_tenant, lin_tenant,
                noinstall_tenant]
 
-    old_manager, new_manager, vm = hosts.instances
+    old_manager, new_manager, win_vm, lin_vm = hosts.instances
 
     confirm_manager_empty(new_manager)
 
@@ -56,15 +57,22 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         using_agent=False, upload_plugin=False,
     )
 
-    # A 'normal' deployment
-    example_mappings[standard_deployment_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, standard_deployment_tenant, test_config,
-        vm,
+    # A 'normal' windows deployment
+    example_mappings[win_tenant] = get_example_deployment(
+        old_manager, ssh_key, logger, win_tenant, test_config,
+        win_vm, suffix='_win',
+    )
+    example_mappings[win_tenant].use_windows(win_vm.username, win_vm.password)
+
+    # A 'normal' linux deployment
+    example_mappings[lin_tenant] = get_example_deployment(
+        old_manager, ssh_key, logger, lin_tenant, test_config,
+        lin_vm, suffix='_lin',
     )
 
     # A deployment that hasn't been installed
     example_mappings[noinstall_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, noinstall_tenant, test_config, vm,
+        old_manager, ssh_key, logger, noinstall_tenant, test_config, lin_vm,
     )
 
     if old_manager.image_type.startswith('4'):
