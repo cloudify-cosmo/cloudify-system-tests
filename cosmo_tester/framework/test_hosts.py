@@ -135,7 +135,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
 
     def get_windows_remote_file_content(self, path):
         return self.run_windows_command(
-            'Get-Content -Path {}'.format(path)).std_out
+            'Get-Content -Path {}'.format(path),
+            powershell=True).std_out
 
     def put_windows_remote_file_content(self, path, content):
         self.run_windows_command(
