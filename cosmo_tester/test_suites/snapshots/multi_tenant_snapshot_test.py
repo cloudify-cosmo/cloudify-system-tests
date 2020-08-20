@@ -6,7 +6,6 @@ from cosmo_tester.test_suites.snapshots import (
     check_deployments,
     verify_services_status,
     change_salt_on_new_manager,
-    check_from_source_plugin,
     check_plugins,
     confirm_manager_empty,
     create_snapshot,
@@ -149,11 +148,6 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     check_tenant_secrets(new_manager, tenants, old_secrets, logger)
     check_tenant_plugins(new_manager, old_plugins, tenants, logger)
     check_tenant_deployments(new_manager, old_deployments, tenants, logger)
-    check_tenant_source_plugins(
-        new_manager, 'test_plugin',
-        example_mappings[from_source_tenant].deployment_id,
-        [from_source_tenant], logger,
-    )
 
     new_manager.run_command('cfy profiles set --manager-password {}'.format(
                             CHANGED_ADMIN_PASSWORD))
@@ -244,19 +238,6 @@ def check_tenant_deployments(manager, old_deployments, tenants, logger):
         check_deployments(manager, old_deployments[tenant], logger,
                           tenant=tenant)
     logger.info('Deployments are correct for all tenants.')
-
-
-def check_tenant_source_plugins(manager, plugin, deployment_id, tenants,
-                                logger):
-    logger.info(
-        'Checking from-source plugin installs for tenants: {tenants}'.format(
-            tenants=', '.join(tenants),
-        )
-    )
-    for tenant in tenants:
-        check_from_source_plugin(manager, plugin, deployment_id, logger,
-                                 tenant)
-    logger.info('Plugins installed from source were installed correctly.')
 
 
 def create_tenants(manager, logger, tenants=('tenant1', 'tenant2')):
