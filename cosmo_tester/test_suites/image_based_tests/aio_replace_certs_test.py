@@ -1,5 +1,6 @@
-from os.path import join, dirname
+from os.path import join
 
+from cosmo_tester.framework.util import get_resource_path
 from cosmo_tester.framework.examples import get_example_deployment
 
 
@@ -33,16 +34,16 @@ def _create_new_certs(manager):
 def _create_replace_certs_config_file(manager,
                                       replace_certs_config_path,
                                       local_ssh_key_path):
-    script_name = 'aio_create_replace_certs_config_script.py'
-    remote_script_path = '/tmp/' + script_name
+    remote_script_path = join('/tmp', 'create_replace_certs_config_script.py')
     remote_ssh_key_path = '~/.ssh/ssh_key.pem'
 
     manager.put_remote_file(remote_ssh_key_path, local_ssh_key_path)
     manager.run_command('cfy profiles set --ssh-user {0} --ssh-key {1}'.format(
         manager.username, remote_ssh_key_path))
 
-    manager.put_remote_file(remote_script_path,
-                            join(dirname(__file__), script_name))
+    local_script_path = get_resource_path(
+        'scripts/create_replace_certs_config_script.py')
+    manager.put_remote_file(remote_script_path, local_script_path)
     command = '/opt/cfy/bin/python {0} --output {1} --host-ip {2}'.format(
         remote_script_path, replace_certs_config_path,
         manager.private_ip_address)
