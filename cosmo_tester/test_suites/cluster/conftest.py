@@ -55,11 +55,20 @@ def brokers3_and_manager(ssh_key, module_tmpdir, test_config, logger,
 
 
 @pytest.fixture()
-def full_cluster(ssh_key, module_tmpdir, test_config, logger, request):
+def full_cluster_ips(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
                            test_config, logger, request,
                            broker_count=3, db_count=3, manager_count=2,
                            pre_cluster_rabbit=True):
+        yield _vms
+
+
+@pytest.fixture()
+def full_cluster_names(ssh_key, module_tmpdir, test_config, logger, request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir,
+                           test_config, logger, request,
+                           broker_count=3, db_count=3, manager_count=2,
+                           pre_cluster_rabbit=True, use_hostnames=True):
         yield _vms
 
 
@@ -111,7 +120,8 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                # during the bootstrap.
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
-               pre_cluster_rabbit=False, high_security=True):
+               pre_cluster_rabbit=False, high_security=True,
+               use_hostnames=False):
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
     hosts = Hosts(
@@ -138,6 +148,21 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             node.hostname = str(
                 node.run_command('hostname -s').stdout.strip())
 
+        if use_hostnames:
+            hosts_entries = ['\n# Added for hostname test']
+            hosts_entries.extend(
+                '{ip} {name}'.format(ip=node.private_ip_address,
+                                     name=node.hostname)
+                for node in hosts.instances
+            )
+            hosts_entries = '\n'.join(hosts_entries)
+            for node in hosts.instances:
+                node.run_command(
+                   "echo '{hosts}' | sudo tee -a /etc/hosts".format(
+                       hosts=hosts_entries,
+                   )
+                )
+
         brokers = hosts.instances[:broker_count]
         dbs = hosts.instances[broker_count:broker_count + db_count]
         managers = hosts.instances[broker_count + db_count:
@@ -148,11 +173,11 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
         for node_num, node in enumerate(brokers, start=1):
             _bootstrap_rabbit_node(node, node_num, brokers,
                                    skip_bootstrap_list, pre_cluster_rabbit,
-                                   tempdir, logger)
+                                   tempdir, logger, use_hostnames)
 
         for node_num, node in enumerate(dbs, start=1):
             _bootstrap_db_node(node, node_num, dbs, skip_bootstrap_list,
-                               high_security, tempdir, logger)
+                               high_security, tempdir, logger, use_hostnames)
 
         # Ensure all backend nodes are up before installing managers
         for node in brokers + dbs:
@@ -166,7 +191,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             _bootstrap_manager_node(node, node_num, dbs, brokers,
                                     skip_bootstrap_list, pre_cluster_rabbit,
                                     high_security, tempdir, logger,
-                                    test_config)
+                                    test_config, use_hostnames)
 
         if use_load_balancer:
             _bootstrap_lb_node(lb, managers, tempdir, logger)
@@ -241,7 +266,8 @@ def _base_prep(node, tempdir):
 
 
 def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
-                           pre_cluster_rabbit, tempdir, logger):
+                           pre_cluster_rabbit, tempdir, logger,
+                           use_hostnames):
     node.friendly_name = 'rabbit' + str(rabbit_num)
 
     _base_prep(node, tempdir)
@@ -256,7 +282,10 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
         rabbit_nodes = {
             broker.hostname: {
                 'networks': {
-                    'default': str(broker.private_ip_address)
+                    'default': (
+                        broker.hostname if use_hostnames else
+                        str(broker.private_ip_address)
+                    )
                 }
             }
             for broker in brokers
@@ -287,7 +316,7 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
 
 
 def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
-                       tempdir, logger):
+                       tempdir, logger, use_hostnames):
     node.friendly_name = 'db' + str(db_num)
 
     _base_prep(node, tempdir)
@@ -306,8 +335,15 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
     server_conf = node.install_config['postgresql_server']
     if len(dbs) > 1:
-        db_nodes = {db.hostname: {'ip': str(db.private_ip_address)}
-                    for db in dbs}
+        db_nodes = {
+            db.hostname: {
+                'ip': (
+                    db.hostname if use_hostnames else
+                    str(db.private_ip_address)
+                )
+            }
+            for db in dbs
+        }
         server_conf['cluster'] = {
             'nodes': db_nodes,
             'etcd': {
@@ -340,7 +376,7 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
 def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                             pre_cluster_rabbit, high_security, tempdir,
-                            logger, test_config):
+                            logger, test_config, use_hostnames):
     node.friendly_name = 'manager' + str(mgr_num)
 
     _base_prep(node, tempdir)
@@ -351,7 +387,10 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         rabbit_nodes = {
             broker.hostname: {
                 'networks': {
-                    'default': str(broker.private_ip_address)
+                    'default': (
+                        broker.hostname if use_hostnames else
+                        str(broker.private_ip_address)
+                    )
                 }
             }
             for broker in brokers
@@ -361,7 +400,10 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         rabbit_nodes = {
             broker.hostname: {
                 'networks': {
-                    'default': str(broker.private_ip_address)
+                    'default': (
+                        broker.hostname if use_hostnames else
+                        str(broker.private_ip_address)
+                    )
                 }
             }
         }
@@ -404,7 +446,10 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         if len(dbs) > 1:
             db_nodes = {
                 db.hostname: {
-                    'ip': str(db.private_ip_address),
+                    'ip': (
+                        db.hostname if use_hostnames else
+                        str(db.private_ip_address)
+                    ),
                 }
                 for db in dbs
                 if db.friendly_name not in skip_bootstrap_list
