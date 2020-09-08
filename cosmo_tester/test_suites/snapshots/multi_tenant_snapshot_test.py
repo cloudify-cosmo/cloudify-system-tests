@@ -77,15 +77,18 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     if old_manager.image_type.startswith('4'):
         # 5.x introduced new types in the types.yaml. so we have to use
-        # an example blueprint with an older types.yaml for older managers
+        # an example blueprint with an older types.yaml for older managers.
+        # 4.3.3 managers can't handle 4.6 blueprints, so it has to use older
+        # blueprint conventions.
+        ver = '4_3_3' if old_manager.image_type == '4.3.3' else '4_6'
         for tenant, example in example_mappings.items():
             if tenant == from_source_tenant:
                 example.blueprint_file = get_resource_path(
-                    'blueprints/compute/central_executor_4_6.yaml'
+                    'blueprints/compute/central_executor_{}.yaml'.format(ver)
                 )
             else:
                 example.blueprint_file = get_resource_path(
-                    'blueprints/compute/example_4_6.yaml'
+                    'blueprints/compute/example_{}.yaml'.format(ver)
                 )
 
     for tenant in install_tenants:
