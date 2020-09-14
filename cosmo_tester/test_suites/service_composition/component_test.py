@@ -24,7 +24,7 @@ def test_component(image_based_manager, ssh_key, logger, test_config):
         # verify that uninstall of app removes the infra + its deployment
         logger.info('Testing component uninstall.')
         app.uninstall()
-        assert len(app.manager.client.deployments.list()) == 1
+        assert len(app.manager.client.deployments.list()) == 0
 
 
 def test_nested_components(image_based_manager, ssh_key, logger, test_config):

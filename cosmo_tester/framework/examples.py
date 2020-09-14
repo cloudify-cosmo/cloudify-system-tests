@@ -186,8 +186,9 @@ class BaseExample(object):
             if instance.node_id == 'file':
                 file_path = path + '_' + instance.id
                 if self.windows:
+                    # Windows data has to be .strip()ed because of CRLF ending
                     data = self.example_host.get_windows_remote_file_content(
-                        file_path)
+                        file_path).strip()
                 else:
                     data = self.example_host.get_remote_file_content(
                         file_path)

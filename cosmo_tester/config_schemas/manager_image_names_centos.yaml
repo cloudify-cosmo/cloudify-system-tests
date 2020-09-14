@@ -20,6 +20,6 @@ installer:
 "4_4":
   description: Name of manager image for 4.4. All non master images are only used for upgrade (snapshot) tests.
   default: cloudify-manager-premium-4.4
-"4_3_1":
-  description: Name of manager image for 4.3.1. All non master images are only used for upgrade (snapshot) tests.
-  default: cloudify-manager-premium-4.3.1
+"4_3_3":
+  description: Name of manager image for 4.3.3. All non master images are only used for upgrade (snapshot) tests.
+  default: cloudify-manager-premium-4.3.3

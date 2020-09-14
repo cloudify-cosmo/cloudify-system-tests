@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import socket
 import time
 import uuid
 import yaml
@@ -135,7 +136,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
 
     def get_windows_remote_file_content(self, path):
         return self.run_windows_command(
-            'Get-Content -Path {}'.format(path)).std_out
+            'Get-Content -Path {}'.format(path),
+            powershell=True).std_out
 
     def put_windows_remote_file_content(self, path, content):
         self.run_windows_command(
@@ -192,7 +194,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             try:
                 self.run_command('echo Still up...')
                 time.sleep(3)
-            except SSHException:
+            except (SSHException, socket.timeout):
                 # Errors like 'Connection reset by peer' can occur during the
                 # shutdown, but we should wait a little longer to give other
                 # services time to stop
@@ -452,7 +454,7 @@ class _CloudifyManager(VM):
 
     @property
     def api_version(self):
-        if self.image_type == '4.3.1':
+        if self.image_type == '4.3.3':
             return 'v3'
         else:
             return 'v3.1'
@@ -475,7 +477,7 @@ class _CloudifyManager(VM):
         return config_file
 
     def apply_license(self):
-        if self.image_type in ['4.3.1', '4.4', '4.5', '4.5.5']:
+        if self.image_type in ['4.3.3', '4.4', '4.5', '4.5.5']:
             # Licenses are not supported on these releases
             return
         license = util.get_resource_path('test_valid_paying_license.yaml')
@@ -658,7 +660,7 @@ class _CloudifyManager(VM):
 
 def get_image(version, test_config):
     supported = [
-        '4.3.1', '4.4', '4.5', '4.5.5', '4.6', '5.0.5', 'master',
+        '4.3.3', '4.4', '4.5', '4.5.5', '4.6', '5.0.5', 'master',
         'centos',
     ]
     if version not in supported:

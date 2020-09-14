@@ -1,4 +1,5 @@
 import time
+from os.path import join
 
 import retrying
 
@@ -13,13 +14,34 @@ from cosmo_tester.test_suites.snapshots import (
     restore_snapshot,
 )
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import set_client_tenant
+from cosmo_tester.framework.util import set_client_tenant, get_resource_path
 
 
-def test_full_cluster(full_cluster, logger, ssh_key, test_config):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
 
-    example = get_example_deployment(mgr1, ssh_key, logger, 'full_cluster',
+    example = get_example_deployment(mgr1, ssh_key, logger,
+                                     'full_cluster_ips',
+                                     test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
+
+    logger.info('Creating snapshot')
+    snapshot_id = 'cluster_test_snapshot'
+    create_snapshot(mgr1, snapshot_id, logger)
+
+    logger.info('Restoring snapshot')
+    restore_snapshot(mgr2, snapshot_id, logger, force=True,
+                     cert_path=mgr2.local_ca)
+
+    check_managers(mgr1, mgr2, example)
+
+
+def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_names
+
+    example = get_example_deployment(mgr1, ssh_key, logger,
+                                     'full_cluster_names',
                                      test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
@@ -221,6 +243,56 @@ def test_workflow_resume_manager_failover(minimal_cluster,
     assert installs[0]['status'] == 'completed'
 
 
+def test_replace_certificates_on_cluster(full_cluster, logger, ssh_key,
+                                         test_config, module_tmpdir):
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+
+    example = get_example_deployment(mgr1, ssh_key, logger,
+                                     'cluster_replace_certs', test_config)
+    example.inputs['server_ip'] = mgr1.ip_address
+    example.upload_and_verify_install()
+    _validate_cluster_and_agents(mgr1, example.tenant)
+
+    for host in broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2:
+        key_path = join('~', '.cloudify-test-ca',
+                        host.private_ip_address + '.key')
+        mgr1.run_command('cfy_manager generate-test-cert'
+                         ' -s {0},{1}'.format(host.private_ip_address,
+                                              host.ip_address))
+        mgr1.run_command('chmod 444 {0}'.format(key_path), use_sudo=True)
+    replace_certs_config_path = '~/certificates_replacement_config.yaml'
+    _create_replace_certs_config_file(mgr1, replace_certs_config_path,
+                                      ssh_key.private_key_path)
+
+    local_new_ca_path = join(str(module_tmpdir), 'new_ca.crt')
+    mgr1.get_remote_file('~/.cloudify-test-ca/ca.crt', local_new_ca_path)
+    mgr1.client._client.cert = local_new_ca_path
+
+    mgr1.run_command('cfy certificates replace -i {0} -v'.format(
+        replace_certs_config_path))
+
+    _validate_cluster_and_agents(mgr1, example.tenant)
+    example.uninstall()
+
+
+def _create_replace_certs_config_file(manager,
+                                      replace_certs_config_path,
+                                      local_ssh_key_path):
+    remote_script_path = join('/tmp', 'create_replace_certs_config_script.py')
+    remote_ssh_key_path = '~/.ssh/ssh_key.pem'
+
+    manager.put_remote_file(remote_ssh_key_path, local_ssh_key_path)
+    manager.run_command('cfy profiles set --ssh-user {0} --ssh-key {1}'.format(
+        manager.username, remote_ssh_key_path))
+
+    local_script_path = get_resource_path(
+        'scripts/create_replace_certs_config_script.py')
+    manager.put_remote_file(remote_script_path, local_script_path)
+    command = '/opt/cfy/bin/python {0} --output {1} --cluster'.format(
+        remote_script_path, replace_certs_config_path)
+    manager.run_command(command)
+
+
 def _wait_for_healthy_broker_cluster(client, timeout=15):
     for _ in range(timeout):
         time.sleep(2)
@@ -260,8 +332,8 @@ def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
     assert connection_established   # error if no connection on rabbit port
 
 
-def test_cluster_status(full_cluster, logger, module_tmpdir):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+def test_cluster_status(full_cluster_ips, logger, module_tmpdir):
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
 
     _assert_cluster_status(mgr1.client)
     _verify_status_when_syncthing_inactive(mgr1, mgr2, logger)

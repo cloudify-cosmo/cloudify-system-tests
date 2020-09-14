@@ -62,27 +62,6 @@ def stop_manager(manager, logger):
     manager.stop()
 
 
-def check_from_source_plugin(manager, plugin, deployment_id, logger,
-                             tenant='default_tenant'):
-    with manager.ssh() as fabric_ssh:
-        _log(
-            'Checking plugin {plugin} was installed from source for '
-            'deployment {deployment}'.format(
-                plugin=plugin,
-                deployment=deployment_id,
-            ),
-            logger,
-            tenant,
-        )
-        path = FROM_SOURCE_PLUGIN_PATH.format(
-            plugin=plugin,
-            deployment=deployment_id,
-            tenant=tenant,
-        )
-        fabric_ssh.sudo('test -d {path}'.format(path=path))
-        logger.info('Plugin installed from source successfully.')
-
-
 def confirm_manager_empty(manager):
     assert get_plugins_list(manager) == []
     assert get_deployments_list(manager) == []
@@ -277,22 +256,6 @@ def check_plugins(manager, old_plugins, logger, tenant='default_tenant'):
     _log('Checking plugins', logger, tenant)
     plugins = get_plugins_list(manager, tenant)
     assert plugins == old_plugins
-
-    # Now make sure they're correctly installed
-    with manager.ssh() as fabric_ssh:
-        for plugin_name, plugin_version, _ in plugins:
-            path = INSTALLED_PLUGIN_PATH.format(
-                tenant=tenant,
-                name=plugin_name,
-                version=plugin_version,
-            )
-            logger.info('Checking plugin {name} is in {path}'.format(
-                name=plugin_name,
-                path=path,
-            ))
-            fabric_ssh.sudo('test -d {path}'.format(path=path))
-            logger.info('Plugin is correctly installed.')
-
     _log('Plugins as expected', logger, tenant)
 
 
