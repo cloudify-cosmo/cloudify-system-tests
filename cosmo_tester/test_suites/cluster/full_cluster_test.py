@@ -303,6 +303,9 @@ def _wait_for_healthy_broker_cluster(client, timeout=15):
     raise TimeoutException
 
 
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
 def _validate_cluster_and_agents(manager,
                                  tenant,
                                  expected_broker_status='OK',
@@ -345,13 +348,20 @@ def test_cluster_status(full_cluster_ips, logger, module_tmpdir):
 def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     logger.info('Stopping syncthing on one of the manager nodes')
     mgr1.run_command('systemctl stop cloudify-syncthing', use_sudo=True)
+    _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger)
+
+
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger):
+    logger.info('Checking status reporter with syncthing down...')
 
     # Syncthing is down, mgr1 in Fail state
     manager_status = mgr1.client.manager.get_status()
     assert manager_status['status'] == ServiceStatus.FAIL
     assert manager_status['services']['File Sync Service']['status'] == \
         NodeServiceStatus.INACTIVE
-    time.sleep(10)
 
     # mgr2 is the last healthy manager in a cluster
     cluster_status = mgr2.client.cluster_status.get_status()
@@ -366,7 +376,6 @@ def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     # Back to healthy cluster
     logger.info('Starting syncthing on the failed manager')
     mgr1.run_command('systemctl start cloudify-syncthing', use_sudo=True)
-    time.sleep(10)
     _assert_cluster_status(mgr1.client)
 
 
@@ -398,35 +407,46 @@ def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
                                         client):
     logger.info('Stopping one of the rabbit nodes')
     broker1.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
-    time.sleep(10)
 
-    cluster_status = client.cluster_status.get_status()
-    broker_service = cluster_status['services']['broker']
-    assert cluster_status['status'] == ServiceStatus.DEGRADED
-    assert broker_service['status'] == ServiceStatus.DEGRADED
-    assert broker_service['nodes'][broker1.hostname]['status'] == \
-        ServiceStatus.FAIL
-    manager_status = client.manager.get_status()
-    assert manager_status['status'] == ServiceStatus.HEALTHY
+    _validate_status_when_one_rabbit_inactive(broker1, logger, client)
 
     logger.info('Stopping the other rabbit nodes')
     broker2.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
     broker3.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
-    time.sleep(10)
 
+    _validate_status_when_all_rabbits_inactive(logger, client)
+
+
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _validate_status_when_one_rabbit_inactive(broker, logger, client):
+    logger.info('Checking status reporter with one rabbit down...')
+    cluster_status = client.cluster_status.get_status()
+    broker_service = cluster_status['services']['broker']
+    assert cluster_status['status'] == ServiceStatus.DEGRADED
+    assert broker_service['status'] == ServiceStatus.DEGRADED
+    assert broker_service['nodes'][broker.hostname]['status'] == \
+        ServiceStatus.FAIL
+    manager_status = client.manager.get_status()
+    assert manager_status['status'] == ServiceStatus.HEALTHY
+
+
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _validate_status_when_all_rabbits_inactive(logger, client):
+    logger.info('Checking status reporter with all rabbits down...')
     cluster_status = client.cluster_status.get_status()
     assert cluster_status['status'] == 'Fail'
     assert cluster_status['services']['broker']['status'] == ServiceStatus.FAIL
-    assert cluster_status['services']['manager']['status'] == \
-        ServiceStatus.FAIL
-    assert cluster_status['services']['db']['status'] == ServiceStatus.HEALTHY
     manager_status = client.manager.get_status()
     assert manager_status['status'] == 'Fail'
 
 
-# It sometimes takes a little time for the status reporter to return healthy
-# We'll allow up to a minute in case of slow test platform
-@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
 def _assert_cluster_status(client):
     assert client.cluster_status.get_status()[
         'status'] == ServiceStatus.HEALTHY
