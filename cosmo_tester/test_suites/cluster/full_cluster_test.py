@@ -208,7 +208,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     time.sleep(5)
     _validate_cluster_and_agents(lb, example.tenant,
                                  expected_managers_status='Degraded',
-                                 agent_validation_manager=validate_manager)
+                                 agent_validation_manager=mgr1)
 
     example.uninstall()
 
