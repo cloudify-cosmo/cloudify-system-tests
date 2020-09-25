@@ -149,18 +149,19 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                                ssh_key, test_config):
     broker, db, mgr1, mgr2, mgr3, lb = cluster_with_lb
 
+    lb.client._client.cert = lb.local_ca
     lb.wait_for_manager()
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(lb, example.tenant)
+    _validate_cluster_and_agents(lb, example.tenant,
+                                 agent_validation_manager=mgr1)
 
     # get agent's manager node
     agent_host = lb.client.agents.list(_all_tenants=True)[0]['id']
 
-    lb.client._client.cert = lb.local_ca
     with set_client_tenant(lb.client, example.tenant):
         node_instances = lb.client.node_instances.list().items
     agent_manager_ip = None
@@ -175,20 +176,29 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
             agent_mgr = manager
             break
 
+    validate_manager = None
+    for manager in [mgr1, mgr2, mgr3]:
+        if manager != agent_mgr:
+            validate_manager = manager
+            break
+    assert validate_manager, 'Could not find manager for validation.'
+
     # stop the manager connected to the agent
     agent_mgr.run_command('cfy_manager stop')
 
     lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
     _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded')
+                                 expected_managers_status='Degraded',
+                                 agent_validation_manager=validate_manager)
 
     # restart the manager connected to the agent
     with agent_mgr.ssh() as manager_ssh:
         manager_ssh.run('cfy_manager start')
 
     time.sleep(5)
-    _validate_cluster_and_agents(lb, example.tenant)
+    _validate_cluster_and_agents(lb, example.tenant,
+                                 agent_validation_manager=validate_manager)
 
     # stop two managers
     mgr2.run_command('cfy_manager stop')
@@ -197,7 +207,8 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     lb.wait_for_manager()
     time.sleep(5)
     _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded')
+                                 expected_managers_status='Degraded',
+                                 agent_validation_manager=validate_manager)
 
     example.uninstall()
 
@@ -232,15 +243,25 @@ def test_workflow_resume_manager_failover(minimal_cluster,
     executing_manager.run_command('cfy_manager stop')
     manager_failover_time = time.time()
     assert manager_failover_time - execution_start_time < 60
+    # It'll take at least 60 seconds because we told the sleep to be that long
+    logger.info('Giving install workflow time to execute (60 seconds)...')
     time.sleep(60)
 
     # verify on the second manager that the execution completed successfully
-    with set_client_tenant(other_manager.client, example.tenant):
-        executions = other_manager.client.executions.list()
+    _check_execution_completed(other_manager, example, logger)
+
+
+# Allow up to 30 seconds in case the platform is being slow
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _check_execution_completed(manager, example, logger):
+    logger.info('Checking whether install workflow has finished.')
+    with set_client_tenant(manager.client, example.tenant):
+        executions = manager.client.executions.list()
     installs = [execution for execution in executions
                 if execution['workflow_id'] == 'install']
     assert len(installs) == 1
-    assert installs[0]['status'] == 'completed'
+    assert installs[0]['status'] == 'terminated'
+    logger.info('Install workflow complete!')
 
 
 def test_replace_certificates_on_cluster(full_cluster, logger, ssh_key,
@@ -309,8 +330,11 @@ def _wait_for_healthy_broker_cluster(client, timeout=15):
 def _validate_cluster_and_agents(manager,
                                  tenant,
                                  expected_broker_status='OK',
-                                 expected_managers_status='OK'):
-    validate_agents = manager.run_command(
+                                 expected_managers_status='OK',
+                                 agent_validation_manager=None):
+    if not agent_validation_manager:
+        agent_validation_manager = manager
+    validate_agents = agent_validation_manager.run_command(
         'cfy agents validate --tenant-name {}'.format(tenant)).stdout
     assert 'Task succeeded' in validate_agents
 
