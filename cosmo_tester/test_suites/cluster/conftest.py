@@ -419,7 +419,8 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         'ca_path': '/tmp/ca.crt',
         'cluster_members': rabbit_nodes,
     }
-    node.install_config['services_to_install'] = ['manager_service']
+    node.install_config['services_to_install'] = ['manager_service',
+                                                  'entropy_service']
 
     if high_security:
         node.install_config['ssl_inputs'] = {
