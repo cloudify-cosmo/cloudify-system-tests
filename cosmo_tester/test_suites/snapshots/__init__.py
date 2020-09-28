@@ -25,11 +25,9 @@ BASE_PLUGIN_PATH = '/opt/mgmtworker/env/plugins/{tenant}/'
 INSTALLED_PLUGIN_PATH = BASE_PLUGIN_PATH + '{name}-{version}'
 FROM_SOURCE_PLUGIN_PATH = BASE_PLUGIN_PATH + '{deployment}-{plugin}'
 TENANT_DEPLOYMENTS_PATH = (
-    '/opt/mgmtworker/work/deployments/{tenant}'
+    '/opt/manager/resources/deployments/{tenant}'
 )
-DEPLOYMENT_ENVIRONMENT_PATH = (
-    '/opt/mgmtworker/work/deployments/{tenant}/{name}'
-)
+DEPLOYMENT_ENVIRONMENT_PATH = TENANT_DEPLOYMENTS_PATH + '/{name}'
 CHANGED_ADMIN_PASSWORD = 'changedmin'
 
 # These manager versions support multiple tenant snapshot restores in premium
