@@ -228,7 +228,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def get_remote_file(self, remote_path, local_path):
         """ Dump the contents of the remote file into the local path """
         # Similar to the way fabric1 did it
-        remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
+        remote_tmp = '/tmp/' + hashlib.sha1(
+            remote_path.encode('utf-8')).hexdigest()
         self.run_command(
             'cp {} {}'.format(remote_path, remote_tmp),
             use_sudo=True,
@@ -247,7 +248,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def put_remote_file(self, remote_path, local_path):
         """ Dump the contents of the local file into the remote path """
 
-        remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
+        remote_tmp = '/tmp/' + hashlib.sha1(
+            remote_path.encode('utf-8')).hexdigest()
         self.run_command(
             'rm -rf {}'.format(remote_tmp),
             use_sudo=True,
