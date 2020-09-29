@@ -167,7 +167,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             host=self.ip_address,
             user=self.username,
             connect_kwargs={
-                'key_filename': self.private_key_path,
+                'key_filename': [self.private_key_path],
             },
             port=22,
             connect_timeout=3,
