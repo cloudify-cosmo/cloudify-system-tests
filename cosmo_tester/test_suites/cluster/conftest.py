@@ -113,6 +113,14 @@ def minimal_cluster(ssh_key, module_tmpdir, test_config, logger,
         yield _vms
 
 
+@pytest.fixture()
+def three_nodes_cluster(ssh_key, module_tmpdir, test_config, logger, request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request,
+                           pre_cluster_rabbit=True, three_nodes_cluster=True):
+        yield _vms
+
+
 def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,
@@ -121,7 +129,10 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
                pre_cluster_rabbit=False, high_security=True,
-               use_hostnames=False):
+               use_hostnames=False, three_nodes_cluster=False):
+    if three_nodes_cluster:
+        # If small_cluster == True, the services' counts will be ignored
+        broker_count = manager_count = db_count = 1
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
     hosts = Hosts(
@@ -163,10 +174,13 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                    )
                 )
 
-        brokers = hosts.instances[:broker_count]
-        dbs = hosts.instances[broker_count:broker_count + db_count]
-        managers = hosts.instances[broker_count + db_count:
-                                   broker_count + db_count + manager_count]
+        if three_nodes_cluster:
+            brokers = dbs = managers = hosts.instances
+        else:
+            brokers = hosts.instances[:broker_count]
+            dbs = hosts.instances[broker_count:broker_count + db_count]
+            managers = hosts.instances[broker_count + db_count:
+                                       broker_count + db_count + manager_count]
         if use_load_balancer:
             lb = hosts.instances[broker_count + db_count + manager_count]
 
