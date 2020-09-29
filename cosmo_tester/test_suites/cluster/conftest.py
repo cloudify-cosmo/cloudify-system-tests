@@ -130,17 +130,14 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                # and use postgres client certs.
                pre_cluster_rabbit=False, high_security=True,
                use_hostnames=False, three_nodes_cluster=False):
-    if three_nodes_cluster:
-        # If small_cluster == True, the services' counts will be ignored
-        broker_count = manager_count = db_count = 1
+    number_of_instances = (3 if three_nodes_cluster
+                           else broker_count + db_count + manager_count)
+    number_of_instances = number_of_instances + (1 if use_load_balancer else 0)
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
     hosts = Hosts(
         ssh_key, module_tmpdir, test_config, logger, request,
-        number_of_instances=broker_count + db_count + manager_count + (
-            1 if use_load_balancer else 0
-        ),
-        bootstrappable=True)
+        number_of_instances=number_of_instances, bootstrappable=True)
 
     tempdir = hosts._tmpdir
 
@@ -182,7 +179,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             managers = hosts.instances[broker_count + db_count:
                                        broker_count + db_count + manager_count]
         if use_load_balancer:
-            lb = hosts.instances[broker_count + db_count + manager_count]
+            lb = hosts.instances[number_of_instances]
 
         for node_num, node in enumerate(brokers, start=1):
             _bootstrap_rabbit_node(node, node_num, brokers,
