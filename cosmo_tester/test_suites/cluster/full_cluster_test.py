@@ -359,7 +359,7 @@ def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
     assert connection_established   # error if no connection on rabbit port
 
 
-def test_cluster_status(full_cluster_ips, logger, module_tmpdir):
+def test_full_cluster_status(full_cluster_ips, logger, module_tmpdir):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
 
     _assert_cluster_status(mgr1.client)
@@ -367,6 +367,15 @@ def test_cluster_status(full_cluster_ips, logger, module_tmpdir):
     _verify_status_when_postgres_inactive(db1, db2, logger, mgr1.client)
     _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
                                         mgr1.client)
+
+
+def test_three_nodes_cluster_status(three_nodes_cluster, logger):
+    node1, node2, node3 = three_nodes_cluster
+    _assert_cluster_status(node1.client)
+    _verify_status_when_syncthing_inactive(node1, node2, logger)
+    _verify_status_when_postgres_inactive(node1, node2, logger, node1.client)
+    _verify_status_when_rabbit_inactive(node1, node2, node3, logger,
+                                        node1.client)
 
 
 def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
@@ -470,7 +479,7 @@ def _validate_status_when_all_rabbits_inactive(logger, client):
 
 # It can take time for prometheus state to update.
 # Thirty seconds should be much more than enough.
-@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
 def _assert_cluster_status(client):
     assert client.cluster_status.get_status()[
         'status'] == ServiceStatus.HEALTHY

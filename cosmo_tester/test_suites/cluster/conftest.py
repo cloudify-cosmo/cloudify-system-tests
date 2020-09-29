@@ -113,6 +113,14 @@ def minimal_cluster(ssh_key, module_tmpdir, test_config, logger,
         yield _vms
 
 
+@pytest.fixture()
+def three_nodes_cluster(ssh_key, module_tmpdir, test_config, logger, request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request,
+                           pre_cluster_rabbit=True, three_nodes_cluster=True):
+        yield _vms
+
+
 def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,
@@ -121,15 +129,15 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
                pre_cluster_rabbit=False, high_security=True,
-               use_hostnames=False):
+               use_hostnames=False, three_nodes_cluster=False):
+    number_of_instances = (3 if three_nodes_cluster
+                           else broker_count + db_count + manager_count)
+    number_of_instances = number_of_instances + (1 if use_load_balancer else 0)
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
     hosts = Hosts(
         ssh_key, module_tmpdir, test_config, logger, request,
-        number_of_instances=broker_count + db_count + manager_count + (
-            1 if use_load_balancer else 0
-        ),
-        bootstrappable=True)
+        number_of_instances=number_of_instances, bootstrappable=True)
 
     tempdir = hosts._tmpdir
 
@@ -163,12 +171,15 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                    )
                 )
 
-        brokers = hosts.instances[:broker_count]
-        dbs = hosts.instances[broker_count:broker_count + db_count]
-        managers = hosts.instances[broker_count + db_count:
-                                   broker_count + db_count + manager_count]
+        if three_nodes_cluster:
+            brokers = dbs = managers = hosts.instances
+        else:
+            brokers = hosts.instances[:broker_count]
+            dbs = hosts.instances[broker_count:broker_count + db_count]
+            managers = hosts.instances[broker_count + db_count:
+                                       broker_count + db_count + manager_count]
         if use_load_balancer:
-            lb = hosts.instances[broker_count + db_count + manager_count]
+            lb = hosts.instances[number_of_instances]
 
         for node_num, node in enumerate(brokers, start=1):
             _bootstrap_rabbit_node(node, node_num, brokers,
