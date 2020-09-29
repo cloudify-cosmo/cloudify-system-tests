@@ -14,7 +14,7 @@
 #  * limitations under the License.
 
 
-class ProcessExecutionError(StandardError):
+class ProcessExecutionError(Exception):
     def __init__(self, message, return_code=None):
         self.return_code = return_code
         super(ProcessExecutionError, self).__init__(message)
