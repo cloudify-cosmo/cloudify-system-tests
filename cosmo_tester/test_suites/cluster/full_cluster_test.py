@@ -149,18 +149,19 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                                ssh_key, test_config):
     broker, db, mgr1, mgr2, mgr3, lb = cluster_with_lb
 
+    lb.client._client.cert = lb.local_ca
     lb.wait_for_manager()
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(lb, example.tenant)
+    _validate_cluster_and_agents(lb, example.tenant,
+                                 agent_validation_manager=mgr1)
 
     # get agent's manager node
     agent_host = lb.client.agents.list(_all_tenants=True)[0]['id']
 
-    lb.client._client.cert = lb.local_ca
     with set_client_tenant(lb.client, example.tenant):
         node_instances = lb.client.node_instances.list().items
     agent_manager_ip = None
@@ -175,20 +176,29 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
             agent_mgr = manager
             break
 
+    validate_manager = None
+    for manager in [mgr1, mgr2, mgr3]:
+        if manager != agent_mgr:
+            validate_manager = manager
+            break
+    assert validate_manager, 'Could not find manager for validation.'
+
     # stop the manager connected to the agent
     agent_mgr.run_command('cfy_manager stop')
 
     lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
     _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded')
+                                 expected_managers_status='Degraded',
+                                 agent_validation_manager=validate_manager)
 
     # restart the manager connected to the agent
     with agent_mgr.ssh() as manager_ssh:
         manager_ssh.run('cfy_manager start')
 
     time.sleep(5)
-    _validate_cluster_and_agents(lb, example.tenant)
+    _validate_cluster_and_agents(lb, example.tenant,
+                                 agent_validation_manager=validate_manager)
 
     # stop two managers
     mgr2.run_command('cfy_manager stop')
@@ -197,7 +207,8 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     lb.wait_for_manager()
     time.sleep(5)
     _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded')
+                                 expected_managers_status='Degraded',
+                                 agent_validation_manager=mgr1)
 
     example.uninstall()
 
@@ -232,15 +243,25 @@ def test_workflow_resume_manager_failover(minimal_cluster,
     executing_manager.run_command('cfy_manager stop')
     manager_failover_time = time.time()
     assert manager_failover_time - execution_start_time < 60
+    # It'll take at least 60 seconds because we told the sleep to be that long
+    logger.info('Giving install workflow time to execute (60 seconds)...')
     time.sleep(60)
 
     # verify on the second manager that the execution completed successfully
-    with set_client_tenant(other_manager.client, example.tenant):
-        executions = other_manager.client.executions.list()
+    _check_execution_completed(other_manager, example, logger)
+
+
+# Allow up to 30 seconds in case the platform is being slow
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _check_execution_completed(manager, example, logger):
+    logger.info('Checking whether install workflow has finished.')
+    with set_client_tenant(manager.client, example.tenant):
+        executions = manager.client.executions.list()
     installs = [execution for execution in executions
                 if execution['workflow_id'] == 'install']
     assert len(installs) == 1
-    assert installs[0]['status'] == 'completed'
+    assert installs[0]['status'] == 'terminated'
+    logger.info('Install workflow complete!')
 
 
 def test_replace_certificates_on_cluster(full_cluster, logger, ssh_key,
@@ -303,11 +324,17 @@ def _wait_for_healthy_broker_cluster(client, timeout=15):
     raise TimeoutException
 
 
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
 def _validate_cluster_and_agents(manager,
                                  tenant,
                                  expected_broker_status='OK',
-                                 expected_managers_status='OK'):
-    validate_agents = manager.run_command(
+                                 expected_managers_status='OK',
+                                 agent_validation_manager=None):
+    if not agent_validation_manager:
+        agent_validation_manager = manager
+    validate_agents = agent_validation_manager.run_command(
         'cfy agents validate --tenant-name {}'.format(tenant)).stdout
     assert 'Task succeeded' in validate_agents
 
@@ -345,13 +372,20 @@ def test_cluster_status(full_cluster_ips, logger, module_tmpdir):
 def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     logger.info('Stopping syncthing on one of the manager nodes')
     mgr1.run_command('systemctl stop cloudify-syncthing', use_sudo=True)
+    _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger)
+
+
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger):
+    logger.info('Checking status reporter with syncthing down...')
 
     # Syncthing is down, mgr1 in Fail state
     manager_status = mgr1.client.manager.get_status()
     assert manager_status['status'] == ServiceStatus.FAIL
     assert manager_status['services']['File Sync Service']['status'] == \
         NodeServiceStatus.INACTIVE
-    time.sleep(10)
 
     # mgr2 is the last healthy manager in a cluster
     cluster_status = mgr2.client.cluster_status.get_status()
@@ -366,7 +400,6 @@ def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     # Back to healthy cluster
     logger.info('Starting syncthing on the failed manager')
     mgr1.run_command('systemctl start cloudify-syncthing', use_sudo=True)
-    time.sleep(10)
     _assert_cluster_status(mgr1.client)
 
 
@@ -398,35 +431,46 @@ def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
                                         client):
     logger.info('Stopping one of the rabbit nodes')
     broker1.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
-    time.sleep(10)
 
-    cluster_status = client.cluster_status.get_status()
-    broker_service = cluster_status['services']['broker']
-    assert cluster_status['status'] == ServiceStatus.DEGRADED
-    assert broker_service['status'] == ServiceStatus.DEGRADED
-    assert broker_service['nodes'][broker1.hostname]['status'] == \
-        ServiceStatus.FAIL
-    manager_status = client.manager.get_status()
-    assert manager_status['status'] == ServiceStatus.HEALTHY
+    _validate_status_when_one_rabbit_inactive(broker1, logger, client)
 
     logger.info('Stopping the other rabbit nodes')
     broker2.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
     broker3.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
-    time.sleep(10)
 
+    _validate_status_when_all_rabbits_inactive(logger, client)
+
+
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _validate_status_when_one_rabbit_inactive(broker, logger, client):
+    logger.info('Checking status reporter with one rabbit down...')
+    cluster_status = client.cluster_status.get_status()
+    broker_service = cluster_status['services']['broker']
+    assert cluster_status['status'] == ServiceStatus.DEGRADED
+    assert broker_service['status'] == ServiceStatus.DEGRADED
+    assert broker_service['nodes'][broker.hostname]['status'] == \
+        ServiceStatus.FAIL
+    manager_status = client.manager.get_status()
+    assert manager_status['status'] == ServiceStatus.HEALTHY
+
+
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def _validate_status_when_all_rabbits_inactive(logger, client):
+    logger.info('Checking status reporter with all rabbits down...')
     cluster_status = client.cluster_status.get_status()
     assert cluster_status['status'] == 'Fail'
     assert cluster_status['services']['broker']['status'] == ServiceStatus.FAIL
-    assert cluster_status['services']['manager']['status'] == \
-        ServiceStatus.FAIL
-    assert cluster_status['services']['db']['status'] == ServiceStatus.HEALTHY
     manager_status = client.manager.get_status()
     assert manager_status['status'] == 'Fail'
 
 
-# It sometimes takes a little time for the status reporter to return healthy
-# We'll allow up to a minute in case of slow test platform
-@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
+# It can take time for prometheus state to update.
+# Thirty seconds should be much more than enough.
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
 def _assert_cluster_status(client):
     assert client.cluster_status.get_status()[
         'status'] == ServiceStatus.HEALTHY
