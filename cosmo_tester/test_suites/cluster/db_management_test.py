@@ -213,9 +213,25 @@ def _get_db_listing(nodes):
     # +------------+--------------+-------+---------------+--------+
     results = []
     for node in nodes:
+        raw = node.run_command('cfy_manager dbs list').stdout.splitlines()
+
+        nodes_start_idx = None
+        nodes_end_idx = None
+        dividers_found = 0
+        for idx, line in enumerate(raw):
+            if '+------' in line:
+                dividers_found += 1
+
+                if dividers_found == 2:
+                    nodes_start_idx = idx + 1
+
+                if dividers_found == 3:
+                    nodes_end_idx = idx
+                    break
+
         result = [
             line for line in
-            node.run_command('cfy_manager dbs list').stdout.splitlines()[4:-1]
+            raw[nodes_start_idx:nodes_end_idx]
         ]
         results.append(_structure_db_listing(result))
 
