@@ -236,6 +236,10 @@ def _wait_for_healthy_db(node, logger):
         raise
 
 
+# Because we're checking two different nodes, we can get into a state where we
+# check one while it's showing one state, then check the other. Retry in case
+# of this situation.
+@retrying.retry(stop_max_attempt_number=3, wait_fixed=3000)
 def _check_db_count(mgr1, mgr2, missing_db=None, all_present=True):
     mgr1_db_results, mgr2_db_results = _get_db_listing([mgr1, mgr2])
 
