@@ -39,6 +39,7 @@ def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
     _check_db_count(mgr1, mgr2, db3, all_present=False)
 
     mgr1.run_command('cfy maintenance deactivate')
+    _wait_for_maintenance_deactivation([mgr1, mgr2], logger)
 
     check_managers(mgr1, mgr2, example)
 
@@ -70,6 +71,7 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     _check_db_count(mgr1, mgr2)
 
     mgr1.run_command('cfy maintenance deactivate')
+    _wait_for_maintenance_deactivation([mgr1, mgr2], logger)
 
     check_managers(mgr1, mgr2, example)
 
@@ -267,3 +269,13 @@ def _check_db_count(mgr1, mgr2, missing_db=None, all_present=True):
         # Make sure the old db isn't still present
         for entry in mgr1_db_results:
             assert entry['node_ip'] != str(missing_db.private_ip_address)
+
+
+# Maintenance mode deactivation returns before it actually does its job on
+# some cluster nodes, so let's wait for it.
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
+def _wait_for_maintenance_deactivation(managers, logger):
+    for manager in managers:
+        logger.info('Checking maintenance is deactivated on %s',
+                    manager.ip_address)
+        manager.run_command('cfy maintenance status | grep deactivate')
