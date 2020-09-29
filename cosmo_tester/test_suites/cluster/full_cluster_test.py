@@ -264,9 +264,9 @@ def _check_execution_completed(manager, example, logger):
     logger.info('Install workflow complete!')
 
 
-def test_replace_certificates_on_cluster(full_cluster, logger, ssh_key,
+def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
                                          test_config, module_tmpdir):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'cluster_replace_certs', test_config)
