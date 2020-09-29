@@ -6,7 +6,7 @@ import sys
 def get_logger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
-    ch = logging.StreamHandler(sys.stdout)
+    ch = logging.StreamHandler(sys.stderr)
     ch.setLevel(logging.INFO)
     formatter = logging.Formatter(fmt='%(asctime)s [%(levelname)s] '
                                       '[%(name)s] %(message)s',
