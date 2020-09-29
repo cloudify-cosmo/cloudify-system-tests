@@ -573,7 +573,7 @@ class _CloudifyManager(VM):
         )
         for execution in executions:
             if execution['status'] != 'terminated':
-                raise StandardError(
+                raise Exception(
                     'Timed out: Execution {} did not terminate'.format(
                         execution['id'],
                     )
@@ -589,7 +589,7 @@ class _CloudifyManager(VM):
     def _new_wait_for_manager(self):
         manager_status = self.client.manager.get_status()
         if manager_status['status'] != HEALTHY_STATE:
-            raise StandardError(
+            raise Exception(
                 'Timed out: Manager services did not start successfully. '
                 'Inactive services: {}'.format(
                     ', '.join(
@@ -608,7 +608,7 @@ class _CloudifyManager(VM):
                 if any(service not in instance['Id'] for
                        service in ['postgresql', 'rabbitmq']):
                     if instance['state'] != 'running':
-                        raise StandardError(
+                        raise Exception(
                             'Timed out: Manager services did not start '
                             'successfully. Status: {}'.format(
                                 status,
