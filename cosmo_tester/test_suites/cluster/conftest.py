@@ -509,6 +509,8 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     _add_monitoring_config(node, manager=True)
 
     # We have to block on every manager
+    with node.ssh() as fabric_ssh:
+        fabric_ssh.run('sudo rm -f /tmp/bootstrap_complete')
     node.bootstrap(blocking=True, restservice_expected=False,
                    upload_license=upload_license)
 
