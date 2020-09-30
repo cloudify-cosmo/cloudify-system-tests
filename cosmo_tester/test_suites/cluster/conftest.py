@@ -179,7 +179,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             managers = hosts.instances[broker_count + db_count:
                                        broker_count + db_count + manager_count]
         if use_load_balancer:
-            lb = hosts.instances[number_of_instances]
+            lb = hosts.instances[-1]
 
         for node_num, node in enumerate(brokers, start=1):
             _bootstrap_rabbit_node(node, node_num, brokers,
