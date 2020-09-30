@@ -147,14 +147,30 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
 
         hosts.create()
 
-        for node in hosts.instances:
+        if three_nodes_cluster:
+            name_mappings = ['cloudify-1', 'cloudify-2', 'cloudify-3']
+        else:
+            name_mappings = ['rabbit-{}'.format(i)
+                             for i in range(broker_count)]
+            name_mappings.extend([
+                'db-{}'.format(i) for i in range(db_count)
+            ])
+            name_mappings.extend([
+                'manager-{}'.format(i) for i in range(manager_count)
+            ])
+        if use_load_balancer:
+            name_mappings.append('lb')
+
+        for idx, node in enumerate(hosts.instances):
             node.wait_for_ssh()
             # This needs to happen before we start bootstrapping nodes
             # because the hostname is used by nodes that are being
             # bootstrapped with reference to nodes that may not have been
             # bootstrapped yet.
-            node.hostname = str(
-                node.run_command('hostname -s').stdout.strip())
+            node.hostname = name_mappings[idx]
+            node.run_command('sudo hostnamectl set-hostname {}'.format(
+                name_mappings[idx]
+            ))
 
         if use_hostnames:
             hosts_entries = ['\n# Added for hostname test']
