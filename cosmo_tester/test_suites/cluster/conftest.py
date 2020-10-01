@@ -150,10 +150,10 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
         if three_nodes_cluster:
             name_mappings = ['cloudify-1', 'cloudify-2', 'cloudify-3']
         else:
-            name_mappings = ['rabbit-{}'.format(i)
+            name_mappings = ['queue-{}'.format(i)
                              for i in range(broker_count)]
             name_mappings.extend([
-                'db-{}'.format(i) for i in range(db_count)
+                'database-{}'.format(i) for i in range(db_count)
             ])
             name_mappings.extend([
                 'manager-{}'.format(i) for i in range(manager_count)
@@ -188,7 +188,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                 )
 
         if three_nodes_cluster:
-            brokers = dbs = managers = hosts.instances
+            brokers = dbs = managers = hosts.instances[:3]
         else:
             brokers = hosts.instances[:broker_count]
             dbs = hosts.instances[broker_count:broker_count + db_count]
@@ -207,10 +207,11 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                                high_security, tempdir, logger, use_hostnames)
 
         # Ensure all backend nodes are up before installing managers
-        for node in brokers + dbs:
+        for i, node in enumerate(brokers + dbs):
+            node_type = 'queue' if i < 3 else 'database'
             if node.friendly_name in skip_bootstrap_list:
                 continue
-            while not node.bootstrap_is_complete():
+            while not node.bootstrap_is_complete(node_type):
                 logger.info('Checking state of {}'.format(node.friendly_name))
                 time.sleep(5)
 
@@ -337,9 +338,11 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
     _add_monitoring_config(node)
 
     if pre_cluster_rabbit and rabbit_num == 1:
-        node.bootstrap(blocking=True, restservice_expected=False)
+        node.bootstrap(blocking=True, restservice_expected=False,
+                       node_type='queue')
     else:
-        node.bootstrap(blocking=False, restservice_expected=False)
+        node.bootstrap(blocking=False, restservice_expected=False,
+                       node_type='queue')
 
 
 def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
@@ -398,7 +401,8 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
     _add_monitoring_config(node)
 
-    node.bootstrap(blocking=False, restservice_expected=False)
+    node.bootstrap(blocking=False, restservice_expected=False,
+                   node_type='database')
 
 
 def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
@@ -509,10 +513,8 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     _add_monitoring_config(node, manager=True)
 
     # We have to block on every manager
-    with node.ssh() as fabric_ssh:
-        fabric_ssh.run('sudo rm -f /tmp/bootstrap_complete')
     node.bootstrap(blocking=True, restservice_expected=False,
-                   upload_license=upload_license)
+                   upload_license=upload_license, node_type='manager')
 
     # Correctly configure the rest client for the node
     node.client = util.create_rest_client(

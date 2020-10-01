@@ -486,7 +486,7 @@ class _CloudifyManager(VM):
         self.client.license.upload(license)
 
     def bootstrap(self, upload_license=False,
-                  blocking=True, restservice_expected=True):
+                  blocking=True, restservice_expected=True, node_type=None):
         self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
@@ -525,23 +525,27 @@ class _CloudifyManager(VM):
 
         if blocking:
             while True:
-                if self.bootstrap_is_complete():
+                if self.bootstrap_is_complete(node_type):
                     break
                 else:
                     time.sleep(5)
 
-    def bootstrap_is_complete(self):
+    def bootstrap_is_complete(self, node_type=None):
+        success_file_path = (
+            '/etc/cloudify/.installed/{}'.format(node_type + '_service')
+            if node_type else '/tmp/bootstrap_complete'
+        )
         with self.ssh() as fabric_ssh:
             # Using a bash construct because fabric seems to change its mind
             # about how non-zero exit codes should be handled frequently
             result = fabric_ssh.run(
-                'if [[ -f /tmp/bootstrap_complete ]]; then'
+                'if [[ -f {success_file_path} ]]; then'
                 '  echo done; '
                 'elif [[ -f /tmp/bootstrap_failed ]]; then '
                 '  echo failed; '
                 'else '
                 '  echo not done; '
-                'fi'
+                'fi'.format(success_file_path=success_file_path)
             ).stdout.strip()
 
             if result == 'done':
