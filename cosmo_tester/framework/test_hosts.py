@@ -461,6 +461,24 @@ class _CloudifyManager(VM):
         else:
             return 'v3.1'
 
+    def get_installed_paths_list(self):
+        """Gtting the installed servcices' files paths.
+
+        This function returns a list of the files that are created in case
+        the installation was successful.
+        We use the `main_services` to make sure we don't include the
+        `monitoring_service` and `entropy_service`.
+        """
+        prefix = '/etc/cloudify/.installed/'
+        main_services = [
+            'database_service', 'queue_service', 'manager_service']
+        services_to_install = self.install_config.get('services_to_install')
+
+        return ([prefix + service for service in services_to_install
+                 if service in main_services]
+                if services_to_install else
+                [prefix + service for service in main_services])
+
     def teardown(self):
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('cfy_manager remove --force')
@@ -534,14 +552,16 @@ class _CloudifyManager(VM):
         with self.ssh() as fabric_ssh:
             # Using a bash construct because fabric seems to change its mind
             # about how non-zero exit codes should be handled frequently
+            check_paths = (' || '.join('-f {}'.format(path) for path in
+                                       self.get_installed_paths_list()))
             result = fabric_ssh.run(
-                'if [[ -f /tmp/bootstrap_complete ]]; then'
+                'if [[ {check_paths} ]]; then'
                 '  echo done; '
                 'elif [[ -f /tmp/bootstrap_failed ]]; then '
                 '  echo failed; '
                 'else '
                 '  echo not done; '
-                'fi'
+                'fi'.format(check_paths=check_paths)
             ).stdout.strip()
 
             if result == 'done':

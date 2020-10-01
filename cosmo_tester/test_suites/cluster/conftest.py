@@ -188,7 +188,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                 )
 
         if three_nodes_cluster:
-            brokers = dbs = managers = hosts.instances
+            brokers = dbs = managers = hosts.instances[:3]
         else:
             brokers = hosts.instances[:broker_count]
             dbs = hosts.instances[broker_count:broker_count + db_count]
