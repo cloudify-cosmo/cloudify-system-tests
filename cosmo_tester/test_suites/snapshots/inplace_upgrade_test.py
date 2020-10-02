@@ -16,11 +16,11 @@ from cosmo_tester.test_suites.snapshots import (
 )
 
 
-@pytest.fixture(scope='module', params=['5.0.5', 'master'])
+@pytest.fixture(scope='function')
 def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
                    logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request, 2)
-    hosts.instances[0] = get_image(request.param, test_config)
+    hosts.instances[0] = get_image('master', test_config)
     hosts.instances[1] = get_image('centos', test_config)
     manager, vm = hosts.instances
 
