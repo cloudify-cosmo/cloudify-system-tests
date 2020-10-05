@@ -23,21 +23,21 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
 
     logger.info('Starting Stage system tests...')
     os.environ["STAGE_E2E_MANAGER_URL"] = test_ui_manager.ip_address
-    e2ePass = True
+    e2e_pass = True
     try:
         subprocess.check_call(['npm', 'run', 'e2e'],
                               cwd=test_config['ui']['stage_repo'])
     except Exception:
-        e2ePass = False
+        e2e_pass = False
 
     logger.info('Starting Stage unit tests...')
     subprocess.check_call('export NODE_OPTIONS="--max-old-space-size=8192"; npm run jest:coverage',
-                          cwd=test_config['ui']['stage_repo'])
+                          cwd=test_config['ui']['stage_repo'], shell=True)
 
     logger.info('Checking coverage...')
     subprocess.check_call(['npm', 'run', 'coverageCheck'],
                           cwd=test_config['ui']['stage_repo'])
 
-    if not e2ePass:
+    if not e2e_pass:
         logger.error('Stage system tests failed')
         raise Exception
