@@ -27,7 +27,7 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     try:
         subprocess.check_call(['npm', 'run', 'e2e'],
                           cwd=test_config['ui']['stage_repo'])
-    except:
+    except Exception:
         e2ePass = False
 
     logger.info('Starting Stage unit tests...')
