@@ -30,7 +30,6 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     except:
         e2ePass = False
 
-
     logger.info('Starting Stage unit tests...')
     subprocess.check_call(['npm', 'run', 'jest:coverage'],
                           cwd=test_config['ui']['stage_repo'])
@@ -42,4 +41,3 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     if not e2ePass:
         logger.error('Stage system tests failed')
         raise Exception
-        
