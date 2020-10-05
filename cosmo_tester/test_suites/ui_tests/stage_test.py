@@ -23,8 +23,13 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
 
     logger.info('Starting Stage system tests...')
     os.environ["STAGE_E2E_MANAGER_URL"] = test_ui_manager.ip_address
-    subprocess.check_call(['npm', 'run', 'e2e'],
+    e2ePass = True
+    try:
+        subprocess.check_call(['npm', 'run', 'e2e'],
                           cwd=test_config['ui']['stage_repo'])
+    except:
+        e2ePass = False
+
 
     logger.info('Starting Stage unit tests...')
     subprocess.check_call(['npm', 'run', 'jest:coverage'],
@@ -33,3 +38,8 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     logger.info('Checking coverage...')
     subprocess.check_call(['npm', 'run', 'coverageCheck'],
                           cwd=test_config['ui']['stage_repo'])
+
+    if not e2ePass
+        logger.error('Stage system tests failed')
+        raise Exception
+        
