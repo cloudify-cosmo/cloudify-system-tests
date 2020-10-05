@@ -167,7 +167,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             host=self.ip_address,
             user=self.username,
             connect_kwargs={
-                'key_filename': self.private_key_path,
+                'key_filename': [self.private_key_path],
             },
             port=22,
             connect_timeout=3,
@@ -228,7 +228,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def get_remote_file(self, remote_path, local_path):
         """ Dump the contents of the remote file into the local path """
         # Similar to the way fabric1 did it
-        remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
+        remote_tmp = '/tmp/' + hashlib.sha1(
+            remote_path.encode('utf-8')).hexdigest()
         self.run_command(
             'cp {} {}'.format(remote_path, remote_tmp),
             use_sudo=True,
@@ -247,7 +248,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def put_remote_file(self, remote_path, local_path):
         """ Dump the contents of the local file into the remote path """
 
-        remote_tmp = '/tmp/' + hashlib.sha1(remote_path).hexdigest()
+        remote_tmp = '/tmp/' + hashlib.sha1(
+            remote_path.encode('utf-8')).hexdigest()
         self.run_command(
             'rm -rf {}'.format(remote_tmp),
             use_sudo=True,
@@ -459,6 +461,24 @@ class _CloudifyManager(VM):
         else:
             return 'v3.1'
 
+    def get_installed_paths_list(self):
+        """Gtting the installed servcices' files paths.
+
+        This function returns a list of the files that are created in case
+        the installation was successful.
+        We use the `main_services` to make sure we don't include the
+        `monitoring_service` and `entropy_service`.
+        """
+        prefix = '/etc/cloudify/.installed/'
+        main_services = [
+            'database_service', 'queue_service', 'manager_service']
+        services_to_install = self.install_config.get('services_to_install')
+
+        return ([prefix + service for service in services_to_install
+                 if service in main_services]
+                if services_to_install else
+                [prefix + service for service in main_services])
+
     def teardown(self):
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('cfy_manager remove --force')
@@ -532,14 +552,16 @@ class _CloudifyManager(VM):
         with self.ssh() as fabric_ssh:
             # Using a bash construct because fabric seems to change its mind
             # about how non-zero exit codes should be handled frequently
+            check_paths = (' || '.join('-f {}'.format(path) for path in
+                                       self.get_installed_paths_list()))
             result = fabric_ssh.run(
-                'if [[ -f /tmp/bootstrap_complete ]]; then'
+                'if [[ {check_paths} ]]; then'
                 '  echo done; '
                 'elif [[ -f /tmp/bootstrap_failed ]]; then '
                 '  echo failed; '
                 'else '
                 '  echo not done; '
-                'fi'
+                'fi'.format(check_paths=check_paths)
             ).stdout.strip()
 
             if result == 'done':
@@ -573,7 +595,7 @@ class _CloudifyManager(VM):
         )
         for execution in executions:
             if execution['status'] != 'terminated':
-                raise StandardError(
+                raise Exception(
                     'Timed out: Execution {} did not terminate'.format(
                         execution['id'],
                     )
@@ -589,7 +611,7 @@ class _CloudifyManager(VM):
     def _new_wait_for_manager(self):
         manager_status = self.client.manager.get_status()
         if manager_status['status'] != HEALTHY_STATE:
-            raise StandardError(
+            raise Exception(
                 'Timed out: Manager services did not start successfully. '
                 'Inactive services: {}'.format(
                     ', '.join(
@@ -608,7 +630,7 @@ class _CloudifyManager(VM):
                 if any(service not in instance['Id'] for
                        service in ['postgresql', 'rabbitmq']):
                     if instance['state'] != 'running':
-                        raise StandardError(
+                        raise Exception(
                             'Timed out: Manager services did not start '
                             'successfully. Status: {}'.format(
                                 status,

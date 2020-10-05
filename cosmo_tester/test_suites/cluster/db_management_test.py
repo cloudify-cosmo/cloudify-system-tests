@@ -4,8 +4,8 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cluster import check_managers
 
 
-def test_remove_db_node(full_cluster, logger, ssh_key, test_config):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster
+def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
 
     example = get_example_deployment(mgr1, ssh_key, logger, 'remove_db_node',
                                      test_config)
@@ -39,6 +39,7 @@ def test_remove_db_node(full_cluster, logger, ssh_key, test_config):
     _check_db_count(mgr1, mgr2, db3, all_present=False)
 
     mgr1.run_command('cfy maintenance deactivate')
+    _wait_for_maintenance_deactivation([mgr1, mgr2], logger)
 
     check_managers(mgr1, mgr2, example)
 
@@ -70,6 +71,7 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     _check_db_count(mgr1, mgr2)
 
     mgr1.run_command('cfy maintenance deactivate')
+    _wait_for_maintenance_deactivation([mgr1, mgr2], logger)
 
     check_managers(mgr1, mgr2, example)
 
@@ -213,9 +215,25 @@ def _get_db_listing(nodes):
     # +------------+--------------+-------+---------------+--------+
     results = []
     for node in nodes:
+        raw = node.run_command('cfy_manager dbs list').stdout.splitlines()
+
+        nodes_start_idx = None
+        nodes_end_idx = None
+        dividers_found = 0
+        for idx, line in enumerate(raw):
+            if '+------' in line:
+                dividers_found += 1
+
+                if dividers_found == 2:
+                    nodes_start_idx = idx + 1
+
+                if dividers_found == 3:
+                    nodes_end_idx = idx
+                    break
+
         result = [
             line for line in
-            node.run_command('cfy_manager dbs list').stdout.splitlines()[4:-1]
+            raw[nodes_start_idx:nodes_end_idx]
         ]
         results.append(_structure_db_listing(result))
 
@@ -236,6 +254,10 @@ def _wait_for_healthy_db(node, logger):
         raise
 
 
+# Because we're checking two different nodes, we can get into a state where we
+# check one while it's showing one state, then check the other. Retry in case
+# of this situation.
+@retrying.retry(stop_max_attempt_number=3, wait_fixed=3000)
 def _check_db_count(mgr1, mgr2, missing_db=None, all_present=True):
     mgr1_db_results, mgr2_db_results = _get_db_listing([mgr1, mgr2])
 
@@ -247,3 +269,13 @@ def _check_db_count(mgr1, mgr2, missing_db=None, all_present=True):
         # Make sure the old db isn't still present
         for entry in mgr1_db_results:
             assert entry['node_ip'] != str(missing_db.private_ip_address)
+
+
+# Maintenance mode deactivation returns before it actually does its job on
+# some cluster nodes, so let's wait for it.
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
+def _wait_for_maintenance_deactivation(managers, logger):
+    for manager in managers:
+        logger.info('Checking maintenance is deactivated on %s',
+                    manager.ip_address)
+        manager.run_command('cfy maintenance status | grep deactivate')
