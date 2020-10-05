@@ -33,8 +33,10 @@ def test_composer(test_ui_manager, ssh_key, logger, test_config):
         e2e_pass = False
 
     logger.info('Starting Composer unit tests...')
-    subprocess.check_call('export NODE_OPTIONS="--max-old-space-size=8192"; npm run test:frontend:coverage',
-                          cwd=test_config['ui']['composer_repo'], shell=True)
+    subprocess.check_call(
+                        'export NODE_OPTIONS="--max-old-space-size=8192"; ' +
+                        'npm run test:frontend:coverage',
+                        cwd=test_config['ui']['composer_repo'], shell=True)
 
     logger.info('Checking coverage...')
     subprocess.check_call(['npm', 'run', 'coverageCheck'],
