@@ -39,7 +39,7 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     subprocess.check_call(['npm', 'run', 'coverageCheck'],
                           cwd=test_config['ui']['stage_repo'])
 
-    if not e2ePass
+    if not e2ePass:
         logger.error('Stage system tests failed')
         raise Exception
         
