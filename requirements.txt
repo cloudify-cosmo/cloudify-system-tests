@@ -27,7 +27,7 @@ idna==2.9                 # via requests
 importlib-metadata==1.6.0  # via path.py, pluggy, pytest
 invoke==1.4.1             # via fabric
 ipaddress==1.0.19         # via cryptography
-jinja2==2.10              # via cloudify-common, cloudify-system-tests (setup.py)
+jinja2==2.11.2            # via cloudify-common, cloudify-system-tests (setup.py)
 markupsafe==1.1.1         # via jinja2
 more-itertools==5.0.0     # via pytest
 networkx==1.9.1           # via cloudify-common
