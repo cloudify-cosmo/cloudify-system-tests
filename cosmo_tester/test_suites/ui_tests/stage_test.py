@@ -25,7 +25,8 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     os.environ["STAGE_E2E_MANAGER_URL"] = test_ui_manager.ip_address
     e2e_pass = True
     try:
-        subprocess.check_call(['npm', 'run', 'e2e'],
+        subprocess.check_call(['npm', 'run', 'e2e', '--', '-s',
+                                test_config['ui']['spec']],
                               cwd=test_config['ui']['stage_repo'])
     except Exception:
         e2e_pass = False
