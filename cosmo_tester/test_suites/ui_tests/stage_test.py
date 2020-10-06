@@ -26,14 +26,14 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     e2e_pass = True
     try:
         subprocess.check_call(['npm', 'run', 'e2e', '--', '-s',
-                                test_config['ui']['spec']],
+                              test_config['ui']['spec']],
                               cwd=test_config['ui']['stage_repo'])
     except Exception:
         e2e_pass = False
 
     logger.info('Starting Stage unit tests...')
     subprocess.check_call(
-                        'export NODE_OPTIONS="--max-old-space-size=2048"; ' +
+                        'export NODE_OPTIONS="--max-old-space-size=3072"; ' +
                         'npm run jest:coverage',
                         cwd=test_config['ui']['stage_repo'], shell=True)
 
