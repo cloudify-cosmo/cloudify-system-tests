@@ -7,7 +7,7 @@ installer:
   default: cfy-installer-premium-5.2.0.dev1-rhel
 "5_1_0":
   description: Name of manager image for 5.1.0. All non master images are only used for upgrade (snapshot) tests.
-  default: cloudify-manager-premium-5.1.0
+  default: cloudify-manager-premium-5.1.0-rhel
 "5_0_5":
   description: Name of manager image for 5.0.5. All non master images are only used for upgrade (snapshot) tests.
   default: cloudify-manager-premium-5.0.5-rhel
