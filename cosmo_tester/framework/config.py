@@ -79,7 +79,7 @@ class Config(NameSpace):
 
     def _update_config(self, config_file):
         with open(config_file) as config_handle:
-            raw_config = yaml.load(config_handle)
+            raw_config = yaml.load(config_handle, yaml.Loader)
         self.raw_config.update(raw_config)
 
     def _update_schema(self, schema_file):

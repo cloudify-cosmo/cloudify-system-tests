@@ -283,12 +283,15 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 os.unlink(tmp_local_path)
         return content
 
-    def put_remote_file_content(self, remote_path, content):
+    def put_remote_file_content(self, remote_path, content, yaml_dump=False):
         tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
 
         try:
             with open(tmp_local_path, 'w') as f:
-                f.write(content)
+                if yaml_dump:
+                    yaml.dump(content, f)
+                else:
+                    f.write(content)
 
             self.put_remote_file(remote_path, tmp_local_path)
 
