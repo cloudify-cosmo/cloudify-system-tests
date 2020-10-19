@@ -168,7 +168,8 @@ def test_three_nodes_using_provided_config_files(
     logger.info('Asserting config_files')
     base_cfy_dir = '/etc/cloudify'
     for i, node in enumerate(nodes_list, start=1):
-        logger.info('Asserting config.yaml files for %s', 'node-{0}'.format(i))
+        logger.info(
+            'Asserting config.yaml files for {0}'.format('node-{0}'.format(i)))
 
         assert (node.local_manager_config_path.read_text() ==
                 node.get_remote_file_content(
