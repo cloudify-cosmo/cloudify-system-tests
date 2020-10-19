@@ -1,0 +1,41 @@
+manager:
+  private_ip: {{ node.private_ip_address }}
+  public_ip: {{ node.ip_address }}
+  {% if node.hostname-%}
+  hostname: {{ node.hostname }}
+  {%-endif %}
+
+rabbitmq:
+  username: cloudify
+  password: c10idufy
+
+  cluster_members: {{ rabbitmq_cluster }}
+
+  cert_path: {{ node.cert_path }}
+  key_path: {{ node.key_path }}
+  ca_path: {{ ca_path }}
+
+  nodename: {{ node.hostname }}
+
+  {% if join_cluster-%}
+  join_cluster: {{ join_cluster }}
+  {%-endif %}
+
+  erlang_cookie: strongerlangcookies
+
+
+prometheus:
+  credentials:
+    username: prometheus_user
+    password: strongprometheuspassword
+
+  cert_path: {{ node.cert_path }}
+  key_path: {{ node.key_path }}
+  ca_path: {{ ca_path }}
+
+validations:
+  minimum_required_total_physical_memory_in_mb: 1024
+
+services_to_install:
+  - queue_service
+  - monitoring_service
