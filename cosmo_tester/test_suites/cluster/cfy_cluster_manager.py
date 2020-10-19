@@ -3,7 +3,9 @@ from os.path import dirname, join
 import yaml
 import pytest
 
-from cosmo_tester.framework.util import get_resource_path
+from cosmo_tester.framework.util import (generate_ca_cert,
+                                         generate_ssl_certificate,
+                                         get_resource_path)
 
 REMOTE_SSH_KEY_PATH = '/tmp/cfy_cluster_manager_ssh_key.pem'
 REMOTE_LICENSE_PATH = '/tmp/cfy_cluster_manager_license.yaml'
@@ -74,8 +76,8 @@ def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
 
 
 def test_create_three_nodes_cluster_using_certificates(
-        image_based_manager, three_vms, three_nodes_config_dict,
-        test_config, ssh_key, tmp_path, logger):
+        three_vms, three_nodes_config_dict, test_config,
+        ssh_key, tmp_path, logger):
     """Tests that the supllied certificates are being used in the cluster."""
     local_certs_path = tmp_path / 'certs'
     local_certs_path.mkdir()
@@ -83,7 +85,7 @@ def test_create_three_nodes_cluster_using_certificates(
     nodes_list = [node1, node2, node3]
 
     logger.info('Creating certificates')
-    _create_certificates(image_based_manager, local_certs_path, nodes_list)
+    _create_certificates(local_certs_path, nodes_list)
 
     logger.info('Copying certificates to node-1')
     node1.run_command('mkdir -p {0}'.format(REMOTE_CERTS_PATH))
@@ -124,25 +126,22 @@ def test_create_three_nodes_cluster_using_certificates(
                 node.get_remote_file_content(ca_path_in_use))
 
 
-def _create_certificates(image_based_manager, local_certs_path, nodes_list):
-    remote_certs_path = join('~', '.cloudify-test-ca')
+def _create_certificates(local_certs_path, nodes_list):
+    ca_base = str(local_certs_path / 'ca.')
+    ca_cert = ca_base + 'pem'
+    ca_key = ca_base + 'key'
+    generate_ca_cert(ca_cert, ca_key)
     for i, node in enumerate(nodes_list, start=1):
-        image_based_manager.run_command(
-            'cfy_manager generate-test-cert -s {0},{1}'.format(
-                node.private_ip_address, node.ip_address))
-        for val in 'crt', 'key':
-            local_path = local_certs_path / 'node-{0}.{1}'.format(i, val)
-            remote_path = join(remote_certs_path,
-                               node.private_ip_address + '.{0}'.format(val))
-            if val == 'key':
-                image_based_manager.run_command(
-                    'chmod 444 {0}'.format(remote_path), use_sudo=True)
-            image_based_manager.get_remote_file(remote_path=remote_path,
-                                                local_path=str(local_path))
-
-    image_based_manager.get_remote_file(
-        remote_path=join(remote_certs_path, 'ca.crt'),
-        local_path=str(local_certs_path / 'ca.pem'))
+        node_cert = str(local_certs_path / 'node-{0}.crt'.format(i))
+        node_key = str(local_certs_path / 'node-{0}.key'.format(i))
+        generate_ssl_certificate(
+            [node.private_ip_address, node.ip_address],
+            node.hostname,
+            node_cert,
+            node_key,
+            ca_cert,
+            ca_key
+        )
 
 
 def _update_three_nodes_config_dict_vms(config_dict, existing_vms_list):

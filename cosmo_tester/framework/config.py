@@ -84,7 +84,7 @@ class Config(NameSpace):
 
     def _update_schema(self, schema_file):
         with open(schema_file) as schema_handle:
-            schema = yaml.load(schema_handle)
+            schema = yaml.load(schema_handle, yaml.Loader)
 
         namespace = None
         if 'namespace' in schema:
