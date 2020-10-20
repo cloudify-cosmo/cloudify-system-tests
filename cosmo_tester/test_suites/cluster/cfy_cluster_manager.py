@@ -1,15 +1,20 @@
-from os.path import dirname, join
+import pkg_resources
+from os.path import join
 
 import yaml
 import pytest
+from jinja2 import Environment, FileSystemLoader
 
 from cosmo_tester.framework.util import (generate_ca_cert,
                                          generate_ssl_certificate,
                                          get_resource_path)
 
+RESOURCES_PATH = pkg_resources.resource_filename(
+    'cosmo_tester', 'test_suites/cluster/cfy_cluster_manager_resources')
 REMOTE_SSH_KEY_PATH = '/tmp/cfy_cluster_manager_ssh_key.pem'
 REMOTE_LICENSE_PATH = '/tmp/cfy_cluster_manager_license.yaml'
 REMOTE_CERTS_PATH = '/tmp/certs'
+REMOTE_CONFIGS_PATH = '/tmp/config_files'
 
 
 @pytest.fixture()
@@ -33,11 +38,24 @@ def nine_nodes_config_dict(basic_config_dict):
     return _get_config_dict('nine_nodes_config.yaml', basic_config_dict)
 
 
+@pytest.fixture()
+def local_certs_path(tmp_path):
+    dir_path = tmp_path / 'certs'
+    dir_path.mkdir()
+    return dir_path
+
+
+@pytest.fixture()
+def local_config_files(tmp_path):
+    dir_path = tmp_path / 'config_files'
+    dir_path.mkdir()
+    return dir_path
+
+
 def _get_config_dict(config_file_name, basic_config_dict):
-    resources_path = join(dirname(__file__), 'cfy_cluster_manager_resources')
-    config_path = join(resources_path, config_file_name)
+    config_path = join(RESOURCES_PATH, config_file_name)
     with open(config_path) as config_file:
-        config_dict = yaml.load(config_file, yaml.Loader)
+        config_dict = yaml.safe_load(config_file)
 
     config_dict.update(basic_config_dict)
     return config_dict
@@ -77,10 +95,8 @@ def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
 
 def test_create_three_nodes_cluster_using_certificates(
         three_vms, three_nodes_config_dict, test_config,
-        ssh_key, tmp_path, logger):
+        ssh_key, local_certs_path, logger):
     """Tests that the supllied certificates are being used in the cluster."""
-    local_certs_path = tmp_path / 'certs'
-    local_certs_path.mkdir()
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
 
@@ -126,7 +142,140 @@ def test_create_three_nodes_cluster_using_certificates(
                 node.get_remote_file_content(ca_path_in_use))
 
 
-def _create_certificates(local_certs_path, nodes_list):
+def test_three_nodes_using_provided_config_files(
+        three_vms, three_nodes_config_dict, test_config,
+        ssh_key, local_certs_path, local_config_files, logger):
+    node1, node2, node3 = three_vms
+    nodes_list = [node1, node2, node3]
+    logger.info('Creating certificates and passing them to the instances')
+    node1.run_command('mkdir -p {0}'.format(REMOTE_CERTS_PATH))
+    _create_certificates(local_certs_path, nodes_list, pass_certs=True)
+
+    logger.info('Preparing config files')
+    _prepare_config_files(nodes_list, local_config_files)
+    _update_three_nodes_config_dict_vms(three_nodes_config_dict, nodes_list)
+    for i, node in enumerate(nodes_list, start=1):
+        three_nodes_config_dict['existing_vms']['node-{0}'.format(i)][
+            'config_path'].update({
+                'manager_config_path': node.remote_manager_config_path,
+                'postgresql_config_path': node.remote_postgresql_config_path,
+                'rabbitmq_config_path': node.remote_rabbitmq_config_path
+            })
+
+    logger.info('Installing cluster')
+    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key)
+
+    logger.info('Asserting config_files')
+    base_cfy_dir = '/etc/cloudify'
+    for i, node in enumerate(nodes_list, start=1):
+        logger.info('Asserting config.yaml files for %s', 'node-{0}'.format(i))
+
+        assert (node.local_manager_config_path.read_text() ==
+                node.get_remote_file_content(
+                    join(base_cfy_dir, node.local_manager_config_path.name))
+                )
+
+        assert (node.local_postgresql_config_path.read_text() ==
+                node.get_remote_file_content(
+                    join(base_cfy_dir, node.local_postgresql_config_path.name))
+                )
+
+        assert (node.local_rabbitmq_config_path.read_text() ==
+                node.get_remote_file_content(
+                    join(base_cfy_dir, node.local_rabbitmq_config_path.name))
+                )
+
+
+def _prepare_config_files(nodes_list, local_config_files):
+    rabbitmq_cluster = {
+        node.hostname: {
+            'networks': {
+                'default': str(node.private_ip_address)
+            }
+        } for node in nodes_list
+    }
+
+    postgresql_cluster = {
+        node.hostname: {
+            'ip': str(node.private_ip_address)
+        } for node in nodes_list
+    }
+
+    nodes_list[0].run_command('mkdir -p {0}'.format(REMOTE_CONFIGS_PATH))
+    templates_env = Environment(loader=FileSystemLoader(
+        join(RESOURCES_PATH, 'config_files_templates')))
+    _prepare_manager_config_files(
+        templates_env.get_template('manager_config.yaml'),
+        nodes_list, rabbitmq_cluster, postgresql_cluster, local_config_files)
+    _prepare_postgresql_config_files(
+        templates_env.get_template('postgresql_config.yaml'),
+        nodes_list, postgresql_cluster, local_config_files)
+    _prepare_rabbitmq_config_files(
+        templates_env.get_template('rabbitmq_config.yaml'),
+        nodes_list, rabbitmq_cluster, local_config_files)
+
+
+def _prepare_manager_config_files(template, nodes_list, rabbitmq_cluster,
+                                  postgresql_cluster, local_config_files):
+    for i, node in enumerate(nodes_list, start=1):
+        rendered_date = template.render(
+            node=node,
+            ca_path=join(REMOTE_CERTS_PATH, 'ca.pem'),
+            license_path=REMOTE_LICENSE_PATH,
+            rabbitmq_cluster=rabbitmq_cluster,
+            postgresql_cluster=postgresql_cluster
+        )
+        config_name = 'manager-{0}_config.yaml'.format(i)
+        remote_config_path = join(REMOTE_CONFIGS_PATH, config_name)
+        local_config_file = local_config_files / config_name
+        local_config_file.write_text(u'{0}'.format(rendered_date))
+
+        nodes_list[0].put_remote_file(remote_config_path,
+                                      str(local_config_file))
+        node.local_manager_config_path = local_config_file
+        node.remote_manager_config_path = remote_config_path
+
+
+def _prepare_postgresql_config_files(template, nodes_list, postgresql_cluster,
+                                     local_config_files):
+    for i, node in enumerate(nodes_list, start=1):
+        rendered_date = template.render(
+            node=node,
+            ca_path=join(REMOTE_CERTS_PATH, 'ca.pem'),
+            postgresql_cluster=postgresql_cluster
+        )
+        config_name = 'postgresql-{0}_config.yaml'.format(i)
+        remote_config_path = join(REMOTE_CONFIGS_PATH, config_name)
+        local_config_file = local_config_files / config_name
+        local_config_file.write_text(u'{0}'.format(rendered_date))
+
+        nodes_list[0].put_remote_file(remote_config_path,
+                                      str(local_config_file))
+        node.local_postgresql_config_path = local_config_file
+        node.remote_postgresql_config_path = remote_config_path
+
+
+def _prepare_rabbitmq_config_files(template, nodes_list, rabbitmq_cluster,
+                                   local_config_files):
+    for i, node in enumerate(nodes_list, start=1):
+        rendered_date = template.render(
+            node=node,
+            ca_path=join(REMOTE_CERTS_PATH, 'ca.pem'),
+            rabbitmq_cluster=rabbitmq_cluster,
+            join_cluster=nodes_list[0].hostname if i > 1 else None
+        )
+        config_name = 'rabbitmq-{0}_config.yaml'.format(i)
+        remote_config_path = join(REMOTE_CONFIGS_PATH, config_name)
+        local_config_file = local_config_files / config_name
+        local_config_file.write_text(u'{0}'.format(rendered_date))
+
+        nodes_list[0].put_remote_file(remote_config_path,
+                                      str(local_config_file))
+        node.local_rabbitmq_config_path = local_config_file
+        node.remote_rabbitmq_config_path = remote_config_path
+
+
+def _create_certificates(local_certs_path, nodes_list, pass_certs=False):
     ca_base = str(local_certs_path / 'ca.')
     ca_cert = ca_base + 'pem'
     ca_key = ca_base + 'key'
@@ -142,6 +291,14 @@ def _create_certificates(local_certs_path, nodes_list):
             ca_cert,
             ca_key
         )
+        if pass_certs:
+            remote_cert = join(REMOTE_CERTS_PATH, 'node-{0}.crt'.format(i))
+            remote_key = join(REMOTE_CERTS_PATH, 'node-{0}.key'.format(i))
+            node.cert_path = remote_cert
+            node.key_path = remote_key
+            node.put_remote_file(remote_cert, node_cert)
+            node.put_remote_file(remote_key, node_key)
+            node.put_remote_file(join(REMOTE_CERTS_PATH, 'ca.pem'), ca_cert)
 
 
 def _update_three_nodes_config_dict_vms(config_dict, existing_vms_list):
