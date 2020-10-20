@@ -1,9 +1,13 @@
+import copy
+import json
 import pkg_resources
 from os.path import join
 
 import yaml
 import pytest
+from retrying import retry
 from jinja2 import Environment, FileSystemLoader
+from invoke import UnexpectedExit
 
 from cosmo_tester.framework.util import (generate_ca_cert,
                                          generate_ssl_certificate,
@@ -62,17 +66,18 @@ def _get_config_dict(config_file_name, basic_config_dict):
 
 
 def test_create_three_nodes_cluster(three_vms, three_nodes_config_dict,
-                                    test_config, ssh_key):
+                                    test_config, ssh_key, logger):
     """Tests that a three nodes cluster is successfully created."""
     node1, node2, node3 = three_vms
     _update_three_nodes_config_dict_vms(three_nodes_config_dict,
                                         [node1, node2, node3])
 
-    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key)
+    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
+                     logger)
 
 
 def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
-                                   test_config, ssh_key):
+                                   test_config, ssh_key, logger):
     """Tests that a nine nodes cluster is successfully created."""
     node1, node2, node3, node4, node5, node6, node7, node8, node9 = nine_vms
     for i, node in enumerate([node1, node2, node3, node4, node5, node6,
@@ -90,10 +95,11 @@ def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
             'public_ip': str(node.ip_address)
         })
 
-    _install_cluster(node1, nine_nodes_config_dict, test_config, ssh_key)
+    _install_cluster(node1, nine_nodes_config_dict, test_config, ssh_key,
+                     logger)
 
 
-def test_create_three_nodes_cluster_using_certificates(
+def test_three_nodes_cluster_using_provided_certificates(
         three_vms, three_nodes_config_dict, test_config,
         ssh_key, local_certs_path, logger):
     """Tests that the supllied certificates are being used in the cluster."""
@@ -104,7 +110,6 @@ def test_create_three_nodes_cluster_using_certificates(
     _create_certificates(local_certs_path, nodes_list)
 
     logger.info('Copying certificates to node-1')
-    node1.run_command('mkdir -p {0}'.format(REMOTE_CERTS_PATH))
     for cert in local_certs_path.iterdir():
         node1.put_remote_file(local_path=str(cert),
                               remote_path=join(REMOTE_CERTS_PATH, cert.name))
@@ -119,7 +124,8 @@ def test_create_three_nodes_cluster_using_certificates(
         })
 
     logger.info('Installing cluster')
-    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key)
+    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
+                     logger)
 
     logger.info('Asserting certs were successfully copied')
     local_ca_path = local_certs_path / 'ca.pem'
@@ -151,19 +157,9 @@ def test_three_nodes_using_provided_config_files(
     node1.run_command('mkdir -p {0}'.format(REMOTE_CERTS_PATH))
     _create_certificates(local_certs_path, nodes_list, pass_certs=True)
 
-    logger.info('Preparing config files')
-    _prepare_config_files(nodes_list, local_config_files)
-    _update_three_nodes_config_dict_vms(three_nodes_config_dict, nodes_list)
-    for i, node in enumerate(nodes_list, start=1):
-        three_nodes_config_dict['existing_vms']['node-{0}'.format(i)][
-            'config_path'].update({
-                'manager_config_path': node.remote_manager_config_path,
-                'postgresql_config_path': node.remote_postgresql_config_path,
-                'rabbitmq_config_path': node.remote_rabbitmq_config_path
-            })
-
-    logger.info('Installing cluster')
-    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key)
+    _install_cluster_using_provided_config_files(
+        nodes_list, three_nodes_config_dict, test_config,
+        ssh_key, local_certs_path, local_config_files, logger)
 
     logger.info('Asserting config_files')
     base_cfy_dir = '/etc/cloudify'
@@ -186,7 +182,81 @@ def test_three_nodes_using_provided_config_files(
                 )
 
 
-def _prepare_config_files(nodes_list, local_config_files):
+def test_three_nodes_cluster_override(
+        three_vms, three_nodes_config_dict, test_config,
+        ssh_key, local_certs_path, local_config_files, logger):
+    """Tests the override install Mechanism.
+
+    The test goes as follows:
+        1. Intstall a three node cluster using an erroneous
+           manager config.yaml file. This will of course, cause an error.
+        2. Catch the error, and install the cluster from the start using
+           the flag `--override`. This step doesn't use generated config.yaml
+           files.
+    """
+    node1, node2, node3 = three_vms
+    nodes_list = [node1, node2, node3]
+
+    first_config_dict = copy.deepcopy(three_nodes_config_dict)
+    try:
+        _install_cluster_using_provided_config_files(
+            nodes_list, first_config_dict, test_config, ssh_key,
+            local_certs_path, local_config_files, logger, cause_error=True)
+    except UnexpectedExit:  # This is the error Fabric raises
+        logger.info('Error caught. Installing the cluster using override.')
+        _update_three_nodes_config_dict_vms(three_nodes_config_dict,
+                                            [node1, node2, node3])
+
+        _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
+                         logger, override=True)
+
+
+def _install_cluster_using_provided_config_files(
+        nodes_list, three_nodes_config_dict, test_config,
+        ssh_key, local_certs_path, local_config_files, logger,
+        cause_error=False, override=False):
+    """Install a Cloudify cluster using generated certificates.
+
+    In order to do so, the function:
+        1. Generates certificates for each node in the `nodes_list`.
+        2. Passes the generated certificates to the different nodes.
+        3. Generates the config files for each node based on templates.
+        4. Installs the cluster using the generated config files.
+
+    :param cause_error: Whether to cause an error during the installation.
+    :param override: Whether to run the installation with override flag.
+    """
+    node1 = nodes_list[0]
+    logger.info('Creating certificates and passing them to the instances')
+    _create_certificates(local_certs_path, nodes_list, pass_certs=True)
+
+    logger.info('Preparing config files')
+    _prepare_three_nodes_config_files(nodes_list, local_config_files,
+                                      cause_error)
+    _update_three_nodes_config_dict_vms(three_nodes_config_dict, nodes_list)
+    for i, node in enumerate(nodes_list, start=1):
+        three_nodes_config_dict['existing_vms']['node-{0}'.format(i)][
+            'config_path'].update({
+                'manager_config_path': node.remote_manager_config_path,
+                'postgresql_config_path': node.remote_postgresql_config_path,
+                'rabbitmq_config_path': node.remote_rabbitmq_config_path
+            })
+
+    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
+                     logger, override)
+
+
+def _prepare_three_nodes_config_files(nodes_list,
+                                      local_config_files,
+                                      cause_error=False):
+    """Prepare the config files for the three nodes cluster installation.
+
+    :param nodes_list: The three VMs list.
+    :param local_config_files: The local config files' directory.
+                               It's created using a pytest fixture.
+    :param cause_error: If true, an error will be raised during the 1st
+                        Manager installation.
+    """
     rabbitmq_cluster = {
         node.hostname: {
             'networks': {
@@ -201,15 +271,19 @@ def _prepare_config_files(nodes_list, local_config_files):
         } for node in nodes_list
     }
 
-    nodes_list[0].run_command('mkdir -p {0}'.format(REMOTE_CONFIGS_PATH))
+    manager_postgresql_server = {} if cause_error else postgresql_cluster
+
     templates_env = Environment(loader=FileSystemLoader(
         join(RESOURCES_PATH, 'config_files_templates')))
+
     _prepare_manager_config_files(
-        templates_env.get_template('manager_config.yaml'),
-        nodes_list, rabbitmq_cluster, postgresql_cluster, local_config_files)
+        templates_env.get_template('manager_config.yaml'), nodes_list,
+        rabbitmq_cluster, manager_postgresql_server, local_config_files)
+
     _prepare_postgresql_config_files(
         templates_env.get_template('postgresql_config.yaml'),
         nodes_list, postgresql_cluster, local_config_files)
+
     _prepare_rabbitmq_config_files(
         templates_env.get_template('rabbitmq_config.yaml'),
         nodes_list, rabbitmq_cluster, local_config_files)
@@ -309,20 +383,38 @@ def _update_three_nodes_config_dict_vms(config_dict, existing_vms_list):
         })
 
 
-def _install_cluster(node, config_dict, test_config, ssh_key):
-    node.put_remote_file(remote_path=REMOTE_SSH_KEY_PATH,
-                         local_path=ssh_key.private_key_path)
-
-    node.put_remote_file(remote_path=REMOTE_LICENSE_PATH,
-                         local_path=get_resource_path(
-                             'test_valid_paying_license.yaml'))
-
+def _install_cluster(node, config_dict, test_config, ssh_key, logger,
+                     override=False):
+    logger.info('Installing cluster')
     remote_cluster_config_path = '/tmp/cfy_cluster_config.yaml'
     node.put_remote_file_content(remote_cluster_config_path,
                                  yaml.dump(config_dict))
+    if not override:
+        node.put_remote_file(remote_path=REMOTE_SSH_KEY_PATH,
+                             local_path=ssh_key.private_key_path)
 
-    node.run_command('yum install -y {0}'.format(
-        test_config['cfy_cluster_manager']['rpm_path']), use_sudo=True)
+        node.put_remote_file(remote_path=REMOTE_LICENSE_PATH,
+                             local_path=get_resource_path(
+                                 'test_valid_paying_license.yaml'))
 
-    node.run_command('cfy_cluster_manager install -v --config-path '
-                     '{0}'.format(remote_cluster_config_path))
+        node.run_command('yum install -y {0}'.format(
+            test_config['cfy_cluster_manager']['rpm_path']), use_sudo=True)
+
+    node.run_command(
+        'cfy_cluster_manager install -v --config-path {cfg} {override}'.format(
+            cfg=remote_cluster_config_path,
+            override='--override' if override else '')
+    )
+
+    logger.info('Verifying the cluster status')
+    _verify_cluster_status(node)
+
+
+@retry(stop_max_attempt_number=24, wait_fixed=5000)
+def _verify_cluster_status(node):
+    raw_cluster_status = node.run_command(
+        'cfy cluster status --json', warn_only=True, hide_stdout=True)
+    assert raw_cluster_status.ok, raw_cluster_status.stderr
+
+    cluster_status = json.loads(raw_cluster_status.stdout)
+    assert cluster_status['status'] == 'OK', cluster_status

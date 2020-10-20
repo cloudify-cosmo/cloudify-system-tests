@@ -296,12 +296,14 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             if os.path.exists(tmp_local_path):
                 os.unlink(tmp_local_path)
 
-    def run_command(self, command, use_sudo=False, warn_only=False):
+    def run_command(self, command, use_sudo=False, warn_only=False,
+                    hide_stdout=False):
+        hide = 'stdout' if hide_stdout else None
         with self.ssh() as fabric_ssh:
             if use_sudo:
-                return fabric_ssh.sudo(command, warn=warn_only)
+                return fabric_ssh.sudo(command, warn=warn_only, hide=hide)
             else:
-                return fabric_ssh.run(command, warn=warn_only)
+                return fabric_ssh.run(command, warn=warn_only, hide=hide)
 
     def set_image_details(self, bootstrappable):
         pass
