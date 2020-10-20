@@ -1,4 +1,5 @@
-from os.path import dirname, join
+import pkg_resources
+from os.path import join
 
 import yaml
 import pytest
@@ -8,7 +9,8 @@ from cosmo_tester.framework.util import (generate_ca_cert,
                                          generate_ssl_certificate,
                                          get_resource_path)
 
-RESOURCES_PATH = join(dirname(__file__), 'cfy_cluster_manager_resources')
+RESOURCES_PATH = pkg_resources.resource_filename(
+    'cosmo_tester', 'test_suites/cluster/cfy_cluster_manager_resources')
 REMOTE_SSH_KEY_PATH = '/tmp/cfy_cluster_manager_ssh_key.pem'
 REMOTE_LICENSE_PATH = '/tmp/cfy_cluster_manager_license.yaml'
 REMOTE_CERTS_PATH = '/tmp/certs'
@@ -53,7 +55,7 @@ def local_config_files(tmp_path):
 def _get_config_dict(config_file_name, basic_config_dict):
     config_path = join(RESOURCES_PATH, config_file_name)
     with open(config_path) as config_file:
-        config_dict = yaml.load(config_file, yaml.Loader)
+        config_dict = yaml.safe_load(config_file)
 
     config_dict.update(basic_config_dict)
     return config_dict
