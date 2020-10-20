@@ -84,18 +84,18 @@ def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
                               node7, node8, node9]):
         node_num = (i % 3) + 1
         if i < 3:
-            node_name = 'manager-{0}'.format(node_num)
-        elif i < 6:
             node_name = 'rabbitmq-{0}'.format(node_num)
-        else:
+        elif i < 6:
             node_name = 'postgresql-{0}'.format(node_num)
+        else:
+            node_name = 'manager-{0}'.format(node_num)
 
         nine_nodes_config_dict['existing_vms'][node_name].update({
             'private_ip': str(node.private_ip_address),
             'public_ip': str(node.ip_address)
         })
 
-    _install_cluster(node1, nine_nodes_config_dict, test_config, ssh_key,
+    _install_cluster(node7, nine_nodes_config_dict, test_config, ssh_key,
                      logger)
 
 
