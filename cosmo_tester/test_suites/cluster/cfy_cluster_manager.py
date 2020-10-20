@@ -110,7 +110,7 @@ def test_create_three_nodes_cluster_using_certificates(
     ca_path_in_use = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
     for i, node in enumerate(nodes_list, start=1):
         node_name = 'node-{0}'.format(i)
-        logger.info('Asserting certificates for {0}'.format(node_name))
+        logger.info('Asserting certificates for %s', node_name)
         local_node_cert_path = local_certs_path / '{0}.crt'.format(node_name)
         local_node_key_path = local_certs_path / '{0}.key'.format(node_name)
         cert_path_in_use = '/etc/cloudify/ssl/cloudify_internal_cert.pem'
@@ -162,8 +162,7 @@ def _install_cluster(node, config_dict, test_config, ssh_key):
 
     remote_cluster_config_path = '/tmp/cfy_cluster_config.yaml'
     node.put_remote_file_content(remote_cluster_config_path,
-                                 config_dict,
-                                 yaml_dump=True)
+                                 yaml.dump(config_dict))
 
     node.run_command('yum install -y {0}'.format(
         test_config['cfy_cluster_manager']['rpm_path']), use_sudo=True)

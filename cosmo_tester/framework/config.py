@@ -79,12 +79,12 @@ class Config(NameSpace):
 
     def _update_config(self, config_file):
         with open(config_file) as config_handle:
-            raw_config = yaml.load(config_handle, yaml.Loader)
+            raw_config = yaml.safe_load(config_handle)
         self.raw_config.update(raw_config)
 
     def _update_schema(self, schema_file):
         with open(schema_file) as schema_handle:
-            schema = yaml.load(schema_handle, yaml.Loader)
+            schema = yaml.safe_load(schema_handle)
 
         namespace = None
         if 'namespace' in schema:

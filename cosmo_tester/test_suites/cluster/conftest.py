@@ -236,8 +236,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                 if node.friendly_name in skip_bootstrap_list:
                     continue
                 while not node.bootstrap_is_complete():
-                    logger.info('Checking state of {}'.format(
-                        node.friendly_name))
+                    logger.info('Checking state of %s', node.friendly_name)
                     time.sleep(5)
 
             for node_num, node in enumerate(managers, start=1):
@@ -250,8 +249,8 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
         if use_load_balancer:
             _bootstrap_lb_node(lb, managers, tempdir, logger)
 
-        logger.info('All nodes are created{0}.'.format(
-            ' and bootstrapped' if bootstrap else ''))
+        logger.info('All nodes are created%s.',
+                    ' and bootstrapped' if bootstrap else '')
 
         yield hosts.instances
     finally:
