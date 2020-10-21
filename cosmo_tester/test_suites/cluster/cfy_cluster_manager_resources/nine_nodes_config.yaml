@@ -106,10 +106,6 @@ credentials:
       postgres:
         replicator_password: ''
 
-    db_monitoring:
-      username: ''
-      password: ''
-
   rabbitmq:
     username: ''
     password: ''
