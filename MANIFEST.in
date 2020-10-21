@@ -1,1 +1,3 @@
 include resources/schemas/*.yaml
+include test_suites/cluster/cfy_cluster_manager_resources/*.yaml
+include test_suites/cluster/cfy_cluster_manager_resources/config_files_templates/*.yaml

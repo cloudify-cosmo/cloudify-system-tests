@@ -1,0 +1,63 @@
+manager:
+  private_ip: {{ node.private_ip_address }}
+  public_ip: {{ node.ip_address }}
+  {% if node.hostname-%}
+  hostname: {{ node.hostname }}
+  {%-endif %}
+
+  security:
+    ssl_enabled: true
+    admin_username: admin
+    admin_password: admin
+
+  cloudify_license_path: {{ license_path }}
+
+rabbitmq:
+  username: cloudify
+  password: c10idufy
+
+  cluster_members: {{ rabbitmq_cluster }}
+
+  ca_path: {{ ca_path }}
+
+postgresql_server:
+  cluster:
+    nodes: {{ postgresql_cluster }}
+
+  ca_path: {{ ca_path }}
+  ssl_enabled: true
+  postgres_password: strongpostgresqlpassword
+
+postgresql_client:
+  ssl_enabled: true
+  server_password: strongpostgresqlpassword
+  ssl_client_verification: true
+
+
+validations:
+  minimum_required_total_physical_memory_in_mb: 1024
+
+
+ssl_inputs:
+  external_cert_path: {{ node.cert_path }}
+  external_key_path: {{ node.key_path }}
+  internal_cert_path: {{ node.cert_path }}
+  internal_key_path: {{ node.key_path }}
+  postgresql_client_cert_path: {{ node.cert_path }}
+  postgresql_client_key_path: {{ node.key_path }}
+  ca_cert_path: {{ ca_path }}
+  external_ca_cert_path: {{ ca_path }}
+
+prometheus:
+  credentials:
+    username: prometheus_user
+    password: strongprometheuspassword
+
+  cert_path: {{ node.cert_path }}
+  key_path: {{ node.key_path }}
+  ca_path: {{ ca_path }}
+
+services_to_install:
+  - manager_service
+  - monitoring_service
+  - entropy_service
