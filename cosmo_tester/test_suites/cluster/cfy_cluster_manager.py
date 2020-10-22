@@ -123,7 +123,6 @@ def test_three_nodes_cluster_using_provided_certificates(
             'key_path': join(REMOTE_CERTS_PATH, 'node-{0}.key'.format(i))
         })
 
-    logger.info('Installing cluster')
     _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
                      logger)
 
@@ -153,9 +152,6 @@ def test_three_nodes_using_provided_config_files(
         ssh_key, local_certs_path, local_config_files, logger):
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
-    logger.info('Creating certificates and passing them to the instances')
-    node1.run_command('mkdir -p {0}'.format(REMOTE_CERTS_PATH))
-    _create_certificates(local_certs_path, nodes_list, pass_certs=True)
 
     _install_cluster_using_provided_config_files(
         nodes_list, three_nodes_config_dict, test_config,
@@ -215,7 +211,7 @@ def _install_cluster_using_provided_config_files(
         nodes_list, three_nodes_config_dict, test_config,
         ssh_key, local_certs_path, local_config_files, logger,
         cause_error=False, override=False):
-    """Install a Cloudify cluster using generated certificates.
+    """Install a Cloudify cluster using generated config files.
 
     In order to do so, the function:
         1. Generates certificates for each node in the `nodes_list`.
