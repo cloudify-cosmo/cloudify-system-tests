@@ -399,6 +399,8 @@ def test_three_nodes_cluster_teardown(bootstrappable_three_vms, ssh_key,
                           high_security=True, use_hostnames=False,
                           tempdir=module_tmpdir, test_config=test_config,
                           logger=logger)
+    logger.info('Asserting cluster status')
+    _assert_cluster_status(node1.client)
 
     logger.info('Installing example deployment')
     example = get_example_deployment(node1, ssh_key, logger,
@@ -469,9 +471,19 @@ def test_three_nodes_cluster_teardown(bootstrappable_three_vms, ssh_key,
         }
     }
 
+    logger.info('Asserting expected folders and services are removed')
     for node_name, node_diff in diff.items():
         logger.info('Asserting system state for %s', node_name)
         assert node_diff == expected_node_diff
+
+    logger.info('Installing Cloudify cluster again')
+    run_cluster_bootstrap(nodes_list, nodes_list, nodes_list,
+                          skip_bootstrap_list=[], pre_cluster_rabbit=True,
+                          high_security=True, use_hostnames=False,
+                          tempdir=module_tmpdir, test_config=test_config,
+                          logger=logger)
+    logger.info('Asserting cluster status')
+    _assert_cluster_status(node1.client)
 
 
 def _get_dictionaries_diff(first_dict, second_dict):
