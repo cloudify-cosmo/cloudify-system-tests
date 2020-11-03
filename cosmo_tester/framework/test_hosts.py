@@ -506,7 +506,7 @@ class _CloudifyManager(VM):
         self.client.license.upload(license)
 
     def bootstrap(self, upload_license=False,
-                  blocking=True, restservice_expected=True):
+                  blocking=True, restservice_expected=True, config_name=None):
         self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
@@ -523,11 +523,21 @@ class _CloudifyManager(VM):
                     util.get_resource_path('test_valid_paying_license.yaml'),
                 )
 
-            commands = [
-                'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
-                'cfy_manager install > /tmp/bs_logs/3_install 2>&1',
-                'touch /tmp/bootstrap_complete'
-            ]
+            if config_name:
+                dest_config_path = \
+                    '/etc/cloudify/{0}_config.yaml'.format(config_name)
+                commands = [
+                    'sudo mv /tmp/cloudify.conf {0}'.format(dest_config_path),
+                    'cfy_manager install -c {0} > '
+                    '/tmp/bs_logs/3_install 2>&1'.format(dest_config_path)
+                ]
+            else:
+                commands = [
+                    'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
+                    'cfy_manager install > /tmp/bs_logs/3_install 2>&1'
+                ]
+
+            commands.append('touch /tmp/bootstrap_complete')
 
             install_command = ' && '.join(commands)
             install_command = (
