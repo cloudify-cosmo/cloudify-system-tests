@@ -33,7 +33,7 @@ def test_stage(test_ui_manager, ssh_key, logger, test_config):
     logger.info('Starting Stage unit tests...')
     subprocess.check_call(
                         'export NODE_OPTIONS="--max-old-space-size=6144"; ' +
-                        'npm run jest:coverage',
+                        'npm run test:frontend:coverage',
                         cwd=test_config['ui']['stage_repo'], shell=True)
 
     logger.info('Checking coverage...')
