@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import copy
 from datetime import datetime
 import hashlib
 import json
@@ -341,7 +342,7 @@ class _CloudifyManager(VM):
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
-        self.install_config = {
+        self.basic_install_config = {
             'manager': {
                 'public_ip': str(public_ip_address),
                 'private_ip': str(private_ip_address),
@@ -354,6 +355,7 @@ class _CloudifyManager(VM):
                 },
             },
         }
+        self.install_config = copy.deepcopy(self.basic_install_config)
 
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)

@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 
@@ -124,8 +125,7 @@ def three_nodes_cluster(ssh_key, module_tmpdir, test_config, logger, request):
 @pytest.fixture()
 def three_vms(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, three_nodes_cluster=True,
-                           use_installer_image=False, run_bootstrap=False):
+                           request, three_nodes_cluster=True, bootstrap=False):
         yield _vms
 
 
@@ -133,17 +133,7 @@ def three_vms(ssh_key, module_tmpdir, test_config, logger, request):
 def nine_vms(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
                            request, broker_count=3, db_count=3,
-                           manager_count=3, use_installer_image=False,
-                           run_bootstrap=False):
-        yield _vms
-
-
-@pytest.fixture()
-def bootstrappable_three_vms(ssh_key, module_tmpdir, test_config, logger,
-                             request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, three_nodes_cluster=True,
-                           use_installer_image=True, run_bootstrap=False):
+                           manager_count=3, bootstrap=False):
         yield _vms
 
 
@@ -155,8 +145,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
                pre_cluster_rabbit=False, high_security=True,
-               use_hostnames=False, three_nodes_cluster=False,
-               use_installer_image=True, run_bootstrap=True):
+               use_hostnames=False, three_nodes_cluster=False, bootstrap=True):
     number_of_instances = (3 if three_nodes_cluster
                            else broker_count + db_count + manager_count)
     number_of_instances = number_of_instances + (1 if use_load_balancer else 0)
@@ -164,13 +153,12 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
         skip_bootstrap_list = []
     hosts = Hosts(
         ssh_key, module_tmpdir, test_config, logger, request,
-        number_of_instances=number_of_instances,
-        bootstrappable=use_installer_image)
+        number_of_instances=number_of_instances, bootstrappable=bootstrap)
 
     tempdir = hosts._tmpdir
 
     try:
-        if not use_installer_image:
+        if not bootstrap:
             for i in range(len(hosts.instances)):
                 hosts.instances[i] = get_image('centos', test_config)
                 hosts.instances[i].image_name = test_config.platform[
@@ -233,7 +221,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
         if use_load_balancer:
             lb = hosts.instances[-1]
 
-        if run_bootstrap:
+        if bootstrap:
             run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                                   pre_cluster_rabbit, high_security,
                                   use_hostnames, tempdir, test_config, logger)
@@ -242,7 +230,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             _bootstrap_lb_node(lb, managers, tempdir, logger)
 
         logger.info('All nodes are created%s.',
-                    ' and bootstrapped' if run_bootstrap else '')
+                    ' and bootstrapped' if bootstrap else '')
 
         yield hosts.instances
     finally:
@@ -251,16 +239,21 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
 
 def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                           pre_cluster_rabbit, high_security, use_hostnames,
-                          tempdir, test_config, logger):
+                          tempdir, test_config, logger,
+                          revert_install_config=False, credentials=None):
     for node_num, node in enumerate(brokers, start=1):
         _bootstrap_rabbit_node(node, node_num, brokers,
                                skip_bootstrap_list, pre_cluster_rabbit,
-                               tempdir, logger, use_hostnames)
+                               tempdir, logger, use_hostnames, credentials)
+        if revert_install_config:
+            node.install_config = copy.deepcopy(node.basic_install_config)
 
     for node_num, node in enumerate(dbs, start=1):
         _bootstrap_db_node(node, node_num, dbs, skip_bootstrap_list,
                            high_security, tempdir, logger,
-                           use_hostnames)
+                           use_hostnames, credentials)
+        if revert_install_config:
+            node.install_config = copy.deepcopy(node.basic_install_config)
 
     # Ensure all backend nodes are up before installing managers
     for node in brokers + dbs:
@@ -275,7 +268,9 @@ def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                                 skip_bootstrap_list,
                                 pre_cluster_rabbit, high_security,
                                 tempdir, logger, test_config,
-                                use_hostnames)
+                                use_hostnames, credentials)
+        if revert_install_config:
+            node.install_config = copy.deepcopy(node.basic_install_config)
 
 
 def _base_prep(node, tempdir):
@@ -342,7 +337,7 @@ def _base_prep(node, tempdir):
 
 def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
                            pre_cluster_rabbit, tempdir, logger,
-                           use_hostnames):
+                           use_hostnames, credentials=None):
     node.friendly_name = 'rabbit' + str(rabbit_num)
 
     _base_prep(node, tempdir)
@@ -384,6 +379,9 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
 
     _add_monitoring_config(node)
 
+    if credentials:
+        util.update_dictionary(node.install_config, credentials)
+
     if pre_cluster_rabbit and rabbit_num == 1:
         node.bootstrap(blocking=True, restservice_expected=False,
                        config_name='rabbit')
@@ -393,7 +391,7 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
 
 
 def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
-                       tempdir, logger, use_hostnames):
+                       tempdir, logger, use_hostnames, credentials=None):
     node.friendly_name = 'db' + str(db_num)
 
     _base_prep(node, tempdir)
@@ -448,13 +446,17 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
     _add_monitoring_config(node)
 
+    if credentials:
+        util.update_dictionary(node.install_config, credentials)
+
     node.bootstrap(blocking=False, restservice_expected=False,
                    config_name='db')
 
 
 def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                             pre_cluster_rabbit, high_security, tempdir,
-                            logger, test_config, use_hostnames):
+                            logger, test_config, use_hostnames,
+                            credentials=None):
     node.friendly_name = 'manager' + str(mgr_num)
 
     _base_prep(node, tempdir)
@@ -558,6 +560,9 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     upload_license = mgr_num == 1
 
     _add_monitoring_config(node, manager=True)
+
+    if credentials:
+        util.update_dictionary(node.install_config, credentials)
 
     # We have to block on every manager
     node.bootstrap(blocking=True, restservice_expected=False,

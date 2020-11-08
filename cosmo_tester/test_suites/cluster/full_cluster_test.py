@@ -1,3 +1,6 @@
+import copy
+import random
+import string
 import time
 from os.path import join
 
@@ -8,8 +11,6 @@ from cloudify.exceptions import TimeoutException
 from cloudify.cluster_status import ServiceStatus, NodeServiceStatus
 from cloudify_rest_client.exceptions import CloudifyClientError
 
-from cosmo_tester.test_suites.bootstrap_based_tests.teardown_test import (
-    get_system_state)
 from cosmo_tester.test_suites.cluster import check_managers
 from cosmo_tester.test_suites.cluster.conftest import run_cluster_bootstrap
 from cosmo_tester.test_suites.snapshots import (
@@ -381,24 +382,11 @@ def test_three_nodes_cluster_status(three_nodes_cluster, logger):
                                         node1.client)
 
 
-def test_three_nodes_cluster_teardown(bootstrappable_three_vms, ssh_key,
+def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
                                       test_config, module_tmpdir, logger):
     """Tests a cluster teardown"""
-    node1, node2, node3 = bootstrappable_three_vms
+    node1, node2, node3 = three_nodes_cluster
     nodes_list = [node1, node2, node3]
-    origin_nodes_state = {}
-    diff = {}
-    logger.info('Collecting pre-install system state from all nodes')
-    for num, node in enumerate(nodes_list):
-        origin_nodes_state['node-{0}'.format(num)] = get_system_state(
-            node, hide_stdout=True)
-
-    logger.info('Installing Cluster')
-    run_cluster_bootstrap(nodes_list, nodes_list, nodes_list,
-                          skip_bootstrap_list=[], pre_cluster_rabbit=True,
-                          high_security=True, use_hostnames=False,
-                          tempdir=module_tmpdir, test_config=test_config,
-                          logger=logger)
     logger.info('Asserting cluster status')
     _assert_cluster_status(node1.client)
 
@@ -416,88 +404,70 @@ def test_three_nodes_cluster_teardown(bootstrappable_three_vms, ssh_key,
             node.run_command('cfy_manager remove -v -c /etc/cloudify/'
                              '{0}_config.yaml'.format(config_name))
 
-    logger.info('Asserting system state for each node after removal')
-    for num, node in enumerate(nodes_list):
-        node_name = 'node-{0}'.format(num)
-        states_diff = _get_dictionaries_diff(
-            origin_nodes_state[node_name], get_system_state(node, True))
+    credentials = _get_new_credentials()
+    logger.info('New credentials: %s', credentials)
 
-        # In /etc should exist a folder named hosts.bak-<timestamp>.
-        # Since we cannot predict the timestamp, we should remove it after
-        # verifying it exists
-        etc_folders = states_diff['folders in /etc']
-        if not any('hosts.bak-' in elem for elem in etc_folders):
-            raise ValueError('hosts.bak folder does not exist in /etc')
-        states_diff['folders in /etc'] = set([
-            elem for elem in etc_folders if 'hosts.bak-' not in elem])
-
-        diff[node_name] = states_diff
-
-    expected_node_diff = {
-        'systemd service files (/usr/lib/systemd/system)': {
-            'postgres_exporter.service',
-            'prometheus.service',
-            'node_exporter.service',
-            'blackbox_exporter.service',
-            'patroni.service'
-        },
-        'os users': {
-            'haproxy',
-            'postgres',
-            'composer_user',
-            'stage_user',
-            'rabbitmq',
-            'nginx',
-            'etcd'
-        },
-        'yum packages': {
-            'postgresql95-libs',
-            'socat',
-            'erlang',
-        },
-        'os groups': {
-            'haproxy',
-            'postgres',
-            'composer_group',
-            'nginx',
-            'stage_group',
-            'etcd'
-        },
-        'folders in /etc': {
-            'prometheus',
-        },
-        'folders in /opt': {
-            'patroni'
-        }
-    }
-
-    logger.info('Asserting expected folders and services are removed')
-    for node_name, node_diff in diff.items():
-        logger.info('Asserting system state for %s', node_name)
-        assert node_diff == expected_node_diff
+    for node in nodes_list:
+        node.install_config = copy.deepcopy(node.basic_install_config)
 
     logger.info('Installing Cloudify cluster again')
     run_cluster_bootstrap(nodes_list, nodes_list, nodes_list,
                           skip_bootstrap_list=[], pre_cluster_rabbit=True,
                           high_security=True, use_hostnames=False,
                           tempdir=module_tmpdir, test_config=test_config,
-                          logger=logger)
+                          logger=logger, revert_install_config=True,
+                          credentials=credentials)
+
     logger.info('Asserting cluster status')
     _assert_cluster_status(node1.client)
 
 
-def _get_dictionaries_diff(first_dict, second_dict):
-    if not set(first_dict.keys()) == set(second_dict.keys()):
-        raise ValueError('The two dictionaries must have the same keys '
-                         'in order to get diff')
+def _get_new_credentials():
+    monitoring_creds = {
+        'username': _random_credential_generator(),
+        'password': _random_credential_generator()
+    }
+    postgresql_password = _random_credential_generator()
 
-    diff = {}
-    for key, val in second_dict.items():
-        diff_val = set(val) - set(first_dict[key])
-        if diff_val:
-            diff[key] = diff_val
+    return {
+        'manager': {  # We're not changing the username and password
+            'monitoring': monitoring_creds
+        },
+        'postgresql_server': {
+            'postgres_password': postgresql_password,
+            'cluster': {
+                'etcd': {
+                    'cluster_token': _random_credential_generator(),
+                    'root_password': _random_credential_generator(),
+                    'patroni_password': _random_credential_generator()
+                },
+                'patroni': {
+                    'rest_password': _random_credential_generator()
+                },
+                'postgres': {
+                    'replicator_password': _random_credential_generator()
+                }
+            }
+        },
+        'postgresql_client': {
+            'monitoring': monitoring_creds,
+            'server_password': postgresql_password
+        },
+        'rabbitmq': {
+            'username': _random_credential_generator(),
+            'password': _random_credential_generator(),
+            'erlang_cookie': _random_credential_generator(),
+            'monitoring': monitoring_creds
+        },
+        'prometheus': {
+            'credentials': monitoring_creds
+        }
+    }
 
-    return diff
+
+def _random_credential_generator():
+    return ''.join(random.choice(string.ascii_lowercase + string.digits)
+                   for _ in range(40))
 
 
 def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
