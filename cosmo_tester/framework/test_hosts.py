@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import copy
 from datetime import datetime
 import hashlib
 import json
@@ -341,7 +342,7 @@ class _CloudifyManager(VM):
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
-        self.install_config = {
+        self.basic_install_config = {
             'manager': {
                 'public_ip': str(public_ip_address),
                 'private_ip': str(private_ip_address),
@@ -354,6 +355,7 @@ class _CloudifyManager(VM):
                 },
             },
         }
+        self.install_config = copy.deepcopy(self.basic_install_config)
 
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
@@ -506,7 +508,7 @@ class _CloudifyManager(VM):
         self.client.license.upload(license)
 
     def bootstrap(self, upload_license=False,
-                  blocking=True, restservice_expected=True):
+                  blocking=True, restservice_expected=True, config_name=None):
         self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
@@ -523,11 +525,21 @@ class _CloudifyManager(VM):
                     util.get_resource_path('test_valid_paying_license.yaml'),
                 )
 
-            commands = [
-                'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
-                'cfy_manager install > /tmp/bs_logs/3_install 2>&1',
-                'touch /tmp/bootstrap_complete'
-            ]
+            if config_name:
+                dest_config_path = \
+                    '/etc/cloudify/{0}_config.yaml'.format(config_name)
+                commands = [
+                    'sudo mv /tmp/cloudify.conf {0}'.format(dest_config_path),
+                    'cfy_manager install -c {0} > '
+                    '/tmp/bs_logs/3_install 2>&1'.format(dest_config_path)
+                ]
+            else:
+                commands = [
+                    'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
+                    'cfy_manager install > /tmp/bs_logs/3_install 2>&1'
+                ]
+
+            commands.append('touch /tmp/bootstrap_complete')
 
             install_command = ' && '.join(commands)
             install_command = (
