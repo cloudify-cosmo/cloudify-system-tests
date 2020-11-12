@@ -3,8 +3,8 @@ plugin_package_name:
   description: Package name of plugin for this platform. This plugin must be installed on the infrastructure manager with visibility=global.
   default: cloudify-openstack-plugin
 plugin_version:
-  description: The expected version of this plugin.
-  default: 3.2.10
+  description: The expected version of this plugin (can be a regular expression).
+  default: ^3\.\d+\.\d+$
 linux_size:
   description: Size to use for linux on this platform.
   default: m1.medium
