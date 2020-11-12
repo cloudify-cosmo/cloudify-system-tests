@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 
@@ -221,30 +222,9 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             lb = hosts.instances[-1]
 
         if bootstrap:
-            for node_num, node in enumerate(brokers, start=1):
-                _bootstrap_rabbit_node(node, node_num, brokers,
-                                       skip_bootstrap_list, pre_cluster_rabbit,
-                                       tempdir, logger, use_hostnames)
-
-            for node_num, node in enumerate(dbs, start=1):
-                _bootstrap_db_node(node, node_num, dbs, skip_bootstrap_list,
-                                   high_security, tempdir, logger,
-                                   use_hostnames)
-
-            # Ensure all backend nodes are up before installing managers
-            for node in brokers + dbs:
-                if node.friendly_name in skip_bootstrap_list:
-                    continue
-                while not node.bootstrap_is_complete():
-                    logger.info('Checking state of %s', node.friendly_name)
-                    time.sleep(5)
-
-            for node_num, node in enumerate(managers, start=1):
-                _bootstrap_manager_node(node, node_num, dbs, brokers,
-                                        skip_bootstrap_list,
-                                        pre_cluster_rabbit, high_security,
-                                        tempdir, logger, test_config,
-                                        use_hostnames)
+            run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
+                                  pre_cluster_rabbit, high_security,
+                                  use_hostnames, tempdir, test_config, logger)
 
         if use_load_balancer:
             _bootstrap_lb_node(lb, managers, tempdir, logger)
@@ -255,6 +235,42 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
         yield hosts.instances
     finally:
         hosts.destroy()
+
+
+def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
+                          pre_cluster_rabbit, high_security, use_hostnames,
+                          tempdir, test_config, logger,
+                          revert_install_config=False, credentials=None):
+    for node_num, node in enumerate(brokers, start=1):
+        _bootstrap_rabbit_node(node, node_num, brokers,
+                               skip_bootstrap_list, pre_cluster_rabbit,
+                               tempdir, logger, use_hostnames, credentials)
+        if revert_install_config:
+            node.install_config = copy.deepcopy(node.basic_install_config)
+
+    for node_num, node in enumerate(dbs, start=1):
+        _bootstrap_db_node(node, node_num, dbs, skip_bootstrap_list,
+                           high_security, tempdir, logger,
+                           use_hostnames, credentials)
+        if revert_install_config:
+            node.install_config = copy.deepcopy(node.basic_install_config)
+
+    # Ensure all backend nodes are up before installing managers
+    for node in brokers + dbs:
+        if node.friendly_name in skip_bootstrap_list:
+            continue
+        while not node.bootstrap_is_complete():
+            logger.info('Checking state of %s', node.friendly_name)
+            time.sleep(5)
+
+    for node_num, node in enumerate(managers, start=1):
+        _bootstrap_manager_node(node, node_num, dbs, brokers,
+                                skip_bootstrap_list,
+                                pre_cluster_rabbit, high_security,
+                                tempdir, logger, test_config,
+                                use_hostnames, credentials)
+        if revert_install_config:
+            node.install_config = copy.deepcopy(node.basic_install_config)
 
 
 def _base_prep(node, tempdir):
@@ -321,7 +337,7 @@ def _base_prep(node, tempdir):
 
 def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
                            pre_cluster_rabbit, tempdir, logger,
-                           use_hostnames):
+                           use_hostnames, credentials=None):
     node.friendly_name = 'rabbit' + str(rabbit_num)
 
     _base_prep(node, tempdir)
@@ -363,14 +379,19 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
 
     _add_monitoring_config(node)
 
+    if credentials:
+        util.update_dictionary(node.install_config, credentials)
+
     if pre_cluster_rabbit and rabbit_num == 1:
-        node.bootstrap(blocking=True, restservice_expected=False)
+        node.bootstrap(blocking=True, restservice_expected=False,
+                       config_name='rabbit')
     else:
-        node.bootstrap(blocking=False, restservice_expected=False)
+        node.bootstrap(blocking=False, restservice_expected=False,
+                       config_name='rabbit')
 
 
 def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
-                       tempdir, logger, use_hostnames):
+                       tempdir, logger, use_hostnames, credentials=None):
     node.friendly_name = 'db' + str(db_num)
 
     _base_prep(node, tempdir)
@@ -425,12 +446,17 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
     _add_monitoring_config(node)
 
-    node.bootstrap(blocking=False, restservice_expected=False)
+    if credentials:
+        util.update_dictionary(node.install_config, credentials)
+
+    node.bootstrap(blocking=False, restservice_expected=False,
+                   config_name='db')
 
 
 def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                             pre_cluster_rabbit, high_security, tempdir,
-                            logger, test_config, use_hostnames):
+                            logger, test_config, use_hostnames,
+                            credentials=None):
     node.friendly_name = 'manager' + str(mgr_num)
 
     _base_prep(node, tempdir)
@@ -535,9 +561,12 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
 
     _add_monitoring_config(node, manager=True)
 
+    if credentials:
+        util.update_dictionary(node.install_config, credentials)
+
     # We have to block on every manager
     node.bootstrap(blocking=True, restservice_expected=False,
-                   upload_license=upload_license)
+                   upload_license=upload_license, config_name='manager')
 
     # Correctly configure the rest client for the node
     node.client = util.create_rest_client(

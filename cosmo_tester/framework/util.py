@@ -647,3 +647,14 @@ def get_node_instances(node_name, deployment_id, client):
             ))
 
     return node_instances
+
+
+def update_dictionary(dict1, dict2):
+    """Recursively update dict1 values with those of dict2"""
+    for key, value in dict2.items():
+        if key in dict1:
+            if isinstance(value, dict):
+                dict1[key] = update_dictionary(dict1[key], value)
+            else:
+                dict1[key] = value
+    return dict1
