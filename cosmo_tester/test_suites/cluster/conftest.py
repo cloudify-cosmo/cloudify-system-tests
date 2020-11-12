@@ -144,11 +144,13 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                # during the bootstrap.
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
-               pre_cluster_rabbit=False, high_security=True,
+               pre_cluster_rabbit=False, high_security=True, extra_node=None,
                use_hostnames=False, three_nodes_cluster=False, bootstrap=True):
     number_of_instances = (3 if three_nodes_cluster
                            else broker_count + db_count + manager_count)
-    number_of_instances = number_of_instances + (1 if use_load_balancer else 0)
+    has_extra_node = (1 if extra_node else 0)
+    number_of_instances = number_of_instances + \
+        (1 if use_load_balancer else 0) + has_extra_node
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
     hosts = Hosts(
@@ -159,12 +161,18 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
 
     try:
         if not bootstrap:
-            for i in range(len(hosts.instances)):
+            for i in range(number_of_instances):
                 hosts.instances[i] = get_image('centos', test_config)
                 hosts.instances[i].image_name = test_config.platform[
                     'centos_7_image']
                 hosts.instances[i].username = test_config['test_os_usernames'][
                     'centos_7']
+
+        if extra_node:
+            hosts.instances[-1].image_name = \
+                test_config.platform['{}_image'.format(extra_node)]
+            hosts.instances[-1].username = \
+                test_config['test_os_usernames'][extra_node]
 
         for node in hosts.instances:
             node.verify_services_are_running = skip
@@ -184,6 +192,8 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             ])
         if use_load_balancer:
             name_mappings.append('lb')
+        if has_extra_node:
+            name_mappings.append('extra_node')
 
         for idx, node in enumerate(hosts.instances):
             node.wait_for_ssh()
@@ -219,7 +229,7 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             managers = hosts.instances[broker_count + db_count:
                                        broker_count + db_count + manager_count]
         if use_load_balancer:
-            lb = hosts.instances[-1]
+            lb = hosts.instances[-1 - has_extra_node]
 
         if bootstrap:
             run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,

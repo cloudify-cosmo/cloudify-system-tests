@@ -967,7 +967,8 @@ class Hosts(object):
         current_plugins = self._infra_client.plugins.list(_all_tenants=True)
         if any(
             plugin["package_name"] == plugin_details['plugin_package_name']
-            and plugin["package_version"] == plugin_details['plugin_version']
+            and re.match(r'{}'.format(plugin_details['plugin_version']),
+                         plugin["package_version"])
             for plugin in current_plugins
         ):
             self._logger.info('Openstack plugin already present.')

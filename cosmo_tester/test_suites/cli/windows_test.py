@@ -11,6 +11,7 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cli import (
     _prepare,
     _test_cfy_install,
+    _test_tmux_session,
     _test_teardown,
     _test_upload_and_install,
     get_image_and_username,
@@ -40,6 +41,19 @@ def test_cli_install_flow_windows(windows_cli_tester, logger):
     _test_cfy_install(cli_host.run_windows_command, example, paths, logger)
 
     _test_teardown(cli_host.run_windows_command, example, paths, logger)
+
+
+def test_tmux_session_windows(windows_cli_tester, logger):
+    cli_host = windows_cli_tester['cli_host']
+    example = windows_cli_tester['example']
+    paths = windows_cli_tester['paths']
+
+    _prepare(cli_host.run_windows_command, example, paths, logger)
+    _test_tmux_session(cli_host.run_windows_command,
+                       example.manager.run_command,
+                       example,
+                       paths,
+                       logger)
 
 
 def get_windows_image_settings():
@@ -79,6 +93,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
 
         logger.info('Downloading CLI package')
         cli_package_url = get_cli_package_url(url_key, test_config)
+        cli_package_version = cli_package_url.split('.exe')[-2].split('_')[-1]
         logger.info('Using CLI package: {url}'.format(
             url=cli_package_url,
         ))
@@ -134,7 +149,8 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
                 'blueprint': remote_blueprint_path,
                 'inputs': remote_inputs_path,
                 'ssh_key': remote_ssh_key_path,
-                'cfy': '"C:\\Program Files\\Cloudify CLI\\Scripts\\cfy.exe"',
+                'cfy': '"C:\\Program Files\\Cloudify {} CLI\\Scripts\\'
+                       'cfy.exe"'.format(cli_package_version),
             },
         }
     except Exception:
