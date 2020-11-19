@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label "system-tests-${env.BUILD_NUMBER}"
+      label "system-tests-mb-${env.BUILD_NUMBER}"
       defaultContainer 'jnlp'
       yamlFile 'jenkins/build-pod.yaml'
     }
