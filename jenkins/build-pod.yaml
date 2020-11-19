@@ -7,9 +7,9 @@ spec:
       resources:
         requests:
           cpu: 1
-      # command:
-      # - cat
-      # tty: true
+      command:
+      - cat
+      tty: true
       # securityContext:
       #   runAsUser: 0
       #   privileged: true
