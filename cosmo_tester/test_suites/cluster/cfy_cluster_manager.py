@@ -27,7 +27,7 @@ def basic_config_dict(ssh_key, test_config):
         'ssh_key_path': REMOTE_SSH_KEY_PATH,
         'ssh_user': 'centos',
         'cloudify_license_path': REMOTE_LICENSE_PATH,
-        'manager_rpm_download_link': test_config['cfy_cluster_manager'][
+        'manager_rpm_path': test_config['cfy_cluster_manager'][
             'manager_install_rpm_path']
     }
 
@@ -102,7 +102,7 @@ def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
 def test_three_nodes_cluster_using_provided_certificates(
         three_vms, three_nodes_config_dict, test_config,
         ssh_key, local_certs_path, logger):
-    """Tests that the supllied certificates are being used in the cluster."""
+    """Tests that the provided certificates are being used in the cluster."""
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
 
@@ -184,7 +184,7 @@ def test_three_nodes_cluster_override(
     """Tests the override install Mechanism.
 
     The test goes as follows:
-        1. Intstall a three node cluster using an erroneous
+        1. Install a three node cluster using an erroneous
            manager config.yaml file. This will of course, cause an error.
         2. Catch the error, and install the cluster from the start using
            the flag `--override`. This step doesn't use generated config.yaml
@@ -205,6 +205,22 @@ def test_three_nodes_cluster_override(
 
         _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
                          logger, override=True)
+
+
+def test_three_nodes_cluster_offline(
+        three_vms, three_nodes_config_dict, test_config, ssh_key, logger):
+    """Tests the cluster install in offline environment."""
+    node1, node2, node3 = three_vms
+    local_rpm_path = '/tmp/manager_install_rpm_path.rpm'
+    node1.run_command('curl -o {0} {1}'.format(
+        local_rpm_path, three_nodes_config_dict['manager_rpm_path']))
+
+    three_nodes_config_dict['manager_rpm_path'] = local_rpm_path
+    _update_three_nodes_config_dict_vms(three_nodes_config_dict,
+                                        [node1, node2, node3])
+
+    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
+                     logger)
 
 
 def _install_cluster_using_provided_config_files(
