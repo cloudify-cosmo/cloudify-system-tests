@@ -1,7 +1,7 @@
 ssh_key_path: '' # Filled by the test
 ssh_user: '' # Filled by the test
 cloudify_license_path: '' # Filled by the test
-manager_rpm_download_link: '' # Filled by the test
+manager_rpm_path: '' # Filled by the test
 
 ldap:
   server: ''
