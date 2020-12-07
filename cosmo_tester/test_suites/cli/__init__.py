@@ -2,8 +2,6 @@ import json
 import time
 import hashlib
 import tarfile
-import tempfile
-from pathlib import Path
 
 
 def get_image_and_username(os, test_config):
@@ -71,7 +69,7 @@ def _set_ssh_in_profile(run, example, paths):
     )
 
 
-def _test_cfy_logs(run, cli_host, example, paths, logger):
+def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
     _set_ssh_in_profile(run, example, paths)
 
     # stop manager services so the logs won't change during the test
@@ -86,14 +84,13 @@ def _test_cfy_logs(run, cli_host, example, paths, logger):
         use_sudo=True
     ).stdout.splitlines()]
 
-    local_logs_dump_path = Path(tempfile.mkdtemp())
-    local_logs_dump_filepath = local_logs_dump_path / 'logs.tar'
+    local_logs_dump_filepath = str(tmpdir / 'logs.tar')
     cli_host.get_remote_file(logs_dump_filepath, local_logs_dump_filepath)
     with tarfile.open(local_logs_dump_filepath) as tar:
-        tar.extractall(local_logs_dump_path)
+        tar.extractall(tmpdir)
 
-    files = list((local_logs_dump_path / 'cloudify').rglob('*.*'))
-    assert local_logs_dump_path / 'cloudify/journalctl.log' in files
+    files = list((tmpdir / 'cloudify').rglob('*.*'))
+    assert str(tmpdir / 'cloudify/journalctl.log') in files
     log_hashes_local = sorted(
         [hashlib.md5(open(f, 'rb').read()).hexdigest() for f in files if
          'journalctl' not in f.name])

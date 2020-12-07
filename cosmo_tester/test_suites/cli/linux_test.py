@@ -2,8 +2,6 @@ import json
 import pytest
 import hashlib
 import tarfile
-import tempfile
-from pathlib import Path
 
 from cosmo_tester.framework.util import get_cli_package_url
 from cosmo_tester.framework.test_hosts import (
@@ -53,16 +51,17 @@ def get_linux_image_settings():
     ]
 
 
-def test_cfy_logs_linux(linux_cli_tester, logger):
+def test_cfy_logs_linux(linux_cli_tester, tmpdir, logger):
     cli_host = linux_cli_tester['cli_host']
     example = linux_cli_tester['example']
     paths = linux_cli_tester['paths']
 
     _prepare(cli_host.run_command, example, paths, logger)
-    _test_cfy_logs(cli_host.run_command, cli_host, example, paths, logger)
+    _test_cfy_logs(cli_host.run_command, cli_host, example, paths, tmpdir,
+                   logger)
 
 
-def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, logger):
+def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, tmpdir, logger):
     cli_host = linux_cluster_cli_tester['cli_host']
     nodes = linux_cluster_cli_tester['nodes']
     paths = linux_cluster_cli_tester['paths']
@@ -93,13 +92,12 @@ def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, logger):
             [logs_dump_filepaths['db'][node.private_ip_address]] + \
             [logs_dump_filepaths['broker'][node.private_ip_address]]
         for dump_filepath in node_dump_filepaths:
-            local_dump_path = Path(tempfile.mkdtemp())
-            local_dump_filepath = local_dump_path / 'logs.tar'
+            local_dump_filepath = str(tmpdir / 'logs.tar')
             cli_host.get_remote_file(dump_filepath, local_dump_filepath)
             with tarfile.open(local_dump_filepath) as tar:
-                tar.extractall(local_dump_path)
-            files = list((local_dump_path / 'cloudify').rglob('*.*'))
-            assert local_dump_path / 'cloudify/journalctl.log' in files
+                tar.extractall(tmpdir)
+            files = list((tmpdir / 'cloudify').rglob('*.*'))
+            assert str(tmpdir / 'cloudify/journalctl.log') in files
             log_hashes_local = sorted(
                 [hashlib.md5(open(f, 'rb').read()).hexdigest() for f in
                  files if 'journalctl' not in f.name])
