@@ -87,13 +87,13 @@ def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
     local_logs_dump_filepath = str(tmpdir / 'logs.tar')
     cli_host.get_remote_file(logs_dump_filepath, local_logs_dump_filepath)
     with tarfile.open(local_logs_dump_filepath) as tar:
-        tar.extractall(tmpdir)
+        tar.extractall(str(tmpdir))
 
-    files = list((tmpdir / 'cloudify').rglob('*.*'))
+    files = list((tmpdir / 'cloudify').visit('*.*'))
     assert str(tmpdir / 'cloudify/journalctl.log') in files
     log_hashes_local = sorted(
-        [hashlib.md5(open(f, 'rb').read()).hexdigest() for f in files if
-         'journalctl' not in f.name])
+        [hashlib.md5(open(f.strpath, 'rb').read()).hexdigest() for f in files
+         if 'journalctl' not in f.basename])
     assert set(log_hashes) == set(log_hashes_local)
 
     logger.info('Testing `cfy logs backup`')
