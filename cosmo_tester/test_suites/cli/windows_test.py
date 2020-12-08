@@ -79,6 +79,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
 
         logger.info('Downloading CLI package')
         cli_package_url = get_cli_package_url(url_key, test_config)
+        cli_package_version = cli_package_url.split('.exe')[-2].split('_')[-1]
         logger.info('Using CLI package: {url}'.format(
             url=cli_package_url,
         ))
@@ -134,7 +135,8 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
                 'blueprint': remote_blueprint_path,
                 'inputs': remote_inputs_path,
                 'ssh_key': remote_ssh_key_path,
-                'cfy': '"C:\\Program Files\\Cloudify CLI\\Scripts\\cfy.exe"',
+                'cfy': '"C:\\Program Files\\Cloudify {} CLI\\Scripts\\'
+                       'cfy.exe"'.format(cli_package_version),
             },
         }
     except Exception:

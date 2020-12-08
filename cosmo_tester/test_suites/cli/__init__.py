@@ -1,5 +1,7 @@
 import json
 import time
+import hashlib
+import tarfile
 
 
 def get_image_and_username(os, test_config):
@@ -55,6 +57,58 @@ def _test_cfy_install(run, example, paths, logger):
     )
 
     example.check_files()
+
+
+def _set_ssh_in_profile(run, example, paths):
+    run(
+        '{cfy} profiles set --ssh-user {ssh_user} --ssh-key {ssh_key}'.format(
+            cfy=paths['cfy'],
+            ssh_user=example.manager.username,
+            ssh_key=paths['ssh_key'],
+        )
+    )
+
+
+def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
+    _set_ssh_in_profile(run, example, paths)
+
+    # stop manager services so the logs won't change during the test
+    example.manager.run_command('cfy_manager stop')
+
+    logs_dump_filepath = [v for v in json.loads(run(
+        '{cfy} logs download --json'.format(cfy=paths['cfy'])
+    ).stdout.strip())['archive paths']['manager'].values()][0]
+
+    log_hashes = [f.split()[0] for f in example.manager.run_command(
+        'find /var/log/cloudify -type f -exec md5sum {} + | sort',
+        use_sudo=True
+    ).stdout.splitlines()]
+
+    local_logs_dump_filepath = str(tmpdir / 'logs.tar')
+    cli_host.get_remote_file(logs_dump_filepath, local_logs_dump_filepath)
+    with tarfile.open(local_logs_dump_filepath) as tar:
+        tar.extractall(tmpdir)
+
+    files = list((tmpdir / 'cloudify').rglob('*.*'))
+    assert str(tmpdir / 'cloudify/journalctl.log') in files
+    log_hashes_local = sorted(
+        [hashlib.md5(open(f, 'rb').read()).hexdigest() for f in files if
+         'journalctl' not in f.name])
+    assert set(log_hashes) == set(log_hashes_local)
+
+    logger.info('Testing `cfy logs backup`')
+    run('{cfy} logs backup --verbose'.format(cfy=paths['cfy']))
+    output = example.manager.run_command('ls /var/log').stdout
+    assert 'cloudify-manager-logs_' in output
+
+    logger.info('Testing `cfy logs purge`')
+    example.manager.run_command('cfy_manager stop')
+    run('{cfy} logs purge --force'.format(cfy=paths['cfy']))
+    # Verify that each file under /var/log/cloudify is size zero
+    example.manager.run_command(
+        'find /var/log/cloudify -type f -exec test -s {} \\; '
+        '-print -exec false {} +'
+    )
 
 
 def _test_teardown(run, example, paths, logger):
