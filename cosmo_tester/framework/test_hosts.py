@@ -621,7 +621,7 @@ class _CloudifyManager(VM):
         else:
             return self._new_wait_for_manager()
 
-    @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
+    @retrying.retry(stop_max_attempt_number=90, wait_fixed=1000)
     def _new_wait_for_manager(self):
         manager_status = self.client.manager.get_status()
         if manager_status['status'] != HEALTHY_STATE:
