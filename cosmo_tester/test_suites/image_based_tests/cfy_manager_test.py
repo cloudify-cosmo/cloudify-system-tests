@@ -14,6 +14,7 @@ NEW_HOOKS = 'new_hooks'
 GET_MQ_PASSWORDS_CODE_PATH = '/tmp/get_passwords.py'
 MQ_PASSWORDS_PATH = '/tmp/passwords'
 GET_MQ_PASSWORDS_CODE = '''
+import os
 import json
 
 from cloudify.cryptography_utils import decrypt
@@ -21,6 +22,7 @@ from cloudify.cryptography_utils import decrypt
 from manager_rest.storage import models
 from manager_rest.flask_utils import setup_flask_app
 
+os.environ['MANAGER_REST_CONFIG_PATH'] = '/opt/manager/cloudify-rest.conf'
 setup_flask_app()
 
 tenants = models.Tenant.query.all()
@@ -31,8 +33,7 @@ with open('%s', 'w') as f:
 ''' % MQ_PASSWORDS_PATH
 
 
-def test_cfy_manager_configure(image_based_manager, logger, tmpdir,
-                               test_config):
+def test_cfy_manager_configure(image_based_manager, logger, test_config):
     logger.info('Putting code to get decrypted passwords on manager...')
     image_based_manager.put_remote_file_content(
         remote_path=GET_MQ_PASSWORDS_CODE_PATH,
@@ -63,7 +64,14 @@ def test_cfy_manager_configure(image_based_manager, logger, tmpdir,
     image_based_manager.put_remote_file_content(REMOTE_HOOKS_PATH, NEW_HOOKS)
 
     logger.info('Running `cfy_manager configure`...')
-    image_based_manager.run_command('cfy_manager configure')
+    image_based_manager.run_command(
+        "sudo sed -i 's/admin_password:.*/admin_password: admin/' "
+        "/etc/cloudify/config.yaml")
+    image_based_manager.run_command(
+        'cfy_manager configure --private-ip {0} --public-ip {1}'.format(
+            image_based_manager.private_ip_address,
+            image_based_manager.ip_address)
+    )
 
     logger.info('Verifying certificates unchanged after configure...')
     new_cert = image_based_manager.get_remote_file_content(REMOTE_CERT_PATH)
