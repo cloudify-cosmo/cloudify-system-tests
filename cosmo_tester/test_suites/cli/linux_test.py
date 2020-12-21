@@ -1,5 +1,6 @@
 import json
 import pytest
+import shutil
 import hashlib
 import tarfile
 
@@ -91,8 +92,9 @@ def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, tmpdir, logger):
             [logs_dump_filepaths['manager'][node.private_ip_address]] + \
             [logs_dump_filepaths['db'][node.private_ip_address]] + \
             [logs_dump_filepaths['broker'][node.private_ip_address]]
-        for dump_filepath in node_dump_filepaths:
-            local_dump_filepath = str(tmpdir / 'logs.tar')
+        for i, dump_filepath in enumerate(node_dump_filepaths):
+            local_dump_filepath = str(tmpdir / 'logs_{0}_{1}.tar'.format(
+                node.hostname, i))
             cli_host.get_remote_file(dump_filepath, local_dump_filepath)
             with tarfile.open(local_dump_filepath) as tar:
                 tar.extractall(str(tmpdir))
@@ -102,6 +104,7 @@ def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, tmpdir, logger):
                 [hashlib.md5(open(f.strpath, 'rb').read()).hexdigest() for f
                  in files if 'journalctl' not in f.basename])
             assert set(log_hashes) == set(log_hashes_local)
+            shutil.rmtree(str(tmpdir / 'cloudify'))
 
     logger.info('Testing `cfy logs backup`')
     cli_host.run_command('{cfy} logs backup --verbose'.format(
@@ -142,8 +145,7 @@ def linux_cluster_cli_tester(request, ssh_key, module_tmpdir, test_config,
     try:
         url_key = request.param[1]
         pkg_type = request.param[2]
-        _install_cli_client(cli_host, logger, url_key, ssh_key,
-                            pkg_type, test_config)
+        _install_cli_client(cli_host, logger, url_key, pkg_type, test_config)
 
         logger.info('Copying agent ssh key and CA cert to CLI host')
         remote_ssh_key_path = '/tmp/cli_test_ssh_key.pem'
@@ -257,8 +259,7 @@ def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
         cli_hosts.destroy(passed=passed)
 
 
-def _install_cli_client(cli_host, logger, url_key, ssh_key,
-                        pkg_type, test_config):
+def _install_cli_client(cli_host, logger, url_key, pkg_type, test_config):
     logger.info('Downloading CLI package')
     cli_package_url = get_cli_package_url(url_key, test_config)
     logger.info('Using CLI package: {url}'.format(
