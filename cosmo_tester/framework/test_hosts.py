@@ -651,6 +651,11 @@ class _CloudifyManager(VM):
                             )
                         )
 
+    @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
+    def wait_for_rabbit(self):
+        self._logger.info('Checking rabbit')
+        self.run_command('cfy_manger brokers list')
+
     def enable_nics(self):
         """
         Extra network interfaces need to be manually enabled on the manager

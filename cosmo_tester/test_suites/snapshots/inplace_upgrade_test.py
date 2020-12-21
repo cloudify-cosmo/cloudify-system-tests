@@ -55,7 +55,6 @@ def example(manager_and_vm, ssh_key, tmpdir, logger, test_config):
 
 def test_inplace_upgrade(manager_and_vm,
                          example,
-                         ssh_key,
                          module_tmpdir,
                          logger):
     manager, vm = manager_and_vm
@@ -123,5 +122,6 @@ def test_inplace_upgrade(manager_and_vm,
                 'Agent reconnect retries are up to 30 seconds apart.')
     sleep(50)
     manager.wait_for_manager()
+    manager.wait_for_rabbit()
 
     example.uninstall()
