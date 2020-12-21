@@ -61,7 +61,24 @@ def test_cfy_logs_linux(linux_cli_tester, tmpdir, logger):
                    logger)
 
 
-def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, tmpdir, logger):
+@pytest.fixture
+def three_node_cluster_with_extra_node(ssh_key, module_tmpdir, test_config,
+                                       logger, request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request, pre_cluster_rabbit=True,
+                           three_nodes_cluster=True, extra_node=request.param):
+        yield _vms
+
+
+@pytest.mark.parametrize('three_node_cluster_with_extra_node',
+                         [p[0] for p in get_linux_image_settings()],
+                         indirect=['three_node_cluster_with_extra_node'])
+def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
+                                three_node_cluster_with_extra_node, tmpdir):
+    linux_cluster_cli_tester = _linux_cluster_cli_tester(
+        request, ssh_key, test_config, logger,
+        three_node_cluster_with_extra_node)
+
     cli_host = linux_cluster_cli_tester['cli_host']
     nodes = linux_cluster_cli_tester['nodes']
     paths = linux_cluster_cli_tester['paths']
@@ -91,13 +108,14 @@ def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, tmpdir, logger):
             [logs_dump_filepaths['manager'][node.private_ip_address]] + \
             [logs_dump_filepaths['db'][node.private_ip_address]] + \
             [logs_dump_filepaths['broker'][node.private_ip_address]]
-        for dump_filepath in node_dump_filepaths:
-            local_dump_filepath = str(tmpdir / 'logs.tar')
+        for i, dump_filepath in enumerate(node_dump_filepaths):
+            tar_name = 'logs_{0}_{1}'.format(node.hostname, i)
+            local_dump_filepath = str(tmpdir / '{}.tar'.format(tar_name))
             cli_host.get_remote_file(dump_filepath, local_dump_filepath)
             with tarfile.open(local_dump_filepath) as tar:
-                tar.extractall(str(tmpdir))
-            files = list((tmpdir / 'cloudify').visit('*.*'))
-            assert str(tmpdir / 'cloudify/journalctl.log') in files
+                tar.extractall(str(tmpdir / tar_name))
+            files = list((tmpdir / tar_name / 'cloudify').visit('*.*'))
+            assert str(tmpdir / tar_name / 'cloudify/journalctl.log') in files
             log_hashes_local = sorted(
                 [hashlib.md5(open(f.strpath, 'rb').read()).hexdigest() for f
                  in files if 'journalctl' not in f.basename])
@@ -122,28 +140,18 @@ def test_cfy_logs_linux_cluster(linux_cluster_cli_tester, tmpdir, logger):
     )
 
 
-def _three_node_cluster_with_extra_node(
-        ssh_key, module_tmpdir, test_config, logger, request, image):
-    return next(_get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, pre_cluster_rabbit=True,
-                           three_nodes_cluster=True, extra_node=image))
+def _linux_cluster_cli_tester(request, ssh_key, test_config, logger, cluster):
 
+    cluster_nodes = cluster[:3]
+    cli_host = cluster[3]
 
-@pytest.fixture(
-    scope='module',
-    params=get_linux_image_settings())
-def linux_cluster_cli_tester(request, ssh_key, module_tmpdir, test_config,
-                             logger):
-    cli_os = request.param[0]
-    n1, n2, n3, cli_host = _three_node_cluster_with_extra_node(
-        ssh_key, module_tmpdir, test_config, logger, request, cli_os)
-    cluster_nodes = [n1, n2, n3]
+    for setting in get_linux_image_settings():
+        if setting[0] in request.node.nodeid:
+            _, url_key, pkg_type = setting
+            break
 
     try:
-        url_key = request.param[1]
-        pkg_type = request.param[2]
-        _install_cli_client(cli_host, logger, url_key, ssh_key,
-                            pkg_type, test_config)
+        _install_cli_client(cli_host, logger, url_key, pkg_type, test_config)
 
         logger.info('Copying agent ssh key and CA cert to CLI host')
         remote_ssh_key_path = '/tmp/cli_test_ssh_key.pem'
@@ -168,7 +176,7 @@ def linux_cluster_cli_tester(request, ssh_key, module_tmpdir, test_config,
                 rest_cert=remote_ca_cert_path,
             )
         )
-        yield {
+        return {
             'cli_host': cli_host,
             'nodes': cluster_nodes,
             'paths': {
@@ -210,8 +218,7 @@ def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
         pkg_type = request.param[2]
         cli_host, manager_host = cli_hosts.instances
 
-        _install_cli_client(cli_host, logger, url_key, ssh_key,
-                            pkg_type, test_config)
+        _install_cli_client(cli_host, logger, url_key, pkg_type, test_config)
 
         example = get_example_deployment(
             manager_host, ssh_key, logger, url_key, test_config)
@@ -257,8 +264,7 @@ def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
         cli_hosts.destroy(passed=passed)
 
 
-def _install_cli_client(cli_host, logger, url_key, ssh_key,
-                        pkg_type, test_config):
+def _install_cli_client(cli_host, logger, url_key, pkg_type, test_config):
     logger.info('Downloading CLI package')
     cli_package_url = get_cli_package_url(url_key, test_config)
     logger.info('Using CLI package: {url}'.format(
