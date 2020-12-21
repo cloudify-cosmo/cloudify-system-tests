@@ -228,7 +228,7 @@ def proxy_prepare_hosts(instances, logger):
     # to the manager
     with proxy.ssh() as fabric:
         fabric.sudo('yum install socat -y')
-        for port in [5671, 53333]:
+        for port in [5671, 53333, 15671]:
             service = 'proxy_{0}'.format(port)
             filename = '/usr/lib/systemd/system/{0}.service'.format(service)
             logger.info('Deploying proxy service file')
