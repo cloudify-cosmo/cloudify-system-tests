@@ -400,7 +400,7 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
     example.uninstall()
     logger.info('Removing cluster')
     for node in nodes_list:
-        for config_name in ['db', 'rabbit', 'manager']:
+        for config_name in ['manager', 'rabbit', 'db']:
             node.run_command('cfy_manager remove -v -c /etc/cloudify/'
                              '{0}_config.yaml'.format(config_name))
 
