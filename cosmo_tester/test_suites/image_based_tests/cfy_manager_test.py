@@ -64,14 +64,7 @@ def test_cfy_manager_configure(image_based_manager, logger, test_config):
     image_based_manager.put_remote_file_content(REMOTE_HOOKS_PATH, NEW_HOOKS)
 
     logger.info('Running `cfy_manager configure`...')
-    image_based_manager.run_command(
-        "sudo sed -i 's/admin_password:.*/admin_password: admin/' "
-        "/etc/cloudify/config.yaml")
-    image_based_manager.run_command(
-        'cfy_manager configure --private-ip {0} --public-ip {1}'.format(
-            image_based_manager.private_ip_address,
-            image_based_manager.ip_address)
-    )
+    image_based_manager.run_command('cfy_manager configure')
 
     logger.info('Verifying certificates unchanged after configure...')
     new_cert = image_based_manager.get_remote_file_content(REMOTE_CERT_PATH)
