@@ -118,10 +118,9 @@ def test_inplace_upgrade(manager_and_vm,
         if not reboot_performed:
             raise RuntimeError('Expected reboot did not happen.')
 
-    logger.info('Waiting 50 seconds for agents to reconnect. '
+    logger.info('Waiting 60 seconds for agents to reconnect. '
                 'Agent reconnect retries are up to 30 seconds apart.')
-    sleep(50)
+    sleep(60)
     manager.wait_for_manager()
-    manager.wait_for_rabbit()
 
     example.uninstall()
