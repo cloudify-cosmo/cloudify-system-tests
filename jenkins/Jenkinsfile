@@ -10,7 +10,7 @@ pipeline {
   options {
     checkoutToSubdirectory('cloudify-system-tests')
     buildDiscarder(logRotator(numToKeepStr:'10'))
-    timeout(time: 60, unit: 'MINUTES')
+    timeout(time: 80, unit: 'MINUTES')
     timestamps()
   }
 
