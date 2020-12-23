@@ -10,7 +10,7 @@ pipeline {
   options {
     checkoutToSubdirectory('cloudify-system-tests')
     buildDiscarder(logRotator(numToKeepStr:'10'))
-    timeout(time: 80, unit: 'MINUTES')
+    timeout(time: 60, unit: 'MINUTES')
     timestamps()
   }
 
@@ -19,9 +19,18 @@ pipeline {
   }
 
   stages {
-    stage('No name') {
+    stage('flake8') {
       steps {
-       echo 'hello'
+        sh script: "mkdir -p ${env.WORKSPACE}/flake8 && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/flake8", label: "copying repo to seperate workspace"
+
+        container('py27'){
+          dir("${env.WORKSPACE}/flake8") {
+            sh script:'''
+              pip install --user flake8
+              python -m flake8
+              ''', label: 'install and run flake8'
+          }
+        }
       }
     }
   }
