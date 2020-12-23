@@ -19,18 +19,9 @@ pipeline {
   }
 
   stages {
-    stage('flake8') {
+    stage('No name') {
       steps {
-        sh script: "mkdir -p ${env.WORKSPACE}/flake8 && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/flake8", label: "copying repo to seperate workspace"
-
-        container('py27'){
-          dir("${env.WORKSPACE}/flake8") {
-            sh script:'''
-              pip install --user flake8
-              python -m flake8
-              ''', label: 'install and run flake8'
-          }
-        }
+       echo 'hello'
       }
     }
   }
