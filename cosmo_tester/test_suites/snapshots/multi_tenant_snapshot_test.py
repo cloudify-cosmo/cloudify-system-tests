@@ -75,6 +75,21 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         old_manager, ssh_key, logger, noinstall_tenant, test_config, lin_vm,
     )
 
+    if old_manager.image_type == '5.1.0':
+        # We need to use the updated windows agent or it can't work
+        agent_url = (
+            'https://cloudify-release-eu.s3-eu-west-1.amazonaws.com/cloudify/'
+            '5.1.0/ga-release/cloudify-windows-agent_5.1.0-ga.exe'
+        )
+        tmp_path = '/tmp/winagent.exe'
+        agent_destination = (
+            '/opt/manager/resources/packages/agents/'
+            'cloudify-windows-agent.exe'
+        )
+        old_manager.run_command('curl -Lo {} {}'.format(tmp_path, agent_url))
+        old_manager.run_command('sudo cp {} {}'.format(
+            tmp_path, agent_destination))
+
     if old_manager.image_type.startswith('4'):
         # 5.x introduced new types in the types.yaml. so we have to use
         # an example blueprint with an older types.yaml for older managers.
