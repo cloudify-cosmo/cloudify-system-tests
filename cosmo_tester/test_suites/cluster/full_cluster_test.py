@@ -18,7 +18,9 @@ from cosmo_tester.test_suites.snapshots import (
     restore_snapshot,
 )
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import set_client_tenant, get_resource_path
+from cosmo_tester.framework.util import (get_resource_path,
+                                         set_client_tenant,
+                                         validate_cluster_status_and_agents)
 
 
 def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
@@ -92,7 +94,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                                      test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant)
     agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
     )
@@ -107,8 +109,8 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         broker_ssh.run('sudo service cloudify-rabbitmq stop')
 
     # the agent should now pick another broker
-    _validate_cluster_and_agents(mgr1, example.tenant,
-                                 expected_broker_status='Degraded')
+    validate_cluster_status_and_agents(mgr1, example.tenant,
+                                       expected_brokers_status='Degraded')
     agent_broker_ip2 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
     )
@@ -160,8 +162,8 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                                      'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 agent_validation_manager=mgr1)
+    validate_cluster_status_and_agents(lb, example.tenant,
+                                       agent_validation_manager=mgr1)
 
     # get agent's manager node
     agent_host = lb.client.agents.list(_all_tenants=True)[0]['id']
@@ -192,17 +194,17 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded',
-                                 agent_validation_manager=validate_manager)
+    validate_cluster_status_and_agents(
+        lb, example.tenant, expected_managers_status='Degraded',
+        agent_validation_manager=validate_manager)
 
     # restart the manager connected to the agent
     with agent_mgr.ssh() as manager_ssh:
         manager_ssh.run('cfy_manager start')
 
     time.sleep(5)
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 agent_validation_manager=validate_manager)
+    validate_cluster_status_and_agents(
+        lb, example.tenant, agent_validation_manager=validate_manager)
 
     # stop two managers
     mgr2.run_command('cfy_manager stop')
@@ -210,9 +212,9 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     lb.wait_for_manager()
     time.sleep(5)
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded',
-                                 agent_validation_manager=mgr1)
+    validate_cluster_status_and_agents(lb, example.tenant,
+                                       expected_managers_status='Degraded',
+                                       agent_validation_manager=mgr1)
 
     example.uninstall()
 
@@ -276,7 +278,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
                                      'cluster_replace_certs', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant)
 
     for host in broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2:
         key_path = join('~', '.cloudify-test-ca',
@@ -296,7 +298,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
     mgr1.run_command('cfy certificates replace -i {0} -v'.format(
         replace_certs_config_path))
 
-    _validate_cluster_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant)
     example.uninstall()
 
 
@@ -326,28 +328,6 @@ def _wait_for_healthy_broker_cluster(client, timeout=15):
                 ServiceStatus.HEALTHY:
             return
     raise TimeoutException
-
-
-# It can take time for prometheus state to update.
-# Thirty seconds should be much more than enough.
-@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
-def _validate_cluster_and_agents(manager,
-                                 tenant,
-                                 expected_broker_status='OK',
-                                 expected_managers_status='OK',
-                                 agent_validation_manager=None):
-    if not agent_validation_manager:
-        agent_validation_manager = manager
-    validate_agents = agent_validation_manager.run_command(
-        'cfy agents validate --tenant-name {}'.format(tenant)).stdout
-    assert 'Task succeeded' in validate_agents
-
-    cluster_status = manager.client.cluster_status.get_status()['services']
-    manager_status = manager.client.manager.get_status()
-    assert manager_status['status'] == ServiceStatus.HEALTHY
-    assert cluster_status['manager']['status'] == expected_managers_status
-    assert cluster_status['db']['status'] == ServiceStatus.HEALTHY
-    assert cluster_status['broker']['status'] == expected_broker_status
 
 
 def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
