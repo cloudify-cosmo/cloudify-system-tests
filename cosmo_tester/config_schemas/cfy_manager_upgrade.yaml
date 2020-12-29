@@ -1,0 +1,7 @@
+namespace: upgrade
+manager_image:
+  description: Name of image with 5.1.0 manager installer.
+  default: cfy-installer-premium-5.1.0-rhel
+upgrade_rpm_path:
+  description: The manager-install RPM path to upgrade to.
+  default: 'http://cloudify-release-eu.s3.amazonaws.com/cloudify/5.1.1/.dev1-release/cloudify-manager-install-5.1.1-.dev1.el7.x86_64.rpm'

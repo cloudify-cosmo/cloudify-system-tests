@@ -1,5 +1,6 @@
 from os.path import join
 
+from .utils import validate_agents
 from cosmo_tester.framework.util import get_resource_path
 from cosmo_tester.framework.examples import get_example_deployment
 
@@ -8,7 +9,7 @@ def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config):
     example = get_example_deployment(
         image_based_manager, ssh_key, logger, 'aio_replace_certs', test_config)
     example.upload_and_verify_install()
-    _validate_agents(image_based_manager, example.tenant)
+    validate_agents(image_based_manager, example.tenant)
 
     _create_new_certs(image_based_manager)
     replace_certs_config_path = '~/certificates_replacement_config.yaml'
@@ -19,7 +20,7 @@ def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config):
     image_based_manager.run_command('cfy certificates replace -i {0} '
                                     '-v'.format(replace_certs_config_path))
 
-    _validate_agents(image_based_manager, example.tenant)
+    validate_agents(image_based_manager, example.tenant)
     example.uninstall()
 
 
@@ -48,9 +49,3 @@ def _create_replace_certs_config_file(manager,
         remote_script_path, replace_certs_config_path,
         manager.private_ip_address)
     manager.run_command(command)
-
-
-def _validate_agents(manager, tenant):
-    validate_agents = manager.run_command(
-        'cfy agents validate --tenant-name {}'.format(tenant)).stdout
-    assert 'Task succeeded' in validate_agents
