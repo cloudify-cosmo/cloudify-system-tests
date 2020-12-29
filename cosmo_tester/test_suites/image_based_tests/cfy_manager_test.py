@@ -1,11 +1,9 @@
 import json
 import pytest
 
-from retrying import retry
-
-from .utils import validate_agents
 from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.util import validate_cluster_status_and_agents
 
 REMOTE_CERT_PATH = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
 REMOTE_CONF_PATH = '/opt/manager/rest-security.conf'
@@ -44,10 +42,10 @@ with open('%s', 'w') as f:
 def manager_5_1_0(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request,
                   bootstrappable=True)
-    hosts.instances[0].image_name = test_config['upgrade']['manager_image']
+    hosts.instances[0].image_name = test_config['manager_image_names_rhel'][
+        '5_1_0_installer']
 
     hosts.create()
-    hosts.instances[0].wait_for_ssh()
     hosts.instances[0].bootstrap()
     try:
         yield hosts.instances[0]
@@ -124,7 +122,9 @@ def test_cfy_manager_upgrade(manager_5_1_0, ssh_key, logger, test_config):
     example = get_example_deployment(
         manager_5_1_0, ssh_key, logger, 'manager_upgrade', test_config)
     example.upload_and_verify_install()
-    validate_agents(manager_5_1_0, example.tenant)
+    # We use the cluster status because it's shown in the UI,
+    # and if it's unhealthy, so is the status returned from `cfy status`.
+    validate_cluster_status_and_agents(manager_5_1_0, example.tenant)
 
     logger.info('Installing new RPM')
     manager_5_1_0.run_command('yum install -y {rpm}'.format(
@@ -132,17 +132,9 @@ def test_cfy_manager_upgrade(manager_5_1_0, ssh_key, logger, test_config):
     logger.info('Upgrading manager')
     manager_5_1_0.run_command('cfy_manager upgrade -v')
 
-    _validate_manager_status(manager_5_1_0)
-    validate_agents(manager_5_1_0, example.tenant)
-
-
-@retry(stop_max_attempt_number=30, wait_fixed=2000)
-def _validate_manager_status(manager):
-    # We use the cluster status because it's shown in the UI,
-    # and if it's unhealthy, so is the status returned from `cfy status`.
-    status = manager.client.cluster_status.get_status()
-    if status.get('status') != 'OK':
-        raise Exception('Manager status is not healthy: {0}'.format(status))
+    logger.info('Validating agents and cluster status')
+    validate_cluster_status_and_agents(manager_5_1_0, example.tenant)
+    example.uninstall()
 
 
 def _edit_security_config(manager):
