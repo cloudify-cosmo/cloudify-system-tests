@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from cosmo_tester.framework.test_hosts import Hosts
+from cosmo_tester.framework.test_hosts import Hosts, get_image
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import validate_cluster_status_and_agents
 
@@ -40,13 +40,10 @@ with open('%s', 'w') as f:
 
 @pytest.fixture(scope='function')
 def manager_5_1_0(request, ssh_key, module_tmpdir, test_config, logger):
-    hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request,
-                  bootstrappable=True)
-    hosts.instances[0].image_name = test_config['manager_image_names_rhel'][
-        '5_1_0_installer']
+    hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request)
+    hosts.instances[0] = get_image('5.1.0', test_config)
 
     hosts.create()
-    hosts.instances[0].bootstrap()
     try:
         yield hosts.instances[0]
     finally:
@@ -119,6 +116,14 @@ def test_cfy_manager_configure(image_based_manager, logger, test_config):
 
 
 def test_cfy_manager_upgrade(manager_5_1_0, ssh_key, logger, test_config):
+    # The private_ip and public_ip are 127.0.0.1 in the config.yaml of the
+    # 5.1.0 manager, and the upgrade process doesn't cope with it (RD-868).
+    manager_5_1_0.run_command(
+        "sudo sed -i 's/private_ip:.*/private_ip: {0}/; "
+        "s/public_ip:.*/public_ip: {1}/' "
+        "/etc/cloudify/config.yaml".format(
+            manager_5_1_0.private_ip_address, manager_5_1_0.ip_address))
+
     example = get_example_deployment(
         manager_5_1_0, ssh_key, logger, 'manager_upgrade', test_config)
     example.upload_and_verify_install()
