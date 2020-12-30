@@ -189,11 +189,11 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
             node.verify_services_are_running = skip
 
         if installer_image_name:
-            # The cluster images distro is rhel by default, so let's keep it
-            # this way until we find a reason to change it.
+            distro = test_config['test_manager']['distro']
+            image_names = 'manager_image_names_{}'.format(distro)
             for i in range(number_of_cluster_instances):
-                hosts.instances[i].image_name = test_config[
-                    'manager_image_names_rhel'][installer_image_name]
+                hosts.instances[i].image_name = test_config[image_names][
+                    installer_image_name]
 
         hosts.create()
 

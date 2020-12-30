@@ -96,7 +96,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                                      test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    validate_cluster_status_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger)
     agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
     )
@@ -111,7 +111,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         broker_ssh.run('sudo service cloudify-rabbitmq stop')
 
     # the agent should now pick another broker
-    validate_cluster_status_and_agents(mgr1, example.tenant,
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger,
                                        expected_brokers_status='Degraded')
     agent_broker_ip2 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
@@ -164,7 +164,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                                      'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    validate_cluster_status_and_agents(lb, example.tenant,
+    validate_cluster_status_and_agents(lb, example.tenant, logger,
                                        agent_validation_manager=mgr1)
 
     # get agent's manager node
@@ -197,7 +197,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
     validate_cluster_status_and_agents(
-        lb, example.tenant, expected_managers_status='Degraded',
+        lb, example.tenant, logger, expected_managers_status='Degraded',
         agent_validation_manager=validate_manager)
 
     # restart the manager connected to the agent
@@ -206,7 +206,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     time.sleep(5)
     validate_cluster_status_and_agents(
-        lb, example.tenant, agent_validation_manager=validate_manager)
+        lb, example.tenant, logger, agent_validation_manager=validate_manager)
 
     # stop two managers
     mgr2.run_command('cfy_manager stop')
@@ -214,7 +214,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     lb.wait_for_manager()
     time.sleep(5)
-    validate_cluster_status_and_agents(lb, example.tenant,
+    validate_cluster_status_and_agents(lb, example.tenant, logger,
                                        expected_managers_status='Degraded',
                                        agent_validation_manager=mgr1)
 
@@ -280,7 +280,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
                                      'cluster_replace_certs', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    validate_cluster_status_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger)
 
     for host in broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2:
         key_path = join('~', '.cloudify-test-ca',
@@ -300,7 +300,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
     mgr1.run_command('cfy certificates replace -i {0} -v'.format(
         replace_certs_config_path))
 
-    validate_cluster_status_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger)
     example.uninstall()
 
 
@@ -410,10 +410,11 @@ def test_three_nodes_cluster_upgrade(three_nodes_5_1_0_cluster, ssh_key,
     nodes_list = [node1, node2, node3]
     logger.info('Installing example deployment')
     example = get_example_deployment(node1, ssh_key, logger,
-                                     'cluster_teardown', test_config)
+                                     'three_nodes_cluster_upgrade',
+                                     test_config)
     example.inputs['server_ip'] = node1.ip_address
     example.upload_and_verify_install()
-    validate_cluster_status_and_agents(node1, example.tenant, logger=logger)
+    validate_cluster_status_and_agents(node1, example.tenant, logger)
 
     logger.info('Installing upgrade RPM on nodes')
     _install_upgrade_rpm_on_nodes(nodes_list, test_config, logger)
@@ -426,7 +427,7 @@ def test_three_nodes_cluster_upgrade(three_nodes_5_1_0_cluster, ssh_key,
 
     logger.info('Validating nodes upgraded')
     assert_manager_install_version_on_nodes(nodes_list, '5.1.1')
-    validate_cluster_status_and_agents(node1, example.tenant, logger=logger)
+    validate_cluster_status_and_agents(node1, example.tenant, logger)
 
     logger.info('Removing example deployment')
     example.uninstall()
@@ -448,8 +449,8 @@ def _install_upgrade_rpm_on_nodes(nodes_list, test_config, logger):
 
 
 def _thread_rpm_upgrade(node, rpm_path):
-    node.run_command('yum install -y {}'.format(rpm_path), use_sudo=True,
-                     hide_stdout=True)
+    node.run_command('yum install -y {} --disablerepo=*'.format(rpm_path),
+                     use_sudo=True, hide_stdout=True)
 
 
 def assert_manager_install_version_on_nodes(nodes_list, version):

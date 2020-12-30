@@ -663,17 +663,15 @@ def update_dictionary(dict1, dict2):
 
 def validate_cluster_status_and_agents(manager,
                                        tenant,
+                                       logger,
                                        expected_brokers_status='OK',
                                        expected_managers_status='OK',
-                                       agent_validation_manager=None,
-                                       logger=None):
+                                       agent_validation_manager=None):
     if not agent_validation_manager:
         agent_validation_manager = manager
-    if logger:
-        logger.info('Validating agents')
+    logger.info('Validating agents')
     validate_agents(agent_validation_manager, tenant)
-    if logger:
-        logger.info('Validating cluster status')
+    logger.info('Validating cluster status')
     validate_cluster_status(manager,
                             expected_brokers_status,
                             expected_managers_status)

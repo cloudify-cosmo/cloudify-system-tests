@@ -130,7 +130,7 @@ def test_cfy_manager_upgrade(manager_5_1_0, ssh_key, logger, test_config):
     example.upload_and_verify_install()
     # We use the cluster status because it's shown in the UI,
     # and if it's unhealthy, so is the status returned from `cfy status`.
-    validate_cluster_status_and_agents(manager_5_1_0, example.tenant)
+    validate_cluster_status_and_agents(manager_5_1_0, example.tenant, logger)
 
     logger.info('Installing new RPM')
     manager_5_1_0.run_command('yum install -y {rpm}'.format(
@@ -139,8 +139,7 @@ def test_cfy_manager_upgrade(manager_5_1_0, ssh_key, logger, test_config):
     manager_5_1_0.run_command('cfy_manager upgrade -v')
 
     assert get_manager_install_version(manager_5_1_0) == '5.1.1'
-    validate_cluster_status_and_agents(manager_5_1_0, example.tenant,
-                                       logger=logger)
+    validate_cluster_status_and_agents(manager_5_1_0, example.tenant, logger)
     example.uninstall()
 
 
