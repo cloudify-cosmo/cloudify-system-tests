@@ -2,6 +2,7 @@ import copy
 import random
 import string
 import time
+import threading
 from os.path import join
 
 import retrying
@@ -18,7 +19,8 @@ from cosmo_tester.test_suites.snapshots import (
     restore_snapshot,
 )
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import (get_resource_path,
+from cosmo_tester.framework.util import (get_manager_install_version,
+                                         get_resource_path,
                                          set_client_tenant,
                                          validate_cluster_status_and_agents)
 
@@ -400,6 +402,59 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
 
     logger.info('Asserting cluster status')
     _assert_cluster_status(node1.client)
+
+
+def test_three_nodes_cluster_upgrade(three_nodes_5_1_0_cluster, ssh_key,
+                                     test_config, logger):
+    node1, node2, node3 = three_nodes_5_1_0_cluster
+    nodes_list = [node1, node2, node3]
+    logger.info('Installing example deployment')
+    example = get_example_deployment(node1, ssh_key, logger,
+                                     'cluster_teardown', test_config)
+    example.inputs['server_ip'] = node1.ip_address
+    example.upload_and_verify_install()
+    validate_cluster_status_and_agents(node1, example.tenant, logger=logger)
+
+    logger.info('Installing upgrade RPM on nodes')
+    _install_upgrade_rpm_on_nodes(nodes_list, test_config, logger)
+
+    for config_name in ['db', 'rabbit', 'manager']:
+        for i, node in enumerate(nodes_list, start=1):
+            logger.info('Upgrading %s %s', config_name, i)
+            node.run_command('cfy_manager upgrade -v -c /etc/cloudify/'
+                             '{0}_config.yaml'.format(config_name))
+
+    logger.info('Validating nodes upgraded')
+    assert_manager_install_version_on_nodes(nodes_list, '5.1.1')
+    validate_cluster_status_and_agents(node1, example.tenant, logger=logger)
+
+    logger.info('Removing example deployment')
+    example.uninstall()
+
+
+def _install_upgrade_rpm_on_nodes(nodes_list, test_config, logger):
+    threads = []
+    rpm_path = test_config['upgrade']['upgrade_rpm_path']
+    for i, node in enumerate(nodes_list, start=1):
+        new_thread = threading.Thread(target=_thread_rpm_upgrade,
+                                      args=(node, rpm_path,))
+        threads.append(new_thread)
+        new_thread.start()
+        logger.info('Started installing upgrade RPM on node %s', i)
+
+    for i, thread in enumerate(threads, start=1):
+        thread.join()
+        logger.info('Finished installing upgrade RPM on node %s', i)
+
+
+def _thread_rpm_upgrade(node, rpm_path):
+    node.run_command('yum install -y {}'.format(rpm_path), use_sudo=True,
+                     hide_stdout=True)
+
+
+def assert_manager_install_version_on_nodes(nodes_list, version):
+    for node in nodes_list:
+        assert get_manager_install_version(node) == version
 
 
 def _get_new_credentials():

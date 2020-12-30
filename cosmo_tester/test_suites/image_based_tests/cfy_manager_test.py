@@ -3,7 +3,8 @@ import pytest
 
 from cosmo_tester.framework.test_hosts import Hosts, get_image
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import validate_cluster_status_and_agents
+from cosmo_tester.framework.util import (get_manager_install_version,
+                                         validate_cluster_status_and_agents)
 
 REMOTE_CERT_PATH = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
 REMOTE_CONF_PATH = '/opt/manager/rest-security.conf'
@@ -137,8 +138,9 @@ def test_cfy_manager_upgrade(manager_5_1_0, ssh_key, logger, test_config):
     logger.info('Upgrading manager')
     manager_5_1_0.run_command('cfy_manager upgrade -v')
 
-    logger.info('Validating agents and cluster status')
-    validate_cluster_status_and_agents(manager_5_1_0, example.tenant)
+    assert get_manager_install_version(manager_5_1_0) == '5.1.1'
+    validate_cluster_status_and_agents(manager_5_1_0, example.tenant,
+                                       logger=logger)
     example.uninstall()
 
 
