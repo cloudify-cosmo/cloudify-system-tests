@@ -663,12 +663,15 @@ def update_dictionary(dict1, dict2):
 
 def validate_cluster_status_and_agents(manager,
                                        tenant,
+                                       logger,
                                        expected_brokers_status='OK',
                                        expected_managers_status='OK',
                                        agent_validation_manager=None):
     if not agent_validation_manager:
         agent_validation_manager = manager
+    logger.info('Validating agents')
     validate_agents(agent_validation_manager, tenant)
+    logger.info('Validating cluster status')
     validate_cluster_status(manager,
                             expected_brokers_status,
                             expected_managers_status)
@@ -693,3 +696,16 @@ def validate_agents(manager, tenant):
     validate_agents_wf = manager.run_command(
         'cfy agents validate --tenant-name {}'.format(tenant)).stdout
     assert 'Task succeeded' in validate_agents_wf
+
+
+def get_manager_install_version(host):
+    """Get the manager-install RPM version
+
+    :param host: A host with cloudify-manager-install RPM installed
+    :return: The cloudif-manager-install RPM version
+    """
+    version = host.run_command(
+        'rpm --queryformat "%{VERSION}" -q cloudify-manager-install',
+        hide_stdout=True)
+
+    return version.stdout

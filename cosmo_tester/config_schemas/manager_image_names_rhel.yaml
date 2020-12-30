@@ -5,6 +5,9 @@ master:
 installer:
   description: Name of image with manager installer for bootstrap or cluster installs.
   default: cfy-installer-premium-5.1.1-rhel
+5_1_0_installer:
+  description: Name of image with 5.1.0 manager installer for bootstrap or cluster installs.
+  default: cfy-installer-premium-5.1.0-rhel
 "5_1_0":
   description: Name of manager image for 5.1.0. All non master images are only used for upgrade (snapshot) tests.
   default: cloudify-manager-premium-5.1.0-rhel
