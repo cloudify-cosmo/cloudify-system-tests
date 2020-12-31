@@ -147,6 +147,16 @@ def three_nodes_5_1_0_cluster(ssh_key, module_tmpdir, test_config, logger,
         yield _vms
 
 
+@pytest.fixture()
+def nine_nodes_5_1_0_cluster(ssh_key, module_tmpdir, test_config, logger,
+                             request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request, pre_cluster_rabbit=True,
+                           broker_count=3, db_count=3, manager_count=3,
+                           installer_image_name='5_1_0_installer'):
+        yield _vms
+
+
 def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,

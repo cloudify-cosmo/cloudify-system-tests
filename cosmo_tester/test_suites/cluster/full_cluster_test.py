@@ -406,28 +406,45 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
 
 def test_three_nodes_cluster_upgrade(three_nodes_5_1_0_cluster, ssh_key,
                                      test_config, logger):
-    node1, node2, node3 = three_nodes_5_1_0_cluster
-    nodes_list = [node1, node2, node3]
+    nodes_list = [node for node in three_nodes_5_1_0_cluster]
+    _test_cluster_upgrade(nodes_list, nodes_list[0], 'three', ssh_key,
+                          test_config, logger)
+
+
+def test_nine_nodes_cluster_upgrade(nine_nodes_5_1_0_cluster, ssh_key,
+                                    test_config, logger):
+    nodes_list = [node for node in nine_nodes_5_1_0_cluster]
+    _test_cluster_upgrade(nodes_list, nodes_list[6], 'nine', ssh_key,
+                          test_config, logger)
+
+
+def _test_cluster_upgrade(nodes_list, manager, prefix, ssh_key, test_config,
+                          logger):
     logger.info('Installing example deployment')
-    example = get_example_deployment(node1, ssh_key, logger,
-                                     'three_nodes_cluster_upgrade',
+    example = get_example_deployment(manager, ssh_key, logger,
+                                     '{}_nodes_cluster_upgrade'.format(prefix),
                                      test_config)
-    example.inputs['server_ip'] = node1.ip_address
+    example.inputs['server_ip'] = manager.ip_address
     example.upload_and_verify_install()
-    validate_cluster_status_and_agents(node1, example.tenant, logger)
+    validate_cluster_status_and_agents(manager, example.tenant, logger)
 
     logger.info('Installing upgrade RPM on nodes')
     _install_upgrade_rpm_on_nodes(nodes_list, test_config, logger)
 
-    for config_name in ['db', 'rabbit', 'manager']:
-        for i, node in enumerate(nodes_list, start=1):
-            logger.info('Upgrading %s %s', config_name, i)
-            node.run_command('cfy_manager upgrade -v -c /etc/cloudify/'
-                             '{0}_config.yaml'.format(config_name))
+    if prefix == 'three':
+        for config_name in ['db', 'rabbit', 'manager']:
+            for i, node in enumerate(nodes_list, start=1):
+                logger.info('Upgrading %s %s', config_name, i)
+                node.run_command('cfy_manager upgrade -v -c /etc/cloudify/'
+                                 '{0}_config.yaml'.format(config_name))
+    else:  # prefix == 'nine'
+        for node in nodes_list:
+            logger.info('Upgrading %s', node.hostname)
+            node.run_command('cfy_manager upgrade -v')
 
     logger.info('Validating nodes upgraded')
     assert_manager_install_version_on_nodes(nodes_list, '5.1.1')
-    validate_cluster_status_and_agents(node1, example.tenant, logger)
+    validate_cluster_status_and_agents(manager, example.tenant, logger)
 
     logger.info('Removing example deployment')
     example.uninstall()
