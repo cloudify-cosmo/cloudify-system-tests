@@ -439,7 +439,7 @@ def _test_cluster_upgrade(nodes_list, manager, prefix, ssh_key, test_config,
                                  '{0}_config.yaml'.format(config_name))
     else:  # prefix == 'nine'
         for node in nodes_list:
-            logger.info('Upgrading %s %s', node.hostname)
+            logger.info('Upgrading %s', node.hostname)
             node.run_command('cfy_manager upgrade -v')
 
     logger.info('Validating nodes upgraded')
