@@ -1,4 +1,4 @@
 namespace: upgrade
 upgrade_rpm_path:
   description: The manager-install RPM path to upgrade to.
-  default: 'http://repository.cloudifysource.org/cloudify/5.1.1/ga-release/cloudify-manager-install-5.1.1ga.rpm'
+  default: 'http://repository.cloudifysource.org/cloudify/5.1.1/ga-release/cloudify-manager-install-5.1.1-ga.el7.x86_64.rpm'
