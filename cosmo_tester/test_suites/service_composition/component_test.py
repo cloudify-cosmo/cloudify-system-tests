@@ -35,6 +35,11 @@ def test_nested_components(image_based_manager, ssh_key, logger, test_config):
     with util.set_client_tenant(nesting_app.manager.client, tenant):
         _verify_deployments_and_nodes(nesting_app, 3)
 
+        # verify that uninstall of app removes the infra + its deployment
+        logger.info('Testing nested component uninstall.')
+        nesting_app.uninstall()
+        assert len(nesting_app.manager.client.deployments.list()) == 0
+
 
 def test_nested_components_cancel_install(
         image_based_manager, ssh_key, logger, test_config):
