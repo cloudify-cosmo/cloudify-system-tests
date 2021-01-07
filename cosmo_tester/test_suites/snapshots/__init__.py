@@ -126,7 +126,7 @@ def restore_snapshot(manager, snapshot_id, logger,
         logger.info('Waiting to give time for snapshot to restore')
         # Because the DB migrations are really temperamental since 5.0.5, so
         # let's try to give less activity
-        sleep(30)
+        sleep(60)
         try:
             # Retry while the password is still being reset
             attempt = 0
