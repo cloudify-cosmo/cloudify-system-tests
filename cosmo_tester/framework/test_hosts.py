@@ -987,7 +987,8 @@ class Hosts(object):
         suffix = '-multi-net' if self.multi_net else ""
         self._infra_client.blueprints.upload(
             util.get_resource_path(
-                'infrastructure_blueprints/infrastructure{}.yaml'.format(
+                'infrastructure_blueprints/{}/infrastructure{}.yaml'.format(
+                    self._test_config['target_platform'],
                     suffix,
                 )
             ),
@@ -1001,7 +1002,8 @@ class Hosts(object):
         for suffix in test_vm_suffixes:
             self._infra_client.blueprints.upload(
                 util.get_resource_path(
-                    'infrastructure_blueprints/vm{}.yaml'.format(
+                    'infrastructure_blueprints/{}/vm{}.yaml'.format(
+                        self._test_config['target_platform'],
                         suffix,
                     )
                 ),
