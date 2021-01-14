@@ -558,6 +558,7 @@ class DeploymentCreationError(Exception):
 
 def create_deployment(client, blueprint_id, deployment_id, logger,
                       inputs=None, skip_plugins_validation=False):
+    wait_for_blueprint_upload(client, blueprint_id)
     logger.info('Creating deployment for %s', deployment_id)
     client.deployments.create(
         blueprint_id=blueprint_id,
@@ -709,3 +710,11 @@ def get_manager_install_version(host):
         hide_stdout=True)
 
     return version.stdout
+
+
+@retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
+def wait_for_blueprint_upload(client, blueprint_id):
+    blueprint = client.blueprints.get(blueprint_id)
+    if 'state' in blueprint and blueprint['state'] != 'uploaded':
+        raise RuntimeError('Blueprint with id {0} was not uploaded yet.'
+                           .format(blueprint_id))
