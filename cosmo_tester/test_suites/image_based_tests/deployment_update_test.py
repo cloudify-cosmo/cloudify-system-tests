@@ -4,7 +4,10 @@ from retrying import retry
 
 from cosmo_tester.framework import util
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import set_client_tenant
+from cosmo_tester.framework.util import (
+    set_client_tenant,
+    wait_for_blueprint_upload
+)
 
 
 update_counter = 0
@@ -34,6 +37,7 @@ def test_simple_deployment_update(image_based_manager,
             modified_blueprint_path,
             blueprint_id,
         )
+        wait_for_blueprint_upload(image_based_manager.client, blueprint_id)
 
     logger.info('Updating example deployment...')
     _update_deployment(image_based_manager.client,
