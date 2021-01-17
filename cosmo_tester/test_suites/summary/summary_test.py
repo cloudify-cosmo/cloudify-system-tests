@@ -288,7 +288,7 @@ def test_basic_summary_executions(prepared_manager, target_field, value):
     ).items, sort_key=target_field)
 
     expected = _sort_summary([
-        {u'executions': 12, u'{0}'.format(target_field): u'{0}'.format(value)},
+        {u'executions': 15, u'{0}'.format(target_field): u'{0}'.format(value)},
     ], sort_key=target_field)
 
     assert results == expected, (
@@ -424,6 +424,16 @@ def test_subfield_summary_executions(prepared_manager):
     ).items, sort_key=['deployment_id', 'workflow_id'])
 
     expected = _sort_summary([
+        {
+            u'by workflow_id': [
+                {
+                    u'executions': 3,
+                    u'workflow_id': u'upload_blueprint'
+                },
+            ],
+            u'deployment_id': None,
+            u'executions': 3
+        },
         {
             u'by workflow_id': [
                 {
@@ -759,7 +769,8 @@ def test_cli_executions_summary(prepared_manager):
     )
     expected = [
         {"workflow_id": "create_deployment_environment", "executions": 6},
-        {"workflow_id": "install", "executions": 6}
+        {"workflow_id": "install", "executions": 6},
+        {"workflow_id": "upload_blueprint", "executions": 3},
     ]
     _assert_cli_results(results, expected, 'workflow_id')
 
@@ -778,19 +789,25 @@ def test_cli_executions_summary_subfield(prepared_manager):
         {"tenant_name": "test1",
          "workflow_id": "install", "executions": 6},
         {"tenant_name": "test1",
-         "workflow_id": None, "executions": 12},
+         "workflow_id": "upload_blueprint", "executions": 3},
+        {"tenant_name": "test1",
+         "workflow_id": None, "executions": 15},
         {"tenant_name": "test2",
          "workflow_id": "create_deployment_environment", "executions": 6},
         {"tenant_name": "test2",
          "workflow_id": "install", "executions": 6},
         {"tenant_name": "test2",
-         "workflow_id": None, "executions": 12},
+         "workflow_id": "upload_blueprint", "executions": 3},
+        {"tenant_name": "test2",
+         "workflow_id": None, "executions": 15},
         {"tenant_name": "default_tenant",
          "workflow_id": "create_deployment_environment", "executions": 6},
         {"tenant_name": "default_tenant",
          "workflow_id": "install", "executions": 6},
         {"tenant_name": "default_tenant",
-         "workflow_id": None, "executions": 12}
+         "workflow_id": "upload_blueprint", "executions": 3},
+        {"tenant_name": "default_tenant",
+         "workflow_id": None, "executions": 15}
     ]
     _assert_cli_results(results, expected, 'workflow_id')
 
