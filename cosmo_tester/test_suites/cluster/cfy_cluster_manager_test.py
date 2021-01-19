@@ -127,7 +127,7 @@ def test_three_nodes_cluster_using_provided_certificates(
         key_path_in_use = '/etc/cloudify/ssl/cloudify_internal_key.pem'
 
         assert (local_node_cert_path.read_text() ==
-                node.get_remote_file_cNontent(cert_path_in_use))
+                node.get_remote_file_content(cert_path_in_use))
 
         assert (local_node_key_path.read_text() ==
                 node.get_remote_file_content(key_path_in_use))
