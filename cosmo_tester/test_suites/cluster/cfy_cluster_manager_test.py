@@ -158,23 +158,26 @@ def test_three_nodes_using_provided_config_files(
         ssh_key, local_certs_path, local_config_files, logger)
 
     logger.info('Asserting config_files')
-    base_cfy_dir = '/etc/cloudify'
+    cluster_manager_config_files = '/tmp/cloudify_cluster_manager/config_files'
     for i, node in enumerate(nodes_list, start=1):
         logger.info('Asserting config.yaml files for %s', 'node-{0}'.format(i))
 
         assert (node.local_manager_config_path.read_text() ==
                 node.get_remote_file_content(
-                    join(base_cfy_dir, node.local_manager_config_path.name))
+                    join(cluster_manager_config_files,
+                         node.local_manager_config_path.name))
                 )
 
         assert (node.local_postgresql_config_path.read_text() ==
                 node.get_remote_file_content(
-                    join(base_cfy_dir, node.local_postgresql_config_path.name))
+                    join(cluster_manager_config_files,
+                         node.local_postgresql_config_path.name))
                 )
 
         assert (node.local_rabbitmq_config_path.read_text() ==
                 node.get_remote_file_content(
-                    join(base_cfy_dir, node.local_rabbitmq_config_path.name))
+                    join(cluster_manager_config_files,
+                         node.local_rabbitmq_config_path.name))
                 )
 
 
