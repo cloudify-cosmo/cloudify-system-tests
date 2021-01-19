@@ -13,7 +13,7 @@ bottle==0.12.18           # via cloudify-common
 certifi==2019.11.28       # via requests
 cffi==1.14.0              # via bcrypt, cryptography, pynacl
 chardet==3.0.4            # via requests
-https://github.com/cloudify-cosmo/cloudify-common/archive/5.1.2-build.zip#egg=cloudify-common[dispatcher]  # via -r requirements.in
+https://github.com/cloudify-cosmo/cloudify-common/archive/5.1.2.zip#egg=cloudify-common[dispatcher]  # via -r requirements.in
 configparser==4.0.2       # via importlib-metadata
 contextlib2==0.6.0.post1  # via importlib-metadata, zipp
 cryptography==2.9.2       # via paramiko, requests-ntlm
