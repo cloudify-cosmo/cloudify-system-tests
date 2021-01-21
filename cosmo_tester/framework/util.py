@@ -20,6 +20,7 @@ from cloudify_rest_client.exceptions import (
     CloudifyClientError,
     UserUnauthorizedError,
 )
+from cloudify.cluster_status import ServiceStatus
 
 import cosmo_tester
 from cosmo_tester import resources
@@ -658,3 +659,53 @@ def update_dictionary(dict1, dict2):
             else:
                 dict1[key] = value
     return dict1
+
+
+def validate_cluster_status_and_agents(manager,
+                                       tenant,
+                                       logger,
+                                       expected_brokers_status='OK',
+                                       expected_managers_status='OK',
+                                       agent_validation_manager=None):
+    if not agent_validation_manager:
+        agent_validation_manager = manager
+    logger.info('Validating agents')
+    validate_agents(agent_validation_manager, tenant)
+    logger.info('Validating cluster status')
+    validate_cluster_status(manager,
+                            expected_brokers_status,
+                            expected_managers_status)
+
+
+# It can take time for prometheus state to update.
+# A minute should be much more than enough.
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
+def validate_cluster_status(manager,
+                            expected_brokers_status,
+                            expected_managers_status):
+    cluster_status = manager.client.cluster_status.get_status()['services']
+    manager_status = manager.client.manager.get_status()
+    assert manager_status['status'] == ServiceStatus.HEALTHY
+    assert cluster_status['manager']['status'] == expected_managers_status
+    assert cluster_status['db']['status'] == ServiceStatus.HEALTHY
+    assert cluster_status['broker']['status'] == expected_brokers_status
+
+
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+def validate_agents(manager, tenant):
+    validate_agents_wf = manager.run_command(
+        'cfy agents validate --tenant-name {}'.format(tenant)).stdout
+    assert 'Task succeeded' in validate_agents_wf
+
+
+def get_manager_install_version(host):
+    """Get the manager-install RPM version
+
+    :param host: A host with cloudify-manager-install RPM installed
+    :return: The cloudif-manager-install RPM version
+    """
+    version = host.run_command(
+        'rpm --queryformat "%{VERSION}" -q cloudify-manager-install',
+        hide_stdout=True)
+
+    return version.stdout

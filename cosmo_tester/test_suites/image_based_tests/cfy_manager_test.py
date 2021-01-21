@@ -1,4 +1,10 @@
 import json
+import pytest
+
+from cosmo_tester.framework.test_hosts import Hosts, get_image
+from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.util import (get_manager_install_version,
+                                         validate_cluster_status_and_agents)
 
 REMOTE_CERT_PATH = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
 REMOTE_CONF_PATH = '/opt/manager/rest-security.conf'
@@ -31,6 +37,18 @@ decrypted_passwords = {t.rabbitmq_username:
 with open('%s', 'w') as f:
     json.dump(decrypted_passwords, f)
 ''' % MQ_PASSWORDS_PATH
+
+
+@pytest.fixture(scope='function', params=['5.1.0', '5.1.1'])
+def base_manager(request, ssh_key, module_tmpdir, test_config, logger):
+    hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request)
+    hosts.instances[0] = get_image(request.param, test_config)
+
+    hosts.create()
+    try:
+        yield hosts.instances[0]
+    finally:
+        hosts.destroy()
 
 
 def test_cfy_manager_configure(image_based_manager, logger, test_config):
@@ -96,6 +114,34 @@ def test_cfy_manager_configure(image_based_manager, logger, test_config):
             AUTH_MQ_USER_CMD.format(user=mq_user, password=mq_password),
             use_sudo=True
         )
+
+
+def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
+    # The private_ip and public_ip are 127.0.0.1 in the config.yaml of the
+    # 5.1.0 manager, and the upgrade process doesn't cope with it (RD-868).
+    base_manager.run_command(
+        "sudo sed -i 's/private_ip:.*/private_ip: {0}/; "
+        "s/public_ip:.*/public_ip: {1}/' "
+        "/etc/cloudify/config.yaml".format(
+            base_manager.private_ip_address, base_manager.ip_address))
+
+    example = get_example_deployment(
+        base_manager, ssh_key, logger, 'manager_upgrade', test_config)
+    example.upload_and_verify_install()
+    # We use the cluster status because it's shown in the UI,
+    # and if it's unhealthy, so is the status returned from `cfy status`.
+    validate_cluster_status_and_agents(base_manager, example.tenant, logger)
+
+    logger.info('Installing new RPM')
+    base_manager.run_command('yum install -y {rpm}'.format(
+        rpm=test_config['upgrade']['upgrade_rpm_path']), use_sudo=True)
+    logger.info('Upgrading manager')
+    base_manager.run_command('cfy_manager upgrade -v')
+
+    assert get_manager_install_version(base_manager) == test_config[
+        'upgrade']['upgrade_version']
+    validate_cluster_status_and_agents(base_manager, example.tenant, logger)
+    example.uninstall()
 
 
 def _edit_security_config(manager):

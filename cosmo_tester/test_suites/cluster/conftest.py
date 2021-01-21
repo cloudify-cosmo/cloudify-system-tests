@@ -137,6 +137,26 @@ def nine_vms(ssh_key, module_tmpdir, test_config, logger, request):
         yield _vms
 
 
+@pytest.fixture(params=['5_1_0_installer', '5_1_1_installer'])
+def three_nodes_base_cluster(ssh_key, module_tmpdir, test_config, logger,
+                             request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request, pre_cluster_rabbit=True,
+                           three_nodes_cluster=True,
+                           installer_image_name=request.param):
+        yield _vms
+
+
+@pytest.fixture(params=['5_1_0_installer', '5_1_1_installer'])
+def nine_nodes_base_cluster(ssh_key, module_tmpdir, test_config, logger,
+                            request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request, pre_cluster_rabbit=True,
+                           broker_count=3, db_count=3, manager_count=3,
+                           installer_image_name=request.param):
+        yield _vms
+
+
 def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,
@@ -145,11 +165,12 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
                pre_cluster_rabbit=False, high_security=True, extra_node=None,
-               use_hostnames=False, three_nodes_cluster=False, bootstrap=True):
-    number_of_instances = (3 if three_nodes_cluster
-                           else broker_count + db_count + manager_count)
+               use_hostnames=False, three_nodes_cluster=False, bootstrap=True,
+               installer_image_name=None):
+    number_of_cluster_instances = (
+        3 if three_nodes_cluster else broker_count + db_count + manager_count)
     has_extra_node = (1 if extra_node else 0)
-    number_of_instances = number_of_instances + \
+    number_of_instances = number_of_cluster_instances + \
         (1 if use_load_balancer else 0) + has_extra_node
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
@@ -176,6 +197,13 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
 
         for node in hosts.instances:
             node.verify_services_are_running = skip
+
+        if installer_image_name:
+            distro = test_config['test_manager']['distro']
+            image_names = 'manager_image_names_{}'.format(distro)
+            for i in range(number_of_cluster_instances):
+                hosts.instances[i].image_name = test_config[image_names][
+                    installer_image_name]
 
         hosts.create()
 
