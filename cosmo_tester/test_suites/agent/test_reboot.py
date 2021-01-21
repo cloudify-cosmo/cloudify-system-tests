@@ -9,9 +9,11 @@ from cosmo_tester.test_suites.agent import get_test_prerequisites
 @pytest.mark.parametrize("vm_os", [
     'ubuntu_14_04',
     'ubuntu_16_04',
+    'centos_8',
     'centos_7',
     'rhel_6',
     'rhel_7',
+    'rhel_8',
     'windows_2012',
 ])
 def test_agent_reboot(ssh_key, module_tmpdir, test_config, logger, vm_os,

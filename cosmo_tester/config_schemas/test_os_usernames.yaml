@@ -1,4 +1,7 @@
 namespace: test_os_usernames
+rhel_8:
+  description: Username for RHEL 8 test VMs.
+  default: cloud-user
 rhel_7:
   description: Username for RHEL 7 test VMs.
   default: cloud-user
@@ -11,6 +14,9 @@ ubuntu_14_04:
 ubuntu_16_04:
   description: Username for Ubuntu 16.04 test VMs.
   default: ubuntu
+centos_8:
+  description: Username for Centos 8 test VMs.
+  default: centos
 centos_7:
   description: Username for Centos 7 test VMs.
   default: centos
