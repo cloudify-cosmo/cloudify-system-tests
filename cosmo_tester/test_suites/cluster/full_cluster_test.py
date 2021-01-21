@@ -428,16 +428,16 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
     _assert_cluster_status(node1.client)
 
 
-def test_three_nodes_cluster_upgrade(three_nodes_5_1_0_cluster, ssh_key,
+def test_three_nodes_cluster_upgrade(three_nodes_base_cluster, ssh_key,
                                      test_config, logger):
-    nodes_list = [node for node in three_nodes_5_1_0_cluster]
+    nodes_list = [node for node in three_nodes_base_cluster]
     _test_cluster_upgrade(nodes_list, nodes_list[0], 'three', ssh_key,
                           test_config, logger)
 
 
-def test_nine_nodes_cluster_upgrade(nine_nodes_5_1_0_cluster, ssh_key,
+def test_nine_nodes_cluster_upgrade(nine_nodes_base_cluster, ssh_key,
                                     test_config, logger):
-    nodes_list = [node for node in nine_nodes_5_1_0_cluster]
+    nodes_list = [node for node in nine_nodes_base_cluster]
     _test_cluster_upgrade(nodes_list, nodes_list[6], 'nine', ssh_key,
                           test_config, logger)
 
@@ -467,7 +467,8 @@ def _test_cluster_upgrade(nodes_list, manager, prefix, ssh_key, test_config,
             node.run_command('cfy_manager upgrade -v')
 
     logger.info('Validating nodes upgraded')
-    assert_manager_install_version_on_nodes(nodes_list, '5.1.1')
+    assert_manager_install_version_on_nodes(nodes_list, test_config[
+        'upgrade']['upgrade_version'])
     validate_cluster_status_and_agents(manager, example.tenant, logger)
 
     logger.info('Removing example deployment')

@@ -137,23 +137,23 @@ def nine_vms(ssh_key, module_tmpdir, test_config, logger, request):
         yield _vms
 
 
-@pytest.fixture()
-def three_nodes_5_1_0_cluster(ssh_key, module_tmpdir, test_config, logger,
-                              request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, pre_cluster_rabbit=True,
-                           three_nodes_cluster=True,
-                           installer_image_name='5_1_0_installer'):
-        yield _vms
-
-
-@pytest.fixture()
-def nine_nodes_5_1_0_cluster(ssh_key, module_tmpdir, test_config, logger,
+@pytest.fixture(params=['5_1_0_installer', '5_1_1_installer'])
+def three_nodes_base_cluster(ssh_key, module_tmpdir, test_config, logger,
                              request):
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
                            request, pre_cluster_rabbit=True,
+                           three_nodes_cluster=True,
+                           installer_image_name=request.param):
+        yield _vms
+
+
+@pytest.fixture(params=['5_1_0_installer', '5_1_1_installer'])
+def nine_nodes_base_cluster(ssh_key, module_tmpdir, test_config, logger,
+                            request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request, pre_cluster_rabbit=True,
                            broker_count=3, db_count=3, manager_count=3,
-                           installer_image_name='5_1_0_installer'):
+                           installer_image_name=request.param):
         yield _vms
 
 
