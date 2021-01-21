@@ -39,10 +39,10 @@ with open('%s', 'w') as f:
 ''' % MQ_PASSWORDS_PATH
 
 
-@pytest.fixture(scope='function')
-def manager_5_1_0(request, ssh_key, module_tmpdir, test_config, logger):
+@pytest.fixture(scope='function', params=['5.1.0', '5.1.1'])
+def base_manager(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request)
-    hosts.instances[0] = get_image('5.1.0', test_config)
+    hosts.instances[0] = get_image(request.param, test_config)
 
     hosts.create()
     try:
@@ -116,30 +116,31 @@ def test_cfy_manager_configure(image_based_manager, logger, test_config):
         )
 
 
-def test_cfy_manager_upgrade(manager_5_1_0, ssh_key, logger, test_config):
+def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
     # The private_ip and public_ip are 127.0.0.1 in the config.yaml of the
     # 5.1.0 manager, and the upgrade process doesn't cope with it (RD-868).
-    manager_5_1_0.run_command(
+    base_manager.run_command(
         "sudo sed -i 's/private_ip:.*/private_ip: {0}/; "
         "s/public_ip:.*/public_ip: {1}/' "
         "/etc/cloudify/config.yaml".format(
-            manager_5_1_0.private_ip_address, manager_5_1_0.ip_address))
+            base_manager.private_ip_address, base_manager.ip_address))
 
     example = get_example_deployment(
-        manager_5_1_0, ssh_key, logger, 'manager_upgrade', test_config)
+        base_manager, ssh_key, logger, 'manager_upgrade', test_config)
     example.upload_and_verify_install()
     # We use the cluster status because it's shown in the UI,
     # and if it's unhealthy, so is the status returned from `cfy status`.
-    validate_cluster_status_and_agents(manager_5_1_0, example.tenant, logger)
+    validate_cluster_status_and_agents(base_manager, example.tenant, logger)
 
     logger.info('Installing new RPM')
-    manager_5_1_0.run_command('yum install -y {rpm}'.format(
+    base_manager.run_command('yum install -y {rpm}'.format(
         rpm=test_config['upgrade']['upgrade_rpm_path']), use_sudo=True)
     logger.info('Upgrading manager')
-    manager_5_1_0.run_command('cfy_manager upgrade -v')
+    base_manager.run_command('cfy_manager upgrade -v')
 
-    assert get_manager_install_version(manager_5_1_0) == '5.1.1'
-    validate_cluster_status_and_agents(manager_5_1_0, example.tenant, logger)
+    assert get_manager_install_version(base_manager) == test_config[
+        'upgrade']['upgrade_version']
+    validate_cluster_status_and_agents(base_manager, example.tenant, logger)
     example.uninstall()
 
 
