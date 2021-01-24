@@ -2,8 +2,10 @@ import copy
 import random
 import string
 import time
+import threading
 from os.path import join
 
+import pytest
 import retrying
 
 from cloudify.constants import BROKER_PORT_SSL
@@ -16,9 +18,17 @@ from cosmo_tester.test_suites.cluster.conftest import run_cluster_bootstrap
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     restore_snapshot,
+    wait_for_restore,
 )
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.util import set_client_tenant, get_resource_path
+from cosmo_tester.framework.util import (get_manager_install_version,
+                                         get_resource_path,
+                                         set_client_tenant,
+                                         wait_for_execution,
+                                         delete_deployment,
+                                         validate_cluster_status_and_agents)
+
+SNAPSHOTS = 'http://cloudify-tests-files.s3-eu-west-1.amazonaws.com/snapshots/'
 
 
 def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
@@ -61,6 +71,24 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
     check_managers(mgr1, mgr2, example)
 
 
+def test_cluster_4_6_0_snapshot_with_idd(full_cluster_ips, logger):
+    snapshot_id = 'snap_4.6.0_with_capabilities'
+    _test_cluster_snapshot_with_idd(full_cluster_ips, logger, snapshot_id)
+
+
+def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
+    snapshot_id = 'snap_5.0.5_with_capabilities'
+    _test_cluster_snapshot_with_idd(full_cluster_ips, logger, snapshot_id)
+
+
+def _test_cluster_snapshot_with_idd(full_cluster_ips, logger, snapshot_id):
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
+    _upload_snapshot_from_resource(mgr1, logger, snapshot_id)
+    restore_snapshot(mgr1, snapshot_id, logger)
+    wait_for_restore(mgr1, logger)
+    _verify_uninstall_idd_guards(mgr1, logger, 'capable', 'infra')
+
+
 # This is to confirm that we work with a single DB endpoint set (e.g. on a
 # PaaS).
 # It is not intended that a single external DB be used in production.
@@ -92,7 +120,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                                      test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger)
     agent_broker_ip1 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
     )
@@ -107,8 +135,8 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         broker_ssh.run('sudo service cloudify-rabbitmq stop')
 
     # the agent should now pick another broker
-    _validate_cluster_and_agents(mgr1, example.tenant,
-                                 expected_broker_status='Degraded')
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger,
+                                       expected_brokers_status='Degraded')
     agent_broker_ip2 = _verify_agent_broker_connection_and_get_broker_ip(
         example.example_host,
     )
@@ -160,8 +188,8 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                                      'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 agent_validation_manager=mgr1)
+    validate_cluster_status_and_agents(lb, example.tenant, logger,
+                                       agent_validation_manager=mgr1)
 
     # get agent's manager node
     agent_host = lb.client.agents.list(_all_tenants=True)[0]['id']
@@ -192,17 +220,17 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded',
-                                 agent_validation_manager=validate_manager)
+    validate_cluster_status_and_agents(
+        lb, example.tenant, logger, expected_managers_status='Degraded',
+        agent_validation_manager=validate_manager)
 
     # restart the manager connected to the agent
     with agent_mgr.ssh() as manager_ssh:
         manager_ssh.run('cfy_manager start')
 
     time.sleep(5)
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 agent_validation_manager=validate_manager)
+    validate_cluster_status_and_agents(
+        lb, example.tenant, logger, agent_validation_manager=validate_manager)
 
     # stop two managers
     mgr2.run_command('cfy_manager stop')
@@ -210,9 +238,9 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
 
     lb.wait_for_manager()
     time.sleep(5)
-    _validate_cluster_and_agents(lb, example.tenant,
-                                 expected_managers_status='Degraded',
-                                 agent_validation_manager=mgr1)
+    validate_cluster_status_and_agents(lb, example.tenant, logger,
+                                       expected_managers_status='Degraded',
+                                       agent_validation_manager=mgr1)
 
     example.uninstall()
 
@@ -276,7 +304,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
                                      'cluster_replace_certs', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    _validate_cluster_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger)
 
     for host in broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2:
         key_path = join('~', '.cloudify-test-ca',
@@ -296,7 +324,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
     mgr1.run_command('cfy certificates replace -i {0} -v'.format(
         replace_certs_config_path))
 
-    _validate_cluster_and_agents(mgr1, example.tenant)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger)
     example.uninstall()
 
 
@@ -326,28 +354,6 @@ def _wait_for_healthy_broker_cluster(client, timeout=15):
                 ServiceStatus.HEALTHY:
             return
     raise TimeoutException
-
-
-# It can take time for prometheus state to update.
-# Thirty seconds should be much more than enough.
-@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
-def _validate_cluster_and_agents(manager,
-                                 tenant,
-                                 expected_broker_status='OK',
-                                 expected_managers_status='OK',
-                                 agent_validation_manager=None):
-    if not agent_validation_manager:
-        agent_validation_manager = manager
-    validate_agents = agent_validation_manager.run_command(
-        'cfy agents validate --tenant-name {}'.format(tenant)).stdout
-    assert 'Task succeeded' in validate_agents
-
-    cluster_status = manager.client.cluster_status.get_status()['services']
-    manager_status = manager.client.manager.get_status()
-    assert manager_status['status'] == ServiceStatus.HEALTHY
-    assert cluster_status['manager']['status'] == expected_managers_status
-    assert cluster_status['db']['status'] == ServiceStatus.HEALTHY
-    assert cluster_status['broker']['status'] == expected_broker_status
 
 
 def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
@@ -420,6 +426,78 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
 
     logger.info('Asserting cluster status')
     _assert_cluster_status(node1.client)
+
+
+def test_three_nodes_cluster_upgrade(three_nodes_base_cluster, ssh_key,
+                                     test_config, logger):
+    nodes_list = [node for node in three_nodes_base_cluster]
+    _test_cluster_upgrade(nodes_list, nodes_list[0], 'three', ssh_key,
+                          test_config, logger)
+
+
+def test_nine_nodes_cluster_upgrade(nine_nodes_base_cluster, ssh_key,
+                                    test_config, logger):
+    nodes_list = [node for node in nine_nodes_base_cluster]
+    _test_cluster_upgrade(nodes_list, nodes_list[6], 'nine', ssh_key,
+                          test_config, logger)
+
+
+def _test_cluster_upgrade(nodes_list, manager, prefix, ssh_key, test_config,
+                          logger):
+    logger.info('Installing example deployment')
+    example = get_example_deployment(manager, ssh_key, logger,
+                                     '{}_nodes_cluster_upgrade'.format(prefix),
+                                     test_config)
+    example.inputs['server_ip'] = manager.ip_address
+    example.upload_and_verify_install()
+    validate_cluster_status_and_agents(manager, example.tenant, logger)
+
+    logger.info('Installing upgrade RPM on nodes')
+    _install_upgrade_rpm_on_nodes(nodes_list, test_config, logger)
+
+    if prefix == 'three':
+        for config_name in ['db', 'rabbit', 'manager']:
+            for i, node in enumerate(nodes_list, start=1):
+                logger.info('Upgrading %s %s', config_name, i)
+                node.run_command('cfy_manager upgrade -v -c /etc/cloudify/'
+                                 '{0}_config.yaml'.format(config_name))
+    else:  # prefix == 'nine'
+        for node in nodes_list:
+            logger.info('Upgrading %s', node.hostname)
+            node.run_command('cfy_manager upgrade -v')
+
+    logger.info('Validating nodes upgraded')
+    assert_manager_install_version_on_nodes(nodes_list, test_config[
+        'upgrade']['upgrade_version'])
+    validate_cluster_status_and_agents(manager, example.tenant, logger)
+
+    logger.info('Removing example deployment')
+    example.uninstall()
+
+
+def _install_upgrade_rpm_on_nodes(nodes_list, test_config, logger):
+    threads = []
+    rpm_path = test_config['upgrade']['upgrade_rpm_path']
+    for i, node in enumerate(nodes_list, start=1):
+        new_thread = threading.Thread(target=_thread_rpm_upgrade,
+                                      args=(node, rpm_path,))
+        threads.append(new_thread)
+        new_thread.start()
+        logger.info('Started installing upgrade RPM on node %s', i)
+
+    for i, thread in enumerate(threads, start=1):
+        thread.join()
+        logger.info('Finished installing upgrade RPM on node %s', i)
+
+
+def _thread_rpm_upgrade(node, rpm_path):
+    node.run_command('yum install -y {} --disablerepo=*'.format(rpm_path),
+                     use_sudo=True, hide_stdout=True)
+
+
+def assert_manager_install_version_on_nodes(nodes_list, version):
+    for node in nodes_list:
+        assert get_manager_install_version(node) == version
 
 
 def _get_new_credentials():
@@ -588,3 +666,41 @@ def _assert_cluster_status_after_db_changes(status, logger, client):
     assert manager_status['status'] == ServiceStatus.HEALTHY
     logger.info('The cluster status is valid after DB changes')
     return db_service
+
+
+def _upload_snapshot_from_resource(manager, logger, snapshot_id):
+    logger.info('Uploading snapshot: {0}'.format(snapshot_id))
+    snapshot_path = get_resource_path('snapshots/{}.zip'.format(snapshot_id))
+    manager.client.snapshots.upload(snapshot_path, snapshot_id)
+
+
+def _verify_uninstall_idd_guards(manager, logger, main_dep_id,
+                                 dependent_dep_id):
+    deployment_ids = [d.id for d in manager.client.deployments.list()]
+    assert {main_dep_id, dependent_dep_id} == set(deployment_ids)
+
+    logger.info('Trying to delete dependent deployment before main. '
+                'This should fail.')
+    with pytest.raises(CloudifyClientError) as e:
+        manager.client.deployments.delete(dependent_dep_id)
+    assert "Can't delete deployment {}".format(dependent_dep_id) \
+           in str(e.value)
+    assert "`{}` uses capabilities".format(main_dep_id) in str(e.value)
+
+    logger.info('Trying to uninstall dependent deployment before main. '
+                'This should fail.')
+    with pytest.raises(CloudifyClientError) as e:
+        manager.client.executions.start(dependent_dep_id, 'uninstall')
+    assert "Can't execute workflow `uninstall` on deployment " \
+           "{}".format(dependent_dep_id) in str(e.value)
+    assert "`{}` uses capabilities".format(main_dep_id) in str(e.value)
+
+    logger.info('Uninstalling and deleting main deployment.')
+    execution = manager.client.executions.start(main_dep_id, 'uninstall')
+    wait_for_execution(manager.client, execution, logger)
+    delete_deployment(manager.client, main_dep_id, logger)
+
+    logger.info('Uninstalling and deleting dependent deployment.')
+    execution = manager.client.executions.start(dependent_dep_id, 'uninstall')
+    wait_for_execution(manager.client, execution, logger)
+    delete_deployment(manager.client, dependent_dep_id, logger)

@@ -12,6 +12,7 @@ from invoke import UnexpectedExit
 from cosmo_tester.framework.util import (generate_ca_cert,
                                          generate_ssl_certificate,
                                          get_resource_path)
+from .full_cluster_test import assert_manager_install_version_on_nodes
 
 RESOURCES_PATH = pkg_resources.resource_filename(
     'cosmo_tester', 'test_suites/cluster/cfy_cluster_manager_resources')
@@ -19,6 +20,7 @@ REMOTE_SSH_KEY_PATH = '/tmp/cfy_cluster_manager_ssh_key.pem'
 REMOTE_LICENSE_PATH = '/tmp/cfy_cluster_manager_license.yaml'
 REMOTE_CERTS_PATH = '/tmp/certs'
 REMOTE_CONFIGS_PATH = '/tmp/config_files'
+REMOTE_CLUSTER_CONFIG_PATH = '/tmp/cfy_cluster_config.yaml'
 
 
 @pytest.fixture()
@@ -79,24 +81,11 @@ def test_create_three_nodes_cluster(three_vms, three_nodes_config_dict,
 def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
                                    test_config, ssh_key, logger):
     """Tests that a nine nodes cluster is successfully created."""
-    node1, node2, node3, node4, node5, node6, node7, node8, node9 = nine_vms
-    for i, node in enumerate([node1, node2, node3, node4, node5, node6,
-                              node7, node8, node9]):
-        node_num = (i % 3) + 1
-        if i < 3:
-            node_name = 'rabbitmq-{0}'.format(node_num)
-        elif i < 6:
-            node_name = 'postgresql-{0}'.format(node_num)
-        else:
-            node_name = 'manager-{0}'.format(node_num)
+    nodes_list = [node for node in nine_vms]
+    _update_nine_nodes_config_dict_vms(nine_nodes_config_dict, nodes_list)
 
-        nine_nodes_config_dict['existing_vms'][node_name].update({
-            'private_ip': str(node.private_ip_address),
-            'public_ip': str(node.ip_address)
-        })
-
-    _install_cluster(node7, nine_nodes_config_dict, test_config, ssh_key,
-                     logger)
+    _install_cluster(nodes_list[6], nine_nodes_config_dict, test_config,
+                     ssh_key, logger)
 
 
 def test_three_nodes_cluster_using_provided_certificates(
@@ -224,6 +213,56 @@ def test_three_nodes_cluster_offline(
 
     _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
                      logger)
+
+
+@pytest.mark.parametrize('base_version', ['5_1_0', '5_1_1'])
+def test_three_nodes_cluster_upgrade(base_version, three_vms,
+                                     three_nodes_config_dict, test_config,
+                                     ssh_key, logger):
+    """Tests the command cfy_cluster_manager upgrade on a 3 nodes cluster."""
+    node1, node2, node3 = three_vms
+    nodes_list = [node1, node2, node3]
+
+    three_nodes_config_dict['manager_rpm_path'] = test_config[
+        'cfy_cluster_manager'][
+        '{0}_manager_install_rpm_path'.format(base_version)]
+    _update_three_nodes_config_dict_vms(three_nodes_config_dict, nodes_list)
+
+    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
+                     logger)
+    _upgrade_cluster(nodes_list, node1, test_config, logger)
+
+
+@pytest.mark.parametrize('base_version', ['5_1_0', '5_1_1'])
+def test_nine_nodes_cluster_upgrade(base_version, nine_vms,
+                                    nine_nodes_config_dict,
+                                    test_config, ssh_key, logger):
+    """Tests the command cfy_cluster_manager upgrade on a 9 nodes cluster."""
+    nodes_list = [node for node in nine_vms]
+    manager = nodes_list[6]
+
+    nine_nodes_config_dict['manager_rpm_path'] = test_config[
+        'cfy_cluster_manager'][
+        '{0}_manager_install_rpm_path'.format(base_version)]
+    _update_nine_nodes_config_dict_vms(nine_nodes_config_dict, nodes_list)
+
+    _install_cluster(manager, nine_nodes_config_dict, test_config, ssh_key,
+                     logger)
+    _upgrade_cluster(nodes_list, manager, test_config, logger)
+
+
+def _upgrade_cluster(nodes_list, manager, test_config, logger):
+    logger.info('Upgrading cluster')
+    manager.run_command(
+        'cfy_cluster_manager upgrade -v --config-path {cfg} --upgrade-rpm '
+        '{rpm}'.format(cfg=REMOTE_CLUSTER_CONFIG_PATH,
+                       rpm=test_config['upgrade']['upgrade_rpm_path']))
+
+    logger.info('Validating nodes upgraded')
+    assert_manager_install_version_on_nodes(nodes_list, test_config[
+        'upgrade']['upgrade_version'])
+    logger.info('Verifying the cluster status')
+    _verify_cluster_status(manager)
 
 
 def _install_cluster_using_provided_config_files(
@@ -398,11 +437,26 @@ def _update_three_nodes_config_dict_vms(config_dict, existing_vms_list):
         })
 
 
+def _update_nine_nodes_config_dict_vms(config_dict, existing_vms_list):
+    for i, node in enumerate(existing_vms_list):
+        node_num = (i % 3) + 1
+        if i < 3:
+            node_name = 'rabbitmq-{0}'.format(node_num)
+        elif i < 6:
+            node_name = 'postgresql-{0}'.format(node_num)
+        else:
+            node_name = 'manager-{0}'.format(node_num)
+
+        config_dict['existing_vms'][node_name].update({
+            'private_ip': str(node.private_ip_address),
+            'public_ip': str(node.ip_address)
+        })
+
+
 def _install_cluster(node, config_dict, test_config, ssh_key, logger,
                      override=False):
     logger.info('Installing cluster')
-    remote_cluster_config_path = '/tmp/cfy_cluster_config.yaml'
-    node.put_remote_file_content(remote_cluster_config_path,
+    node.put_remote_file_content(REMOTE_CLUSTER_CONFIG_PATH,
                                  yaml.dump(config_dict))
     if not override:
         node.put_remote_file(remote_path=REMOTE_SSH_KEY_PATH,
@@ -417,7 +471,7 @@ def _install_cluster(node, config_dict, test_config, ssh_key, logger,
 
     node.run_command(
         'cfy_cluster_manager install -v --config-path {cfg} {override}'.format(
-            cfg=remote_cluster_config_path,
+            cfg=REMOTE_CLUSTER_CONFIG_PATH,
             override='--override' if override else '')
     )
 
@@ -425,7 +479,7 @@ def _install_cluster(node, config_dict, test_config, ssh_key, logger,
     _verify_cluster_status(node)
 
 
-@retry(stop_max_attempt_number=24, wait_fixed=5000)
+@retry(stop_max_attempt_number=60, wait_fixed=2000)
 def _verify_cluster_status(node):
     raw_cluster_status = node.run_command(
         'cfy cluster status --json', warn_only=True, hide_stdout=True)
