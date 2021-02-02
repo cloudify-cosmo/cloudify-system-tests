@@ -89,9 +89,7 @@ DEPLOYMENTS_PER_BLUEPRINT = [
 ]
 
 
-def _sort_summary(summary, sort_key, sort=True):
-    if sort:
-        summary = sorted(summary)
+def _sort_summary(summary, sort_key):
     if isinstance(sort_key, list):
         if len(sort_key) == 1:
             this_sort_key = sort_key[0]
@@ -103,13 +101,13 @@ def _sort_summary(summary, sort_key, sort=True):
         this_sort_key = sort_key
 
     if isinstance(summary, list):
-        summary = [_sort_summary(item, sort_key, False) for item in summary]
+        summary = [_sort_summary(item, sort_key) for item in summary]
         summary.sort(
-            key=lambda x: x[this_sort_key] if isinstance(x, dict) else x
+            key=lambda x: x[this_sort_key] or '' if isinstance(x, dict) else x
         )
     elif isinstance(summary, dict):
         summary = {
-            key: _sort_summary(value, sort_key, False)
+            key: _sort_summary(value, sort_key)
             for key, value in summary.items()
         }
     return summary
@@ -119,7 +117,7 @@ def _create_sites(manager, deployment_ids):
     for site_dep_count in DEPLOYMENTS_PER_SITE:
         site_name = site_dep_count['site_name']
         manager.client.sites.create(site_name)
-        for i in xrange(site_dep_count['deployments']):
+        for i in range(site_dep_count['deployments']):
             manager.client.deployments.set_site(deployment_ids[i],
                                                 site_name)
             deployment_ids.remove(deployment_ids[i])
@@ -134,7 +132,7 @@ def prepared_manager(image_based_manager, logger):
         # after startup, so wait for the tenants to be successfully created
         # before we continue (to avoid it erroring when creating a deployment
         # instead)
-        for attempt in xrange(30):
+        for attempt in range(30):
             try:
                 if tenant != 'default_tenant':
                     image_based_manager.client.tenants.create(tenant)
@@ -152,7 +150,7 @@ def prepared_manager(image_based_manager, logger):
                 )
 
             for bp_name, count in TENANT_DEPLOYMENT_COUNTS[tenant].items():
-                for i in xrange(count):
+                for i in range(count):
                     deployment_id = bp_name + str(i)
                     create_deployment(
                         image_based_manager.client, bp_name, deployment_id,
@@ -160,7 +158,7 @@ def prepared_manager(image_based_manager, logger):
                     )
                     deployment_ids.append(deployment_id)
                 image_based_manager.wait_for_all_executions()
-                for i in xrange(count):
+                for i in range(count):
                     deployment_id = bp_name + str(i)
                     image_based_manager.client.executions.start(
                         deployment_id,
@@ -619,8 +617,8 @@ def test_basic_summary_paged(prepared_manager):
         {u'blueprints': 3, u'tenant_name': u'default_tenant'},
     ]
 
-    results.sort()
-    expected.sort()
+    results.sort(key=lambda x: x['tenant_name'])
+    expected.sort(key=lambda x: x['tenant_name'])
 
     assert results == expected, (
         '{0} != {1}'.format(results, expected)
@@ -639,18 +637,18 @@ def test_basic_summary_paged(prepared_manager):
         {u'blueprints': 3, u'tenant_name': u'test2'},
     ]
 
-    results.sort()
-    expected.sort()
+    results.sort(key=lambda x: x['tenant_name'])
+    expected.sort(key=lambda x: x['tenant_name'])
 
     assert results == expected, (
         '{0} != {1}'.format(results, expected)
     )
 
 
-def _assert_cli_results(results, expected, sort_key):
-    assert _sort_summary(
-        results, sort_key=sort_key) == _sort_summary(
-        expected, sort_key=sort_key)
+def _assert_cli_results(results, expected):
+    assert len(results) == len(expected)
+    for item in results:
+        assert item in expected
 
 
 def test_cli_blueprints_summary(prepared_manager):
@@ -660,7 +658,7 @@ def test_cli_blueprints_summary(prepared_manager):
         ).stdout
     )
     expected = [{"blueprints": 3, "visibility": "tenant"}]
-    _assert_cli_results(results, expected, 'visibility')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_blueprints_summary_subfield(prepared_manager):
@@ -685,7 +683,7 @@ def test_cli_blueprints_summary_subfield(prepared_manager):
         {u'tenant_name': u'default_tenant', u'blueprints': 3,
          u'visibility': None}
     ]
-    _assert_cli_results(results, expected, 'tenant_name')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_blueprints_summary_subfield_non_json(prepared_manager):
@@ -710,7 +708,7 @@ def test_cli_deployments_summary(prepared_manager):
         {"deployments": 1, "blueprint_id": "multivm"},
         {"deployments": 3, "blueprint_id": "relations"}
     ]
-    _assert_cli_results(results, expected, 'blueprint_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_deployments_summary_subfield(prepared_manager):
@@ -747,7 +745,7 @@ def test_cli_deployments_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant", "deployments": 6,
          "blueprint_id": None}
     ]
-    _assert_cli_results(results, expected, 'blueprint_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_deployments_summary_subfield_non_json(prepared_manager):
@@ -772,7 +770,7 @@ def test_cli_executions_summary(prepared_manager):
         {"workflow_id": "install", "executions": 6},
         {"workflow_id": "upload_blueprint", "executions": 3},
     ]
-    _assert_cli_results(results, expected, 'workflow_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_executions_summary_subfield(prepared_manager):
@@ -809,7 +807,7 @@ def test_cli_executions_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant",
          "workflow_id": None, "executions": 15}
     ]
-    _assert_cli_results(results, expected, 'workflow_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_executions_summary_subfield_non_json(prepared_manager):
@@ -837,7 +835,7 @@ def test_cli_nodes_summary(prepared_manager):
         {"deployment_id": "relations0", "nodes": 5},
         {"deployment_id": "multivm0", "nodes": 2}
     ]
-    _assert_cli_results(results, expected, 'deployment_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_nodes_summary_subfield(prepared_manager):
@@ -892,7 +890,7 @@ def test_cli_nodes_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant", "deployment_id": None,
          "nodes": 19}
     ]
-    _assert_cli_results(results, expected, 'deployment_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_nodes_summary_subfield_non_json(prepared_manager):
@@ -919,7 +917,7 @@ def test_cli_node_instances_summary(prepared_manager):
         {"node_id": "fakevm", "node_instances": 9},
         {"node_id": "fakeappconfig1", "node_instances": 3}
     ]
-    _assert_cli_results(results, expected, 'node_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_node_instances_summary_subfield(prepared_manager):
@@ -968,7 +966,7 @@ def test_cli_node_instances_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant", "node_id": None,
          "node_instances": 25}
     ]
-    _assert_cli_results(results, expected, 'node_id')
+    _assert_cli_results(results, expected)
 
 
 def test_cli_node_instances_summary_subfield_non_json(prepared_manager):
