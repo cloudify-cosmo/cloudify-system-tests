@@ -89,28 +89,10 @@ DEPLOYMENTS_PER_BLUEPRINT = [
 ]
 
 
-def _sort_summary(summary, sort_key):
-    if isinstance(sort_key, list):
-        if len(sort_key) == 1:
-            this_sort_key = sort_key[0]
-            sort_key = sort_key[0]
-        else:
-            this_sort_key = sort_key[0]
-            sort_key = sort_key[1:]
-    else:
-        this_sort_key = sort_key
-
-    if isinstance(summary, list):
-        summary = [_sort_summary(item, sort_key) for item in summary]
-        summary.sort(
-            key=lambda x: x[this_sort_key] or '' if isinstance(x, dict) else x
-        )
-    elif isinstance(summary, dict):
-        summary = {
-            key: _sort_summary(value, sort_key)
-            for key, value in summary.items()
-        }
-    return summary
+def _assert_summary_equal(results, expected):
+    assert len(results) == len(expected)
+    for item in results:
+        assert item in expected, '{0} not in {1}'.format(item, expected)
 
 
 def _create_sites(manager, deployment_ids):
@@ -247,20 +229,16 @@ def test_bad_subfield_selected(prepared_manager, summary_type):
 
 
 def test_basic_summary_blueprints(prepared_manager):
-    results = _sort_summary(prepared_manager.client.summary.blueprints.get(
-        _target_field='tenant_name',
-        _all_tenants=True,
-    ).items, sort_key='tenant_name')
+    results = prepared_manager.client.summary.blueprints.get(
+        _target_field='tenant_name', _all_tenants=True,).items
 
-    expected = _sort_summary([
+    expected = [
         {u'blueprints': 3, u'tenant_name': u'test1'},
         {u'blueprints': 3, u'tenant_name': u'test2'},
         {u'blueprints': 3, u'tenant_name': u'default_tenant'},
-    ], sort_key='tenant_name')
+    ]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
 
 @pytest.mark.parametrize('target_field, value', [
@@ -268,12 +246,10 @@ def test_basic_summary_blueprints(prepared_manager):
     ('site_name', DEPLOYMENTS_PER_SITE)
 ])
 def test_basic_summary_deployments(prepared_manager, target_field, value):
-    results = _sort_summary(prepared_manager.client.summary.deployments.get(
-        _target_field=target_field,
-    ).items, sort_key=target_field)
+    results = prepared_manager.client.summary.deployments.get(
+        _target_field=target_field,).items
 
-    expected = _sort_summary(value, sort_key=target_field)
-    assert results == expected, ('{0} != {1}'.format(results, expected))
+    _assert_summary_equal(results, value)
 
 
 @pytest.mark.parametrize("target_field, value", [
@@ -281,52 +257,43 @@ def test_basic_summary_deployments(prepared_manager, target_field, value):
     ("status_display", "completed")
 ])
 def test_basic_summary_executions(prepared_manager, target_field, value):
-    results = _sort_summary(prepared_manager.client.summary.executions.get(
-        _target_field=target_field,
-    ).items, sort_key=target_field)
+    results = prepared_manager.client.summary.executions.get(
+        _target_field=target_field,).items
 
-    expected = _sort_summary([
-        {u'executions': 15, u'{0}'.format(target_field): u'{0}'.format(value)},
-    ], sort_key=target_field)
+    expected = [{u'executions': 15,
+                 u'{0}'.format(target_field): u'{0}'.format(value)}]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
 
 def test_basic_summary_nodes(prepared_manager):
-    results = _sort_summary(prepared_manager.client.summary.nodes.get(
-        _target_field='deployment_id',
-    ).items, sort_key='deployment_id')
+    results = prepared_manager.client.summary.nodes.get(
+        _target_field='deployment_id',).items
 
-    expected = _sort_summary([
+    expected = [
         {u'deployment_id': u'multivm0', u'nodes': 2},
         {u'deployment_id': u'relations0', u'nodes': 5},
         {u'deployment_id': u'relations1', u'nodes': 5},
         {u'deployment_id': u'relations2', u'nodes': 5},
         {u'deployment_id': u'small0', u'nodes': 1},
         {u'deployment_id': u'small1', u'nodes': 1}
-    ], sort_key='deployment_id')
+    ]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
 
 def test_basic_summary_node_instances(prepared_manager):
     # Note that this should use host_id to make sure at least one test
     # involves some entries that are NULL in the database, because if the
     # query is changed it could start counting all NULL entries as 1 again
-    results = _sort_summary(prepared_manager.client.summary.node_instances.get(
-        _target_field='host_id',
-    ).items, sort_key='host_id')
+    results = prepared_manager.client.summary.node_instances.get(
+        _target_field='host_id',).items
 
-    assert results[0] == {u'host_id': None, u'node_instances': 6}
+    assert {u'host_id': None, u'node_instances': 6} in results
 
-    results_counts = _sort_summary([item['node_instances']
-                                    for item in results], sort_key=None)
-    expected_counts = _sort_summary([6, 1, 1, 1, 1, 2, 2, 2, 1, 2, 1, 2, 1, 2],
-                                    sort_key=None)
+    results_counts = sorted([item['node_instances'] for item in results])
+    expected_counts = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 6]
+
     assert expected_counts == results_counts, (
         'Results: {0}\n'
         'Expected host_id None to have 6 results.\n'
@@ -338,13 +305,12 @@ def test_basic_summary_node_instances(prepared_manager):
 
 
 def test_subfield_summary_blueprints(prepared_manager):
-    results = _sort_summary(prepared_manager.client.summary.blueprints.get(
+    results = prepared_manager.client.summary.blueprints.get(
         _target_field='tenant_name',
         _sub_field='visibility',
-        _all_tenants=True,
-    ).items, sort_key=['tenant_name', 'visibility'])
+        _all_tenants=True,).items
 
-    expected = _sort_summary([
+    expected = [
         {
             u'tenant_name': u'default_tenant',
             u'blueprints': 3,
@@ -366,21 +332,18 @@ def test_subfield_summary_blueprints(prepared_manager):
                 {u'blueprints': 3, u'visibility': u'tenant'}
             ]
         }
-    ], sort_key=['tenant_name', 'visibility'])
+    ]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
 
 def test_subfield_summary_deployments(prepared_manager):
-    results = _sort_summary(prepared_manager.client.summary.deployments.get(
+    results = prepared_manager.client.summary.deployments.get(
         _target_field='tenant_name',
         _sub_field='blueprint_id',
-        _all_tenants=True,
-    ).items, sort_key=['tenant_name', 'blueprint_id'])
+        _all_tenants=True,).items
 
-    expected = _sort_summary([
+    expected = [
         {
             u'by blueprint_id': [
                 {u'blueprint_id': u'multivm', u'deployments': 1},
@@ -402,26 +365,28 @@ def test_subfield_summary_deployments(prepared_manager):
         {
             u'by blueprint_id': [
                 {u'blueprint_id': u'multivm', u'deployments': 3},
-                {u'blueprint_id': u'small', u'deployments': 1},
-                {u'blueprint_id': u'relations', u'deployments': 2}
+                {u'blueprint_id': u'relations', u'deployments': 2},
+                {u'blueprint_id': u'small', u'deployments': 1}
             ],
             u'deployments': 6,
             u'tenant_name': u'test1'
         }
-    ], sort_key=['tenant_name', 'blueprint_id'])
+    ]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    for result in results:
+        original_lst = result['by blueprint_id']
+        result[u'by blueprint_id'] = sorted(original_lst,
+                                            key=lambda x: x['blueprint_id'])
+
+    _assert_summary_equal(results, expected)
 
 
 def test_subfield_summary_executions(prepared_manager):
-    results = _sort_summary(prepared_manager.client.summary.executions.get(
+    results = prepared_manager.client.summary.executions.get(
         _target_field='deployment_id',
-        _sub_field='workflow_id',
-    ).items, sort_key=['deployment_id', 'workflow_id'])
+        _sub_field='workflow_id',).items
 
-    expected = _sort_summary([
+    expected = [
         {
             u'by workflow_id': [
                 {
@@ -498,21 +463,18 @@ def test_subfield_summary_executions(prepared_manager):
             u'deployment_id': u'small1',
             u'executions': 2
         }
-    ], sort_key=['deployment_id', 'workflow_id'])
+    ]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
 
 def test_subfield_summary_nodes(prepared_manager):
-    results = _sort_summary(prepared_manager.client.summary.nodes.get(
+    results = prepared_manager.client.summary.nodes.get(
         _target_field='tenant_name',
         _sub_field='deployment_id',
-        _all_tenants=True,
-    ).items, sort_key=['tenant_name', 'deployment_id'])
+        _all_tenants=True,).items
 
-    expected = _sort_summary([
+    expected = [
         {
             u'by deployment_id': [
                 {u'deployment_id': u'multivm0', u'nodes': 2},
@@ -549,20 +511,17 @@ def test_subfield_summary_nodes(prepared_manager):
             u'nodes': 19,
             u'tenant_name': u'default_tenant'
         }
-    ], sort_key=['tenant_name', 'deployment_id'])
+    ]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
 
 def test_subfield_summary_node_instances(prepared_manager):
-    results = _sort_summary(prepared_manager.client.summary.node_instances.get(
+    results = prepared_manager.client.summary.node_instances.get(
         _target_field='node_id',
-        _sub_field='state',
-    ).items, sort_key=['node_id', 'state'])
+        _sub_field='state',).items
 
-    expected = _sort_summary([
+    expected = [
         {
             u'by state': [
                 {u'node_instances': 3, u'state': u'started'}
@@ -597,11 +556,9 @@ def test_subfield_summary_node_instances(prepared_manager):
             u'node_id': u'fakevm',
             u'node_instances': 9
         }
-    ], sort_key=['node_id', 'state'])
+    ]
 
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
 
 def test_basic_summary_paged(prepared_manager):
@@ -617,12 +574,7 @@ def test_basic_summary_paged(prepared_manager):
         {u'blueprints': 3, u'tenant_name': u'default_tenant'},
     ]
 
-    results.sort(key=lambda x: x['tenant_name'])
-    expected.sort(key=lambda x: x['tenant_name'])
-
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
+    _assert_summary_equal(results, expected)
 
     # And the second page, please
     results = prepared_manager.client.summary.blueprints.get(
@@ -637,18 +589,7 @@ def test_basic_summary_paged(prepared_manager):
         {u'blueprints': 3, u'tenant_name': u'test2'},
     ]
 
-    results.sort(key=lambda x: x['tenant_name'])
-    expected.sort(key=lambda x: x['tenant_name'])
-
-    assert results == expected, (
-        '{0} != {1}'.format(results, expected)
-    )
-
-
-def _assert_cli_results(results, expected):
-    assert len(results) == len(expected)
-    for item in results:
-        assert item in expected
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_blueprints_summary(prepared_manager):
@@ -658,7 +599,7 @@ def test_cli_blueprints_summary(prepared_manager):
         ).stdout
     )
     expected = [{"blueprints": 3, "visibility": "tenant"}]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_blueprints_summary_subfield(prepared_manager):
@@ -683,7 +624,7 @@ def test_cli_blueprints_summary_subfield(prepared_manager):
         {u'tenant_name': u'default_tenant', u'blueprints': 3,
          u'visibility': None}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_blueprints_summary_subfield_non_json(prepared_manager):
@@ -708,7 +649,7 @@ def test_cli_deployments_summary(prepared_manager):
         {"deployments": 1, "blueprint_id": "multivm"},
         {"deployments": 3, "blueprint_id": "relations"}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_deployments_summary_subfield(prepared_manager):
@@ -745,7 +686,7 @@ def test_cli_deployments_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant", "deployments": 6,
          "blueprint_id": None}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_deployments_summary_subfield_non_json(prepared_manager):
@@ -770,7 +711,7 @@ def test_cli_executions_summary(prepared_manager):
         {"workflow_id": "install", "executions": 6},
         {"workflow_id": "upload_blueprint", "executions": 3},
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_executions_summary_subfield(prepared_manager):
@@ -807,7 +748,7 @@ def test_cli_executions_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant",
          "workflow_id": None, "executions": 15}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_executions_summary_subfield_non_json(prepared_manager):
@@ -835,7 +776,7 @@ def test_cli_nodes_summary(prepared_manager):
         {"deployment_id": "relations0", "nodes": 5},
         {"deployment_id": "multivm0", "nodes": 2}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_nodes_summary_subfield(prepared_manager):
@@ -890,7 +831,7 @@ def test_cli_nodes_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant", "deployment_id": None,
          "nodes": 19}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_nodes_summary_subfield_non_json(prepared_manager):
@@ -917,7 +858,7 @@ def test_cli_node_instances_summary(prepared_manager):
         {"node_id": "fakevm", "node_instances": 9},
         {"node_id": "fakeappconfig1", "node_instances": 3}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_node_instances_summary_subfield(prepared_manager):
@@ -966,7 +907,7 @@ def test_cli_node_instances_summary_subfield(prepared_manager):
         {"tenant_name": "default_tenant", "node_id": None,
          "node_instances": 25}
     ]
-    _assert_cli_results(results, expected)
+    _assert_summary_equal(results, expected)
 
 
 def test_cli_node_instances_summary_subfield_non_json(prepared_manager):
