@@ -518,8 +518,7 @@ def test_subfield_summary_nodes(prepared_manager):
 
 def test_subfield_summary_node_instances(prepared_manager):
     results = prepared_manager.client.summary.node_instances.get(
-        _target_field='node_id',
-        _sub_field='state',).items
+        _target_field='node_id', _sub_field='state').items
 
     expected = [
         {
