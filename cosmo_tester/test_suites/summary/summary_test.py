@@ -400,10 +400,8 @@ def test_subfield_summary_executions(prepared_manager):
         {
             u'by workflow_id': [
                 {
-                    u'executions': 1,
-                    u'workflow_id': u'create_deployment_environment'
-                },
-                {u'executions': 1, u'workflow_id': u'install'}
+                    u'executions': 1, u'workflow_id': u'install'
+                }
             ],
             u'deployment_id': u'multivm0',
             u'executions': 2
@@ -411,10 +409,8 @@ def test_subfield_summary_executions(prepared_manager):
         {
             u'by workflow_id': [
                 {
-                    u'executions': 1,
-                    u'workflow_id': u'create_deployment_environment'
-                },
-                {u'executions': 1, u'workflow_id': u'install'}
+                    u'executions': 1, u'workflow_id': u'install'
+                }
             ],
             u'deployment_id': u'relations0',
             u'executions': 2
@@ -422,10 +418,8 @@ def test_subfield_summary_executions(prepared_manager):
         {
             u'by workflow_id': [
                 {
-                    u'executions': 1,
-                    u'workflow_id': u'create_deployment_environment'
-                },
-                {u'executions': 1, u'workflow_id': u'install'}
+                    u'executions': 1, u'workflow_id': u'install'
+                }
             ],
             u'deployment_id': u'relations1',
             u'executions': 2
@@ -433,10 +427,8 @@ def test_subfield_summary_executions(prepared_manager):
         {
             u'by workflow_id': [
                 {
-                    u'executions': 1,
-                    u'workflow_id': u'create_deployment_environment'
-                },
-                {u'executions': 1, u'workflow_id': u'install'}
+                    u'executions': 1, u'workflow_id': u'install'
+                }
             ],
             u'deployment_id': u'relations2',
             u'executions': 2
@@ -444,10 +436,8 @@ def test_subfield_summary_executions(prepared_manager):
         {
             u'by workflow_id': [
                 {
-                    u'executions': 1,
-                    u'workflow_id': u'create_deployment_environment'
-                },
-                {u'executions': 1, u'workflow_id': u'install'}
+                    u'executions': 1, u'workflow_id': u'install'
+                }
             ],
             u'deployment_id': u'small0',
             u'executions': 2
@@ -455,10 +445,8 @@ def test_subfield_summary_executions(prepared_manager):
         {
             u'by workflow_id': [
                 {
-                    u'executions': 1,
-                    u'workflow_id': u'create_deployment_environment'
-                },
-                {u'executions': 1, u'workflow_id': u'install'}
+                    u'executions': 1, u'workflow_id': u'install'
+                }
             ],
             u'deployment_id': u'small1',
             u'executions': 2

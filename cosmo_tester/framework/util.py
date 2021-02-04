@@ -567,23 +567,6 @@ def create_deployment(client, blueprint_id, deployment_id, logger,
         skip_plugins_validation=skip_plugins_validation,
     )
 
-    logger.info('Waiting for deployment env creation for %s',
-                deployment_id)
-    executions = client.executions.list(deployment_id=deployment_id)
-    for execution in executions:
-        if execution.workflow_id == 'create_deployment_environment':
-            wait_for_execution(
-                client,
-                execution,
-                logger,
-            )
-            return
-    raise DeploymentCreationError(
-        'Deployment environment creation workflow not found for {}'.format(
-            deployment_id,
-        )
-    )
-
 
 class DeploymentDeletionError(Exception):
     """Deployment deletion failed."""

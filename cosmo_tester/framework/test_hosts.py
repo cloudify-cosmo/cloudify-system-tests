@@ -856,24 +856,15 @@ class Hosts(object):
             cancelled = []
             execs = self._infra_client.executions.list()
             for execution in execs:
-                if execution['workflow_id'] != (
-                    'create_deployment_environment'
-                ):
-                    self._logger.info(
-                        'Ensuring %s (%s) is not running.',
-                        execution['id'],
-                        execution['workflow_id'],
-                    )
-                    self._infra_client.executions.cancel(
-                        execution['id'], force=True, kill=True
-                    )
-                    cancelled.append(execution['id'])
-                else:
-                    self._logger.info(
-                        'Skipping %s (%s).',
-                        execution['id'],
-                        execution['workflow_id'],
-                    )
+                self._logger.info(
+                    'Ensuring %s (%s) is not running.',
+                    execution['id'],
+                    execution['workflow_id'],
+                )
+                self._infra_client.executions.cancel(
+                    execution['id'], force=True, kill=True
+                )
+                cancelled.append(execution['id'])
 
             cancel_complete = []
             for execution_id in cancelled:

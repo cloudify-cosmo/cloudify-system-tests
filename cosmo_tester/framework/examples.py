@@ -119,21 +119,6 @@ class BaseExample(object):
             self.logger.info('Deployments for tenant {}'.format(self.tenant))
             for deployment in self.manager.client.deployments.list():
                 self.logger.info(deployment['id'])
-        if wait:
-            self.wait_for_deployment_environment_creation()
-
-    def wait_for_deployment_environment_creation(self):
-        self.logger.info('Waiting for deployment env creation.')
-        while True:
-            with set_client_tenant(self.manager.client, self.tenant):
-                executions = self.manager.client.executions.list(
-                    _include=['status'],
-                    deployment_id=self.deployment_id,
-                    workflow_id='create_deployment_environment',
-                )
-                if all(exc['status'] == 'terminated' for exc in executions):
-                    break
-        self.logger.info('Deployment env created.')
 
     def install(self):
         self.logger.info('Installing deployment...')
