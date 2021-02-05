@@ -395,7 +395,7 @@ class _CloudifyManager(VM):
             # is done.
             try:
                 # will fail on bootstrap based managers
-                fabric_ssh.run('systemctl -a | grep manager-ip-setter')
+                fabric_ssh.run('supervisorctl -a | grep manager-ip-setter')
             except Exception:
                 pass
             else:
@@ -423,7 +423,7 @@ class _CloudifyManager(VM):
             # is done.
             try:
                 # will fail on bootstrap based managers
-                fabric_ssh.run('systemctl | grep manager-ip-setter')
+                fabric_ssh.run('supervisorctl | grep manager-ip-setter')
             except Exception:
                 pass
             else:
