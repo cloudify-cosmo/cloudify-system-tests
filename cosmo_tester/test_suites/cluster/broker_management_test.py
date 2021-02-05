@@ -280,7 +280,7 @@ def test_remove(brokers, logger):
     assert 'failed' in result
 
     # Expected result, now we will recover
-    brokers[0].run_command('systemctl restart cloudify-rabbitmq',
+    brokers[0].run_command('supervisorctl restart cloudify-rabbitmq',
                            use_sudo=True)
     brokers[0].run_command(
         'cfy_manager brokers remove -r {node}'.format(
