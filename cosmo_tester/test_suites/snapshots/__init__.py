@@ -222,7 +222,7 @@ def change_salt(manager, new_salt, logger):
             )
         )
 
-        fabric_ssh.sudo('systemctl restart cloudify-restservice')
+        fabric_ssh.sudo('supervisorctl restart cloudify-restservice')
 
     logger.info('Fixing admin credentials...')
     fix_admin_account(manager, new_salt, logger)

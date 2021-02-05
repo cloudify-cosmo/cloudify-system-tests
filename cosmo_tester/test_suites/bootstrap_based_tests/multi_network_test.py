@@ -167,9 +167,9 @@ def _add_new_network(manager, logger, restart=True):
         )
         if restart:
             logger.info('Restarting services...')
-            fabric_ssh.sudo('systemctl restart cloudify-rabbitmq')
-            fabric_ssh.sudo('systemctl restart nginx')
-            fabric_ssh.sudo('systemctl restart cloudify-mgmtworker')
+            fabric_ssh.sudo('supervisorctl restart cloudify-rabbitmq')
+            fabric_ssh.sudo('supervisorctl restart nginx')
+            fabric_ssh.sudo('supervisorctl restart cloudify-mgmtworker')
 
 
 @pytest.fixture(scope='function')
@@ -238,9 +238,9 @@ def proxy_prepare_hosts(instances, logger):
                     ip=manager_ip, port=port),
             )
             logger.info('Enabling proxy service')
-            fabric.sudo('systemctl enable {0}'.format(service))
+            fabric.sudo('supervisorctl enable {0}'.format(service))
             logger.info('Starting proxy service')
-            fabric.sudo('systemctl start {0}'.format(service))
+            fabric.sudo('supervisorctl start {0}'.format(service))
 
     logger.info('Bootstrapping manager...')
     manager.wait_for_ssh()
