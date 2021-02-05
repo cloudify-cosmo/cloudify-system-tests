@@ -49,6 +49,9 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
         if diff:
             diffs[key] = diff
 
+    with bootstrap_test_manager.ssh() as fabric:
+        assert not fabric.run('ls /opt/cloudify-agent-5.2.0').stdout.strip()
+
     assert diffs == expected_diffs
 
 
@@ -63,11 +66,13 @@ def check_pre_bootstrap_state(manager):
     pre_bootstrap_state['folders in /opt'] += [
         'python_NOTICE.txt',
         'lib',
-        'cloudify-manager-install'
+        'cloudify-manager-install',
+        'cloudify-agent-5.2.0',
     ]
     pre_bootstrap_state['init_d service files (/etc/rc.d/init.d/)'] += [
         'jexec'
     ]
+    pre_bootstrap_state['os groups'].append('cfyagent')
 
 
 def _get_system_state(mgr):
