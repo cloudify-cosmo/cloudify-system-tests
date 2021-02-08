@@ -550,7 +550,7 @@ def _random_credential_generator():
 
 def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     logger.info('Stopping syncthing on one of the manager nodes')
-    mgr1.run_command('systemctl stop cloudify-syncthing', use_sudo=True)
+    mgr1.run_command('supervisorctl stop cloudify-syncthing', use_sudo=True)
     _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger)
 
 
@@ -578,20 +578,20 @@ def _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger):
 
     # Back to healthy cluster
     logger.info('Starting syncthing on the failed manager')
-    mgr1.run_command('systemctl start cloudify-syncthing', use_sudo=True)
+    mgr1.run_command('supervisorctl start cloudify-syncthing', use_sudo=True)
     _assert_cluster_status(mgr1.client)
 
 
 def _verify_status_when_postgres_inactive(db1, db2, logger, client):
     logger.info('Stopping one of the db nodes')
-    db1.run_command('systemctl stop patroni etcd', use_sudo=True)
+    db1.run_command('supervisorctl stop patroni etcd', use_sudo=True)
     db_service = _assert_cluster_status_after_db_changes(
         ServiceStatus.DEGRADED, logger, client,
     )
     assert db_service['nodes'][db1.hostname]['status'] == ServiceStatus.FAIL
 
     logger.info('Stopping another db node')
-    db2.run_command('systemctl stop patroni etcd', use_sudo=True)
+    db2.run_command('supervisorctl stop patroni etcd', use_sudo=True)
 
     try:
         client.cluster_status.get_status()
@@ -600,8 +600,8 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, client):
         pass
 
     logger.info('Starting Patroni and Etcd on the failed db nodes')
-    db1.run_command('systemctl start patroni etcd', use_sudo=True)
-    db2.run_command('systemctl start patroni etcd', use_sudo=True)
+    db1.run_command('supervisorctl start patroni etcd', use_sudo=True)
+    db2.run_command('supervisorctl start patroni etcd', use_sudo=True)
     _assert_cluster_status_after_db_changes(ServiceStatus.HEALTHY, logger,
                                             client)
 
@@ -609,13 +609,13 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, client):
 def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
                                         client):
     logger.info('Stopping one of the rabbit nodes')
-    broker1.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
+    broker1.run_command('supervisorctl stop cloudify-rabbitmq', use_sudo=True)
 
     _validate_status_when_one_rabbit_inactive(broker1, logger, client)
 
     logger.info('Stopping the other rabbit nodes')
-    broker2.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
-    broker3.run_command('systemctl stop cloudify-rabbitmq', use_sudo=True)
+    broker2.run_command('supervisorctl stop cloudify-rabbitmq', use_sudo=True)
+    broker3.run_command('supervisorctl stop cloudify-rabbitmq', use_sudo=True)
 
     _validate_status_when_all_rabbits_inactive(logger, client)
 
