@@ -623,6 +623,12 @@ class _CloudifyManager(VM):
 
     @retrying.retry(stop_max_attempt_number=90, wait_fixed=1000)
     def _new_wait_for_manager(self):
+        with self.ssh() as fabric_ssh:
+            # If we don't wait for this then tests get a bit racier
+            fabric_ssh.run(
+                "systemctl status cloudify-starter 2>&1"
+                "| grep -E '(status=0/SUCCESS)|(could not be found)'")
+
         manager_status = self.client.manager.get_status()
         if manager_status['status'] != HEALTHY_STATE:
             raise Exception(
