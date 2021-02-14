@@ -100,25 +100,42 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
     assert len(logs_dump_filepaths['broker']) == 3
 
     for node in nodes:
+        logger.info('Checking log hashes for `node {0}`'.format(node.hostname))
         log_hashes = [f.split()[0] for f in node.run_command(
-            'find /var/log/cloudify -type f -exec md5sum {} + | sort',
+            'find /var/log/cloudify -type f -not -name \'supervisord.log\''
+            ' -exec md5sum {} + | sort',
             use_sudo=True
         ).stdout.splitlines()]
+        logger.info('Calculated log hashes for {0} are {1}'.format(
+            node.hostname, log_hashes)
+        )
         node_dump_filepaths = \
             [logs_dump_filepaths['manager'][node.private_ip_address]] + \
             [logs_dump_filepaths['db'][node.private_ip_address]] + \
             [logs_dump_filepaths['broker'][node.private_ip_address]]
         for i, dump_filepath in enumerate(node_dump_filepaths):
             tar_name = 'logs_{0}_{1}'.format(node.hostname, i)
+            logger.info('Start extracting log hashes locally for {0}'.format(
+                tar_name
+            ))
             local_dump_filepath = str(tmpdir / '{}.tar'.format(tar_name))
             cli_host.get_remote_file(dump_filepath, local_dump_filepath)
             with tarfile.open(local_dump_filepath) as tar:
                 tar.extractall(str(tmpdir / tar_name))
             files = list((tmpdir / tar_name / 'cloudify').visit('*.*'))
+            logger.info('Checking both `journalctl.log` and '
+                        '`supervisord.log` are'
+                        ' exist inside {0}'.format(tar_name))
             assert str(tmpdir / tar_name / 'cloudify/journalctl.log') in files
+            assert str(tmpdir / tar_name / 'cloudify/supervisord.log') in files
             log_hashes_local = sorted(
                 [hashlib.md5(open(f.strpath, 'rb').read()).hexdigest() for f
-                 in files if 'journalctl' not in f.basename])
+                 in files if 'journalctl' not in f.basename
+                 and 'supervisord' not in f.basename]
+            )
+            logger.info('Calculated log hashes locally for {0} are {1}'.format(
+                node.hostname, log_hashes_local)
+            )
             assert set(log_hashes) == set(log_hashes_local)
 
     logger.info('Testing `cfy logs backup`')
@@ -134,9 +151,10 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
                              '{}.yaml'.format(config))
     cli_host.run_command('{cfy} logs purge --force'.format(cfy=paths['cfy']))
     # Verify that each file under /var/log/cloudify is size zero
+    logger.info('Verifying each file under /var/log/cloudify is size zero')
     nodes[0].run_command(
-        'find /var/log/cloudify -type f -exec test -s {} \\; '
-        '-print -exec false {} +'
+        'find /var/log/cloudify -type f -not -name \'supervisord.log\''
+        ' -exec test -s {} \\; -print -exec false {} +'
     )
 
 
