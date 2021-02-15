@@ -27,6 +27,17 @@ def hosts(request, ssh_key, module_tmpdir, test_config, logger):
     hosts.create()
 
     try:
+        if request.param in ['5.0.5', '5.1.0']:
+            old_mgr = hosts.instances[0]
+            old_mgr.wait_for_manager()
+            old_mgr.run_command('mv /etc/cloudify/ssl/rabbitmq{_,-}cert.pem',
+                                use_sudo=True)
+            old_mgr.run_command('mv /etc/cloudify/ssl/rabbitmq{_,-}key.pem',
+                                use_sudo=True)
+            old_mgr.run_command(
+                'chown rabbitmq. /etc/cloudify/ssl/rabbitmq-*', use_sudo=True)
+            old_mgr.run_command('systemctl restart cloudify-rabbitmq',
+                                use_sudo=True)
         yield hosts
     finally:
         hosts.destroy()
