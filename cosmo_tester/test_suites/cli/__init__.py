@@ -84,22 +84,21 @@ def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
         ' -exec md5sum {} + | sort',
         use_sudo=True
     ).stdout.splitlines()]
-    logger.info('Calculated log hashes for {0} are {1}'.format(
-        example.manager.private_ip_address, log_hashes)
-    )
+    logger.info('Calculated log hashes for %s are %s',
+                example.manager.private_ip_address,
+                log_hashes)
 
     local_logs_dump_filepath = str(tmpdir / 'logs.tar')
     cli_host.get_remote_file(logs_dump_filepath, local_logs_dump_filepath)
-    logger.info('Start extracting log hashes locally for {0}'.format(
-        local_logs_dump_filepath
-    ))
+    logger.info('Start extracting log hashes locally for %s',
+                local_logs_dump_filepath)
     with tarfile.open(local_logs_dump_filepath) as tar:
         tar.extractall(str(tmpdir))
 
     files = list((tmpdir / 'cloudify').visit('*.*'))
     logger.info('Checking both `journalctl.log` and '
-                '`supervisord.log` are'
-                ' exist inside {0}'.format(local_logs_dump_filepath))
+                '`supervisord.log` are exist inside %s',
+                local_logs_dump_filepath)
     assert str(tmpdir / 'cloudify/journalctl.log') in files
     assert str(tmpdir / 'cloudify/supervisord.log') in files
     log_hashes_local = sorted(
@@ -107,9 +106,9 @@ def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
          if 'journalctl' not in f.basename
          and 'supervisord' not in f.basename]
     )
-    logger.info('Calculated log hashes locally for {0} are {1}'.format(
-        example.manager.private_ip_address, log_hashes_local)
-    )
+    logger.info('Calculated log hashes locally for %s are %s',
+                example.manager.private_ip_address,
+                log_hashes_local)
     assert set(log_hashes) == set(log_hashes_local)
 
     logger.info('Testing `cfy logs backup`')
