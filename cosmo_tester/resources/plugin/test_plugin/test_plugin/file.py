@@ -1,6 +1,8 @@
 import os
+from cloudify.decorators import operation
 
 
+@operation(resumable=True)
 def create(ctx):
     """Create test file with contents as defined by node properties."""
     path = ctx.node.properties['path'] + '_' + ctx.instance.id
@@ -14,6 +16,7 @@ def create(ctx):
         fh.write(content)
 
 
+@operation(resumable=True)
 def delete(ctx):
     """Delete the test file."""
     path = ctx.node.properties['path'] + '_' + ctx.instance.id

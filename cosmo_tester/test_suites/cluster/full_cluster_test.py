@@ -132,7 +132,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
             agent_broker = broker
             break
     with agent_broker.ssh() as broker_ssh:
-        broker_ssh.run('sudo service cloudify-rabbitmq stop')
+        broker_ssh.run('sudo cfy_manager stop')
 
     # the agent should now pick another broker
     validate_cluster_status_and_agents(mgr1, example.tenant, logger,
@@ -152,7 +152,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
 
     while not restarted_broker_connected:
         with agent_broker.ssh() as broker_ssh:
-            broker_ssh.run('sudo service cloudify-rabbitmq start')
+            broker_ssh.run('sudo cfy_manager start')
         restarted_broker_ips.append(agent_broker_ip)
         # stop another broker
         for broker in [broker1, broker2, broker3]:
@@ -161,7 +161,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                 break
         _wait_for_healthy_broker_cluster(mgr1.client)
         with agent_broker.ssh() as broker_ssh:
-            broker_ssh.run('sudo service cloudify-rabbitmq stop')
+            broker_ssh.run('sudo cfy_manager stop')
         agent_broker_ip = new_agent_broker_ip
         new_agent_broker_ip = (
            _verify_agent_broker_connection_and_get_broker_ip(
