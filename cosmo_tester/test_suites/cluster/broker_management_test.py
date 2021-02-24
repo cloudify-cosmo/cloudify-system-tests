@@ -61,8 +61,7 @@ def get_cluster_listing(cluster_brokers, down=()):
 
 
 def kill_node(broker):
-    broker.run_command('service cloudify-rabbitmq stop', use_sudo=True)
-    broker.run_command('shutdown -h now &', use_sudo=True)
+    broker.run_command('cfy_manager stop', use_sudo=True)
 
 
 def prepare_cluster_for_removal_tests(brokers):
@@ -282,6 +281,7 @@ def test_remove(brokers, logger):
     # Expected result, now we will recover
     brokers[0].run_command('supervisorctl restart cloudify-rabbitmq',
                            use_sudo=True)
+    time.sleep(60)
     brokers[0].run_command(
         'cfy_manager brokers remove -r {node}'.format(
             node=brokers[2].hostname,
