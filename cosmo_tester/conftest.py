@@ -6,6 +6,7 @@ from path import Path
 from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts
+from cosmo_tester.test_suites.cluster.conftest import _get_hosts
 
 
 @pytest.fixture(scope='module')
@@ -102,3 +103,12 @@ def image_based_manager(
         yield hosts.instances[0]
     finally:
         hosts.destroy()
+
+
+@pytest.fixture
+def three_node_cluster_with_extra_node(ssh_key, module_tmpdir, test_config,
+                                       logger, request):
+    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
+                           request, pre_cluster_rabbit=True,
+                           three_nodes_cluster=True, extra_node=request.param):
+        yield _vms

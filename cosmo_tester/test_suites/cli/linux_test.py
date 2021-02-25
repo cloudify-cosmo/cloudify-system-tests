@@ -17,7 +17,6 @@ from cosmo_tester.test_suites.cli import (
     _test_upload_and_install,
     get_image_and_username,
 )
-from cosmo_tester.test_suites.cluster.conftest import _get_hosts
 
 
 def test_cli_deployment_flow_linux(linux_cli_tester, logger):
@@ -59,15 +58,6 @@ def test_cfy_logs_linux(linux_cli_tester, tmpdir, logger):
     _prepare(cli_host.run_command, example, paths, logger)
     _test_cfy_logs(cli_host.run_command, cli_host, example, paths, tmpdir,
                    logger)
-
-
-@pytest.fixture
-def three_node_cluster_with_extra_node(ssh_key, module_tmpdir, test_config,
-                                       logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, pre_cluster_rabbit=True,
-                           three_nodes_cluster=True, extra_node=request.param):
-        yield _vms
 
 
 @pytest.mark.parametrize('three_node_cluster_with_extra_node',
@@ -149,7 +139,8 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
     logger.info('Verifying each file under /var/log/cloudify is size zero')
     nodes[0].run_command(
         'find /var/log/cloudify -type f -not -name \'supervisord.log\''
-        ' -exec test -s {} \\; -print -exec false {} +'
+        ' -exec test -s {} \\; -print -exec false {} +',
+        use_sudo=True,
     )
 
 
