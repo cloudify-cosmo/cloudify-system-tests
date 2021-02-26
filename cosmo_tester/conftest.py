@@ -108,7 +108,11 @@ def image_based_manager(
 @pytest.fixture
 def three_node_cluster_with_extra_node(ssh_key, module_tmpdir, test_config,
                                        logger, request):
+    if hasattr(request, 'param'):
+        extra_node = request.param
+    else:
+        extra_node = 'centos_7'
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
                            request, pre_cluster_rabbit=True,
-                           three_nodes_cluster=True, extra_node=request.param):
+                           three_nodes_cluster=True, extra_node=extra_node):
         yield _vms
