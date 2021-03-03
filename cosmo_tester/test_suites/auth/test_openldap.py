@@ -15,20 +15,20 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
         'nester': {'uid': '15433', 'password': 'nesterpass',
                    'expected_groups': ['Cloudifiers', 'CloudyQA']},
     }
-    groups_members = {
-        'CloudyQA': ['uid=nester,ou=people,dc=cloudify,dc=test'],
-        'Cloudifiers': [
+    groups = {
+        'CloudyQA': {'members': ['uid=nester,ou=people,dc=cloudify,dc=test']},
+        'Cloudifiers': {'members': [
             'uid=user,ou=people,dc=cloudify,dc=test',
             'cn=CloudyQA,ou=Departments,dc=cloudify,dc=test',
-        ],
+        ]},
     }
 
     _install_openldap(slapd_host, logger)
     ldap_ca_cert = _generate_and_retrieve_openldap_certs(slapd_host, logger)
     _configure_openldap(slapd_host, logger)
-    _add_slapd_ous(slapd_host, logger)
-    _add_slapd_users(slapd_host, users, logger)
-    _add_slapd_groups(slapd_host, groups_members, logger)
+    _add_ous(slapd_host, logger)
+    _add_users(slapd_host, users, logger)
+    _add_groups(slapd_host, groups, logger)
     _disable_slapd_non_tls(slapd_host, logger)
 
     logger.info('Uploading cert to manager 1')
@@ -38,6 +38,8 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
     # Using a call to the CLI in the expectation that we migrate ldap conf to
     # cfy_manager at some point- it's the sort of config that should be in the
     # admin CLI
+    # This is deliberately using ldaps, as the other test (test_openldap)
+    # covers ldap
     mgr1.run_command(
         "cfy ldap set "
         "-s ldaps://{}:636 "
@@ -49,7 +51,7 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
         "--ldap-nested-levels 3".format(slapd_host.private_ip_address)
     )
 
-    # Wait for the restart to happen
+    logger.info('Waiting for post-ldap-config restart')
     time.sleep(1)
     mgr1.wait_for_manager()
     mgr2.wait_for_manager()
@@ -88,8 +90,8 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
             )
             client.manager.get_status()
             logger.info('Checking group membership')
-            mgr_details = client.users.list(username=user)[0]
-            groups = mgr_details['group_system_roles']['sys_admin']
+            mgr_details = mgr.client.users.list(username=user)[0]
+            groups = mgr_details['group_system_roles'].get('sys_admin', [])
             assert sorted(groups) == sorted(details['expected_groups'])
 
 
@@ -261,7 +263,7 @@ def _disable_slapd_non_tls(host, logger):
     host.run_command('service slapd restart', use_sudo=True)
 
 
-def _add_slapd_ous(host, logger):
+def _add_ous(host, logger):
     logger.info('Creating base slapd OUs')
     host.put_remote_file_content(
         '/tmp/base.ldif',
@@ -292,7 +294,7 @@ ou: Departments'''.format(root_dn=ROOT_DN),
     )
 
 
-def _add_slapd_users(host, users, logger):
+def _add_users(host, users, logger):
     for user, details in users.items():
         logger.info('Creating user {}'.format(user))
         host.put_remote_file_content(
@@ -329,9 +331,11 @@ shadowWarning: 0'''.format(
         )
 
 
-def _add_slapd_groups(host, groups_members, logger):
-    for group, members in groups_members.items():
+def _add_groups(host, groups, logger):
+    logger.info('Adding groups')
+    for group, details in groups.items():
         logger.info('Adding group {}'.format(group))
+        members = details['members']
         content = '''dn: cn={group},ou=Departments,dc=cloudify,dc=test
 objectClass: top
 objectClass: groupOfNames
