@@ -14,7 +14,7 @@ dsl_definitions:
     region_name: { get_secret: ec2_region_name }
 
 node_templates:
-  keypair:
+  key:
     type: cloudify.nodes.aws.ec2.Keypair
     properties:
       resource_config:
@@ -39,6 +39,38 @@ node_templates:
     - type: cloudify.relationships.depends_on
       target: internet_gateway_1
 
+  subnet_2:
+    type: cloudify.nodes.aws.ec2.Subnet
+    properties:
+      resource_config:
+        CidrBlock: 192.168.43.0/24
+        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+    relationships:
+    - type: cloudify.relationships.depends_on
+      target: vpc
+    - type: cloudify.relationships.depends_on
+      target: internet_gateway_2
+
+  subnet_3:
+    type: cloudify.nodes.aws.ec2.Subnet
+    properties:
+      resource_config:
+        CidrBlock: 192.168.44.0/24
+        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+    relationships:
+    - type: cloudify.relationships.depends_on
+      target: vpc
+    - type: cloudify.relationships.depends_on
+      target: internet_gateway_3
+
   vpc:
     type: cloudify.nodes.aws.ec2.Vpc
     properties:
@@ -56,6 +88,28 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+    relationships:
+    - type: cloudify.relationships.connected_to
+      target: vpc
+
+  internet_gateway_2:
+    type: cloudify.nodes.aws.ec2.InternetGateway
+    properties:
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+    relationships:
+    - type: cloudify.relationships.connected_to
+      target: vpc
+
+  internet_gateway_3:
+    type: cloudify.nodes.aws.ec2.InternetGateway
+    properties:
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
     relationships:
     - type: cloudify.relationships.connected_to
       target: vpc
@@ -85,6 +139,58 @@ node_templates:
       target: subnet_routetable_1
     - type: cloudify.relationships.connected_to
       target: internet_gateway_1
+
+  subnet_routetable_2:
+    type: cloudify.nodes.aws.ec2.RouteTable
+    properties:
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+    relationships:
+    - type: cloudify.relationships.contained_in
+      target: vpc
+    - type: cloudify.relationships.connected_to
+      target: subnet_2
+
+  route_subnet_internet_gateway_2:
+    type: cloudify.nodes.aws.ec2.Route
+    properties:
+      resource_config:
+        kwargs:
+          DestinationCidrBlock: '0.0.0.0/0'
+      client_config: *client_config
+    relationships:
+    - type: cloudify.relationships.contained_in
+      target: subnet_routetable_2
+    - type: cloudify.relationships.connected_to
+      target: internet_gateway_2
+
+  subnet_routetable_3:
+    type: cloudify.nodes.aws.ec2.RouteTable
+    properties:
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+    relationships:
+    - type: cloudify.relationships.contained_in
+      target: vpc
+    - type: cloudify.relationships.connected_to
+      target: subnet_3
+
+  route_subnet_internet_gateway_3:
+    type: cloudify.nodes.aws.ec2.Route
+    properties:
+      resource_config:
+        kwargs:
+          DestinationCidrBlock: '0.0.0.0/0'
+      client_config: *client_config
+    relationships:
+    - type: cloudify.relationships.contained_in
+      target: subnet_routetable_3
+    - type: cloudify.relationships.connected_to
+      target: internet_gateway_3
 
   security_group:
     type: cloudify.nodes.aws.ec2.SecurityGroup
