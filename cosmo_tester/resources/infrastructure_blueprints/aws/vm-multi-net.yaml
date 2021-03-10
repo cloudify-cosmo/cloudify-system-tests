@@ -1,0 +1,199 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - https://cloudify.co/spec/cloudify/5.1.0/types.yaml
+  - plugin:cloudify-aws-plugin
+
+inputs:
+  test_infrastructure_name: {}
+  security_group_id: {}
+  subnet_id: {}
+  subnet_2_id: {}
+  subnet_3_id: {}
+  vpc_id: {}
+  image_name:
+    default: "*"
+  image_owner:
+    default: "*"
+  image_id:
+    default: "*"
+  flavor: {}
+  userdata:
+    default: ""
+
+dsl_definitions:
+  client_config: &client_config
+    aws_access_key_id: { get_secret: aws_access_key_id }
+    aws_secret_access_key: { get_secret: aws_secret_access_key }
+    region_name: { get_secret: ec2_region_name }
+
+node_templates:
+  vm:
+    type: cloudify.nodes.aws.ec2.Instances
+    properties:
+      agent_config:
+        install_method: none
+      resource_config:
+        ImageId: { get_attribute: [ image, aws_resource_id ] }
+        InstanceType: { get_input: flavor }
+        kwargs:
+          KeyName: { get_input: test_infrastructure_name }
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { get_input: test_infrastructure_name }
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: nic
+      - type: cloudify.relationships.depends_on
+        target: nic_2
+      - type: cloudify.relationships.depends_on
+        target: nic_3
+      - type: cloudify.relationships.depends_on
+        target: ip
+      - type: cloudify.relationships.depends_on
+        target: image
+
+  nic:
+    type: cloudify.nodes.aws.ec2.Interface
+    properties:
+      client_config: *client_config
+      resource_config:
+        kwargs:
+          Groups:
+            - { get_attribute: [ security_group, aws_resource_id ] }
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: subnet
+      - type: cloudify.relationships.depends_on
+        target: security_group
+
+  nic_2:
+    type: cloudify.nodes.aws.ec2.Interface
+    properties:
+      client_config: *client_config
+      resource_config:
+        kwargs:
+          Groups:
+            - { get_attribute: [ security_group, aws_resource_id ] }
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: subnet_2
+      - type: cloudify.relationships.depends_on
+        target: security_group
+
+  nic_3:
+    type: cloudify.nodes.aws.ec2.Interface
+    properties:
+      client_config: *client_config
+      resource_config:
+        kwargs:
+          Groups:
+            - { get_attribute: [ security_group, aws_resource_id ] }
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: subnet_3
+      - type: cloudify.relationships.depends_on
+        target: security_group
+
+  ip:
+    type: cloudify.nodes.aws.ec2.ElasticIP
+    properties:
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-", { get_input: use_net } ] }
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: nic
+
+  subnet:
+    type: cloudify.nodes.aws.ec2.Subnet
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: subnet_id }
+      client_config: *client_config
+      resource_config:
+        CidrBlock: 192.168.42.0/24
+        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+
+  subnet_2:
+    type: cloudify.nodes.aws.ec2.Subnet
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: subnet_2_id }
+      client_config: *client_config
+      resource_config:
+        CidrBlock: 192.168.43.0/24
+        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+
+  subnet_3:
+    type: cloudify.nodes.aws.ec2.Subnet
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: subnet_3_id }
+      client_config: *client_config
+      resource_config:
+        CidrBlock: 192.168.44.0/24
+        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+
+  security_group:
+    type: cloudify.nodes.aws.ec2.SecurityGroup
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: security_group_id }
+      client_config: *client_config
+      resource_config:
+        GroupName: { get_input: test_infrastructure_name }
+        Description: Security group for tests.
+        VpcId: { get_attribute: [ vpc, aws_resource_id] }
+
+  vpc:
+    type: cloudify.nodes.aws.ec2.Vpc
+    properties:
+      use_external_resource: true
+      resource_id: { get_input: vpc_id }
+      resource_config:
+        CidrBlock: 192.168.0.0/16
+      Tags:
+        - Key: Name
+          Value: { get_input: test_infrastructure_name }
+      client_config: *client_config
+
+  image:
+    type: cloudify.nodes.aws.ec2.Image
+    properties:
+      resource_config:
+        kwargs:
+          Filters:
+            - Name: name
+              Values:
+                - { get_input: image_name }
+            - Name: state
+              Values:
+                - available
+            - Name: owner-id
+              Values:
+                - { get_input: image_owner }
+            - Name: image-id
+              Values:
+                - { get_input: image_id }
+      client_config: *client_config
