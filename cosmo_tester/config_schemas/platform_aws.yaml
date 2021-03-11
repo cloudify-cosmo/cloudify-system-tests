@@ -1,0 +1,48 @@
+namespace: aws
+plugin_package_name:
+  description: Package name of plugin for this platform. This plugin must be installed on the infrastructure manager with visibility=global.
+  default: cloudify-aws-plugin
+plugin_version:
+  description: The expected version of this plugin (can be a regular expression).
+  default: ^2\.\d+\.\d+$
+linux_size:
+  description: Size to use for linux on this platform.
+  # This needs to be an instance that can accept 3 network interfaces
+  default: t2.medium
+windows_size:
+  description: Size to use for windows on this platform.
+  default: t2.medium
+ubuntu_14_04_image:
+  description: Image to use for Ubuntu 14.04 on this platform.
+  default: ami-057a169c93299c8c3
+ubuntu_16_04_image:
+  description: Image to use for Ubuntu 16.04 on this platform.
+  default: ami-0cde7c2ae1d5c6a21
+rhel_8_image:
+  description: Image to use for RHEL 8 on this platform.
+  default: ami-04577df0184ebb493
+rhel_7_image:
+  description: Image to use for RHEL 7 on this platform.
+  default: ami-020e14de09d1866b4
+rhel_6_image:
+  description: Image to use for RHEL 6 on this platform.
+  default: ami-0803077e5450a1a9e
+centos_8_image:
+  description: Image to use for Centos 8 on this platform.
+  default: ami-0a75a5a43b05b4d5f
+centos_7_image:
+  description: Image to use for Centos 7 on this platform.
+  default: ami-04f5641b0d178a27a
+windows_2012_image:
+  description: Image to use for Windows 2012 on this platform.
+  default: ami-05f34bb57ea1a77ad
+named_image_owners:
+  description: Comma separated list of allowed owners for images not referred to by AMI ID.
+  default: 919239153674
+region:
+  description: Which region to use for tests. If this is changed, all AMI IDs will need changing.
+  default: eu-west-1
+access_key_id:
+  description: The AWS access key ID for the key used to access AWS.
+access_key_secret:
+  description: The secret component of the AWS access key used to access AWS.
