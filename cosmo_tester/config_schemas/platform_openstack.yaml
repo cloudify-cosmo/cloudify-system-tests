@@ -32,9 +32,6 @@ centos_8_image:
 centos_7_image:
   description: Image to use for Centos 7 on this platform.
   default: CentOS-7_6-x86_64-GenericCloud
-centos_6_image:
-  description: Image to use for Centos 6 on this platform.
-  default: centos_6.6
 windows_2012_image:
   description: Image to use for Windows 2012 on this platform.
   default: windows_server_2012_r2_standard_eval
