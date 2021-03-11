@@ -20,9 +20,6 @@ centos_8:
 centos_7:
   description: Username for Centos 7 test VMs.
   default: centos
-centos_6:
-  description: Username for Centos 6 test VMs.
-  default: centos
 windows_2012:
   description: Username for Windows 2012 test VMs.
   default: Administrator
