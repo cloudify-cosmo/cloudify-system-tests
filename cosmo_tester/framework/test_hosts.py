@@ -37,6 +37,7 @@ class VM(object):
         self.restservice_expected = False
         self._test_config = test_config
         self.windows = False
+        self.is_manager = False
 
     def assign(
             self,
@@ -317,6 +318,7 @@ class _CloudifyManager(VM):
     def __init__(self, *args, **kwargs):
         super(_CloudifyManager, self).__init__(*args, **kwargs)
         self.set_image_details()
+        self.is_manager = True
 
     def assign(
             self,
@@ -759,6 +761,7 @@ class Hosts(object):
         self.test_identifier = None
         self._test_vm_installs = {}
         self._test_vm_uninstalls = {}
+        self._platform_resource_ids = {}
 
         self.multi_net = multi_net
         self.vm_net_mappings = vm_net_mappings or {}
@@ -814,7 +817,8 @@ class Hosts(object):
             # Deploy hosts in parallel
             for index, instance in enumerate(self.instances):
                 self._start_deploy_test_vm(instance.image_name, index,
-                                           test_identifier)
+                                           test_identifier,
+                                           instance.is_manager)
             self._finish_deploy_test_vms()
 
             for instance in self.instances:
@@ -949,19 +953,16 @@ class Hosts(object):
 
     def _upload_secrets_to_infrastructure_manager(self):
         self._logger.info(
-            'Uploading openstack secrets to infrastructure manager.'
+            'Uploading secrets to infrastructure manager.'
         )
-        for config_key in [
-            "password",
-            "tenant",
-            "url",
-            "username",
-            "region",
-        ]:
-            secret_name = 'keystone_' + config_key
+        mappings = self._test_config.platform.get(
+            'secrets_mapping', {})
+
+        for secret_name, mapping in mappings.items():
             self._infra_client.secrets.create(
-                secret_name, self._test_config['openstack'][config_key],
+                secret_name, self._test_config.platform[mapping],
             )
+
         with open(self._ssh_key.public_key_path) as ssh_pubkey_handle:
             ssh_pubkey = ssh_pubkey_handle.read()
         self._infra_client.secrets.create(
@@ -1019,13 +1020,15 @@ class Hosts(object):
 
     def _deploy_test_infrastructure(self, test_identifier):
         self._logger.info('Creating test infrastructure inputs.')
-        infrastructure_inputs = {
-            'test_infrastructure_name': test_identifier,
-            'floating_network_id': self._test_config[
-                # This will only work on openstack anyway, so will be made
-                # properly generic once we add another platform
-                'openstack']['floating_network_id']
-        }
+        infrastructure_inputs = {'test_infrastructure_name': test_identifier}
+        mappings = self._test_config.platform.get(
+            'infrastructure_inputs_mapping', {})
+
+        for blueprint_input, mapping in mappings.items():
+            infrastructure_inputs[blueprint_input] = (
+                self._test_config.platform[mapping]
+            )
+
         # Written to disk to aid in troubleshooting
         infrastructure_inputs_path = self._tmpdir / 'infra_inputs.yaml'
         with open(infrastructure_inputs_path, 'w') as inp_handle:
@@ -1044,6 +1047,10 @@ class Hosts(object):
 
         if self.multi_net:
             network_mappings = {}
+            if self._test_config['target_platform'] == 'aws':
+                cidr = 'CidrBlock'
+            else:
+                cidr = 'cidr'
             for sn in range(1, 4):
                 subnet_details = self._infra_client.nodes.get(
                     deployment_id='infrastructure',
@@ -1052,11 +1059,15 @@ class Hosts(object):
                 network_mappings['network_{}'.format(sn)] = ip_network(
                     # Has to be unicode for ipaddress library.
                     # Converting like this for py3 compat
-                    u'{}'.format(subnet_details['cidr']),
+                    u'{}'.format(subnet_details[cidr]),
                 )
             self.network_mappings = network_mappings
 
-    def _start_deploy_test_vm(self, image_id, index, test_identifier):
+        if self._test_config['target_platform'] == 'aws':
+            self._populate_aws_platform_properties()
+
+    def _start_deploy_test_vm(self, image_id, index, test_identifier,
+                              is_manager):
         self._logger.info(
             'Preparing to deploy instance %d of image %s',
             index,
@@ -1078,14 +1089,26 @@ class Hosts(object):
                           image_id, index)
         vm_inputs = {
             'test_infrastructure_name': test_identifier,
-            'floating_network_id': self._test_config[
-                # This will only work on openstack anyway, so will be made
-                # properly generic once we add another platform
-                'openstack']['floating_network_id'],
-            'image': image_id,
-            'flavor': self.server_flavor,
             'userdata': self.instances[index].userdata,
+            'flavor': self.server_flavor,
         }
+        if self._test_config['target_platform'] == 'openstack':
+            vm_inputs['floating_network_id'] = (
+                self._test_config['openstack']['floating_network_id']
+            )
+            vm_inputs['image'] = image_id
+        elif self._test_config['target_platform'] == 'aws':
+            vm_inputs.update(self._platform_resource_ids)
+            if is_manager:
+                vm_inputs['name_filter'] = {
+                    "Name": "tag:Name",
+                    "Values": [image_id]
+                }
+                vm_inputs['image_owner'] = self._test_config['aws'][
+                    'named_image_owners']
+            else:
+                vm_inputs['image_id'] = image_id
+
         blueprint_id = 'test_vm'
         if self.multi_net:
             if index in self.vm_net_mappings:
@@ -1109,6 +1132,34 @@ class Hosts(object):
             ),
             index,
         )
+
+    def _populate_aws_platform_properties(self):
+        self._logger.info('Retrieving AWS resource IDs')
+        resource_ids = {}
+
+        subnet = util.get_node_instances(
+            'test_subnet_1', 'infrastructure', self._infra_client)[0]
+        resource_ids['subnet_id'] = subnet['runtime_properties'][
+            'aws_resource_id']
+        if self.multi_net:
+            subnet_2 = util.get_node_instances(
+                'test_subnet_2', 'infrastructure', self._infra_client)[0]
+            resource_ids['subnet_2_id'] = subnet_2['runtime_properties'][
+                'aws_resource_id']
+            subnet_3 = util.get_node_instances(
+                'test_subnet_3', 'infrastructure', self._infra_client)[0]
+            resource_ids['subnet_3_id'] = subnet_3['runtime_properties'][
+                'aws_resource_id']
+
+        vpc = util.get_node_instances(
+            'vpc', 'infrastructure', self._infra_client)[0]
+        resource_ids['vpc_id'] = vpc['runtime_properties']['aws_resource_id']
+        security_group = util.get_node_instances(
+            'security_group', 'infrastructure', self._infra_client)[0]
+        resource_ids['security_group_id'] = security_group[
+            'runtime_properties']['aws_resource_id']
+
+        self._platform_resource_ids = resource_ids
 
     def _finish_deploy_test_vms(self):
         for vm_id, details in self._test_vm_installs.items():
@@ -1151,7 +1202,10 @@ class Hosts(object):
 
         node_instance_id = node_instance['id']
         deployment_id = node_instance['deployment_id']
-        server_id = runtime_props['id']
+        id_key = 'id'
+        if self._test_config['target_platform'] == 'aws':
+            id_key = 'aws_resource_id'
+        server_id = runtime_props[id_key]
 
         networks = {}
         if self.multi_net:

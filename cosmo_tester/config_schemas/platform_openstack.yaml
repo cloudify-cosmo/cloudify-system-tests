@@ -1,5 +1,16 @@
 namespace: openstack
 platform: true
+infrastructure_inputs_mapping:
+  description: Maps platform config entries to infrastructure blueprint inputs.
+  default: {floating_network_id: floating_network_id}
+secrets_mapping:
+  description: Maps platform config entries to test tenant secrets.
+  default:
+    keystone_username: username
+    keystone_password: password
+    keystone_tenant: tenant
+    keystone_url: url
+    keystone_region: region
 plugin_package_name:
   description: Package name of plugin for this platform. This plugin must be installed on the infrastructure manager with visibility=global.
   default: cloudify-openstack-plugin

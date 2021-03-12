@@ -9,8 +9,11 @@ inputs:
   security_group_id: {}
   subnet_id: {}
   vpc_id: {}
-  image_name:
-    default: "*"
+  name_filter:
+    default:
+      Name: name
+      Values:
+        - "*"
   image_owner:
     default: "*"
   image_id:
@@ -28,7 +31,7 @@ dsl_definitions:
     region_name: { get_secret: ec2_region_name }
 
 node_templates:
-  vm:
+  test_host:
     type: cloudify.nodes.aws.ec2.Instances
     properties:
       agent_config:
@@ -120,9 +123,7 @@ node_templates:
       resource_config:
         kwargs:
           Filters:
-            - Name: name
-              Values:
-                - { get_input: image_name }
+            - { get_input: name_filter }
             - Name: state
               Values:
                 - available
