@@ -11,8 +11,11 @@ inputs:
   subnet_2_id: {}
   subnet_3_id: {}
   vpc_id: {}
-  image_name:
-    default: "*"
+  name_filter:
+    default:
+      Name: name
+      Values:
+        - "*"
   image_owner:
     default: "*"
   image_id:
@@ -184,9 +187,7 @@ node_templates:
       resource_config:
         kwargs:
           Filters:
-            - Name: name
-              Values:
-                - { get_input: image_name }
+            - { get_input: name_filter }
             - Name: state
               Values:
                 - available

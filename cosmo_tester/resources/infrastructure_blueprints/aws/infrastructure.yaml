@@ -23,7 +23,7 @@ node_templates:
       store_in_runtime_properties: true
       client_config: *client_config
 
-  subnet_1:
+  test_subnet_1:
     type: cloudify.nodes.aws.ec2.Subnet
     properties:
       resource_config:
@@ -71,7 +71,7 @@ node_templates:
     - type: cloudify.relationships.contained_in
       target: vpc
     - type: cloudify.relationships.connected_to
-      target: subnet_1
+      target: test_subnet_1
 
   route_subnet_internet_gateway_1:
     type: cloudify.nodes.aws.ec2.Route

@@ -1,5 +1,14 @@
 namespace: aws
 platform: true
+infrastructure_inputs_mapping:
+  description: Maps platform config entries to infrastructure blueprint inputs.
+  default: {}
+secrets_mapping:
+  description: Maps platform config entries to test tenant secrets.
+  default:
+    aws_access_key_id: access_key_id
+    aws_secret_access_key: access_key_secret
+    ec2_region_name: region
 plugin_package_name:
   description: Package name of plugin for this platform. This plugin must be installed on the infrastructure manager with visibility=global.
   default: cloudify-aws-plugin
@@ -39,7 +48,7 @@ windows_2012_image:
   default: ami-05f34bb57ea1a77ad
 named_image_owners:
   description: Comma separated list of allowed owners for images not referred to by AMI ID.
-  default: 919239153674
+  default: "919239153674"
 region:
   description: Which region to use for tests. If this is changed, all AMI IDs will need changing.
   default: eu-west-1
