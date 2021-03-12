@@ -66,16 +66,18 @@ class Config(NameSpace):
         self.raw_config = {}
         self._cached_config = None
 
+        # Load config
+        if config_file:
+            self._update_config(config_file)
+        self.target_platform = self.raw_config.get('target_platform',
+                                                   'openstack')
+
         # Load all initially supplied schemas
         for schema in config_schema_files:
             self._update_schema(schema)
         # We'll be pretty useless if we allow no config
         if len(self.schema) == 0:
             raise SchemaError('No valid config entries loaded from schemas.')
-
-        # Load config
-        if config_file:
-            self._update_config(config_file)
 
     def _update_config(self, config_file):
         with open(config_file) as config_handle:
@@ -100,6 +102,12 @@ class Config(NameSpace):
             else:
                 self.schema[namespace] = {'.is_namespace': True}
             schema.pop('namespace')
+
+        if 'platform' in schema:
+            if namespace != self.target_platform:
+                # Skip platform namespaces that aren't the target platform
+                return
+            schema.pop('platform')
 
         # Make sure the schema is entirely valid- every entry must have a
         # description

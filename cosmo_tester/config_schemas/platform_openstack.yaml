@@ -1,4 +1,5 @@
 namespace: openstack
+platform: true
 plugin_package_name:
   description: Package name of plugin for this platform. This plugin must be installed on the infrastructure manager with visibility=global.
   default: cloudify-openstack-plugin
