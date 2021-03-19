@@ -1,4 +1,8 @@
 import pytest
+
+from cosmo_tester.framework.deployment_update import (
+    apply_and_check_deployment_update,
+)
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
     CHANGED_ADMIN_PASSWORD,
@@ -188,9 +192,15 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     for example in example_mappings.values():
         example.check_files()
 
+    # Make sure we can still run deployment updates
+    apply_and_check_deployment_update(
+        new_manager, example_mappings[lin_tenant], logger)
+
     # Make sure we can correctly remove all test files
-    for example in example_mappings.values():
+    for tenant, example in example_mappings.items():
+        logger.info('Checking example deployment %s', tenant)
         if example.installed:
+            logger.info('Uninstalling deployment for %s', tenant)
             example.uninstall()
 
 
