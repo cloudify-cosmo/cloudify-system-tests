@@ -16,7 +16,7 @@ chardet==3.0.4            # via requests
 https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip#egg=cloudify-common[dispatcher]  # via -r requirements.in
 configparser==4.0.2       # via importlib-metadata
 contextlib2==0.6.0.post1  # via importlib-metadata, zipp
-cryptography==2.9.2       # via paramiko, requests-ntlm
+cryptography==3.3.2       # via paramiko, requests-ntlm
 decorator==4.4.2          # via networkx
 enum34==1.1.10            # via cryptography
 execnet==1.7.1            # via pytest-xdist
