@@ -173,7 +173,6 @@ class AbstractRegionalCluster(object):
                 'restore': True,
                 'restore_params': {
                     'force': True,
-                    'recreate_deployments_envs': True,
                     'restore_certificates': True,
                     'no_reboot': True,
                     'ignore_plugin_failure': True
