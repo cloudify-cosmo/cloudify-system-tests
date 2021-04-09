@@ -93,8 +93,15 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
 
 
 def change_rest_client_password(manager, new_password):
+    kwargs = {
+        'password': new_password,
+    }
+    if hasattr(manager, 'local_ca'):
+        kwargs['cert'] = manager.local_ca
+        kwargs['protocol'] = 'https'
+
     manager.client = create_rest_client(manager.ip_address,
-                                        password=new_password)
+                                        **kwargs)
 
 
 def _retry_if_file_not_found(exception):
