@@ -631,7 +631,29 @@ class _CloudifyManager(VM):
                 "systemctl status cloudify-starter 2>&1"
                 "| grep -E '(status=0/SUCCESS)|(could not be found)'")
 
-        manager_status = self.client.manager.get_status()
+        try:
+            manager_status = self.client.manager.get_status()
+        except Exception as err:
+            self._logger.info(str(err))
+            if 'SSL must be used' in str(err):
+                self._logger.info(
+                    'Detected that SSL was required, updating client.')
+                self.get_remote_file(
+                    '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
+                    self._tmpdir / self.server_id + '_api.crt'
+                )
+                test_mgr_conf = self._test_config['test_manager']
+                self.client = util.create_rest_client(
+                    self.ip_address,
+                    username=test_mgr_conf['username'],
+                    password=test_mgr_conf['password'],
+                    tenant=test_mgr_conf['tenant'],
+                    cert=self._tmpdir / self.server_id + '_api.crt',
+                    protocol='https',
+                    api_version=self.api_version,
+                )
+            raise
+
         if manager_status['status'] != HEALTHY_STATE:
             raise Exception(
                 'Timed out: Manager services did not start successfully. '
