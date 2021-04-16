@@ -640,6 +640,36 @@ class _CloudifyManager(VM):
                     )
                 )
 
+    def _update_aio_certs(self):
+        key_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.key'
+        cert_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.crt'
+        ca_cert_path = '~/.cloudify-test-ca/ca.crt'
+
+        with self.ssh() as ssh:
+            self._logger.info('Generating certificates including public IP')
+            ssh.run('cfy_manager generate-test-cert'
+                    ' -s {0},{1}'.format(self.private_ip_address,
+                                         self.ip_address))
+            ssh.run('mkdir -p /tmp/new_cloudify_certs')
+            new_cert_path = '/tmp/new_cloudify_certs/new_{}.pem'
+            for purpose in [
+                'internal', 'rabbitmq', 'postgresql_server', 'external',
+            ]:
+                self._logger.info('Preparing %s certificates', purpose)
+                cert_dest = new_cert_path.format('_'.join([purpose, 'cert']))
+                key_dest = new_cert_path.format('_'.join([purpose, 'key']))
+                ca_dest = new_cert_path.format('_'.join([purpose, 'ca_cert']))
+                if purpose == 'internal':
+                    ca_dest = new_cert_path.format('ca_cert')
+                for src, dest in [
+                    (cert_path, cert_dest),
+                    (key_path, key_dest),
+                    (ca_cert_path, ca_dest),
+                ]:
+                    ssh.run('sudo cp {src} {dest}'.format(src=src, dest=dest))
+            self._logger.info('Replacing certificates')
+            ssh.run('cfy_manager certificates replace')
+
     def wait_for_manager(self):
         if self.image_type.startswith('4'):
             return self._old_wait_for_manager()
@@ -660,7 +690,9 @@ class _CloudifyManager(VM):
             self._logger.info(str(err))
             if 'SSL must be used' in str(err):
                 self._logger.info(
-                    'Detected that SSL was required, updating client.')
+                    'Detected that SSL was required, '
+                    'updating certs and client.')
+                self._update_aio_certs()
                 self.get_remote_file(
                     '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
                     self._tmpdir / self.server_id + '_api.crt'
