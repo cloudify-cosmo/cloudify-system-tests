@@ -6,6 +6,7 @@ import json
 import os
 import re
 import socket
+import subprocess
 import time
 import uuid
 import yaml
@@ -38,6 +39,7 @@ class VM(object):
         self._test_config = test_config
         self.windows = False
         self.is_manager = False
+        self._ssh_script_path = None
 
     def assign(
             self,
@@ -57,6 +59,7 @@ class VM(object):
         self.client = rest_client
         self._ssh_key = ssh_key
         self._logger = logger
+        self._tmpdir_base = tmpdir
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
         os.makedirs(self._tmpdir)
         self.node_instance_id = None
@@ -71,9 +74,28 @@ class VM(object):
         self.username = (
             self.username or self._test_config['test_os_usernames']['centos_7']
         )
+        self._create_ssh_script()
+
+    def _create_ssh_script(self):
+        self._ssh_script_path = self._tmpdir_base / 'ssh_{}'.format(
+            self.server_id)
+        ssh_script_content = (
+            'ssh-keygen -R "{pub_ip}"\n'
+            'ssh -i {key} -o StrictHostKeyChecking=no {user}@{pub_ip}\n'
+        ).format(
+            key=self._ssh_key.private_key_path,
+            user=self.username,
+            pub_ip=self.ip_address
+        )
+        with open(self._ssh_script_path, 'w') as fh:
+            fh.write(ssh_script_content)
+        subprocess.check_call(['chmod', '+x', self._ssh_script_path])
 
     def prepare_for_windows(self, version):
         """Prepare this VM to be created as a windows VM."""
+        if self._ssh_script_path:
+            subprocess.check_call('rm -f {}'.format(self._ssh_script_path))
+
         image = self._test_config.platform['{}_image'.format(version)]
         user = self._test_config['test_os_usernames'][version]
         add_firewall_cmd = "&netsh advfirewall firewall add rule"
@@ -358,6 +380,7 @@ class _CloudifyManager(VM):
             },
         }
         self.install_config = copy.deepcopy(self.basic_install_config)
+        self._create_ssh_script()
 
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
