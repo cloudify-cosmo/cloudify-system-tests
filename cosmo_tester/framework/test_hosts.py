@@ -40,6 +40,7 @@ class VM(object):
         self.windows = False
         self.is_manager = False
         self._ssh_script_path = None
+        self._tmpdir_base = None
 
     def assign(
             self,
@@ -62,8 +63,6 @@ class VM(object):
         self._tmpdir_base = tmpdir
         self._tmpdir = os.path.join(tmpdir, public_ip_address)
         os.makedirs(self._tmpdir)
-        self.node_instance_id = None
-        self.deployment_id = None
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
@@ -339,7 +338,6 @@ class _CloudifyManager(VM):
 
     def __init__(self, *args, **kwargs):
         super(_CloudifyManager, self).__init__(*args, **kwargs)
-        self.set_image_details()
         self.is_manager = True
 
     def assign(
@@ -355,17 +353,13 @@ class _CloudifyManager(VM):
             deployment_id,
             server_id,
     ):
-        self.ip_address = public_ip_address
-        self.private_ip_address = private_ip_address
-        self.client = rest_client
+        super(_CloudifyManager, self).assign(
+            public_ip_address, private_ip_address, networks,
+            rest_client, ssh_key, logger, tmpdir,
+            node_instance_id, deployment_id, server_id,
+        )
+        self.set_image_details()
         self.networks = networks
-        self._ssh_key = ssh_key
-        self._logger = logger
-        self._tmpdir = os.path.join(tmpdir, str(uuid.uuid4()))
-        os.makedirs(self._tmpdir)
-        self.node_instance_id = node_instance_id
-        self.deployment_id = deployment_id
-        self.server_id = server_id
         self.basic_install_config = {
             'manager': {
                 'public_ip': str(public_ip_address),
@@ -380,7 +374,6 @@ class _CloudifyManager(VM):
             },
         }
         self.install_config = copy.deepcopy(self.basic_install_config)
-        self._create_ssh_script()
 
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
@@ -646,6 +639,13 @@ class _CloudifyManager(VM):
         ca_cert_path = '~/.cloudify-test-ca/ca.crt'
 
         with self.ssh() as ssh:
+            self._logger.info('Making sure blackbox_exporter is running '
+                              '(if applicable)')
+            # Because the cert replacement tries to restart it, and sometimes
+            # it isn't running which gets us stuck in a really slow and boring
+            # loop.
+            ssh.run('sudo supervisorctl start blackbox_exporter || true')
+
             self._logger.info('Generating certificates including public IP')
             ssh.run('cfy_manager generate-test-cert'
                     ' -s {0},{1}'.format(self.private_ip_address,
