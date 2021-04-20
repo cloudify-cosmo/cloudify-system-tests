@@ -8,6 +8,12 @@ inputs:
   test_infrastructure_name: {}
   security_group_id: {}
   subnet_id: {}
+  # Extra subnet IDs provided to avoid gnarly code in test_hosts.py,
+  # but they will just be ignored.
+  subnet_2_id:
+    default: "unset"
+  subnet_3_id:
+    default: "unset"
   vpc_id: {}
   name_filter:
     default:
