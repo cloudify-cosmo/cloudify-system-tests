@@ -60,6 +60,10 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         old_manager, ssh_key, logger, from_source_tenant, test_config,
         using_agent=False, upload_plugin=False,
     )
+    # We'll use an older blueprint style for this to confirm they still work
+    example_mappings[from_source_tenant].blueprint_file = get_resource_path(
+        'blueprints/compute/central_executor_4.3.3.yaml'
+    )
 
     # A 'normal' windows deployment
     example_mappings[win_tenant] = get_example_deployment(
@@ -93,22 +97,6 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         old_manager.run_command('curl -Lo {} {}'.format(tmp_path, agent_url))
         old_manager.run_command('sudo cp {} {}'.format(
             tmp_path, agent_destination))
-
-    if old_manager.image_type.startswith('4'):
-        # 5.x introduced new types in the types.yaml. so we have to use
-        # an example blueprint with an older types.yaml for older managers.
-        # 4.3.3 managers can't handle 4.6 blueprints, so it has to use older
-        # blueprint conventions.
-        ver = '4_3_3' if old_manager.image_type == '4.3.3' else '4_6'
-        for tenant, example in example_mappings.items():
-            if tenant == from_source_tenant:
-                example.blueprint_file = get_resource_path(
-                    'blueprints/compute/central_executor_{}.yaml'.format(ver)
-                )
-            else:
-                example.blueprint_file = get_resource_path(
-                    'blueprints/compute/example_{}.yaml'.format(ver)
-                )
 
     for tenant in install_tenants:
         skip_validation = tenant == from_source_tenant

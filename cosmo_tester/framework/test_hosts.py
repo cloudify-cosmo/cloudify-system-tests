@@ -338,6 +338,7 @@ class _CloudifyManager(VM):
 
     def __init__(self, *args, **kwargs):
         super(_CloudifyManager, self).__init__(*args, **kwargs)
+        self.api_version = 'v3.1'
         self.is_manager = True
 
     def assign(
@@ -400,14 +401,8 @@ class _CloudifyManager(VM):
     def __str__(self):
         return 'Cloudify manager [{}]'.format(self.ip_address)
 
-    def verify_services_are_running(self):
-        if self.image_type.startswith('4'):
-            return self._old_verify_services_are_running()
-        else:
-            return self._new_verify_services_are_running()
-
     @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
-    def _new_verify_services_are_running(self):
+    def verify_services_are_running(self):
         with self.ssh() as fabric_ssh:
             # the manager-ip-setter script creates the `touched` file when it
             # is done.
@@ -434,33 +429,6 @@ class _CloudifyManager(VM):
                 'service {0} is in {1} state'.format(
                     display_name, service['status'])
 
-    @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
-    def _old_verify_services_are_running(self):
-        with self.ssh() as fabric_ssh:
-            # the manager-ip-setter script creates the `touched` file when it
-            # is done.
-            try:
-                # will fail on bootstrap based managers
-                fabric_ssh.run('supervisorctl | grep manager-ip-setter')
-            except Exception:
-                pass
-            else:
-                self._logger.info('Verify manager-ip-setter is done..')
-                fabric_ssh.run('cat /opt/cloudify/manager-ip-setter/touched')
-
-        self._logger.info(
-            'Verifying all services are running on manager %s...',
-            self.ip_address,
-        )
-        status = self.client.manager.get_status()
-        for service in status['services']:
-            for instance in service['instances']:
-                if all(service not in instance['Id'] for
-                       service in ['postgresql', 'rabbitmq']):
-                    assert instance['SubState'] == 'running', \
-                        'service {0} is in {1} state'.format(
-                            service['display_name'], instance['SubState'])
-
     def set_image_details(self, bootstrappable=False):
         distro = self._test_config['test_manager']['distro']
         image_names = self._test_config[
@@ -475,13 +443,6 @@ class _CloudifyManager(VM):
 
         username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
         self.username = self._test_config['test_os_usernames'][username_key]
-
-    @property
-    def api_version(self):
-        if self.image_type == '4.3.3':
-            return 'v3'
-        else:
-            return 'v3.1'
 
     def get_installed_paths_list(self):
         """Gtting the installed servcices' files paths.
@@ -519,9 +480,6 @@ class _CloudifyManager(VM):
         return config_file
 
     def apply_license(self):
-        if self.image_type in ['4.3.3', '4.4', '4.5', '4.5.5']:
-            # Licenses are not supported on these releases
-            return
         license = util.get_resource_path('test_valid_paying_license.yaml')
         self.client.license.upload(license)
 
@@ -670,14 +628,8 @@ class _CloudifyManager(VM):
             self._logger.info('Replacing certificates')
             ssh.run('cfy_manager certificates replace')
 
-    def wait_for_manager(self):
-        if self.image_type.startswith('4'):
-            return self._old_wait_for_manager()
-        else:
-            return self._new_wait_for_manager()
-
     @retrying.retry(stop_max_attempt_number=90, wait_fixed=1000)
-    def _new_wait_for_manager(self):
+    def wait_for_manager(self):
         with self.ssh() as fabric_ssh:
             # If we don't wait for this then tests get a bit racier
             fabric_ssh.run(
@@ -720,21 +672,6 @@ class _CloudifyManager(VM):
                     )
                 )
             )
-
-    @retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
-    def _old_wait_for_manager(self):
-        status = self.client.manager.get_status()
-        for service in status['services']:
-            for instance in service['instances']:
-                if any(service not in instance['Id'] for
-                       service in ['postgresql', 'rabbitmq']):
-                    if instance['state'] != 'running':
-                        raise Exception(
-                            'Timed out: Manager services did not start '
-                            'successfully. Status: {}'.format(
-                                status,
-                            )
-                        )
 
     def enable_nics(self):
         """
@@ -780,10 +717,7 @@ class _CloudifyManager(VM):
 
 
 def get_image(version, test_config):
-    supported = [
-        '4.3.3', '4.4', '4.5', '4.5.5', '4.6', '5.0.5', '5.1.0', '5.1.1',
-        'master', 'centos',
-    ]
+    supported = ['5.0.5', '5.1.0', '5.1.1', 'master', 'centos']
     if version not in supported:
         raise ValueError(
             '{ver} is not a supported image. Supported: {supported}'.format(

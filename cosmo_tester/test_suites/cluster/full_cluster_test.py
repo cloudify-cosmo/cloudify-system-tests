@@ -71,17 +71,8 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
     check_managers(mgr1, mgr2, example)
 
 
-def test_cluster_4_6_0_snapshot_with_idd(full_cluster_ips, logger):
-    snapshot_id = 'snap_4.6.0_with_capabilities'
-    _test_cluster_snapshot_with_idd(full_cluster_ips, logger, snapshot_id)
-
-
 def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
     snapshot_id = 'snap_5.0.5_with_capabilities'
-    _test_cluster_snapshot_with_idd(full_cluster_ips, logger, snapshot_id)
-
-
-def _test_cluster_snapshot_with_idd(full_cluster_ips, logger, snapshot_id):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
     _upload_snapshot_from_resource(mgr1, logger, snapshot_id)
     restore_snapshot(mgr1, snapshot_id, logger)
