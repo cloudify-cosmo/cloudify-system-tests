@@ -6,7 +6,7 @@ import pytest
 from os.path import join, dirname
 from jinja2 import Environment, FileSystemLoader
 
-from cosmo_tester.framework.test_hosts import Hosts, get_image
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework import util
 
 CONFIG_DIR = join(dirname(__file__), 'config')
@@ -183,17 +183,10 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
     try:
         if not bootstrap:
             for i in range(number_of_instances):
-                hosts.instances[i] = get_image('centos', test_config)
-                hosts.instances[i].image_name = test_config.platform[
-                    'centos_7_image']
-                hosts.instances[i].username = test_config['test_os_usernames'][
-                    'centos_7']
+                hosts.instances[i] = VM('centos_7', test_config)
 
         if extra_node:
-            hosts.instances[-1].image_name = \
-                test_config.platform['{}_image'.format(extra_node)]
-            hosts.instances[-1].username = \
-                test_config['test_os_usernames'][extra_node]
+            hosts.instances[-1] = VM(extra_node, test_config)
 
         for node in hosts.instances:
             node.verify_services_are_running = skip

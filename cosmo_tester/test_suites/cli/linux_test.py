@@ -4,10 +4,7 @@ import hashlib
 import tarfile
 
 from cosmo_tester.framework.util import get_cli_package_url
-from cosmo_tester.framework.test_hosts import (
-    get_image,
-    Hosts,
-)
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cli import (
     _prepare,
@@ -15,7 +12,6 @@ from cosmo_tester.test_suites.cli import (
     _test_cfy_logs,
     _test_teardown,
     _test_upload_and_install,
-    get_image_and_username,
 )
 
 
@@ -200,13 +196,9 @@ def _linux_cluster_cli_tester(request, ssh_key, test_config, logger, cluster):
 def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
                      logger, install_dev_tools=True):
     instances = [
-        get_image('centos', test_config),
-        get_image('master', test_config),
+        VM('centos', test_config),
+        VM('master', test_config),
     ]
-
-    image, username = get_image_and_username(request.param[0], test_config)
-    instances[0].image_name = image
-    instances[0].username = username
 
     cli_hosts = Hosts(
         ssh_key, module_tmpdir,

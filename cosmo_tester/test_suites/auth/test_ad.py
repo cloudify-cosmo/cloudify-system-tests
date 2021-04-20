@@ -3,10 +3,7 @@ import time
 from retrying import retry
 import pytest
 
-from cosmo_tester.framework.test_hosts import (
-    get_image,
-    Hosts,
-)
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import create_rest_client
 
 BASE_DN = 'dc=cloudifyad,dc=test'
@@ -204,14 +201,13 @@ def _add_groups(ad_host, groups, logger):
 @pytest.fixture(scope='module')
 def windows_ldap_tester(request, ssh_key, module_tmpdir, test_config, logger):
     windows_image = 'windows_2012'
-    username = test_config['test_os_usernames'][windows_image]
 
     ldap_hosts = Hosts(
         ssh_key, module_tmpdir,
         test_config, logger, request, 2,
     )
-    ldap_hosts.instances[1] = get_image('centos', test_config)
-    ldap_hosts.instances[1].prepare_for_windows(windows_image)
+    ldap_hosts.instances[1] = VM(windows_image, test_config)
+    username = ldap_hosts.instances[1].username
 
     add_firewall_cmd = "&netsh advfirewall firewall add rule"
     ldap_hosts.instances[1].userdata = '''#ps1_sysnative

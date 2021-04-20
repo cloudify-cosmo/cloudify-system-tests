@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 import copy
 from datetime import datetime
+import functools
 import hashlib
 import json
 import os
@@ -26,21 +27,33 @@ from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 HEALTHY_STATE = 'OK'
 
 
-class VM(object):
+def only_manager(func):
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        if not self.is_manager:
+            raise RuntimeError('This is not a manager')
+        return func(self, *args, **kwargs)
+    return wrapped
 
-    def __init__(self, image_type, test_config):
-        self.image_type = image_type
+
+class VM(object):
+    def __init__(self, image_type, test_config, bootstrappable=False):
         self.image_name = None
         self.userdata = ""
         self.username = None
+        self.password = None
         self.enable_ssh_wait = True
         self.should_finalize = True
         self.restservice_expected = False
         self._test_config = test_config
-        self.windows = False
-        self.is_manager = False
+        self.windows = 'windows' in image_type
         self._ssh_script_path = None
         self._tmpdir_base = None
+        self.api_version = None
+        self.bootstrappable = bootstrappable
+        self.image_type = image_type
+        self.is_manager = self._is_manager_image_type()
+        self._set_image_details()
 
     def assign(
             self,
@@ -74,6 +87,25 @@ class VM(object):
             self.username or self._test_config['test_os_usernames']['centos_7']
         )
         self._create_ssh_script()
+        if self.is_manager:
+            self.networks = networks
+            self.basic_install_config = {
+                'manager': {
+                    'public_ip': str(public_ip_address),
+                    'private_ip': str(private_ip_address),
+                    'hostname': str(server_id),
+                    'security': {
+                        'admin_username': self._test_config[
+                            'test_manager']['username'],
+                        'admin_password': self._test_config[
+                            'test_manager']['password'],
+                    },
+                },
+            }
+            self.install_config = copy.deepcopy(self.basic_install_config)
+            self.api_version = 'v3.1'
+        if self.windows:
+            self.prepare_for_windows()
 
     def _create_ssh_script(self):
         self._ssh_script_path = self._tmpdir_base / 'ssh_{}'.format(
@@ -90,22 +122,17 @@ class VM(object):
             fh.write(ssh_script_content)
         subprocess.check_call(['chmod', '+x', self._ssh_script_path])
 
-    def prepare_for_windows(self, version):
+    def prepare_for_windows(self):
         """Prepare this VM to be created as a windows VM."""
         if self._ssh_script_path:
             subprocess.check_call('rm -f {}'.format(self._ssh_script_path))
 
-        image = self._test_config.platform['{}_image'.format(version)]
-        user = self._test_config['test_os_usernames'][version]
         add_firewall_cmd = "&netsh advfirewall firewall add rule"
         password = 'AbCdEfG123456!'
 
         self.enable_ssh_wait = False
         self.restservice_expected = False
         self.should_finalize = False
-        self.image_name = image
-        self.username = user
-        self.windows = True
 
         self.userdata = """#ps1_sysnative
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
@@ -127,7 +154,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                           password=password)
 
         self.password = password
-        return password
 
     @retrying.retry(stop_max_attempt_number=120, wait_fixed=3000)
     def wait_for_winrm(self):
@@ -202,6 +228,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             conn.close()
 
     def __str__(self):
+        if self.is_manager:
+            return 'Cloudify manager [{}]'.format(self.ip_address)
         return 'Cloudify Test VM ({image}) [{ip}]'.format(
             image=self.image_name,
             ip=self.ip_address,
@@ -237,12 +265,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self.wait_for_manager()
             self._logger.info('Applying license.')
             self.apply_license()
-
-    def verify_services_are_running(self):
-        return True
-
-    def wait_for_manager(self):
-        raise RuntimeError('This is not a manager')
 
     @property
     def ssh_key(self):
@@ -328,54 +350,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             else:
                 return fabric_ssh.run(command, warn=warn_only, hide=hide)
 
-    def set_image_details(self, bootstrappable):
-        pass
-
-    image_type = 'centos'
-
-
-class _CloudifyManager(VM):
-
-    def __init__(self, *args, **kwargs):
-        super(_CloudifyManager, self).__init__(*args, **kwargs)
-        self.api_version = 'v3.1'
-        self.is_manager = True
-
-    def assign(
-            self,
-            public_ip_address,
-            private_ip_address,
-            networks,
-            rest_client,
-            ssh_key,
-            logger,
-            tmpdir,
-            node_instance_id,
-            deployment_id,
-            server_id,
-    ):
-        super(_CloudifyManager, self).assign(
-            public_ip_address, private_ip_address, networks,
-            rest_client, ssh_key, logger, tmpdir,
-            node_instance_id, deployment_id, server_id,
-        )
-        self.set_image_details()
-        self.networks = networks
-        self.basic_install_config = {
-            'manager': {
-                'public_ip': str(public_ip_address),
-                'private_ip': str(private_ip_address),
-                'hostname': str(server_id),
-                'security': {
-                    'admin_username': self._test_config[
-                        'test_manager']['username'],
-                    'admin_password': self._test_config[
-                        'test_manager']['password'],
-                },
-            },
-        }
-        self.install_config = copy.deepcopy(self.basic_install_config)
-
+    @only_manager
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
         with util.set_client_tenant(self.client, tenant_name):
@@ -398,11 +373,12 @@ class _CloudifyManager(VM):
                 else:
                     raise
 
-    def __str__(self):
-        return 'Cloudify manager [{}]'.format(self.ip_address)
-
+    @only_manager
     @retrying.retry(stop_max_attempt_number=6 * 10, wait_fixed=10000)
     def verify_services_are_running(self):
+        if not self.is_manager:
+            return True
+
         with self.ssh() as fabric_ssh:
             # the manager-ip-setter script creates the `touched` file when it
             # is done.
@@ -429,23 +405,9 @@ class _CloudifyManager(VM):
                 'service {0} is in {1} state'.format(
                     display_name, service['status'])
 
-    def set_image_details(self, bootstrappable=False):
-        distro = self._test_config['test_manager']['distro']
-        image_names = self._test_config[
-            'manager_image_names_{}'.format(distro)]
-        if bootstrappable:
-            self.image_name = image_names['installer']
-            self.should_finalize = False
-        else:
-            self.image_name = image_names[self.image_type.replace('.', '_')]
-            self.should_finalize = True
-            self.restservice_expected = True
-
-        username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
-        self.username = self._test_config['test_os_usernames'][username_key]
-
+    @only_manager
     def get_installed_paths_list(self):
-        """Gtting the installed servcices' files paths.
+        """Gtting the installed services' files paths.
 
         This function returns a list of the files that are created in case
         the installation was successful.
@@ -462,10 +424,12 @@ class _CloudifyManager(VM):
                 if services_to_install else
                 [prefix + service for service in main_services])
 
+    @only_manager
     def teardown(self):
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('cfy_manager remove --force')
 
+    @only_manager
     def _create_config_file(self, upload_license=True):
         config_file = self._tmpdir / 'config_{0}.yaml'.format(self.ip_address)
         cloudify_license_path = \
@@ -479,10 +443,12 @@ class _CloudifyManager(VM):
         config_file.write_text(install_config_str)
         return config_file
 
+    @only_manager
     def apply_license(self):
         license = util.get_resource_path('test_valid_paying_license.yaml')
         self.client.license.upload(license)
 
+    @only_manager
     def bootstrap(self, upload_license=False,
                   blocking=True, restservice_expected=True, config_name=None):
         self.wait_for_ssh()
@@ -538,6 +504,7 @@ class _CloudifyManager(VM):
                 else:
                     time.sleep(5)
 
+    @only_manager
     def bootstrap_is_complete(self):
         with self.ssh() as fabric_ssh:
             # Using a bash construct because fabric seems to change its mind
@@ -576,6 +543,7 @@ class _CloudifyManager(VM):
                     self._logger.info('Bootstrap in progress...')
                     return False
 
+    @only_manager
     @retrying.retry(stop_max_attempt_number=200, wait_fixed=1000)
     def wait_for_all_executions(self, include_system_workflows=True):
         executions = self.client.executions.list(
@@ -591,6 +559,7 @@ class _CloudifyManager(VM):
                     )
                 )
 
+    @only_manager
     def _update_aio_certs(self):
         key_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.key'
         cert_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.crt'
@@ -628,6 +597,7 @@ class _CloudifyManager(VM):
             self._logger.info('Replacing certificates')
             ssh.run('cfy_manager certificates replace')
 
+    @only_manager
     @retrying.retry(stop_max_attempt_number=90, wait_fixed=1000)
     def wait_for_manager(self):
         with self.ssh() as fabric_ssh:
@@ -673,6 +643,7 @@ class _CloudifyManager(VM):
                 )
             )
 
+    @only_manager
     def enable_nics(self):
         """
         Extra network interfaces need to be manually enabled on the manager
@@ -715,27 +686,53 @@ class _CloudifyManager(VM):
             )
             self.run_command('ifup eth{0}'.format(i), use_sudo=True)
 
+    def _is_manager_image_type(self):
+        if self.image_type == 'master':
+            return True
+        try:
+            # If the name starts with a number, it's a manager version
+            int(self.image_type[0])
+            return True
+        except Exception:
+            return False
 
-def get_image(version, test_config):
-    supported = ['5.0.5', '5.1.0', '5.1.1', 'master', 'centos']
-    if version not in supported:
-        raise ValueError(
-            '{ver} is not a supported image. Supported: {supported}'.format(
-                ver=version,
-                supported=','.join(supported),
+    def _set_image_details(self):
+        if self.is_manager:
+            distro = self._test_config['test_manager']['distro']
+            image_names = self._test_config[
+                'manager_image_names_{}'.format(distro)]
+            image_name = self.image_type.replace('.', '_')
+            if self.bootstrappable:
+                if self.image_type == 'master':
+                    image_name = 'installer'
+                else:
+                    image_name += '_installer'
+                self.should_finalize = False
+            else:
+                self.restservice_expected = True
+
+            username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
+        else:
+            image_names = {
+                entry: img
+                for entry, img in self._test_config.platform.items()
+                if entry.endswith('_image')
+            }
+            image_name = self.image_type + '_image'
+            username_key = self.image_type
+        if image_name not in image_names:
+            raise ValueError(
+                '{img} is not a supported image. '
+                'Supported: {supported}'.format(
+                    img=image_name,
+                    supported=','.join(image_names),
+                )
             )
-        )
-
-    if version == 'centos':
-        img_cls = VM
-    else:
-        img_cls = _CloudifyManager
-
-    return img_cls(version, test_config)
+        self.username = self._test_config['test_os_usernames'][username_key]
+        self.image_name = image_names[image_name]
 
 
 class Hosts(object):
-
     def __init__(self,
                  ssh_key,
                  tmpdir,
@@ -760,9 +757,8 @@ class Hosts(object):
         self._ssh_key = ssh_key
         self.preconfigure_callback = None
         if instances is None:
-            self.instances = [
-                get_image('master', test_config)
-                for _ in range(number_of_instances)]
+            self.instances = [VM('master', test_config, bootstrappable)
+                              for _ in range(number_of_instances)]
         else:
             self.instances = instances
         self._request = request
@@ -788,9 +784,6 @@ class Hosts(object):
             self.server_flavor = flavor
         else:
             self.server_flavor = self._test_config.platform['linux_size']
-
-        for instance in self.instances:
-            instance.set_image_details(bootstrappable)
 
     def create(self):
         """Creates the infrastructure for a Cloudify manager."""

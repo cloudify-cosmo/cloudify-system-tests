@@ -2,7 +2,7 @@ import time
 import pytest
 from copy import deepcopy
 
-from cosmo_tester.framework.test_hosts import Hosts
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
@@ -33,10 +33,7 @@ def managers_and_vms(ssh_key, module_tmpdir, test_config, logger,
     )
 
     for inst in [2, 3, 4]:
-        hosts.instances[inst].image_name = test_config.platform[
-            'centos_7_image']
-        hosts.instances[inst].username = test_config[
-            'test_os_usernames']['centos_7']
+        hosts.instances[inst] = VM('centos_7', test_config)
 
     passed = True
 

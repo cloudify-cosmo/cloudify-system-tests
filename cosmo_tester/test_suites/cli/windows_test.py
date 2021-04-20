@@ -3,17 +3,13 @@ import json
 import pytest
 
 from cosmo_tester.framework.util import get_cli_package_url
-from cosmo_tester.framework.test_hosts import (
-    get_image,
-    Hosts,
-)
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cli import (
     _prepare,
     _test_cfy_install,
     _test_teardown,
     _test_upload_and_install,
-    get_image_and_username,
 )
 
 
@@ -53,15 +49,11 @@ def get_windows_image_settings():
     params=get_windows_image_settings())
 def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
                        logger):
-
-    _, username = get_image_and_username(request.param[0], test_config)
-
     cli_hosts = Hosts(
         ssh_key, module_tmpdir,
         test_config, logger, request, 2,
     )
-    cli_hosts.instances[0] = get_image('centos', test_config)
-    cli_hosts.instances[0].prepare_for_windows(request.param[0])
+    cli_hosts.instances[0] = VM(request.param[0], test_config)
 
     passed = True
 
@@ -72,7 +64,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
         url_key = request.param[1]
         cli_host, manager_host = cli_hosts.instances
 
-        work_dir = 'C:\\Users\\{0}'.format(username)
+        work_dir = 'C:\\Users\\{0}'.format(cli_host.username)
         cli_installer_exe_name = 'cloudify-cli.exe'
         cli_installer_exe_path = '{0}\\{1}'.format(work_dir,
                                                    cli_installer_exe_name)
