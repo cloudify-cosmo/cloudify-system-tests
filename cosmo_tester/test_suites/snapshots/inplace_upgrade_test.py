@@ -4,10 +4,7 @@ from os.path import join
 import pytest
 
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.framework.test_hosts import (
-    Hosts,
-    get_image,
-)
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.test_suites.snapshots import (
     create_snapshot,
     download_snapshot,
@@ -20,12 +17,9 @@ from cosmo_tester.test_suites.snapshots import (
 def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
                    logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request, 2)
-    hosts.instances[0] = get_image('master', test_config)
-    hosts.instances[1] = get_image('centos', test_config)
+    hosts.instances[0] = VM('master', test_config)
+    hosts.instances[1] = VM('centos', test_config)
     manager, vm = hosts.instances
-
-    vm.image_name = test_config.platform['centos_7_image']
-    vm.username = test_config['test_os_usernames']['centos_7']
 
     passed = True
 

@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from cosmo_tester.framework.test_hosts import Hosts, get_image
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import (get_manager_install_version,
                                          validate_cluster_status_and_agents)
@@ -42,7 +42,7 @@ with open('%s', 'w') as f:
 @pytest.fixture(scope='function', params=['5.1.0', '5.1.1'])
 def base_manager(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request)
-    hosts.instances[0] = get_image(request.param, test_config)
+    hosts.instances[0] = VM(request.param, test_config)
 
     hosts.create()
     try:
