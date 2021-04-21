@@ -60,10 +60,13 @@ class NameSpace(Mapping):
 # approach should make it hard to do the wrong thing.
 # Now we just need to also make it easy to do the right thing!
 class Config(NameSpace):
-    def __init__(self, config_file, config_schema_files, logger):
+    def __init__(self, config_file, config_schema_files, logger,
+                 raw_config=None):
         self._logger = logger
         self.schema = {}
         self.raw_config = {}
+        if raw_config:
+            self.raw_config = raw_config
         self._cached_config = None
 
         # Load config
@@ -298,7 +301,7 @@ def find_schemas():
 
 
 def load_config(logger, config_file=None, missing_config_fail=True,
-                validate=True):
+                validate=True, raw_config=None):
     """Load the configuration from the specified file.
     missing_config_fail determines whether the file being absent is fatal.
     """
@@ -308,6 +311,7 @@ def load_config(logger, config_file=None, missing_config_fail=True,
         config = Config(
             config_file=config_file,
             config_schema_files=schemas,
+            raw_config=raw_config,
             logger=logger,
         )
     except SchemaError as err:
