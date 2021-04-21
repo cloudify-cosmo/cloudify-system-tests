@@ -155,7 +155,11 @@ def main():
         config = load_config(logger, validate=False)
         print(show_schema(config.schema, False))
     elif args.action == 'generate':
-        config = load_config(logger, validate=False)
+        if args.platform:
+            raw_config = {'target_platform': args.platform}
+        else:
+            raw_config = {}
+        config = load_config(logger, raw_config=raw_config, validate=False)
         if args.platform:
             apply_platform_config(logger, config, args.platform)
             if not config.check_config_is_valid(fail_on_missing=False):
