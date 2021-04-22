@@ -31,7 +31,7 @@ dsl_definitions:
     region_name: { get_secret: ec2_region_name }
 
 node_templates:
-  vm:
+  test_host:
     type: cloudify.nodes.aws.ec2.Instances
     properties:
       agent_config:
