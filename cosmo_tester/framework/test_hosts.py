@@ -497,7 +497,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 '  echo failed; '
                 'else '
                 '  echo not done; '
-                'fi'.format(check_paths=check_paths)
+                'fi'
             ).stdout.strip()
 
             if result == 'done':
@@ -553,9 +553,11 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             ssh.run('sudo supervisorctl start blackbox_exporter || true')
 
             self._logger.info('Generating certificates including public IP')
+            ips = [self.private_ip_address, self.ip_address]
+            if self.networks:
+                ips.extend(self.networks.values())
             ssh.run('cfy_manager generate-test-cert'
-                    ' -s {0},{1}'.format(self.private_ip_address,
-                                         self.ip_address))
+                    ' -s {}'.format(','.join(ips)))
             ssh.run('mkdir -p /tmp/new_cloudify_certs')
             new_cert_path = '/tmp/new_cloudify_certs/new_{}.pem'
             for purpose in [
@@ -645,7 +647,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             IPV6INIT="no"
             PERSISTENT_DHCLIENT="1"
             IPADDR="{1}"
-            NETMASK="255.255.255.128"
+            NETMASK="255.255.255.0"
             DEFROUTE="no"
             MTU=1450
         """)
@@ -1082,6 +1084,13 @@ class Hosts(object):
             vm_inputs['image'] = image_id
         elif self._test_config['target_platform'] == 'aws':
             vm_inputs.update(self._platform_resource_ids)
+            if self.multi_net:
+                use_net = self.vm_net_mappings.get(index, 1)
+                if use_net > 1:
+                    key = 'subnet_{}_id'.format(use_net)
+                else:
+                    key = 'subnet_id'
+                vm_inputs['subnet_id'] = self._platform_resource_ids[key]
             if is_manager:
                 vm_inputs['name_filter'] = {
                     "Name": "tag:Name",
@@ -1096,6 +1105,9 @@ class Hosts(object):
         if self.multi_net:
             if index in self.vm_net_mappings:
                 vm_inputs['use_net'] = self.vm_net_mappings.get(index, 1)
+                if self._test_config['target_platform'] == 'aws':
+                    vm_inputs.pop('subnet_2_id')
+                    vm_inputs.pop('subnet_3_id')
             else:
                 blueprint_id = blueprint_id + '-multi-net'
         # Dumped to file to aid in troubleshooting
