@@ -406,25 +406,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                     display_name, service['status'])
 
     @only_manager
-    def get_installed_paths_list(self):
-        """Gtting the installed services' files paths.
-
-        This function returns a list of the files that are created in case
-        the installation was successful.
-        We use the `main_services` to make sure we don't include the
-        `monitoring_service` and `entropy_service`.
-        """
-        prefix = '/etc/cloudify/.installed/'
-        main_services = [
-            'database_service', 'queue_service', 'manager_service']
-        services_to_install = self.install_config.get('services_to_install')
-
-        return ([prefix + service for service in services_to_install
-                 if service in main_services]
-                if services_to_install else
-                [prefix + service for service in main_services])
-
-    @only_manager
     def teardown(self):
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('cfy_manager remove --force')
@@ -509,10 +490,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         with self.ssh() as fabric_ssh:
             # Using a bash construct because fabric seems to change its mind
             # about how non-zero exit codes should be handled frequently
-            check_paths = (' || '.join('-f {}'.format(path) for path in
-                                       self.get_installed_paths_list()))
             result = fabric_ssh.run(
-                'if [[ {check_paths} ]]; then'
+                'if [[ -f /tmp/bootstrap_complete ]]; then'
                 '  echo done; '
                 'elif [[ -f /tmp/bootstrap_failed ]]; then '
                 '  echo failed; '
@@ -598,7 +577,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             ssh.run('cfy_manager certificates replace')
 
     @only_manager
-    @retrying.retry(stop_max_attempt_number=90, wait_fixed=1000)
+    @retrying.retry(stop_max_attempt_number=30, wait_fixed=3000)
     def wait_for_manager(self):
         with self.ssh() as fabric_ssh:
             # If we don't wait for this then tests get a bit racier
