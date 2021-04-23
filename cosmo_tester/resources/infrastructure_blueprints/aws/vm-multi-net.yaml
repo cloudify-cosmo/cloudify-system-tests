@@ -41,6 +41,7 @@ node_templates:
         InstanceType: { get_input: flavor }
         kwargs:
           KeyName: { get_input: test_infrastructure_name }
+          UserData: { get_input: userdata }
       client_config: *client_config
       Tags:
         - Key: Name
