@@ -550,14 +550,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         ca_cert_path = '~/.cloudify-test-ca/ca.crt'
 
         with self.ssh() as ssh:
-            self._logger.info('Making sure configuration is finished.')
-            # It turns out that running cert replacement while the starter is
-            # running causes really fun errors!
-            # Also, starter is named such that wait-for-starter doesn't work.
-            # So, since this is only touched once configuration is done, we
-            # will use it.
-            ssh.run('test -f /etc/cloudify/.configured/manager-service')
-
             self._logger.info('Generating certificates including public IP')
             ips = [self.private_ip_address, self.ip_address]
             if self.networks:
@@ -585,12 +577,16 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             ssh.run('cfy_manager certificates replace')
 
     @only_manager
-    @retrying.retry(stop_max_attempt_number=30, wait_fixed=3000)
+    @retrying.retry(stop_max_attempt_number=60, wait_fixed=5000)
     def wait_for_manager(self):
         with self.ssh() as fabric_ssh:
             # If we don't wait for this then tests get a bit racier
             fabric_ssh.run(
                 "systemctl status cloudify-starter 2>&1"
+                "| grep -E '(status=0/SUCCESS)|(could not be found)'")
+            # ...and apparently we're misnaming it at the moment
+            fabric_ssh.run(
+                "systemctl status cfy-starter 2>&1"
                 "| grep -E '(status=0/SUCCESS)|(could not be found)'")
 
         try:
