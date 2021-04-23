@@ -606,7 +606,6 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
         username=test_config['test_manager']['username'],
         password=test_config['test_manager']['password'],
         tenant=test_config['test_manager']['tenant'],
-        api_version=node.api_version,
         cert=node.local_ca,
         protocol='https',
     )

@@ -48,7 +48,6 @@ class VM(object):
         self._test_config = test_config
         self.windows = 'windows' in image_type
         self._tmpdir_base = None
-        self.api_version = None
         self.bootstrappable = bootstrappable
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
@@ -101,7 +100,6 @@ class VM(object):
                 },
             }
             self.install_config = copy.deepcopy(self.basic_install_config)
-            self.api_version = 'v3.1'
         if self.windows:
             self.prepare_for_windows()
         else:
@@ -618,7 +616,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                     tenant=test_mgr_conf['tenant'],
                     cert=self._tmpdir / self.server_id + '_api.crt',
                     protocol='https',
-                    api_version=self.api_version,
                 )
             raise
 
@@ -1228,14 +1225,13 @@ class Hosts(object):
                         networks[net_name] = str(ip)
                         break
 
-        if hasattr(instance, 'api_version'):
+        if instance.is_manager:
             test_mgr_conf = self._test_config['test_manager']
             rest_client = util.create_rest_client(
                 public_ip_address,
                 username=test_mgr_conf['username'],
                 password=test_mgr_conf['password'],
                 tenant=test_mgr_conf['tenant'],
-                api_version=instance.api_version,
             )
         else:
             rest_client = None
