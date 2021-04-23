@@ -45,7 +45,7 @@ centos_7_image:
   default: ami-04f5641b0d178a27a
 windows_2012_image:
   description: Image to use for Windows 2012 on this platform.
-  default: ami-05f34bb57ea1a77ad
+  default: ami-0881437e28c7f4afe
 named_image_owners:
   description: Comma separated list of allowed owners for images not referred to by AMI ID.
   default: "919239153674"

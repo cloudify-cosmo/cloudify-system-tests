@@ -47,7 +47,6 @@ class VM(object):
         self.restservice_expected = False
         self._test_config = test_config
         self.windows = 'windows' in image_type
-        self._ssh_script_path = None
         self._tmpdir_base = None
         self.api_version = None
         self.bootstrappable = bootstrappable
@@ -86,7 +85,6 @@ class VM(object):
         self.username = (
             self.username or self._test_config['test_os_usernames']['centos_7']
         )
-        self._create_ssh_script()
         if self.is_manager:
             self.networks = networks
             self.basic_install_config = {
@@ -106,27 +104,37 @@ class VM(object):
             self.api_version = 'v3.1'
         if self.windows:
             self.prepare_for_windows()
+        else:
+            self._create_conn_script()
 
-    def _create_ssh_script(self):
-        self._ssh_script_path = self._tmpdir_base / 'ssh_{}'.format(
-            self.server_id)
-        ssh_script_content = (
-            'ssh-keygen -R "{pub_ip}"\n'
-            'ssh -i {key} -o StrictHostKeyChecking=no {user}@{pub_ip}\n'
-        ).format(
-            key=self._ssh_key.private_key_path,
-            user=self.username,
-            pub_ip=self.ip_address
-        )
-        with open(self._ssh_script_path, 'w') as fh:
-            fh.write(ssh_script_content)
-        subprocess.check_call(['chmod', '+x', self._ssh_script_path])
+    def _create_conn_script(self, rdp=False):
+        script_path = self._tmpdir_base / '{prefix}_{addr}'.format(
+            prefix='rdp' if rdp else 'ssh',
+            addr=self.ip_address)
+        if rdp:
+            script_content = (
+                "xfreerdp /u:{user} /p:'{password}' "
+                '/w:1366 /h:768 /v:{addr}'
+            ).format(
+                user=self.username,
+                password=self.password,
+                addr=self.ip_address,
+            )
+        else:
+            script_content = (
+                'ssh-keygen -R "{addr}"\n'
+                'ssh -i {key} -o StrictHostKeyChecking=no {user}@{addr}\n'
+            ).format(
+                key=self._ssh_key.private_key_path,
+                user=self.username,
+                addr=self.ip_address,
+            )
+        with open(script_path, 'w') as fh:
+            fh.write(script_content)
+        subprocess.check_call(['chmod', '+x', script_path])
 
     def prepare_for_windows(self):
         """Prepare this VM to be created as a windows VM."""
-        if self._ssh_script_path:
-            subprocess.check_call('rm -f {}'.format(self._ssh_script_path))
-
         add_firewall_cmd = "&netsh advfirewall firewall add rule"
         password = 'AbCdEfG123456!'
 
@@ -154,6 +162,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                           password=password)
 
         self.password = password
+        self._create_conn_script(rdp=True)
 
     @retrying.retry(stop_max_attempt_number=120, wait_fixed=3000)
     def wait_for_winrm(self):
