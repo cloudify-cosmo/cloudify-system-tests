@@ -5,7 +5,9 @@ import functools
 import hashlib
 import json
 import os
+import random
 import re
+import string
 import socket
 import subprocess
 import time
@@ -133,7 +135,11 @@ class VM(object):
     def prepare_for_windows(self):
         """Prepare this VM to be created as a windows VM."""
         add_firewall_cmd = "&netsh advfirewall firewall add rule"
-        password = 'AbCdEfG123456!'
+        password = ''.join(random.choice(string.ascii_letters + string.digits)
+                           for _ in range(16))
+        # To meet complexity requirements- the above should be hard enough to
+        # crack for a short lived test VM
+        password += '!'
 
         self.enable_ssh_wait = False
         self.restservice_expected = False
