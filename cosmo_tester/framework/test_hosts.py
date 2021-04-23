@@ -52,6 +52,8 @@ class VM(object):
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
         self._set_image_details()
+        if self.windows:
+            self.prepare_for_windows()
 
     def assign(
             self,
@@ -100,16 +102,13 @@ class VM(object):
                 },
             }
             self.install_config = copy.deepcopy(self.basic_install_config)
-        if self.windows:
-            self.prepare_for_windows()
-        else:
-            self._create_conn_script()
+        self._create_conn_script()
 
-    def _create_conn_script(self, rdp=False):
+    def _create_conn_script(self):
         script_path = self._tmpdir_base / '{prefix}_{addr}'.format(
-            prefix='rdp' if rdp else 'ssh',
+            prefix='rdp' if self.windows else 'ssh',
             addr=self.ip_address)
-        if rdp:
+        if self.windows:
             script_content = (
                 "xfreerdp /u:{user} /p:'{password}' "
                 '/w:1366 /h:768 /v:{addr}'
@@ -160,7 +159,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                           password=password)
 
         self.password = password
-        self._create_conn_script(rdp=True)
 
     @retrying.retry(stop_max_attempt_number=120, wait_fixed=3000)
     def wait_for_winrm(self):
