@@ -554,12 +554,13 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         ca_cert_path = '~/.cloudify-test-ca/ca.crt'
 
         with self.ssh() as ssh:
-            self._logger.info('Making sure blackbox_exporter is running '
-                              '(if applicable)')
-            # Because the cert replacement tries to restart it, and sometimes
-            # it isn't running which gets us stuck in a really slow and boring
-            # loop.
-            ssh.run('sudo supervisorctl start blackbox_exporter || true')
+            self._logger.info('Making sure configuration is finished.')
+            # It turns out that running cert replacement while the starter is
+            # running causes really fun errors!
+            # Also, starter is named such that wait-for-starter doesn't work.
+            # So, since this is only touched once configuration is done, we
+            # will use it.
+            ssh.run('test -f /etc/cloudify/.configured/manager-service')
 
             self._logger.info('Generating certificates including public IP')
             ips = [self.private_ip_address, self.ip_address]
