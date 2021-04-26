@@ -24,10 +24,10 @@ windows_size:
   default: t2.medium
 ubuntu_14_04_image:
   description: Image to use for Ubuntu 14.04 on this platform.
-  default: ami-057a169c93299c8c3
+  default: ami-005af4c3162f495fa
 ubuntu_16_04_image:
   description: Image to use for Ubuntu 16.04 on this platform.
-  default: ami-0cde7c2ae1d5c6a21
+  default: ami-0a9aac550bc5711d3
 rhel_8_image:
   description: Image to use for RHEL 8 on this platform.
   default: ami-04577df0184ebb493
