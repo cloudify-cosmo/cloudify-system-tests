@@ -46,6 +46,9 @@ centos_7_image:
 windows_2012_image:
   description: Image to use for Windows 2012 on this platform.
   default: ami-0881437e28c7f4afe
+rhel_username_override:
+  description: Override to use because redhat like using different usernames on different cloud platforms.
+  default: ec2-user
 named_image_owners:
   description: Comma separated list of allowed owners for images not referred to by AMI ID.
   default: "919239153674"
