@@ -174,12 +174,9 @@ def proxy_hosts(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(
         ssh_key, module_tmpdir, test_config, logger, request, 3,
         bootstrappable=True,)
+    hosts.instances[0] = VM('centos_7', test_config)
+    hosts.instances[2] = VM('centos_7', test_config)
     proxy, manager, vm = hosts.instances
-
-    proxy.image_name = test_config.platform['centos_7_image']
-    proxy.username = test_config['test_os_usernames']['centos_7']
-    vm.image_name = test_config.platform['centos_7_image']
-    vm.username = test_config['test_os_usernames']['centos_7']
 
     passed = True
 

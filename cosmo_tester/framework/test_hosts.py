@@ -81,13 +81,6 @@ class VM(object):
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
-        # For backwards compatabilitish, keeping defaults here
-        self.image_name = (
-            self.image_name or self._test_config.platform['centos_7_image']
-        )
-        self.username = (
-            self.username or self._test_config['test_os_usernames']['centos_7']
-        )
         if self.is_manager:
             self.networks = networks
             self.basic_install_config = {
@@ -716,7 +709,16 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                     supported=','.join(image_names),
                 )
             )
-        self.username = self._test_config['test_os_usernames'][username_key]
+
+        if username_key.startswith('rhel'):
+            self.username = (
+                self._test_config.platform['rhel_username_override']
+                or self._test_config['test_os_usernames'][username_key]
+            )
+        else:
+            self.username = (
+                self._test_config['test_os_usernames'][username_key]
+            )
         self.image_name = image_names[image_name]
 
 
