@@ -599,19 +599,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                     'Detected that SSL was required, '
                     'updating certs and client.')
                 self._update_aio_certs()
-                self.get_remote_file(
-                    '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
-                    self._tmpdir / self.server_id + '_api.crt'
-                )
-                test_mgr_conf = self._test_config['test_manager']
-                self.client = util.create_rest_client(
-                    self.ip_address,
-                    username=test_mgr_conf['username'],
-                    password=test_mgr_conf['password'],
-                    tenant=test_mgr_conf['tenant'],
-                    cert=self._tmpdir / self.server_id + '_api.crt',
-                    protocol='https',
-                )
+                self.client = self.get_rest_client()
             raise
 
         if manager_status['status'] != HEALTHY_STATE:
@@ -625,6 +613,36 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                     )
                 )
             )
+
+    @only_manager
+    def get_rest_client(self, username=None, password=None, tenant=None):
+        test_mgr_conf = self._test_config['test_manager']
+        username = username or test_mgr_conf['username']
+        password = password or test_mgr_conf['password']
+        tenant = tenant or test_mgr_conf['tenant']
+
+        api_ca_path = None
+        proto = 'http'
+
+        if self.run_command(
+            'test -f /etc/cloudify/ssl/cloudify_external_cert.pem',
+            warn_only=True,
+        ):
+            api_ca_path = self._tmpdir / self.server_id + '_api.crt'
+            proto = 'https'
+            if not os.path.exists(api_ca_path):
+                self.get_remote_file(
+                    '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
+                    api_ca_path,
+                )
+        return util.create_rest_client(
+            self.ip_address,
+            username=username,
+            password=password,
+            tenant=tenant,
+            cert=api_ca_path,
+            protocol=proto,
+        )
 
     @only_manager
     def enable_nics(self):
