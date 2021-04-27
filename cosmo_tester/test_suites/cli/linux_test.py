@@ -196,7 +196,7 @@ def _linux_cluster_cli_tester(request, ssh_key, test_config, logger, cluster):
 def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
                      logger, install_dev_tools=True):
     instances = [
-        VM('centos', test_config),
+        VM('centos_7', test_config),
         VM('master', test_config),
     ]
 

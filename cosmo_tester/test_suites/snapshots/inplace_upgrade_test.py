@@ -18,7 +18,7 @@ def manager_and_vm(request, ssh_key, module_tmpdir, test_config,
                    logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request, 2)
     hosts.instances[0] = VM('master', test_config)
-    hosts.instances[1] = VM('centos', test_config)
+    hosts.instances[1] = VM('centos_7', test_config)
     manager, vm = hosts.instances
 
     passed = True
