@@ -192,7 +192,7 @@ class BaseExample(object):
                 else:
                     data = self.example_host.get_remote_file_content(
                         file_path)
-                assert data == expected_content
+                assert data.decode('utf-8') == expected_content
 
     # Proxy test has been suffering temporary ssh timeout issues
     @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
