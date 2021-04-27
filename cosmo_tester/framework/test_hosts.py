@@ -69,6 +69,7 @@ class VM(object):
             node_instance_id,
             deployment_id,
             server_id,
+            server_index,
     ):
         self.ip_address = public_ip_address
         self.private_ip_address = private_ip_address
@@ -81,6 +82,7 @@ class VM(object):
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
+        self.server_index = server_index
         if self.is_manager:
             self.networks = networks
             self.basic_install_config = {
@@ -100,9 +102,9 @@ class VM(object):
         self._create_conn_script()
 
     def _create_conn_script(self):
-        script_path = self._tmpdir_base / '{prefix}_{addr}'.format(
+        script_path = self._tmpdir_base / '{prefix}_{index}'.format(
             prefix='rdp' if self.windows else 'ssh',
-            addr=self.ip_address)
+            index=self.server_index)
         if self.windows:
             script_content = (
                 "xfreerdp /u:{user} /p:'{password}' "
@@ -1177,7 +1179,7 @@ class Hosts(object):
 
             self._logger.info('Storing instance details.')
             self._update_instance(
-                self.instances[index],
+                index,
                 node_instance,
             )
 
@@ -1198,7 +1200,8 @@ class Hosts(object):
             util.delete_deployment(self._infra_client, vm_id,
                                    self._logger)
 
-    def _update_instance(self, instance, node_instance):
+    def _update_instance(self, server_index, node_instance):
+        instance = self.instances[server_index]
         runtime_props = node_instance['runtime_properties']
 
         public_ip_address = runtime_props['public_ip_address']
@@ -1248,4 +1251,5 @@ class Hosts(object):
             node_instance_id,
             deployment_id,
             server_id,
+            server_index,
         )
