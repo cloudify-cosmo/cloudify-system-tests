@@ -62,7 +62,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     )
     # We'll use an older blueprint style for this to confirm they still work
     example_mappings[from_source_tenant].blueprint_file = get_resource_path(
-        'blueprints/compute/central_executor_4.3.3.yaml'
+        'blueprints/compute/central_executor_4_3_3.yaml'
     )
 
     # A 'normal' windows deployment
