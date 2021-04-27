@@ -180,11 +180,8 @@ def create_user(username, password, manager):
 
 def test_user(username, password, manager, logger):
     logger.info('Checking {user} can log in.'.format(user=username))
-    create_rest_client(
-        manager.ip_address,
-        username,
-        password,
-    ).manager.get_status()
+    client = manager.get_rest_client(username=username, password=password)
+    client.manager.get_status()
 
 
 def get_security_conf(manager):
