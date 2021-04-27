@@ -14,7 +14,7 @@ def hosts(request, ssh_key, module_tmpdir, test_config, logger):
 
     hosts.instances[0] = VM(request.param, test_config)
     hosts.instances[1] = VM('master', test_config)
-    hosts.instances[2] = VM('centos_7', test_config)
+    hosts.instances[2] = VM('windows_2012', test_config)
     hosts.instances[3] = VM('centos_7', test_config)
 
     hosts.create()
