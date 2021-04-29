@@ -74,8 +74,10 @@ def _upgrade_cluster(nodes_list, manager, test_config, logger):
     )
 
     logger.info('Validating nodes upgraded')
-    assert_manager_install_version_on_nodes(nodes_list, test_config[
-        'upgrade']['upgrade_version'])
+    assert_manager_install_version_on_nodes(
+        nodes_list,
+        test_config['testing_version'].split('-')[0],
+    )
     logger.info('Verifying the cluster status')
     _verify_cluster_status(manager)
 
