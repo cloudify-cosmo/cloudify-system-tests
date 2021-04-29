@@ -700,35 +700,47 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def _set_image_details(self):
         if self.is_manager:
             distro = self._test_config['test_manager']['distro']
-            image_names = self._test_config[
-                'manager_image_names_{}'.format(distro)]
-            image_name = self.image_type.replace('.', '_')
-            if self.bootstrappable:
-                if self.image_type == 'master':
-                    image_name = 'installer'
-                else:
-                    image_name += '_installer'
-                self.should_finalize = False
-            else:
-                self.restservice_expected = True
 
             username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
+
+            image_names = self._test_config[
+                'manager_image_names_{}'.format(distro)]
+
+            if self.image_type in ('master', 'installer'):
+                manager_version = self._test_config['testing_version']
+            else:
+                manager_version = self.image_type
+
+            if self.bootstrappable:
+                image_template = image_names['installer']
+                self.should_finalize = False
+            else:
+                image_template = image_names['manager']
+                self.restservice_expected = True
+
+            self.image_name = util.substitute_testing_version(
+                image_template,
+                manager_version,
+            )
         else:
+            username_key = self.image_type
+
             image_names = {
                 entry: img
                 for entry, img in self._test_config.platform.items()
                 if entry.endswith('_image')
             }
             image_name = self.image_type + '_image'
-            username_key = self.image_type
-        if image_name not in image_names:
-            raise ValueError(
-                '{img} is not a supported image. '
-                'Supported: {supported}'.format(
-                    img=image_name,
-                    supported=','.join(image_names),
+
+            if image_name not in image_names:
+                raise ValueError(
+                    '{img} is not a supported image. '
+                    'Supported: {supported}'.format(
+                        img=image_name,
+                        supported=','.join(image_names),
+                    )
                 )
-            )
+            self.image_name = image_names[image_name]
 
         if username_key.startswith('rhel'):
             self.username = (
@@ -739,10 +751,6 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self.username = (
                 self._test_config['test_os_usernames'][username_key]
             )
-        self.image_name = util.substitute_testing_version(
-            image_names[image_name],
-            self._test_config['testing_version'],
-        )
 
 
 class Hosts(object):

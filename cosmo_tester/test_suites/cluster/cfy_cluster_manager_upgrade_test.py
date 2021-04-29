@@ -1,5 +1,6 @@
 import pytest
 
+from cosmo_tester.framework.constants import SUPPORTED_RELEASES
 from cosmo_tester.framework.util import (
     get_manager_install_version,
     substitute_testing_version,
@@ -15,8 +16,9 @@ from .cfy_cluster_manager_shared import (
 
 
 BASE_VERSIONS = [
-    '5.1.0-ga', '5.1.1-ga', '5.1.2-ga', '5.1.3-ga', '5.1.4-ga',
-    '5.2.0-ga',
+    version + '-ga'
+    for version in SUPPORTED_RELEASES
+    if version not in ('master', '5.0.5')
 ]
 
 
