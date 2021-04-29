@@ -7,6 +7,7 @@ import retrying
 from cloudify.snapshots import STATES
 from cloudify_rest_client.exceptions import UserUnauthorizedError
 
+from cosmo_tester.framework.constants import SUPPORTED_RELEASES
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
     create_rest_client,
@@ -30,16 +31,9 @@ TENANT_DEPLOYMENTS_PATH = (
 DEPLOYMENT_ENVIRONMENT_PATH = TENANT_DEPLOYMENTS_PATH + '/{name}'
 CHANGED_ADMIN_PASSWORD = 'changedmin'
 
-# These manager versions support multiple tenant snapshot restores in premium
-MULTI_TENANT_MANAGERS = (
-    '5.0.5',
-    '5.1.0',
-    'master',
-)
-
 
 def get_multi_tenant_versions_list():
-    return MULTI_TENANT_MANAGERS
+    return SUPPORTED_RELEASES
 
 
 def upgrade_agents(manager, logger, test_config):

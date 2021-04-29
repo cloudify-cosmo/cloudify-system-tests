@@ -1,34 +1,7 @@
 namespace: manager_image_names_centos
-"master":
-  description: Name of main manager image to test. This will be used in all manager tests.
+manager:
+  description: Template of name of manager image to test. The testing version will be filled in based on testing_version (config parameter) or supported manager versions in tests.
   default: cloudify-manager-premium-{testing_version}
-"installer":
-  description: Name of image with manager installer for bootstrap or cluster installs.
+installer:
+  description: Template of name of manager installer image (for bootstrap or cluster) to test. The testing version will be filled in based on testing_version (config parameter) or supported manager versions in tests.
   default: cfy-installer-premium-{testing_version}
-"5_2_0":
-  description: Name of manager image for 5.2.0. All non master images are only used for upgrade tests.
-  default: cloudify-manager-premium-5.2.0
-"5_2_0_installer":
-  description: Name of image with 5.2.0 manager installer for bootstrap or cluster installs.
-  default: cfy-installer-premium-5.2.0
-"5_1_2":
-  description: Name of manager image for 5.1.2. All non master images are only used for upgrade tests.
-  default: cloudify-manager-premium-5.1.2
-"5_1_2_installer":
-  description: Name of image with 5.1.2 manager installer for bootstrap or cluster installs.
-  default: cfy-installer-premium-5.1.2
-"5_1_1_installer":
-  description: Name of image with 5.1.1 manager installer for bootstrap or cluster installs.
-  default: cfy-installer-premium-5.1.1
-"5_1_1":
-  description: Name of manager image for 5.1.1. All non master images are only used for upgrade tests.
-  default: cloudify-manager-premium-5.1.1
-"5_1_0_installer":
-  description: Name of image with 5.1.0 manager installer for bootstrap or cluster installs.
-  default: cfy-installer-premium-5.1.0
-"5_1_0":
-  description: Name of manager image for 5.1.0. All non master images are only used for upgrade (snapshot) tests.
-  default: cloudify-manager-premium-5.1.0
-"5_0_5":
-  description: Name of manager image for 5.0.5. All non master images are only used for upgrade (snapshot) tests.
-  default: cloudify-manager-premium-5.0.5

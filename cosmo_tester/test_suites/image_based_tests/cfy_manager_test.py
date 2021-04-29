@@ -1,8 +1,9 @@
 import json
 import pytest
 
-from cosmo_tester.framework.test_hosts import Hosts, VM
+from cosmo_tester.framework.constants import SUPPORTED_RELEASES
 from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import (get_manager_install_version,
                                          substitute_testing_version,
                                          validate_cluster_status_and_agents)
@@ -40,7 +41,14 @@ with open('%s', 'w') as f:
 ''' % MQ_PASSWORDS_PATH
 
 
-@pytest.fixture(scope='function', params=['5.1.0', '5.1.1'])
+BASE_VERSIONS = [
+    version
+    for version in SUPPORTED_RELEASES
+    if version not in ('master', '5.0.5')
+]
+
+
+@pytest.fixture(scope='function', params=BASE_VERSIONS)
 def base_manager(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request)
     hosts.instances[0] = VM(request.param, test_config)
@@ -137,7 +145,7 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
     base_manager.run_command(
         'yum install -y {rpm}'.format(
             rpm=substitute_testing_version(
-                test_config['package_urls']['manager_instal_rpm_path'],
+                test_config['package_urls']['manager_install_rpm_path'],
                 test_config['testing_version'],
             ),
         ),
