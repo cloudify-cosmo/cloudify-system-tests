@@ -314,7 +314,7 @@ def load_config(logger, config_file=None, missing_config_fail=True,
             raw_config=raw_config,
             logger=logger,
         )
-    except SchemaError as err:
+    except SchemaError:
         raise
     except IOError as err:
         message = 'Could not find config or schema file: {config}'.format(
