@@ -4,6 +4,7 @@ import pytest
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import (get_manager_install_version,
+                                         substitute_testing_version,
                                          validate_cluster_status_and_agents)
 
 REMOTE_CERT_PATH = '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem'
@@ -133,13 +134,22 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
     validate_cluster_status_and_agents(base_manager, example.tenant, logger)
 
     logger.info('Installing new RPM')
-    base_manager.run_command('yum install -y {rpm}'.format(
-        rpm=test_config['upgrade']['upgrade_rpm_path']), use_sudo=True)
+    base_manager.run_command(
+        'yum install -y {rpm}'.format(
+            rpm=substitute_testing_version(
+                test_config['package_urls']['manager_instal_rpm_path'],
+                test_config['testing_version'],
+            ),
+        ),
+        use_sudo=True,
+    )
+
     logger.info('Upgrading manager')
     base_manager.run_command('cfy_manager upgrade -v')
 
-    assert get_manager_install_version(base_manager) == test_config[
-        'upgrade']['upgrade_version']
+    expected_version = test_config['testing_version'].split('-')[0]
+    assert get_manager_install_version(base_manager) == expected_version
+
     validate_cluster_status_and_agents(base_manager, example.tenant, logger)
     example.uninstall()
 
