@@ -742,7 +742,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 )
             self.image_name = image_names[image_name]
 
-        if username_key.startswith('rhel'):
+        if username_key.startswith('rhel') and not self.is_manager:
             self.username = (
                 self._test_config.platform['rhel_username_override']
                 or self._test_config['test_os_usernames'][username_key]
