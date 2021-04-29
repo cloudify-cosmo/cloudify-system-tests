@@ -718,3 +718,10 @@ def wait_for_blueprint_upload(client, blueprint_id):
     if 'state' in blueprint and blueprint['state'] != 'uploaded':
         raise RuntimeError('Blueprint with id {0} was not uploaded yet.'
                            .format(blueprint_id))
+
+
+def substitute_testing_version(original_string, testing_version):
+    return original_string.format(
+        testing_version=testing_version,
+        mangled_testing_version=testing_version.replace('-', '/')
+    )

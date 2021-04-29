@@ -739,7 +739,10 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self.username = (
                 self._test_config['test_os_usernames'][username_key]
             )
-        self.image_name = image_names[image_name]
+        self.image_name = util.substitute_testing_version(
+            image_names[image_name],
+            self._test_config['testing_version'],
+        )
 
 
 class Hosts(object):
