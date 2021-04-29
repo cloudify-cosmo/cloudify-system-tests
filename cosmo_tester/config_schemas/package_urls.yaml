@@ -9,3 +9,6 @@ premium:
   default: ../cloudify-premium
   validate_optional_dir: true
   nullable: true
+manager_install_rpm_path:
+  description: The manager-install RPM path to install.
+  default: 'https://repository.cloudifysource.org/cloudify/{mangled_testing_version}-release/cloudify-manager-install-{testing_version}.el7.x86_64.rpm'
