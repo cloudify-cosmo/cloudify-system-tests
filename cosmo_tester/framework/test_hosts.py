@@ -44,6 +44,7 @@ class VM(object):
         self.userdata = ""
         self.username = None
         self.password = None
+        self.api_ca_path = None
         self.enable_ssh_wait = True
         self.should_finalize = True
         self.restservice_expected = False
@@ -621,26 +622,25 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         password = password or test_mgr_conf['password']
         tenant = tenant or test_mgr_conf['tenant']
 
-        api_ca_path = None
         proto = 'http'
 
         if self.run_command(
             'test -f /etc/cloudify/ssl/cloudify_external_cert.pem',
             warn_only=True,
         ):
-            api_ca_path = self._tmpdir / self.server_id + '_api.crt'
+            self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
             proto = 'https'
-            if not os.path.exists(api_ca_path):
+            if not os.path.exists(self.api_ca_path):
                 self.get_remote_file(
                     '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
-                    api_ca_path,
+                    self.api_ca_path,
                 )
         return util.create_rest_client(
             self.ip_address,
             username=username,
             password=password,
             tenant=tenant,
-            cert=api_ca_path,
+            cert=self.api_ca_path,
             protocol=proto,
         )
 
