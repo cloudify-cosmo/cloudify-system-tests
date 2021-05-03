@@ -799,6 +799,8 @@ class Hosts(object):
             infra_mgr_config['address'],
             username='admin',
             password=infra_mgr_config['admin_password'],
+            cert=infra_mgr_config['ca_cert'],
+            protocol='https' if infra_mgr_config['ca_cert'] else 'http',
         )
 
         if flavor:
