@@ -4,3 +4,5 @@ admin_password:
   default: admin
 address:
   description: IP address or hostname of infrastructure manager.
+ca_cert:
+  description: The internal CA cert of the manager
