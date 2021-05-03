@@ -25,7 +25,7 @@ chardet==3.0.4
     # via requests
 https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip#egg=cloudify-common[dispatcher]
     # via -r requirements.in
-cryptography==3.4.7
+cryptography==3.3.2
     # via
     #   paramiko
     #   requests-ntlm
