@@ -34,9 +34,6 @@ rhel_8_image:
 rhel_7_image:
   description: Image to use for RHEL 7 on this platform.
   default: ami-020e14de09d1866b4
-rhel_6_image:
-  description: Image to use for RHEL 6 on this platform.
-  default: ami-0803077e5450a1a9e
 centos_8_image:
   description: Image to use for Centos 8 on this platform.
   default: ami-0a75a5a43b05b4d5f
