@@ -11,7 +11,6 @@ from cosmo_tester.test_suites.agent import get_test_prerequisites
     'ubuntu_16_04',
     'centos_8',
     'centos_7',
-    'rhel_6',
     'rhel_7',
     'rhel_8',
     'windows_2012',
