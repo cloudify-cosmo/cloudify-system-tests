@@ -1,7 +1,5 @@
 import time
 
-from cosmo_tester.framework.util import create_rest_client
-
 ROOT_DN = 'cn=root,dc=cloudify,dc=test'
 ROOT_PASSWORD = 'rootpass'
 
@@ -81,12 +79,9 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
             logger.info('Checking {user} on {mgr}'.format(
                 user=user, mgr=mgr_ip,
             ))
-            client = create_rest_client(
-                mgr_ip,
+            client = mgr.get_rest_client(
                 username=user,
                 password=details['password'],
-                protocol='https',
-                cert=mgr.local_ca,
             )
             client.manager.get_status()
             logger.info('Checking group membership')
