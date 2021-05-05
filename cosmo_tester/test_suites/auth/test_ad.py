@@ -4,7 +4,6 @@ from retrying import retry
 import pytest
 
 from cosmo_tester.framework.test_hosts import Hosts, VM
-from cosmo_tester.framework.util import create_rest_client
 
 BASE_DN = 'dc=cloudifyad,dc=test'
 
@@ -108,8 +107,7 @@ def test_ad_with_aio(windows_ldap_tester, logger):
         logger.info('Checking {user} on {mgr}'.format(
             user=user, mgr=mgr.ip_address,
         ))
-        client = create_rest_client(
-            mgr.ip_address,
+        client = mgr.get_rest_client(
             username=user,
             password=details['password'],
         )

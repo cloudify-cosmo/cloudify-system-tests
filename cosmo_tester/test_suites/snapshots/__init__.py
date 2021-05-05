@@ -10,7 +10,6 @@ from cloudify_rest_client.exceptions import UserUnauthorizedError
 from cosmo_tester.framework.constants import SUPPORTED_RELEASES
 from cosmo_tester.framework.util import (
     assert_snapshot_created,
-    create_rest_client,
     ExecutionFailed,
     list_executions,
     list_snapshots,
@@ -83,8 +82,7 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
 
 
 def change_rest_client_password(manager, new_password):
-    manager.client = create_rest_client(manager.ip_address,
-                                        password=new_password)
+    manager.client = manager.get_rest_client(password=new_password)
 
 
 def _retry_if_file_not_found(exception):
