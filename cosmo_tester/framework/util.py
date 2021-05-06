@@ -712,7 +712,7 @@ def get_manager_install_version(host):
     return version.stdout
 
 
-@retrying.retry(stop_max_attempt_number=60, wait_fixed=1000)
+@retrying.retry(stop_max_attempt_number=120, wait_fixed=1000)
 def wait_for_blueprint_upload(client, blueprint_id):
     blueprint = client.blueprints.get(blueprint_id)
     if 'state' in blueprint and blueprint['state'] != 'uploaded':
