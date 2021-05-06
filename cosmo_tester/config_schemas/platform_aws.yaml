@@ -30,13 +30,13 @@ ubuntu_16_04_image:
   default: ami-0a9aac550bc5711d3
 rhel_8_image:
   description: Image to use for RHEL 8 on this platform.
-  default: ami-04577df0184ebb493
+  default: ami-0eef1e8f62ac52d69
 rhel_7_image:
   description: Image to use for RHEL 7 on this platform.
   default: ami-020e14de09d1866b4
 centos_8_image:
   description: Image to use for Centos 8 on this platform.
-  default: ami-0a75a5a43b05b4d5f
+  default: ami-04f68775f1311a781
 centos_7_image:
   description: Image to use for Centos 7 on this platform.
   default: ami-04f5641b0d178a27a
