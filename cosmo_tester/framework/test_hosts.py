@@ -1027,7 +1027,10 @@ class Hosts(object):
                 )
             ),
             "infrastructure",
+            async_upload=True
         )
+        util.wait_for_blueprint_upload(self._infra_client, "infrastructure")
+
         self.blueprints.append('infrastructure')
         test_vm_suffixes = ['']
         if self.multi_net:
