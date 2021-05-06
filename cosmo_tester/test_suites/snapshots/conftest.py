@@ -23,10 +23,14 @@ def hosts(request, ssh_key, module_tmpdir, test_config, logger):
         if request.param in ['5.0.5', '5.1.0']:
             old_mgr = hosts.instances[0]
             old_mgr.wait_for_manager()
+            # This is inconsistent in places, so let's cope with pre-fixed...
             old_mgr.run_command('mv /etc/cloudify/ssl/rabbitmq{_,-}cert.pem',
-                                use_sudo=True)
+                                use_sudo=True, warn_only=True)
             old_mgr.run_command('mv /etc/cloudify/ssl/rabbitmq{_,-}key.pem',
-                                use_sudo=True)
+                                use_sudo=True, warn_only=True)
+            # ...and then validate that the fix is in.
+            old_mgr.run_command('test -f /etc/cloudify/ssl/rabbitmq-cert.pem')
+            old_mgr.run_command('test -f /etc/cloudify/ssl/rabbitmq-key.pem')
             old_mgr.run_command(
                 'chown rabbitmq. /etc/cloudify/ssl/rabbitmq-*', use_sudo=True)
             old_mgr.run_command('systemctl restart cloudify-rabbitmq',
