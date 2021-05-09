@@ -23,7 +23,7 @@ cffi==1.14.0
     #   pynacl
 chardet==3.0.4
     # via requests
-https://github.com/cloudify-cosmo/cloudify-common/archive/6.0.0-build.zip#egg=cloudify-common[dispatcher]
+https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip#egg=cloudify-common[dispatcher]
     # via -r requirements.in
 cryptography==3.4.7
     # via
