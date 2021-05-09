@@ -81,8 +81,9 @@ def upload_snapshot(manager, local_path, snapshot_id, logger):
                 json.dumps(snapshot, indent=2))
 
 
-def change_rest_client_password(manager, new_password):
-    manager.client = manager.get_rest_client(password=new_password)
+def change_rest_client_password(manager, new_password, proto=None):
+    manager.client = manager.get_rest_client(password=new_password,
+                                             proto=proto)
 
 
 def _retry_if_file_not_found(exception):
@@ -148,12 +149,12 @@ def change_salt_on_new_manager(manager, logger):
     change_salt(manager, 'this_is_a_test_salt', logger)
 
 
-def prepare_credentials_tests(manager, logger):
+def prepare_credentials_tests(manager, logger, proto=None):
     logger.info('Creating test user')
     create_user('testuser', 'testpass', manager)
     logger.info('Updating admin password')
     manager.client.users.set_password('admin', CHANGED_ADMIN_PASSWORD)
-    change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+    change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD, proto)
 
 
 def update_credentials(manager, logger):

@@ -122,7 +122,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     }
 
     change_salt_on_new_manager(new_manager, logger)
-    prepare_credentials_tests(old_manager, logger)
+    prepare_credentials_tests(old_manager, logger, proto='http')
 
     create_snapshot(old_manager, SNAPSHOT_ID, logger)
     download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)

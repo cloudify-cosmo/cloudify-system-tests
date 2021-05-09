@@ -616,25 +616,27 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             )
 
     @only_manager
-    def get_rest_client(self, username=None, password=None, tenant=None):
+    def get_rest_client(self, username=None, password=None, tenant=None,
+                        proto=None):
         test_mgr_conf = self._test_config['test_manager']
         username = username or test_mgr_conf['username']
         password = password or test_mgr_conf['password']
         tenant = tenant or test_mgr_conf['tenant']
 
-        proto = 'http'
+        if not proto:
+            proto = 'http'
 
-        if self.run_command(
-            'test -f /etc/cloudify/ssl/cloudify_external_cert.pem',
-            warn_only=True,
-        ):
-            self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
-            proto = 'https'
-            if not os.path.exists(self.api_ca_path):
-                self.get_remote_file(
-                    '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
-                    self.api_ca_path,
-                )
+            if self.run_command(
+                'test -f /etc/cloudify/ssl/cloudify_external_cert.pem',
+                warn_only=True,
+            ):
+                self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
+                proto = 'https'
+                if not os.path.exists(self.api_ca_path):
+                    self.get_remote_file(
+                        '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
+                        self.api_ca_path,
+                    )
         return util.create_rest_client(
             self.ip_address,
             username=username,
