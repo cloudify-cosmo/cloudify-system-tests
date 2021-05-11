@@ -17,6 +17,7 @@ import yaml
 from fabric import Connection
 from ipaddress import ip_address, ip_network
 from paramiko.ssh_exception import NoValidConnectionsError, SSHException
+import requests
 import retrying
 import textwrap
 import winrm
@@ -623,11 +624,11 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         tenant = tenant or test_mgr_conf['tenant']
 
         proto = 'http'
-
-        if self.run_command(
-            'test -f /etc/cloudify/ssl/cloudify_external_cert.pem',
-            warn_only=True,
-        ):
+        ssl_check = requests.get(
+            'http://{}/api/v3.1/status'.format(self.ip_address))
+        self._logger.info('Rest client generation SSL check response: %s',
+                          ssl_check.text)
+        if 'SSL_REQUIRED' in ssl_check.text:
             self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
             proto = 'https'
             if not os.path.exists(self.api_ca_path):
