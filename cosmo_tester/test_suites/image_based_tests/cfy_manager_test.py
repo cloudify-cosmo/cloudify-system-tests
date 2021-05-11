@@ -40,7 +40,7 @@ with open('%s', 'w') as f:
 
 
 @pytest.fixture(scope='function', params=['5.1.0', '5.1.1', '5.1.2', '5.1.3',
-                                          '5.1.4', '5.2.0'])
+                                          '5.1.4', '5.2.0', '5.2.1'])
 def base_manager(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request)
     hosts.instances[0] = get_image(request.param, test_config)
