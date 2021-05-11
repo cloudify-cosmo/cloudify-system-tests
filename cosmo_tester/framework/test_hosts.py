@@ -703,7 +703,7 @@ class _CloudifyManager(VM):
 def get_image(version, test_config):
     supported = [
         '4.3.3', '4.4', '4.5', '4.5.5', '4.6', '5.0.5', '5.1.0', '5.1.1',
-        '5.1.2', '5.1.3', '5.1.4', '5.2.0', 'master', 'centos',
+        '5.1.2', '5.1.3', '5.1.4', '5.2.0', '5.2.1', 'master', 'centos',
     ]
     if version not in supported:
         raise ValueError(
