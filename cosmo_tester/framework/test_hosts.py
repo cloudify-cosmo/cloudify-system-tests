@@ -49,6 +49,7 @@ class VM(object):
         self.enable_ssh_wait = True
         self.should_finalize = True
         self.restservice_expected = False
+        self.client = None
         self._test_config = test_config
         self.windows = 'windows' in image_type
         self._tmpdir_base = None
@@ -64,7 +65,6 @@ class VM(object):
             public_ip_address,
             private_ip_address,
             networks,
-            rest_client,
             ssh_key,
             logger,
             tmpdir,
@@ -75,7 +75,6 @@ class VM(object):
     ):
         self.ip_address = public_ip_address
         self.private_ip_address = private_ip_address
-        self.client = rest_client
         self._ssh_key = ssh_key
         self._logger = logger
         self._tmpdir_base = tmpdir
@@ -269,6 +268,10 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         self._logger.info('Finalizing server preparations.')
         self.wait_for_ssh()
         if self.restservice_expected:
+            # When creating the rest client here we can't check for SSL yet,
+            # because the manager probably isn't up yet. Therefore, we'll just
+            # make the client.
+            self.client = self.get_rest_client(check_for_ssl=False)
             self._logger.info('Checking rest service.')
             self.wait_for_manager()
             self._logger.info('Applying license.')
@@ -417,6 +420,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def teardown(self):
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('cfy_manager remove --force')
+        if self.api_ca_path and os.path.exists(self.api_ca_path):
+            os.unlink(self.api_ca_path)
 
     @only_manager
     def _create_config_file(self, upload_license=True):
@@ -617,25 +622,27 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             )
 
     @only_manager
-    def get_rest_client(self, username=None, password=None, tenant=None):
+    def get_rest_client(self, username=None, password=None, tenant=None,
+                        check_for_ssl=True):
         test_mgr_conf = self._test_config['test_manager']
         username = username or test_mgr_conf['username']
         password = password or test_mgr_conf['password']
         tenant = tenant or test_mgr_conf['tenant']
 
         proto = 'http'
-        ssl_check = requests.get(
-            'http://{}/api/v3.1/status'.format(self.ip_address))
-        self._logger.info('Rest client generation SSL check response: %s',
-                          ssl_check.text)
-        if 'SSL_REQUIRED' in ssl_check.text:
-            self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
-            proto = 'https'
-            if not os.path.exists(self.api_ca_path):
-                self.get_remote_file(
-                    '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
-                    self.api_ca_path,
-                )
+        if check_for_ssl:
+            ssl_check = requests.get(
+                'http://{}/api/v3.1/status'.format(self.ip_address))
+            self._logger.info('Rest client generation SSL check response: %s',
+                              ssl_check.text)
+            if 'SSL_REQUIRED' in ssl_check.text:
+                self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
+                proto = 'https'
+                if not os.path.exists(self.api_ca_path):
+                    self.get_remote_file(
+                        '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
+                        self.api_ca_path,
+                    )
         return util.create_rest_client(
             self.ip_address,
             username=username,
@@ -1265,21 +1272,10 @@ class Hosts(object):
                         networks[net_name] = str(ip)
                         break
 
-        if instance.is_manager:
-            test_mgr_conf = self._test_config['test_manager']
-            rest_client = util.create_rest_client(
-                public_ip_address,
-                username=test_mgr_conf['username'],
-                password=test_mgr_conf['password'],
-                tenant=test_mgr_conf['tenant'],
-            )
-        else:
-            rest_client = None
         instance.assign(
             public_ip_address,
             private_ip_address,
             networks,
-            rest_client,
             self._ssh_key,
             self._logger,
             self._tmpdir,
