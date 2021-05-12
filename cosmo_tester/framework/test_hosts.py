@@ -722,7 +722,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self.image_name = util.substitute_testing_version(
                 image_template,
                 manager_version,
-            )
+            ).replace('-ga', '')
         else:
             username_key = self.image_type
 
