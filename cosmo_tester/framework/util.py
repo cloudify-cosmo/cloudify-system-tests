@@ -595,7 +595,7 @@ def delete_deployment(client, deployment_id, logger):
     # Allow a short delay to allow some time for the deletion
     time.sleep(0.5)
 
-    for _ in range(20):
+    for _ in range(40):
         found = False
         deployments = client.deployments.list()
         for deployment in deployments:
