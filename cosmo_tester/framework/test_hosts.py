@@ -271,7 +271,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             # When creating the rest client here we can't check for SSL yet,
             # because the manager probably isn't up yet. Therefore, we'll just
             # make the client.
-            self.client = self.get_rest_client(check_for_ssl=False)
+            self.client = self.get_rest_client(proto='http')
             self._logger.info('Checking rest service.')
             self.wait_for_manager()
             self._logger.info('Applying license.')
@@ -623,14 +623,14 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
 
     @only_manager
     def get_rest_client(self, username=None, password=None, tenant=None,
-                        check_for_ssl=True):
+                        proto='auto'):
         test_mgr_conf = self._test_config['test_manager']
         username = username or test_mgr_conf['username']
         password = password or test_mgr_conf['password']
         tenant = tenant or test_mgr_conf['tenant']
 
-        proto = 'http'
-        if check_for_ssl:
+        if proto == 'auto':
+            proto = 'http'
             ssl_check = requests.get(
                 'http://{}/api/v3.1/status'.format(self.ip_address))
             self._logger.info('Rest client generation SSL check response: %s',
