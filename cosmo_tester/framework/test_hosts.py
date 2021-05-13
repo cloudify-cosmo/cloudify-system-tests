@@ -420,6 +420,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def teardown(self):
         with self.ssh() as fabric_ssh:
             fabric_ssh.run('cfy_manager remove --force')
+            fabric_ssh.sudo('rm -rf /etc/cloudify/ssl')
         if self.api_ca_path and os.path.exists(self.api_ca_path):
             os.unlink(self.api_ca_path)
 
