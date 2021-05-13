@@ -44,7 +44,7 @@ def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
-                     cert_path=mgr2.local_ca)
+                     cert_path=mgr2.api_ca_path)
 
     check_managers(mgr1, mgr2, example)
 
@@ -64,7 +64,7 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
-                     cert_path=mgr2.local_ca)
+                     cert_path=mgr2.api_ca_path)
 
     check_managers(mgr1, mgr2, example)
 
@@ -96,7 +96,7 @@ def test_cluster_single_db(cluster_with_single_db, logger, ssh_key,
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
-                     cert_path=mgr2.local_ca)
+                     cert_path=mgr2.api_ca_path)
 
     check_managers(mgr1, mgr2, example)
 
@@ -170,7 +170,6 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                                ssh_key, test_config):
     broker, db, mgr1, mgr2, mgr3, lb = cluster_with_lb
 
-    lb.client._client.cert = lb.local_ca
     lb.wait_for_manager()
 
     example = get_example_deployment(mgr1, ssh_key, logger,

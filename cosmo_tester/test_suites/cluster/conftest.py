@@ -350,7 +350,7 @@ def _base_prep(node, tempdir):
     node.remote_cert = remote_cert
     node.local_key = node_key
     node.remote_key = remote_key
-    node.local_ca = ca_cert
+    node.api_ca_path = ca_cert
     node.remote_ca = remote_ca
 
 
@@ -619,6 +619,9 @@ def _bootstrap_lb_node(node, managers, tempdir, logger):
 
     node.run_command('sudo systemctl enable haproxy')
     node.run_command('sudo systemctl restart haproxy')
+
+    node.is_manager = True
+    node.client = node.get_rest_client(proto='https')
 
 
 def _add_monitoring_config(node, manager=False):
