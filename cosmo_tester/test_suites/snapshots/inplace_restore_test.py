@@ -38,7 +38,7 @@ def example(manager_and_vm, ssh_key, tmpdir, logger, test_config):
     manager, vm = manager_and_vm
 
     example = get_example_deployment(
-        manager, ssh_key, logger, 'inplace_upgrade', test_config, vm)
+        manager, ssh_key, logger, 'inplace_restore', test_config, vm)
 
     try:
         yield example
@@ -47,13 +47,13 @@ def example(manager_and_vm, ssh_key, tmpdir, logger, test_config):
             example.uninstall()
 
 
-def test_inplace_upgrade(manager_and_vm,
+def test_inplace_restore(manager_and_vm,
                          example,
                          module_tmpdir,
                          logger):
     manager, vm = manager_and_vm
 
-    snapshot_name = 'inplace_upgrade_snapshot_{0}'.format(manager.image_type)
+    snapshot_name = 'inplace_restore_snapshot_{0}'.format(manager.image_type)
     snapshot_path = join(str(module_tmpdir), snapshot_name) + '.zip'
 
     example.upload_and_verify_install()
