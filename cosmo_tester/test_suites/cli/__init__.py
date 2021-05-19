@@ -3,6 +3,8 @@ import time
 import hashlib
 import tarfile
 
+from cosmo_tester.framework.util import get_cli_package_url
+
 
 def _prepare(run, example, paths, logger):
     logger.info('Using manager')
@@ -160,3 +162,34 @@ def _test_teardown(run, example, paths, logger):
         run('{cfy} blueprints list --json'.format(**paths)).stdout
     )
     assert len(blueprints) == 0
+
+
+def get_linux_image_settings():
+    return [
+        ('centos_7', 'rhel_centos_cli_package_url', 'rpm'),
+        ('rhel_7', 'rhel_centos_cli_package_url', 'rpm'),
+    ]
+
+
+def _install_linux_cli(cli_host, logger, url_key, pkg_type, test_config):
+    logger.info('Downloading CLI package')
+    cli_package_url = get_cli_package_url(url_key, test_config)
+    logger.info('Using CLI package: {url}'.format(
+        url=cli_package_url,
+    ))
+    cli_host.run_command('curl -Lo cloudify-cli.{pkg_type} {url}'.format(
+        url=cli_package_url, pkg_type=pkg_type,
+    ))
+
+    logger.info('Installing CLI package')
+    install_cmd = {
+        'rpm': 'yum install -y',
+        'deb': 'dpkg -i',
+    }[pkg_type]
+    cli_host.run_command(
+        '{install_cmd} cloudify-cli.{pkg_type}'.format(
+            install_cmd=install_cmd,
+            pkg_type=pkg_type,
+        ),
+        use_sudo=True,
+    )
