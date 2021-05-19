@@ -1,12 +1,19 @@
 import json
+from os.path import join
 import pkg_resources
 
 from retrying import retry
 import yaml
 
-from cosmo_tester.framework.util import get_resource_path
+from cosmo_tester.framework.constants import SUPPORTED_RELEASES
+from cosmo_tester.framework import util
 
 
+BASE_VERSIONS = [
+    version + '-ga'
+    for version in SUPPORTED_RELEASES
+    if version not in ('master', '5.0.5')
+]
 CLUSTER_MANAGER_RESOURCES_PATH = pkg_resources.resource_filename(
     'cosmo_tester', 'test_suites/cluster/cfy_cluster_manager_resources')
 REMOTE_CLUSTER_CONFIG_PATH = '/tmp/cfy_cluster_config.yaml'
@@ -58,7 +65,7 @@ def _install_cluster(node, config_dict, test_config, ssh_key, logger,
                              local_path=ssh_key.private_key_path)
 
         node.put_remote_file(remote_path=REMOTE_LICENSE_PATH,
-                             local_path=get_resource_path(
+                             local_path=util.get_resource_path(
                                  'test_valid_paying_license.yaml'))
 
         node.run_command('yum install -y {0}'.format(
@@ -72,3 +79,79 @@ def _install_cluster(node, config_dict, test_config, ssh_key, logger,
 
     logger.info('Verifying the cluster status')
     _verify_cluster_status(node)
+
+
+def _set_rpm_path(cluster_config_dict, test_config, base_version):
+    cluster_config_dict['manager_rpm_path'] = util.substitute_testing_version(
+        test_config['package_urls']['manager_install_rpm_path'],
+        base_version,
+    )
+
+
+def _upgrade_cluster(nodes_list, manager, test_config, logger):
+    logger.info('Upgrading cluster')
+    rpm_url = test_config['package_urls']['manager_install_rpm_path']
+    manager.run_command(
+        'cfy_cluster_manager upgrade -v --config-path {cfg} --upgrade-rpm '
+        '{rpm}'.format(
+            cfg=REMOTE_CLUSTER_CONFIG_PATH,
+            rpm=util.substitute_testing_version(
+                rpm_url,
+                test_config['testing_version']),
+        )
+    )
+
+    logger.info('Validating nodes upgraded')
+    assert_manager_install_version_on_nodes(
+        nodes_list,
+        test_config['testing_version'].split('-')[0],
+    )
+    logger.info('Verifying the cluster status')
+    _verify_cluster_status(manager)
+
+
+def assert_manager_install_version_on_nodes(nodes_list, version):
+    for node in nodes_list:
+        assert util.get_manager_install_version(node) == version
+
+
+def _cluster_upgrade_test(test_config, base_version, nodes,
+                          ssh_key, logger):
+    """Tests upgrade via cfy_cluster_manager upgrade.."""
+    nodes_list = [node for node in nodes]
+    # Get the first node, or the first manager node (for a nine node)
+    manager = nodes_list[-3]
+    node_count = len(nodes_list)
+
+    config_dict = _get_config_dict('{}_nodes_config.yaml', test_config)
+
+    _set_rpm_path(config_dict, test_config, base_version)
+
+    if node_count == 9:
+        _update_nine_nodes_config_dict_vms(config_dict, nodes_list)
+    else:
+        _update_three_nodes_config_dict_vms(config_dict, nodes_list)
+
+    _install_cluster(manager, config_dict, test_config, ssh_key,
+                     logger)
+
+    _upgrade_cluster(nodes_list, manager, test_config, logger)
+
+
+def _get_config_dict(config_file_name, test_config):
+    config_path = join(CLUSTER_MANAGER_RESOURCES_PATH, config_file_name)
+    with open(config_path) as config_file:
+        config_dict = yaml.safe_load(config_file)
+
+    basic_config_dict = {
+        'ssh_key_path': REMOTE_SSH_KEY_PATH,
+        'ssh_user': 'centos',
+        'cloudify_license_path': REMOTE_LICENSE_PATH,
+        'manager_rpm_path': util.substitute_testing_version(
+            test_config['package_urls']['manager_install_rpm_path'],
+            test_config['testing_version'],
+        ),
+    }
+
+    config_dict.update(basic_config_dict)
+    return config_dict
