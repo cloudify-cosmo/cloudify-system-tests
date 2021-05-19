@@ -556,6 +556,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         key_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.key'
         cert_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.crt'
         ca_cert_path = '~/.cloudify-test-ca/ca.crt'
+        ca_key_path = '~/.cloudify-test-ca/ca.key'
 
         with self.ssh() as ssh:
             self._logger.info('Generating certificates including public IP')
@@ -573,16 +574,21 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 cert_dest = new_cert_path.format('_'.join([purpose, 'cert']))
                 key_dest = new_cert_path.format('_'.join([purpose, 'key']))
                 ca_dest = new_cert_path.format('_'.join([purpose, 'ca_cert']))
+                ca_key_dest = new_cert_path.format('_'.join([purpose,
+                                                            'ca_key']))
                 if purpose == 'internal':
                     ca_dest = new_cert_path.format('ca_cert')
                 for src, dest in [
                     (cert_path, cert_dest),
                     (key_path, key_dest),
                     (ca_cert_path, ca_dest),
+                    (ca_key_path, ca_key_dest),
                 ]:
                     ssh.run('sudo cp {src} {dest}'.format(src=src, dest=dest))
             self._logger.info('Replacing certificates')
             ssh.run('cfy_manager certificates replace')
+            ssh.run('sudo cp {} /etc/cloudify/ssl/'
+                    'cloudify_internal_ca_key.pem'.format(ca_key_dest))
 
     @only_manager
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=5000)
