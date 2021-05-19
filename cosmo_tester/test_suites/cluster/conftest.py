@@ -5,16 +5,9 @@ import time
 from jinja2 import Environment, FileSystemLoader
 from os.path import join, dirname
 import pytest
-import yaml
 
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework import util
-
-from .cfy_cluster_manager_shared import (
-    CLUSTER_MANAGER_RESOURCES_PATH,
-    REMOTE_LICENSE_PATH,
-    REMOTE_SSH_KEY_PATH,
-)
 
 CONFIG_DIR = join(dirname(__file__), 'config')
 
@@ -650,32 +643,3 @@ def _add_monitoring_config(node, manager=False):
                 'password': monitoring_pass,
             }
             config[section_name] = section
-
-
-@pytest.fixture()
-def three_nodes_config_dict(test_config):
-    return _get_config_dict('three_nodes_config.yaml', test_config)
-
-
-@pytest.fixture()
-def nine_nodes_config_dict(test_config):
-    return _get_config_dict('nine_nodes_config.yaml', test_config)
-
-
-def _get_config_dict(config_file_name, test_config):
-    config_path = join(CLUSTER_MANAGER_RESOURCES_PATH, config_file_name)
-    with open(config_path) as config_file:
-        config_dict = yaml.safe_load(config_file)
-
-    basic_config_dict = {
-        'ssh_key_path': REMOTE_SSH_KEY_PATH,
-        'ssh_user': 'centos',
-        'cloudify_license_path': REMOTE_LICENSE_PATH,
-        'manager_rpm_path': util.substitute_testing_version(
-            test_config['package_urls']['manager_install_rpm_path'],
-            test_config['testing_version'],
-        ),
-    }
-
-    config_dict.update(basic_config_dict)
-    return config_dict
