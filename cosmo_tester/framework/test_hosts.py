@@ -169,7 +169,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self.run_windows_command('Write-Output "Testing winrm."',
                                      powershell=True)
         except Exception as err:
-            self._logger.warn('...failed: {err}'.format(err=err))
+            self._logger.warning('...failed: {err}'.format(err=err))
             raise
         self._logger.info('...Windows VM is up.')
 
