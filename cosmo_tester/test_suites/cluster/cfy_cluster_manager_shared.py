@@ -123,7 +123,8 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     manager = nodes_list[-3]
     node_count = len(nodes_list)
 
-    config_dict = _get_config_dict('{}_nodes_config.yaml', test_config)
+    config_dict = _get_config_dict('{}_nodes_config.yaml'.format(node_count),
+                                   test_config)
 
     _set_rpm_path(config_dict, test_config, base_version)
 
