@@ -218,8 +218,8 @@ def run(command, retries=0, stdin=b'', ignore_failures=False,
     if proc.returncode != 0:
         command_str = ' '.join(command)
         if retries:
-            logger.warn('Failed running command: {0}. Retrying. '
-                        '({1} left)'.format(command_str, retries))
+            logger.warning('Failed running command: {0}. Retrying. '
+                           '({1} left)'.format(command_str, retries))
             proc = run(command, retries - 1)
         elif not ignore_failures:
             msg = 'Failed running command: {0} ({1}).'.format(
@@ -429,7 +429,7 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=10*60,
                 raise
             except CloudifyClientError as err:
                 if allow_client_error:
-                    logger.warn(
+                    logger.warning(
                         'Error trying to get execution state, retrying: %s',
                         err
                     )
@@ -497,8 +497,8 @@ def output_events(client, execution, logger, from_time=None, to_time=None):
     log_methods = {
         'debug': logger.debug,
         'info': logger.info,
-        'warn': logger.warn,
-        'warning': logger.warn,
+        'warn': logger.warning,
+        'warning': logger.warning,
         'error': logger.error,
     }
     for event in events:
@@ -508,8 +508,8 @@ def output_events(client, execution, logger, from_time=None, to_time=None):
             level = event.get('level')
 
         if level not in log_methods:
-            logger.warn('Unknown event level %s.', level)
-            logger.warn('Event was: %s', event)
+            logger.warning('Unknown event level %s.', level)
+            logger.warning('Event was: %s', event)
         else:
             message = event.get('message', '<MESSSAGE NOT FOUND>')
             node_instance = event.get('node_instance_id')
@@ -537,8 +537,8 @@ def list_executions(manager, logger):
         logger.info('%(id)s (%(workflow_id)s) - %(status_display)s',
                     execution)
         if execution.get('error'):
-            logger.warn('Execution %(id)s had error: %(error)s',
-                        execution)
+            logger.warning('Execution %(id)s had error: %(error)s',
+                           execution)
 
 
 def list_capabilities(manager, deployment_id, logger):

@@ -236,7 +236,7 @@ class Config(NameSpace):
                         )
                         config_valid = False
             else:
-                self._logger.warn(
+                self._logger.warning(
                     '{key} is in config, but not defined in the schema. '
                     'This key will not be usable until correctly defined '
                     'in the schema.'.format(key=display_key)
@@ -324,7 +324,7 @@ def load_config(logger, config_file=None, missing_config_fail=True,
             logger.error(message)
             raise
         else:
-            logger.warn(message)
+            logger.warning(message)
 
     if validate and not config.check_config_is_valid():
         logger.error(
