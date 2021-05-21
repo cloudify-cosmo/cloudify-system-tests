@@ -581,7 +581,7 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                    upload_license=upload_license, config_name='manager')
 
     # Correctly configure the rest client for the node
-    node.client = node.get_rest_client()
+    node.client = node.get_rest_client(proto='https')
 
 
 def _bootstrap_lb_node(node, managers, tempdir, logger):
