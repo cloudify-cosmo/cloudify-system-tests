@@ -217,7 +217,7 @@ Import-Module ADDSDeployment
 
 Write-Host "## Setting password for Admin user..."
 $name = hostname
-([adsi]"WinNT://$name/{username}").SetPassword("AbCdEfG123456!")
+([adsi]"WinNT://$name/{username}").SetPassword("{password}")
 
 Write-Host "## Installing AD forest"
 $secure_string_pwd = convertto-securestring "P@ssW0rD!" -asplaintext -force
@@ -231,8 +231,8 @@ winrm set winrm/config/service      '@{{AllowUnencrypted="true"}}'
 winrm set winrm/config/service/auth '@{{Basic="true"}}'
 {fw_cmd} name="WinRM 5985" protocol=TCP dir=in localport=5985 action=allow
 {fw_cmd} name="WinRM 5986" protocol=TCP dir=in localport=5986 action=allow
-Restart-Computer
-</powershell>'''.format(username=username, fw_cmd=add_firewall_cmd)  # noqa
+Restart-Computer'''.format(username=username, fw_cmd=add_firewall_cmd,
+                           password=ldap_hosts.instances[1].password)  # noqa
 
     passed = True
 
