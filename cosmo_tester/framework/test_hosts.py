@@ -598,6 +598,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     @only_manager
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=5000)
     def wait_for_manager(self):
+        self._logger.info('Checking for starter service')
         with self.ssh() as fabric_ssh:
             # If we don't wait for this then tests get a bit racier
             fabric_ssh.run(
@@ -608,6 +609,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 "systemctl status cfy-starter 2>&1"
                 "| grep -E '(status=0/SUCCESS)|(could not be found)'")
 
+        self._logger.info('Checking manager status')
         try:
             manager_status = self.client.manager.get_status()
         except Exception as err:
@@ -631,6 +633,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                     )
                 )
             )
+        self._logger.info('Manager on %s is up', self.ip_address)
 
     @only_manager
     def get_rest_client(self, username=None, password=None, tenant=None,
