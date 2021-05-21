@@ -231,8 +231,8 @@ winrm set winrm/config/service      '@{{AllowUnencrypted="true"}}'
 winrm set winrm/config/service/auth '@{{Basic="true"}}'
 {fw_cmd} name="WinRM 5985" protocol=TCP dir=in localport=5985 action=allow
 {fw_cmd} name="WinRM 5986" protocol=TCP dir=in localport=5986 action=allow
-Restart-Computer'''.format(username=username, fw_cmd=add_firewall_cmd,
-                           password=ldap_hosts.instances[1].password)  # noqa
+Restart-Computer'''.format(username=username, fw_cmd=add_firewall_cmd,  # noqa
+                           password=ldap_hosts.instances[1].password)
 
     passed = True
 
@@ -256,5 +256,5 @@ Restart-Computer'''.format(username=username, fw_cmd=add_firewall_cmd,
 def _wait_for_ad(host, logger):
     logger.info('Checking that AD is installed...')
     res = host.run_windows_command('Get-ADForest', powershell=True)
-    assert 'cloudifyad.test' in res.stdout
+    assert 'cloudifyad.test' in res.stdout.decode('utf-8')
     logger.info('...AD is installed.')
