@@ -450,6 +450,11 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         install_config = self._create_config_file(
             upload_license and self._test_config['premium'])
         with self.ssh() as fabric_ssh:
+            # If we leave this lying around on a compact cluster, we think we
+            # finished bootstrapping every component after the first as soon
+            # as we check it, because the first component did finish.
+            fabric_ssh.run('rm -f /tmp/bootstrap_complete')
+
             fabric_ssh.run('mkdir -p /tmp/bs_logs')
             self.put_remote_file(
                 '/tmp/cloudify.conf',
