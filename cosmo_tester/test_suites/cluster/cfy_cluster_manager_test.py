@@ -9,6 +9,7 @@ from cosmo_tester.framework.util import (generate_ca_cert,
                                          generate_ssl_certificate)
 from .cfy_cluster_manager_shared import (
     CLUSTER_MANAGER_RESOURCES_PATH,
+    _get_config_dict,
     _install_cluster,
     REMOTE_LICENSE_PATH,
     _update_nine_nodes_config_dict_vms,
@@ -33,10 +34,10 @@ def local_config_files(tmp_path):
     return dir_path
 
 
-def test_create_three_nodes_cluster(three_vms, three_nodes_config_dict,
-                                    test_config, ssh_key, logger):
+def test_create_three_nodes_cluster(three_vms, test_config, ssh_key, logger):
     """Tests that a three nodes cluster is successfully created."""
     node1, node2, node3 = three_vms
+    three_nodes_config_dict = _get_config_dict(3, test_config)
     _update_three_nodes_config_dict_vms(three_nodes_config_dict,
                                         [node1, node2, node3])
 
@@ -44,10 +45,10 @@ def test_create_three_nodes_cluster(three_vms, three_nodes_config_dict,
                      logger)
 
 
-def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
-                                   test_config, ssh_key, logger):
+def test_create_nine_nodes_cluster(nine_vms, test_config, ssh_key, logger):
     """Tests that a nine nodes cluster is successfully created."""
     nodes_list = [node for node in nine_vms]
+    nine_nodes_config_dict = _get_config_dict(9, test_config)
     _update_nine_nodes_config_dict_vms(nine_nodes_config_dict, nodes_list)
 
     _install_cluster(nodes_list[6], nine_nodes_config_dict, test_config,
@@ -55,8 +56,7 @@ def test_create_nine_nodes_cluster(nine_vms, nine_nodes_config_dict,
 
 
 def test_three_nodes_cluster_using_provided_certificates(
-        three_vms, three_nodes_config_dict, test_config,
-        ssh_key, local_certs_path, logger):
+        three_vms, test_config, ssh_key, local_certs_path, logger):
     """Tests that the provided certificates are being used in the cluster."""
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
@@ -70,6 +70,7 @@ def test_three_nodes_cluster_using_provided_certificates(
                               remote_path=join(REMOTE_CERTS_PATH, cert.name))
 
     logger.info('Preparing cluster install configuration file')
+    three_nodes_config_dict = _get_config_dict(3, test_config)
     _update_three_nodes_config_dict_vms(three_nodes_config_dict, nodes_list)
     three_nodes_config_dict['ca_cert_path'] = join(REMOTE_CERTS_PATH, 'ca.pem')
     for i, node in enumerate(nodes_list, start=1):
@@ -103,11 +104,12 @@ def test_three_nodes_cluster_using_provided_certificates(
 
 
 def test_three_nodes_using_provided_config_files(
-        three_vms, three_nodes_config_dict, test_config,
-        ssh_key, local_certs_path, local_config_files, logger):
+        three_vms, test_config, ssh_key, local_certs_path,
+        local_config_files, logger):
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
 
+    three_nodes_config_dict = _get_config_dict(3, test_config)
     _install_cluster_using_provided_config_files(
         nodes_list, three_nodes_config_dict, test_config,
         ssh_key, local_certs_path, local_config_files, logger)
@@ -137,8 +139,8 @@ def test_three_nodes_using_provided_config_files(
 
 
 def test_three_nodes_cluster_override(
-        three_vms, three_nodes_config_dict, test_config,
-        ssh_key, local_certs_path, local_config_files, logger):
+        three_vms, test_config, ssh_key, local_certs_path,
+        local_config_files, logger):
     """Tests the override install Mechanism.
 
     The test goes as follows:
@@ -151,6 +153,7 @@ def test_three_nodes_cluster_override(
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
 
+    three_nodes_config_dict = _get_config_dict(3, test_config)
     first_config_dict = copy.deepcopy(three_nodes_config_dict)
     try:
         _install_cluster_using_provided_config_files(
@@ -166,9 +169,10 @@ def test_three_nodes_cluster_override(
 
 
 def test_three_nodes_cluster_offline(
-        three_vms, three_nodes_config_dict, test_config, ssh_key, logger):
+        three_vms, test_config, ssh_key, logger):
     """Tests the cluster install in offline environment."""
     node1, node2, node3 = three_vms
+    three_nodes_config_dict = _get_config_dict(3, test_config)
     local_rpm_path = '/tmp/manager_install_rpm_path.rpm'
     node1.run_command('curl -o {0} {1}'.format(
         local_rpm_path, three_nodes_config_dict['manager_rpm_path']))

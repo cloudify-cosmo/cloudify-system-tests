@@ -123,8 +123,7 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     manager = nodes_list[-3]
     node_count = len(nodes_list)
 
-    config_dict = _get_config_dict('{}_nodes_config.yaml'.format(node_count),
-                                   test_config)
+    config_dict = _get_config_dict(node_count, test_config)
 
     _set_rpm_path(config_dict, test_config, base_version)
 
@@ -139,7 +138,8 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     _upgrade_cluster(nodes_list, manager, test_config, logger)
 
 
-def _get_config_dict(config_file_name, test_config):
+def _get_config_dict(node_count, test_config):
+    config_file_name = '{}_nodes_config.yaml'.format(node_count)
     config_path = join(CLUSTER_MANAGER_RESOURCES_PATH, config_file_name)
     with open(config_path) as config_file:
         config_dict = yaml.safe_load(config_file)
