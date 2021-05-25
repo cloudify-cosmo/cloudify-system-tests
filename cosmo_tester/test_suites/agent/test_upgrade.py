@@ -93,7 +93,7 @@ def _assert_agent_not_running(manager, vm, node_name, tenant, windows=False):
     agent = node.runtime_properties['cloudify_agent']
 
     if windows:
-        service_state = vm.run_windows_command(
+        service_state = vm.run_command(
             '(Get-Service {}).status'.format(agent['name']),
             powershell=True).std_out
         assert service_state.strip().lower() == b'stopped'

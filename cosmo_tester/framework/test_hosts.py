@@ -166,46 +166,17 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def wait_for_winrm(self):
         self._logger.info('Checking Windows VM %s is up...', self.ip_address)
         try:
-            self.run_windows_command('Write-Output "Testing winrm."',
-                                     powershell=True)
+            self.run_command('Write-Output "Testing winrm."',
+                             powershell=True)
         except Exception as err:
             self._logger.warning('...failed: {err}'.format(err=err))
             raise
         self._logger.info('...Windows VM is up.')
 
-    def run_windows_command(self, command, powershell=False,
-                            warn_only=False):
-        url = 'http://{host}:{port}/wsman'.format(host=self.ip_address,
-                                                  port=5985)
-        session = winrm.Session(url, auth=(self.username, self.password))
-        self._logger.info('Running command: %s', command)
-        runner = session.run_ps if powershell else session.run_cmd
-        result = runner(command)
-        self._logger.info('- stdout: %s', result.std_out)
-        self._logger.info('- stderr: %s', result.std_err)
-        self._logger.info('- status_code: %d', result.status_code)
-        if not warn_only:
-            assert result.status_code == 0
-        # To allow the same calling conventions as linux commands
-        result.stdout = result.std_out
-        return result
-
     def get_windows_remote_file_content(self, path):
-        return self.run_windows_command(
+        return self.run_command(
             'Get-Content -Path {}'.format(path),
             powershell=True).std_out
-
-    def put_windows_remote_file_content(self, path, content):
-        self.run_windows_command(
-            "Add-Content -Path {} -Value '{}'".format(
-                path,
-                # Single quoted string will not be interpreted
-                # But single quotes must be represented in such a string with
-                # double single quotes
-                content.replace("'", "''"),
-            ),
-            powershell=True,
-        )
 
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=3000)
     def wait_for_ssh(self):
@@ -303,29 +274,33 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
 
     def put_remote_file(self, remote_path, local_path):
         """ Dump the contents of the local file into the remote path """
-
-        remote_tmp = '/tmp/' + hashlib.sha1(
-            remote_path.encode('utf-8')).hexdigest()
-        self.run_command(
-            'rm -rf {}'.format(remote_tmp),
-            use_sudo=True,
-        )
-        with self.ssh() as fabric_ssh:
-            # Similar to the way fabric1 did it
-            fabric_ssh.put(
-                local_path,
-                remote_tmp,
+        if self.windows:
+            with open(local_path) as fh:
+                content = fh.read()
+            self.put_remote_file_content(remote_path, content)
+        else:
+            remote_tmp = '/tmp/' + hashlib.sha1(
+                remote_path.encode('utf-8')).hexdigest()
+            self.run_command(
+                'rm -rf {}'.format(remote_tmp),
+                use_sudo=True,
             )
-        self.run_command(
-            'mkdir -p {}'.format(
-                os.path.dirname(remote_path),
-            ),
-            use_sudo=True,
-        )
-        self.run_command(
-            'mv {} {}'.format(remote_tmp, remote_path),
-            use_sudo=True,
-        )
+            with self.ssh() as fabric_ssh:
+                # Similar to the way fabric1 did it
+                fabric_ssh.put(
+                    local_path,
+                    remote_tmp,
+                )
+            self.run_command(
+                'mkdir -p {}'.format(
+                    os.path.dirname(remote_path),
+                ),
+                use_sudo=True,
+            )
+            self.run_command(
+                'mv {} {}'.format(remote_tmp, remote_path),
+                use_sudo=True,
+            )
 
     def get_remote_file_content(self, remote_path):
         tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
@@ -340,26 +315,54 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         return content
 
     def put_remote_file_content(self, remote_path, content):
-        tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
+        if self.windows:
+            self.run_command(
+                "Add-Content -Path {} -Value '{}'".format(
+                    remote_path,
+                    # Single quoted string will not be interpreted
+                    # But single quotes must be represented in such a string
+                    # with double single quotes
+                    content.replace("'", "''"),
+                ),
+                powershell=True,
+            )
+        else:
+            tmp_local_path = os.path.join(self._tmpdir, str(uuid.uuid4()))
 
-        try:
-            with open(tmp_local_path, 'w') as f:
-                f.write(content)
+            try:
+                with open(tmp_local_path, 'w') as f:
+                    f.write(content)
 
-            self.put_remote_file(remote_path, tmp_local_path)
+                self.put_remote_file(remote_path, tmp_local_path)
 
-        finally:
-            if os.path.exists(tmp_local_path):
-                os.unlink(tmp_local_path)
+            finally:
+                if os.path.exists(tmp_local_path):
+                    os.unlink(tmp_local_path)
 
     def run_command(self, command, use_sudo=False, warn_only=False,
-                    hide_stdout=False):
-        hide = 'stdout' if hide_stdout else None
-        with self.ssh() as fabric_ssh:
-            if use_sudo:
-                return fabric_ssh.sudo(command, warn=warn_only, hide=hide)
-            else:
-                return fabric_ssh.run(command, warn=warn_only, hide=hide)
+                    hide_stdout=False, powershell=False):
+        if self.windows:
+            url = 'http://{host}:{port}/wsman'.format(host=self.ip_address,
+                                                      port=5985)
+            session = winrm.Session(url, auth=(self.username, self.password))
+            self._logger.info('Running command: %s', command)
+            runner = session.run_ps if powershell else session.run_cmd
+            result = runner(command)
+            self._logger.info('- stdout: %s', result.std_out)
+            self._logger.info('- stderr: %s', result.std_err)
+            self._logger.info('- status_code: %d', result.status_code)
+            if not warn_only:
+                assert result.status_code == 0
+            # To allow the same calling conventions as linux commands
+            result.stdout = result.std_out
+            return result
+        else:
+            hide = 'stdout' if hide_stdout else None
+            with self.ssh() as fabric_ssh:
+                if use_sudo:
+                    return fabric_ssh.sudo(command, warn=warn_only, hide=hide)
+                else:
+                    return fabric_ssh.run(command, warn=warn_only, hide=hide)
 
     @only_manager
     def upload_test_plugin(self, tenant_name='default_tenant'):
