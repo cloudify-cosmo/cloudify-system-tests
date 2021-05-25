@@ -12,7 +12,7 @@ from cosmo_tester.framework import util
 BASE_VERSIONS = [
     version + '-ga'
     for version in SUPPORTED_RELEASES
-    if version not in ('master', '5.0.5')
+    if version not in ('master', '5.0.5', '5.1.0')
 ]
 CLUSTER_MANAGER_RESOURCES_PATH = pkg_resources.resource_filename(
     'cosmo_tester', 'test_suites/cluster/cfy_cluster_manager_resources')
