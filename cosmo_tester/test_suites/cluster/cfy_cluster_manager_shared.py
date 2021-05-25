@@ -5,15 +5,9 @@ import pkg_resources
 from retrying import retry
 import yaml
 
-from cosmo_tester.framework.constants import SUPPORTED_RELEASES
 from cosmo_tester.framework import util
 
 
-BASE_VERSIONS = [
-    version + '-ga'
-    for version in SUPPORTED_RELEASES
-    if version not in ('master', '5.0.5')
-]
 CLUSTER_MANAGER_RESOURCES_PATH = pkg_resources.resource_filename(
     'cosmo_tester', 'test_suites/cluster/cfy_cluster_manager_resources')
 REMOTE_CLUSTER_CONFIG_PATH = '/tmp/cfy_cluster_config.yaml'
