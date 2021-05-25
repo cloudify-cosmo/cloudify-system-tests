@@ -232,9 +232,9 @@ def proxy_prepare_hosts(instances, logger):
                     ip=manager_ip, port=port),
             )
             logger.info('Enabling proxy service')
-            fabric.sudo('supervisorctl enable {0}'.format(service))
+            fabric.sudo('systemctl enable {0}'.format(service))
             logger.info('Starting proxy service')
-            fabric.sudo('supervisorctl start {0}'.format(service))
+            fabric.sudo('systemctl start {0}'.format(service))
 
     logger.info('Bootstrapping manager...')
     manager.wait_for_ssh()
