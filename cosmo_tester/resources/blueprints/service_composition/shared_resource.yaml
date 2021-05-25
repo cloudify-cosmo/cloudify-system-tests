@@ -43,6 +43,8 @@ node_templates:
         username: { get_input: client_username }
         password: { get_input: client_password }
         tenant: { get_input: client_tenant }
+        protocol: https
+        cert: /etc/cloudify/ssl/cloudify_internal_ca_cert.pem
       resource_config:
         deployment:
           id: infra
