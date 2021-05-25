@@ -18,7 +18,7 @@ def test_cli_deployment_flow_windows(windows_cli_tester, logger):
     example = windows_cli_tester['example']
     paths = windows_cli_tester['paths']
 
-    _prepare(cli_host.run_command, example, paths, logger)
+    _prepare(cli_host, example, paths, logger)
 
     _test_upload_and_install(
         cli_host.run_command, example, paths, logger)
@@ -31,7 +31,7 @@ def test_cli_install_flow_windows(windows_cli_tester, logger):
     example = windows_cli_tester['example']
     paths = windows_cli_tester['paths']
 
-    _prepare(cli_host.run_command, example, paths, logger)
+    _prepare(cli_host, example, paths, logger)
 
     _test_cfy_install(cli_host.run_command, example, paths, logger)
 
@@ -125,8 +125,10 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
                 'blueprint': remote_blueprint_path,
                 'inputs': remote_inputs_path,
                 'ssh_key': remote_ssh_key_path,
-                'cfy': '"C:\\Program Files\\Cloudify {} CLI\\Scripts\\'
+                'cfy': '&"C:\\Program Files\\Cloudify {} CLI\\Scripts\\'
                        'cfy.exe"'.format(cli_package_version),
+                'cert': '"C:\\Users\\{username}\\manager.crt"'.format(
+                    username=cli_host.username),
             },
         }
     except Exception:

@@ -16,7 +16,7 @@ def test_cfy_logs_linux(linux_cli_tester, tmpdir, logger):
     example = linux_cli_tester['example']
     paths = linux_cli_tester['paths']
 
-    _prepare(cli_host.run_command, example, paths, logger)
+    _prepare(cli_host, example, paths, logger)
     _test_cfy_logs(cli_host.run_command, cli_host, example, paths, tmpdir,
                    logger)
 
