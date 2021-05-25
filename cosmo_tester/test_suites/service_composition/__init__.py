@@ -17,8 +17,11 @@ def _infra(image_based_manager, ssh_key, logger, tenant, test_config):
 
 
 def _app(image_based_manager, ssh_key, logger, tenant, test_config,
-         blueprint_name, app_name='app', client_ip='127.0.0.1',
+         blueprint_name, app_name='app', client_ip=None,
          client_username='admin', client_password='admin'):
+    if not client_ip:
+        client_ip = image_based_manager.private_ip_address
+
     example = get_example_deployment(
         image_based_manager, ssh_key, logger, tenant, test_config,
         upload_plugin=False)
