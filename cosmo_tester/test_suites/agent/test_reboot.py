@@ -35,7 +35,7 @@ def test_agent_reboot(ssh_key, module_tmpdir, test_config, logger, vm_os,
         example.upload_and_verify_install()
 
         if 'windows' in vm_os:
-            vm.run_windows_command('shutdown /r /t 0', warn_only=True)
+            vm.run_command('shutdown /r /t 0', warn_only=True)
         else:
             vm.run_command('sudo reboot', warn_only=True)
 

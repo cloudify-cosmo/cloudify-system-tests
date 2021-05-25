@@ -18,12 +18,12 @@ def test_cli_deployment_flow_windows(windows_cli_tester, logger):
     example = windows_cli_tester['example']
     paths = windows_cli_tester['paths']
 
-    _prepare(cli_host.run_windows_command, example, paths, logger)
+    _prepare(cli_host.run_command, example, paths, logger)
 
     _test_upload_and_install(
-        cli_host.run_windows_command, example, paths, logger)
+        cli_host.run_command, example, paths, logger)
 
-    _test_teardown(cli_host.run_windows_command, example, paths, logger)
+    _test_teardown(cli_host.run_command, example, paths, logger)
 
 
 def test_cli_install_flow_windows(windows_cli_tester, logger):
@@ -31,11 +31,11 @@ def test_cli_install_flow_windows(windows_cli_tester, logger):
     example = windows_cli_tester['example']
     paths = windows_cli_tester['paths']
 
-    _prepare(cli_host.run_windows_command, example, paths, logger)
+    _prepare(cli_host.run_command, example, paths, logger)
 
-    _test_cfy_install(cli_host.run_windows_command, example, paths, logger)
+    _test_cfy_install(cli_host.run_command, example, paths, logger)
 
-    _test_teardown(cli_host.run_windows_command, example, paths, logger)
+    _test_teardown(cli_host.run_command, example, paths, logger)
 
 
 def get_windows_image_settings():
@@ -75,7 +75,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
         logger.info('Using CLI package: {url}'.format(
             url=cli_package_url,
         ))
-        cli_host.run_windows_command(
+        cli_host.run_command(
             """
     $client = New-Object System.Net.WebClient
     $url = "{0}"
@@ -88,7 +88,7 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
         )
 
         logger.info('Installing CLI...')
-        cli_host.run_windows_command(
+        cli_host.run_command(
             '''
     cd {0}
     & .\\{1} /SILENT /VERYSILENT /SUPPRESSMSGBOXES'''
@@ -105,20 +105,18 @@ def windows_cli_tester(request, ssh_key, module_tmpdir, test_config,
         remote_blueprint_path = work_dir + '\\Documents\\blueprint.yaml'
         with open(example.blueprint_file) as blueprint_handle:
             blueprint = blueprint_handle.read()
-        cli_host.put_windows_remote_file_content(remote_blueprint_path,
-                                                 blueprint)
+        cli_host.put_remote_file_content(remote_blueprint_path, blueprint)
 
         logger.info('Copying inputs to CLI host')
         remote_inputs_path = work_dir + '\\Documents\\inputs.yaml'
-        cli_host.put_windows_remote_file_content(remote_inputs_path,
-                                                 json.dumps(example.inputs))
+        cli_host.put_remote_file_content(remote_inputs_path,
+                                         json.dumps(example.inputs))
 
         logger.info('Copying agent ssh key to CLI host for secret')
         remote_ssh_key_path = work_dir + '\\Documents\\ssh_key.pem'
         with open(ssh_key.private_key_path) as ssh_key_handle:
             ssh_key_data = ssh_key_handle.read()
-        cli_host.put_windows_remote_file_content(remote_ssh_key_path,
-                                                 ssh_key_data)
+        cli_host.put_remote_file_content(remote_ssh_key_path, ssh_key_data)
 
         yield {
             'cli_host': cli_host,

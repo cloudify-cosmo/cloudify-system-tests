@@ -128,7 +128,7 @@ def _add_ous(ad_host, logger):
     ]
     for name, path in ous:
         logger.info('Creating OU %s under %s', name, path)
-        ad_host.run_windows_command(
+        ad_host.run_command(
             'New-ADOrganizationalUnit -Name {name} -Path "{path}"'.format(
                 name=name, path=path,
             ),
@@ -140,14 +140,14 @@ def _add_users(ad_host, users, logger):
     logger.info('Creating AD users')
     for user, details in users.items():
         logger.info('Adding user %s', user)
-        ad_host.run_windows_command(
+        ad_host.run_command(
             'New-ADUser -Name {name} -Path "{path}"'.format(
                 name=user, path=details['parent'],
             ),
             powershell=True,
         )
         logger.info('Setting password for %s', user)
-        ad_host.run_windows_command(
+        ad_host.run_command(
             'Set-ADAccountPassword -Identity \'cn={name},{parent}\' -Reset '
             '-NewPassword (ConvertTo-SecureString -AsPlainText '
             '"{password}" -Force)'.format(
@@ -157,14 +157,14 @@ def _add_users(ad_host, users, logger):
             ),
             powershell=True,
         )
-        ad_host.run_windows_command(
+        ad_host.run_command(
             'Set-ADUser -ChangePasswordAtLogon 0 -Identity {name}'.format(
                 name=user,
             ),
             powershell=True,
         )
         logger.info('Enabling account for %s', user)
-        ad_host.run_windows_command(
+        ad_host.run_command(
             'Enable-ADAccount -Identity {name}'.format(name=user),
             powershell=True,
         )
@@ -174,7 +174,7 @@ def _add_groups(ad_host, groups, logger):
     logger.info('Creating AD groups')
     for group, details in groups.items():
         logger.info('Creating %s under %s', group, details['parent'])
-        ad_host.run_windows_command(
+        ad_host.run_command(
             'New-ADGroup -Name {name} -Path "{path}" '
             '-GroupScope Global'.format(
                 name=group,
@@ -186,7 +186,7 @@ def _add_groups(ad_host, groups, logger):
     for group, details in groups.items():
         members = ','.join(details['members'])
         logger.info('Assigning %s group members: %s', group, members)
-        ad_host.run_windows_command(
+        ad_host.run_command(
             'Add-ADGroupMember -Identity "{group}" -Members {members} '
             '-Confirm:$False'.format(
                 group=group,
@@ -255,6 +255,6 @@ Restart-Computer'''.format(username=username, fw_cmd=add_firewall_cmd,  # noqa
 @retry(stop_max_attempt_number=60, wait_fixed=3000)
 def _wait_for_ad(host, logger):
     logger.info('Checking that AD is installed...')
-    res = host.run_windows_command('Get-ADForest', powershell=True)
+    res = host.run_command('Get-ADForest', powershell=True)
     assert 'cloudifyad.test' in res.stdout.decode('utf-8')
     logger.info('...AD is installed.')

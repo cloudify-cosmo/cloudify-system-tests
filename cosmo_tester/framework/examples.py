@@ -209,7 +209,7 @@ class BaseExample(object):
         if self.windows:
             list_path = path.rsplit('\\', 1)[0]
             assert path
-            tmp_contents = str(self.example_host.run_windows_command(
+            tmp_contents = str(self.example_host.run_command(
                 'dir {}'.format(list_path)).std_out)
         else:
             list_path = os.path.dirname(path)
