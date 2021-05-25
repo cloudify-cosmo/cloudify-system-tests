@@ -1,12 +1,10 @@
 import pytest
 
-from .cfy_cluster_manager_shared import (
-    BASE_VERSIONS,
-    _cluster_upgrade_test,
-)
+from .cfy_cluster_manager_shared import _cluster_upgrade_test
+from cosmo_tester.framework.constants import SUPPORTED_FOR_RPM_UPGRADE
 
 
-@pytest.mark.parametrize('base_version', BASE_VERSIONS)
+@pytest.mark.parametrize('base_version', SUPPORTED_FOR_RPM_UPGRADE)
 def test_nine_nodes_cluster_upgrade(base_version, nine_vms, test_config,
                                     ssh_key, logger):
     """Tests the command cfy_cluster_manager upgrade on a 9 nodes cluster."""

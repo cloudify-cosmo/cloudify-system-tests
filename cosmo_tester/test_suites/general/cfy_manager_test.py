@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from cosmo_tester.framework.constants import SUPPORTED_RELEASES
+from cosmo_tester.framework.constants import SUPPORTED_FOR_RPM_UPGRADE
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import (get_manager_install_version,
@@ -41,14 +41,7 @@ with open('%s', 'w') as f:
 ''' % MQ_PASSWORDS_PATH
 
 
-BASE_VERSIONS = [
-    version
-    for version in SUPPORTED_RELEASES
-    if version not in ('master', '5.0.5')
-]
-
-
-@pytest.fixture(scope='function', params=BASE_VERSIONS)
+@pytest.fixture(scope='function', params=SUPPORTED_FOR_RPM_UPGRADE)
 def base_manager(request, ssh_key, module_tmpdir, test_config, logger):
     hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request)
     hosts.instances[0] = VM(request.param, test_config)
