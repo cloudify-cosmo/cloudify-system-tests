@@ -68,6 +68,8 @@ def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
                 'ssh_key': remote_ssh_key_path,
                 # Expected to be in path on linux systems
                 'cfy': 'cfy',
+                'cert': '/home/{user}/manager.crt'.format(
+                    user=cli_host.username),
             },
         }
     except Exception:
