@@ -725,3 +725,24 @@ def substitute_testing_version(original_string, testing_version):
         testing_version=testing_version,
         mangled_testing_version=testing_version.replace('-', '/')
     )
+
+
+def keep_only_one_service_in_packages_file(host, service_to_keep, tmp_dir):
+    # In order to remove Cloudify Manager from a host that has only
+    # one service installed, we need to modify the .installed/packages.yaml
+    # file to include only the relevant service related packages.
+
+    tmp_installed_packages_file = os.path.join(str(tmp_dir), 'packages.yaml')
+    host.get_remote_file('/etc/cloudify/.installed/packages.yaml',
+                         tmp_installed_packages_file)
+
+    with open(tmp_installed_packages_file) as tmp_packages_file:
+        installed_packages = yaml.load(tmp_packages_file, yaml.Loader)
+    services_list = {'manager_service', 'database_service', 'queue_service'}
+    services_to_remove = services_list - {service_to_keep}
+
+    for service in services_to_remove:
+        installed_packages.pop(service, None)
+
+    host.put_remote_file_content('/etc/cloudify/.installed/packages.yaml',
+                                 yaml.dump(installed_packages))

@@ -3,6 +3,8 @@ import time
 
 import retrying
 
+from cosmo_tester.framework.util import keep_only_one_service_in_packages_file
+
 
 def get_broker_listing(broker, prefix='rabbit@'):
     brokers_list_output = broker.run_command(
@@ -152,7 +154,7 @@ def test_auth_fail(broker, logger):
     assert 'fail' in result
 
 
-def test_add(brokers, logger):
+def test_add(brokers, logger, module_tmpdir):
     logger.info('Preparing hosts files')
     add_to_hosts(brokers[0], brokers[1:])
     add_to_hosts(brokers[1], [brokers[0], brokers[2]])
@@ -204,7 +206,11 @@ def test_add(brokers, logger):
     logger.info('Unresolvable join failed correctly.')
 
     logger.info('Attempting to add with different erlang cookie.')
-    brokers[2].run_command('cfy_manager remove --force')
+
+    keep_only_one_service_in_packages_file(
+        brokers[2], 'queue_service', module_tmpdir)
+    brokers[2].run_command('cfy_manager remove -v')
+
     brokers[2].run_command(
         "sudo sed -i 's/erlang_cookie:.*/erlang_cookie: different/' "
         "/etc/cloudify/config.yaml"
