@@ -20,6 +20,7 @@ def apply_and_check_deployment_update(manager, example_deployment, logger):
         manager.client.blueprints.upload(
             modified_blueprint_path,
             blueprint_id,
+            async_upload=True
         )
         wait_for_blueprint_upload(manager.client, blueprint_id)
 

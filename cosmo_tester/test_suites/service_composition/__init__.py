@@ -18,7 +18,7 @@ def _infra(image_based_manager, ssh_key, logger, tenant, test_config):
 
 def _app(image_based_manager, ssh_key, logger, tenant, test_config,
          blueprint_name, app_name='app', client_ip=None,
-         client_username='admin', client_password='admin'):
+         client_username='admin', client_password='admin', ca_cert_path=None):
     if not client_ip:
         client_ip = image_based_manager.private_ip_address
 
@@ -36,6 +36,8 @@ def _app(image_based_manager, ssh_key, logger, tenant, test_config,
     example.inputs['client_tenant'] = tenant
     example.inputs['client_username'] = client_username
     example.inputs['client_password'] = client_password
+    if ca_cert_path:
+        example.inputs['ca_cert_path'] = ca_cert_path
     example.create_secret = False   # don't try to create it twice
     return example
 

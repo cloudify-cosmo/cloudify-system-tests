@@ -1062,6 +1062,7 @@ class Hosts(object):
             test_vm_suffixes.append('-multi-net')
 
         for suffix in test_vm_suffixes:
+            blueprint_id = "test_vm{}".format(suffix)
             self._infra_client.blueprints.upload(
                 util.get_resource_path(
                     'infrastructure_blueprints/{}/vm{}.yaml'.format(
@@ -1069,8 +1070,10 @@ class Hosts(object):
                         suffix,
                     )
                 ),
-                "test_vm{}".format(suffix),
+                blueprint_id,
+                async_upload=True
             )
+            util.wait_for_blueprint_upload(self._infra_client, blueprint_id)
             self.blueprints.append('test_vm{}'.format(suffix))
 
     def _deploy_test_infrastructure(self, test_identifier):
