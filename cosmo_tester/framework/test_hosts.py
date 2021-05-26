@@ -621,7 +621,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 self._logger.info(
                     'Detected that SSL was required, '
                     'updating certs and client.')
-                self._update_aio_certs()
+                if not self.bootstrappable:
+                    self._update_aio_certs()
                 self.client = self.get_rest_client()
             raise
 
