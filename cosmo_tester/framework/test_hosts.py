@@ -631,7 +631,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
                 'Timed out: Manager services did not start successfully. '
                 'Inactive services: {}'.format(
                     ', '.join(
-                        item['extra_info']['systemd']['unit_id']
+                        str(item)
                         for item in manager_status['services'].values()
                         if item['status'] != 'Active'
                     )
