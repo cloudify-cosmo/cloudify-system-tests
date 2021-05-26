@@ -40,7 +40,8 @@ def managers(request, ssh_key, module_tmpdir, test_config, logger):
         hosts.destroy(passed=passed)
 
 
-def test_external_shared_resource_idd(managers, ssh_key, logger, test_config):
+def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
+                                      tmpdir):
     tenant = 'test_external_shared_resource_idd'
     local_mgr, external_mgr = managers
 
@@ -48,12 +49,17 @@ def test_external_shared_resource_idd(managers, ssh_key, logger, test_config):
     ext_password = 'swordfish'
     external_mgr.client.users.create(ext_username, ext_password, 'sys_admin')
 
+    # copy the app manager's CA cert to the infra manager
+    ext_mgr_cert_path = '/etc/cloudify/ssl/ext_mgr_internal_ca_cert.pem'
+    local_mgr.put_remote_file(ext_mgr_cert_path, external_mgr.api_ca_path)
+
     infra = _infra(external_mgr, ssh_key, logger, tenant, test_config)
     app = _app(local_mgr, ssh_key, logger, tenant, test_config,
                blueprint_name='shared_resource',
                client_ip=external_mgr.private_ip_address,
                client_username=ext_username,
-               client_password=ext_password)
+               client_password=ext_password,
+               ca_cert_path=ext_mgr_cert_path)
 
     logger.info('Deploying the shared resource on an external manager.')
     infra.upload_blueprint()
