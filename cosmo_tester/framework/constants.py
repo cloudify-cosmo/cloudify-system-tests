@@ -17,5 +17,5 @@ SUPPORTED_RELEASES = [
 SUPPORTED_FOR_RPM_UPGRADE = [
     version + '-ga'
     for version in SUPPORTED_RELEASES
-    if version not in ('master', '5.0.5', '5.1.0')
+    if version not in ('master', '5.0.5', '5.1.0', '6.0.0')
 ]
