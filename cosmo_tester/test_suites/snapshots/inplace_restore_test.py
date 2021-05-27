@@ -111,10 +111,10 @@ def test_inplace_restore(manager_and_vm,
             )
         if not reboot_performed:
             raise RuntimeError('Expected reboot did not happen.')
-
-    logger.info('Waiting 60 seconds for agents to reconnect. '
-                'Agent reconnect retries are up to 30 seconds apart.')
-    sleep(60)
     manager.wait_for_manager()
+
+    logger.info('Waiting 35 seconds for agents to reconnect. '
+                'Agent reconnect retries are up to 30 seconds apart.')
+    sleep(35)
 
     example.uninstall()
