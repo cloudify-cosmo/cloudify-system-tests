@@ -14,6 +14,7 @@
 #    * limitations under the License.
 
 from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.framework.util import substitute_testing_version
 
 pre_bootstrap_state = None
 
@@ -22,7 +23,6 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
     check_pre_bootstrap_state(bootstrap_test_manager)
     bootstrap_test_manager.bootstrap(blocking=True)
 
-    bootstrapped_state = _get_system_state(bootstrap_test_manager)
     expected_diffs = {}
 
     example = get_example_deployment(bootstrap_test_manager,
@@ -31,11 +31,10 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
     example.upload_and_verify_install()
     example.uninstall()
 
-    for key in 'os users', 'os groups':
-        # Fetch the new users and groups created during the bootstrap
-        expected_diffs[key] = (
-            set(bootstrapped_state[key]) - set(pre_bootstrap_state[key]))
-    expected_diffs['yum packages'] = {'postgresql95-libs', 'erlang', 'socat'}
+    # When the example deployment installs the agent this group will exist.
+    # It shouldn't be deleted afterwards in case files on the system are in
+    # that group.
+    expected_diffs['os groups'] = {'cfyagent'}
 
     bootstrap_test_manager.teardown()
     current_state = _get_system_state(bootstrap_test_manager)
@@ -63,7 +62,11 @@ def check_pre_bootstrap_state(manager):
     pre_bootstrap_state['folders in /opt'] += [
         'python_NOTICE.txt',
         'lib',
-        'cloudify-manager-install'
+        'cloudify-manager-install',
+        substitute_testing_version(
+            'cloudify-agent-{testing_version}',
+            manager._test_config['testing_version'],
+        )
     ]
     pre_bootstrap_state['init_d service files (/etc/rc.d/init.d/)'] += [
         'jexec'
