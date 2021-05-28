@@ -1,0 +1,16 @@
+plugins:
+  init_script_plugin:
+    executor: central_deployment_agent
+    package_name: init-script-plugin
+    package_version: 1.0.0
+    source: null
+    install: true
+
+node_types:
+  cloudify.init_script.nodes.FakeVm:
+    derived_from: cloudify.nodes.Compute
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: init_script_plugin.init_script_plugin.fakevm.create
+          inputs: {}

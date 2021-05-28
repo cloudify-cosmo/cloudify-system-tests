@@ -268,11 +268,13 @@ class OnVMExample(BaseExample):
 
 def get_example_deployment(manager, ssh_key, logger, tenant_name, test_config,
                            vm=None, upload_plugin=True, using_agent=True,
-                           suffix=''):
+                           suffix='', init_script=False):
     tenant = prepare_and_get_test_tenant(tenant_name, manager, test_config)
 
     if upload_plugin:
         manager.upload_test_plugin(tenant)
+        if init_script:
+            manager.upload_init_script_plugin(tenant)
 
     if vm:
         return OnVMExample(manager, vm, ssh_key, logger, tenant,
