@@ -248,6 +248,26 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             self._logger.info('Applying license.')
             self.apply_license()
 
+    def _get_python_path(self):
+        return self.run_command(
+            'which python || which python3').stdout.strip()
+
+    def get_distro(self):
+        # Get the distro string we expect agents to be
+        if self.windows:
+            return 'windows'
+
+        self.put_remote_file_content(
+            '/tmp/get_distro',
+            '''#! {python}
+import platform
+
+distro, _, codename = platform.dist()
+print('{{}} {{}}'.format(distro, codename).lower())
+'''.format(python=self._get_python_path()))
+        self.run_command('chmod +x /tmp/get_distro')
+        return self.run_command('/tmp/get_distro').stdout.strip()
+
     @property
     def ssh_key(self):
         return self._ssh_key
