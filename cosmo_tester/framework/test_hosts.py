@@ -385,14 +385,24 @@ print('{{}} {{}}'.format(distro, codename).lower())
                     return fabric_ssh.run(command, warn=warn_only, hide=hide)
 
     @only_manager
+    def upload_init_script_plugin(self, tenant_name='default_tenant'):
+        self._logger.info('Uploading init script plugin to %s', tenant_name)
+        self._upload_plugin(
+            'plugin/init_script_plugin-1.0.0-py27-none-any.zip',
+            tenant_name)
+
+    @only_manager
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
+        self._upload_plugin(
+            'plugin/test_plugin-1.0.0-py27-none-any.zip',
+            tenant_name)
+
+    def _upload_plugin(self, plugin_path, tenant_name):
         with util.set_client_tenant(self.client, tenant_name):
             try:
                 self.client.plugins.upload(
-                    util.get_resource_path(
-                        'plugin/test_plugin-1.0.0-py27-none-any.zip'
-                    ),
+                    util.get_resource_path(plugin_path),
                 )
                 self.wait_for_all_executions(include_system_workflows=True)
             except CloudifyClientError as err:

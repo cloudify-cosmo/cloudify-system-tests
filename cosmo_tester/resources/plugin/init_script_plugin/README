@@ -1,0 +1,3 @@
+When changing the test plugin:
+  1. Try to avoid introducing any dependencies or the wagon will become bloated.
+  2. Create a new wagon and zip the wagon together with the plugin.yaml into cosmo_tester/resources/plugin/test_plugin-1.0.0-py27-none-any.zip
