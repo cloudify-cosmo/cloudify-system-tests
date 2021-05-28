@@ -1,6 +1,8 @@
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import get_resource_path
 
+from . import validate_agent
+
 
 def test_3_2_agent_install(image_based_manager, ssh_key, logger, test_config):
     # Check agent install with the 3.2 types and 1.2 DSL version via ssh
@@ -11,4 +13,5 @@ def test_3_2_agent_install(image_based_manager, ssh_key, logger, test_config):
         'blueprints/compute/example_3_2.yaml'
     )
     example.upload_and_verify_install(skip_plugins_validation=True)
+    validate_agent(image_based_manager, example, test_config)
     example.uninstall()

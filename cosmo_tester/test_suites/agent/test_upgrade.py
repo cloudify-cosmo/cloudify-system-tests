@@ -8,7 +8,10 @@ from cosmo_tester.test_suites.snapshots import (
     upload_snapshot,
 )
 
-from cosmo_tester.test_suites.agent import get_test_prerequisites
+from cosmo_tester.test_suites.agent import (
+    get_test_prerequisites,
+    validate_agent,
+)
 
 
 def test_old_agent_stopped_after_upgrade_windows(ssh_key, module_tmpdir,
@@ -51,6 +54,7 @@ def _test_old_agent_stopped_after_agent_upgrade(ssh_key, module_tmpdir,
             example.use_windows(username, password)
 
         example.upload_and_verify_install()
+        validate_agent(old_manager, example, test_config)
 
         create_snapshot(old_manager, snapshot_id, logger)
         old_manager.wait_for_all_executions()
@@ -79,6 +83,7 @@ def _test_old_agent_stopped_after_agent_upgrade(ssh_key, module_tmpdir,
 
         example.manager = new_manager
         example.check_files()
+        validate_agent(new_manager, example, test_config)
         example.uninstall()
     except Exception:
         passed = False

@@ -1,6 +1,8 @@
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.agent import get_test_prerequisites
 
+from . import validate_agent
+
 
 def test_windows_with_service_user(ssh_key, module_tmpdir, test_config,
                                    logger, request):
@@ -37,6 +39,7 @@ def test_windows_with_service_user(ssh_key, module_tmpdir, test_config,
         example.inputs['service_user'] = service_user
         example.inputs['service_password'] = service_password
         example.upload_and_verify_install()
+        validate_agent(manager, example, test_config)
         example.uninstall()
     except Exception:
         passed = False
