@@ -134,7 +134,8 @@ def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
     logger.info('Verifying each file under /var/log/cloudify is size zero')
     example.manager.run_command(
         'find /var/log/cloudify -type f -not -name \'supervisord.log\''
-        ' -exec test -s {} \\; -print -exec false {} +'
+        ' -exec test -s {} \\; -print -exec false {} +',
+        use_sudo=True
     )
 
 
