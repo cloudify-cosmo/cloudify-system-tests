@@ -478,6 +478,9 @@ print('{{}} {{}}'.format(distro, codename).lower())
     @only_manager
     def bootstrap(self, upload_license=False,
                   blocking=True, restservice_expected=True, config_name=None):
+        if self.image_type == '5.0.5':
+            # We don't have a bootstrappable 5.0.5, so skip this
+            return
         self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
@@ -590,45 +593,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 )
 
     @only_manager
-    def _update_aio_certs(self):
-        key_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.key'
-        cert_path = '~/.cloudify-test-ca/' + self.private_ip_address + '.crt'
-        ca_cert_path = '~/.cloudify-test-ca/ca.crt'
-        ca_key_path = '~/.cloudify-test-ca/ca.key'
-
-        with self.ssh() as ssh:
-            self._logger.info('Generating certificates including public IP')
-            ips = [self.private_ip_address, self.ip_address]
-            if self.networks:
-                ips.extend(self.networks.values())
-            ssh.run('cfy_manager generate-test-cert'
-                    ' -s {}'.format(','.join(ips)))
-            ssh.run('mkdir -p /tmp/new_cloudify_certs')
-            new_cert_path = '/tmp/new_cloudify_certs/new_{}.pem'
-            for purpose in [
-                'internal', 'rabbitmq', 'postgresql_server', 'external',
-            ]:
-                self._logger.info('Preparing %s certificates', purpose)
-                cert_dest = new_cert_path.format('_'.join([purpose, 'cert']))
-                key_dest = new_cert_path.format('_'.join([purpose, 'key']))
-                ca_dest = new_cert_path.format('_'.join([purpose, 'ca_cert']))
-                ca_key_dest = new_cert_path.format('_'.join([purpose,
-                                                            'ca_key']))
-                if purpose == 'internal':
-                    ca_dest = new_cert_path.format('ca_cert')
-                for src, dest in [
-                    (cert_path, cert_dest),
-                    (key_path, key_dest),
-                    (ca_cert_path, ca_dest),
-                    (ca_key_path, ca_key_dest),
-                ]:
-                    ssh.run('sudo cp {src} {dest}'.format(src=src, dest=dest))
-            self._logger.info('Replacing certificates')
-            ssh.run('cfy_manager certificates replace')
-            ssh.run('sudo cp {} /etc/cloudify/ssl/'
-                    'cloudify_internal_ca_key.pem'.format(ca_key_dest))
-
-    @only_manager
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=5000)
     def wait_for_manager(self):
         self._logger.info('Checking for starter service')
@@ -651,8 +615,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self._logger.info(
                     'Detected that SSL was required, '
                     'updating certs and client.')
-                if not self.bootstrappable:
-                    self._update_aio_certs()
                 self.client = self.get_rest_client()
             raise
 
@@ -759,8 +721,15 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
             username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
 
-            image_names = self._test_config[
-                'manager_image_names_{}'.format(distro)]
+            if self.image_type == '5.0.5':
+                # We didn't make a bootstrappable image for 5.0.5, so we have
+                # this ugly hack until 5.0.5 stops being supported
+                image_template = 'cloudify-manager-premium-{testing_version}'
+                if distro == 'rhel':
+                    image_template += '-rhel'
+            else:
+                image_template = self._test_config[
+                    'manager_image_names'][distro]
 
             if self.image_type in ('master', 'installer'):
                 manager_version = self._test_config['testing_version']
@@ -768,10 +737,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 manager_version = self.image_type
 
             if self.bootstrappable:
-                image_template = image_names['installer']
                 self.should_finalize = False
             else:
-                image_template = image_names['manager']
                 self.restservice_expected = True
 
             self.image_name = util.substitute_testing_version(
@@ -905,6 +872,12 @@ class Hosts(object):
             self._finish_deploy_test_vms()
 
             for instance in self.instances:
+                if instance.is_manager and not instance.bootstrappable:
+                    # A pre-bootstrapped manager is desired for this test,
+                    # let's make it happen.
+                    instance.bootstrap(
+                        upload_license=self._test_config['premium'])
+
                 if instance.should_finalize:
                     instance.finalize_preparation()
         except Exception as err:
