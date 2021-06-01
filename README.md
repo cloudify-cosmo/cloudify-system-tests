@@ -29,7 +29,7 @@ For UI tests: cloudify-blueprint-composer, cloudify-stage
 They are expected to exist in the same directory that the cloudify-system-tests directory exists, but this can be changed in the config.
 
 The test framework assumes that manager images will exist, as defined in the schema.
-To see expected images, look in the config under manager_image_names_centos and manager_image_names_rhel.
+To see expected image name structure, look in the config under manager_image_names.
 
 To see the schema including default values, run:
 ```bash
