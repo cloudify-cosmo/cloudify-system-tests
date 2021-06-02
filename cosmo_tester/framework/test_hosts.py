@@ -1034,7 +1034,7 @@ class Hosts(object):
                          plugin["package_version"])
             for plugin in current_plugins
         ):
-            self._logger.info('Openstack plugin already present.')
+            self._logger.info('Plugin already present.')
         else:
             raise RuntimeError(
                 'The manager must have a plugin called {}. '
