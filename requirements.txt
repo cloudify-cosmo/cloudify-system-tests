@@ -35,7 +35,7 @@ execnet==1.7.1
     # via pytest-xdist
 fabric==2.5.0
     # via cloudify-system-tests (setup.py)
-fasteners==0.13.0
+fasteners==0.16.0
     # via cloudify-common
 idna==2.9
     # via requests
@@ -52,8 +52,6 @@ jinja2==2.10.3
     #   cloudify-system-tests (setup.py)
 markupsafe==1.1.1
     # via jinja2
-monotonic==1.6
-    # via fasteners
 more-itertools==5.0.0
     # via pytest
 networkx==1.9.1
