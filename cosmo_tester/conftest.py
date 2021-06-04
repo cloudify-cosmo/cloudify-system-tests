@@ -39,6 +39,7 @@ class SSHKey(object):
                     self.private_key_path))
         if os.system('chmod 400 {}'.format(self.private_key_path)) != 0:
             raise IOError('Error setting private key file permission')
+        os.system('ssh-keygen -l -v -f {}'.format(self.private_key_path))
 
     def delete(self):
         self.private_key_path.remove()
