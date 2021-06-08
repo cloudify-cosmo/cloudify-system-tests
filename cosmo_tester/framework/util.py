@@ -44,10 +44,6 @@ class SSHKey(object):
         if os.system('chmod 400 {}'.format(self.private_key_path)) != 0:
             raise IOError('Error setting private key file permission')
 
-    def delete(self):
-        self.private_key_path.remove()
-        self.public_key_path.remove()
-
 
 def pass_stdout(line, input_queue, process):
     output = line.encode(process.call_args['encoding'], 'replace')
