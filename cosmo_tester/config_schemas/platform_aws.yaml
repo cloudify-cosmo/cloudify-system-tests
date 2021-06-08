@@ -18,10 +18,10 @@ plugin_version:
 linux_size:
   description: Size to use for linux on this platform.
   # This needs to be an instance that can accept 3 network interfaces
-  default: t2.medium
+  default: t3.medium
 windows_size:
   description: Size to use for windows on this platform.
-  default: t2.medium
+  default: t3.medium
 ubuntu_14_04_image:
   description: Image to use for Ubuntu 14.04 on this platform.
   default: ami-005af4c3162f495fa
