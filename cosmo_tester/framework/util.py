@@ -28,6 +28,27 @@ from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 from cosmo_tester.framework.exceptions import ProcessExecutionError
 
 
+class SSHKey(object):
+    def __init__(self, tmpdir, logger):
+        self.private_key_path = tmpdir / 'ssh_key.pem'
+        self.public_key_path = tmpdir / 'ssh_key.pem.pub'
+        self.logger = logger
+        self.tmpdir = tmpdir
+
+    def create(self):
+        self.logger.info('Creating SSH keys at: %s', self.tmpdir)
+        if os.system("ssh-keygen -t rsa -f {} -q -N ''".format(
+                self.private_key_path)) != 0:
+            raise IOError('Error creating SSH key: {}'.format(
+                    self.private_key_path))
+        if os.system('chmod 400 {}'.format(self.private_key_path)) != 0:
+            raise IOError('Error setting private key file permission')
+
+    def delete(self):
+        self.private_key_path.remove()
+        self.public_key_path.remove()
+
+
 def pass_stdout(line, input_queue, process):
     output = line.encode(process.call_args['encoding'], 'replace')
     process._stdout.append(output)
