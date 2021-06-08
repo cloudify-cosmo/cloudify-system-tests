@@ -37,12 +37,9 @@ class SSHKey(object):
 
     def create(self):
         self.logger.info('Creating SSH keys at: %s', self.tmpdir)
-        if os.system("ssh-keygen -t rsa -f {} -q -N ''".format(
-                self.private_key_path)) != 0:
-            raise IOError('Error creating SSH key: {}'.format(
-                    self.private_key_path))
-        if os.system('chmod 400 {}'.format(self.private_key_path)) != 0:
-            raise IOError('Error setting private key file permission')
+        subprocess.check_call(['ssh-keygen', '-t', 'rsa', '-f',
+                               self.private_key_path, '-q', '-N', ''])
+        os.chmod(self.private_key_path, 0o400)
 
 
 def pass_stdout(line, input_queue, process):
