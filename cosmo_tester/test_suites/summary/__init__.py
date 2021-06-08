@@ -18,8 +18,7 @@ def _sort_subfields(summary_item):
         if isinstance(val, list):
             if isinstance(val[0], dict):
                 result_dict[key] = val
-                sort_key = u'deployment_id' if u'deployment_id' in val[0] \
-                    else u'workflow_id'
+                sort_key = key[len('by '):]
                 result_dict[key].sort(key=lambda x: x[sort_key], reverse=False)
             else:
                 result_dict[key] = sorted(val)

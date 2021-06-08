@@ -1,11 +1,10 @@
-import os
-
 import pytest
 from path import Path
 
 from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts
+from cosmo_tester.framework.util import SSHKey
 from cosmo_tester.test_suites.cluster.conftest import _get_hosts
 
 
@@ -21,28 +20,6 @@ def module_tmpdir(request, tmpdir_factory, logger):
     logger.info('Created temp folder: %s', temp_dir)
 
     return temp_dir
-
-
-class SSHKey(object):
-
-    def __init__(self, tmpdir, logger):
-        self.private_key_path = tmpdir / 'ssh_key.pem'
-        self.public_key_path = tmpdir / 'ssh_key.pem.pub'
-        self.logger = logger
-        self.tmpdir = tmpdir
-
-    def create(self):
-        self.logger.info('Creating SSH keys at: %s', self.tmpdir)
-        if os.system("ssh-keygen -t rsa -f {} -q -N ''".format(
-                self.private_key_path)) != 0:
-            raise IOError('Error creating SSH key: {}'.format(
-                    self.private_key_path))
-        if os.system('chmod 400 {}'.format(self.private_key_path)) != 0:
-            raise IOError('Error setting private key file permission')
-
-    def delete(self):
-        self.private_key_path.remove()
-        self.public_key_path.remove()
 
 
 @pytest.fixture(scope='module')
@@ -62,8 +39,8 @@ def pytest_addoption(parser):
     )
 
 
-@pytest.fixture(scope='module')
-def test_config(request, logger):
+@pytest.fixture(scope='session')
+def test_config(request):
     """Retrieve the test config."""
     # Not using a fixture so that we can use config for logger fixture
     logger = get_logger('config')
