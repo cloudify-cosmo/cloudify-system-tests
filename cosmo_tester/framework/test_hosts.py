@@ -98,6 +98,7 @@ class VM(object):
                             'test_manager']['password'],
                     },
                 },
+                'sanity': {'skip_sanity': True},
             }
             self.install_config = copy.deepcopy(self.basic_install_config)
         self._create_conn_script()
@@ -477,10 +478,13 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def bootstrap(self, upload_license=False,
-                  blocking=True, restservice_expected=True, config_name=None):
+                  blocking=True, restservice_expected=True, config_name=None,
+                  include_sanity=False):
         if self.image_type == '5.0.5':
             # We don't have a bootstrappable 5.0.5, so skip this
             return
+        if include_sanity:
+            self.install_config['sanity']['skip_sanity'] = False
         self.wait_for_ssh()
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
