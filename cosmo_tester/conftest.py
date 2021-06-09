@@ -22,9 +22,18 @@ def module_tmpdir(request, tmpdir_factory, logger):
     return temp_dir
 
 
-@pytest.fixture(scope='module')
-def ssh_key(module_tmpdir, logger):
-    key = SSHKey(module_tmpdir, logger)
+@pytest.fixture(scope='session')
+def session_tmpdir(request, tmpdir_factory, session_logger):
+    suffix = 'session'
+    temp_dir = Path(tmpdir_factory.mktemp(suffix))
+    session_logger.info('Created temp folder: %s', temp_dir)
+
+    return temp_dir
+
+
+@pytest.fixture(scope='session')
+def ssh_key(session_tmpdir, session_logger):
+    key = SSHKey(session_tmpdir, session_logger)
     key.create()
     return key
 
@@ -69,17 +78,28 @@ def pytest_runtest_makereport(item, call):
         # No need to handle failed, there's a builtin hook for that
 
 
-@pytest.fixture(scope='module')
-def image_based_manager(
-        request, ssh_key, module_tmpdir, test_config, logger):
-    """Creates a cloudify manager from an image in rackspace OpenStack."""
-    hosts = Hosts(
-        ssh_key, module_tmpdir, test_config, logger, request)
+@pytest.fixture(scope='session')
+def session_logger(request):
+    return get_logger('session')
+
+
+@pytest.fixture(scope='session')
+def session_manager(request, ssh_key, session_tmpdir, test_config,
+                    session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True)
     try:
         hosts.create()
         yield hosts.instances[0]
     finally:
         hosts.destroy()
+
+
+@pytest.fixture(scope='function')
+def image_based_manager(session_manager):
+    session_manager.bootstrap()
+    yield session_manager
+    session_manager.teardown()
 
 
 @pytest.fixture

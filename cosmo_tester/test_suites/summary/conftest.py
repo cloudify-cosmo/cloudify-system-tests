@@ -1,16 +1,13 @@
 import os
 import time
 
-from path import Path
 import pytest
 
 from cloudify_rest_client.exceptions import CloudifyClientError
-from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework.util import (
     create_deployment,
     set_client_tenant,
-    SSHKey,
 )
 
 from . import DEPLOYMENTS_PER_SITE
@@ -63,33 +60,12 @@ def _create_sites(manager, deployment_ids):
 
 
 @pytest.fixture(scope='session')
-def session_tmpdir(request, tmpdir_factory, session_logger):
-    suffix = 'summary_tests'
-    temp_dir = Path(tmpdir_factory.mktemp(suffix))
-    session_logger.info('Created temp folder: %s', temp_dir)
-
-    return temp_dir
-
-
-@pytest.fixture(scope='session')
-def session_ssh_key(session_tmpdir, session_logger):
-    key = SSHKey(session_tmpdir, session_logger)
-    key.create()
-    return key
-
-
-@pytest.fixture(scope='session')
-def session_logger(request):
-    return get_logger('summary_tests')
-
-
-@pytest.fixture(scope='session')
-def prepared_manager(request, session_ssh_key, session_tmpdir, test_config,
+def prepared_manager(request, ssh_key, session_tmpdir, test_config,
                      session_logger):
     tenants = sorted(TENANT_DEPLOYMENT_COUNTS.keys())
 
-    hosts = Hosts(
-        session_ssh_key, session_tmpdir, test_config, session_logger, request)
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request)
     try:
         hosts.create()
         manager = hosts.instances[0]
