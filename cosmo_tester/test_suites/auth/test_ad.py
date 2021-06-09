@@ -196,7 +196,7 @@ def _add_groups(ad_host, groups, logger):
         )
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def windows_ldap_tester(request, ssh_key, module_tmpdir, test_config, logger):
     windows_image = 'windows_2012'
 

@@ -17,7 +17,7 @@ from cosmo_tester.test_suites.snapshots import (
 POST_BOOTSTRAP_NET = 'network_3'
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def managers_and_vms(ssh_key, module_tmpdir, test_config, logger,
                      request):
     """Bootstraps 2 cloudify managers on a VM in rackspace OpenStack.
