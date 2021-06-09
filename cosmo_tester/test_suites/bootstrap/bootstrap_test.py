@@ -18,7 +18,7 @@ from cosmo_tester.framework.examples import get_example_deployment
 
 def test_manager_bootstrap_and_deployment(bootstrap_test_manager,
                                           ssh_key, logger, test_config):
-    bootstrap_test_manager.bootstrap()
+    bootstrap_test_manager.bootstrap(include_sanity=True)
 
     example = get_example_deployment(bootstrap_test_manager,
                                      ssh_key, logger, 'bootstrap',
