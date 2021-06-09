@@ -57,6 +57,7 @@ class VM(object):
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
         self._set_image_details()
+        self.bootstrapped = False
         if self.windows:
             self.prepare_for_windows()
 
@@ -456,6 +457,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             fabric_ssh.run('cfy_manager remove --force')
         if self.api_ca_path and os.path.exists(self.api_ca_path):
             os.unlink(self.api_ca_path)
+        self.bootstrapped = False
 
     @only_manager
     def _create_config_file(self, upload_license=True):
@@ -561,6 +563,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             if result == 'done':
                 self._logger.info('Bootstrap complete.')
                 self.finalize_preparation()
+                self.bootstrapped = True
                 return True
             else:
                 # To aid in troubleshooting (e.g. where a VM runs commands too
