@@ -16,28 +16,28 @@ def skip(*args, **kwargs):
     return True
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def brokers(ssh_key, module_tmpdir, test_config, logger, request):
     for _brokers in _get_hosts(ssh_key, module_tmpdir, test_config,
                                logger, request, broker_count=3):
         yield _brokers
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def broker(ssh_key, module_tmpdir, test_config, logger, request):
     for _brokers in _get_hosts(ssh_key, module_tmpdir, test_config,
                                logger, request, broker_count=1):
         yield _brokers[0]
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def dbs(ssh_key, module_tmpdir, test_config, logger, request):
     for _dbs in _get_hosts(ssh_key, module_tmpdir, test_config,
                            logger, request, db_count=3):
         yield _dbs
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def brokers_and_manager(ssh_key, module_tmpdir, test_config, logger,
                         request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
@@ -46,7 +46,7 @@ def brokers_and_manager(ssh_key, module_tmpdir, test_config, logger,
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def brokers3_and_manager(ssh_key, module_tmpdir, test_config, logger,
                          request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
@@ -55,7 +55,7 @@ def brokers3_and_manager(ssh_key, module_tmpdir, test_config, logger,
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def full_cluster_ips(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
                            test_config, logger, request,
@@ -64,7 +64,7 @@ def full_cluster_ips(ssh_key, module_tmpdir, test_config, logger, request):
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def full_cluster_names(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
                            test_config, logger, request,
@@ -73,7 +73,7 @@ def full_cluster_names(ssh_key, module_tmpdir, test_config, logger, request):
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def cluster_with_lb(ssh_key, module_tmpdir, test_config, logger,
                     request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
@@ -83,7 +83,7 @@ def cluster_with_lb(ssh_key, module_tmpdir, test_config, logger,
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def cluster_missing_one_db(ssh_key, module_tmpdir, test_config,
                            logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
@@ -94,7 +94,7 @@ def cluster_missing_one_db(ssh_key, module_tmpdir, test_config,
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def cluster_with_single_db(ssh_key, module_tmpdir, test_config,
                            logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir,
@@ -104,7 +104,7 @@ def cluster_with_single_db(ssh_key, module_tmpdir, test_config,
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def minimal_cluster(ssh_key, module_tmpdir, test_config, logger,
                     request):
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
@@ -114,7 +114,7 @@ def minimal_cluster(ssh_key, module_tmpdir, test_config, logger,
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def three_nodes_cluster(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
                            request,
@@ -122,14 +122,14 @@ def three_nodes_cluster(ssh_key, module_tmpdir, test_config, logger, request):
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def three_vms(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
                            request, three_nodes_cluster=True, bootstrap=False):
         yield _vms
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def nine_vms(ssh_key, module_tmpdir, test_config, logger, request):
     for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
                            request, broker_count=3, db_count=3,
