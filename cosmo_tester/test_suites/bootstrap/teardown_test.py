@@ -36,7 +36,7 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
     # that group.
     expected_diffs['os groups'] = {'cfyagent'}
 
-    bootstrap_test_manager.teardown()
+    bootstrap_test_manager.teardown(kill_certs=False)
     current_state = _get_system_state(bootstrap_test_manager)
     diffs = {}
 
