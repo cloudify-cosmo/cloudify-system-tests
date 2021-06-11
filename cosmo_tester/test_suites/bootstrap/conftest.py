@@ -9,5 +9,4 @@ def bootstrap_test_manager(session_manager):
     # --pdb will actually be useful as it'll allow investigation before
     # teardown on bootstrap failure
     yield session_manager
-    if session_manager.bootstrapped:
-        session_manager.teardown()
+    session_manager.teardown()

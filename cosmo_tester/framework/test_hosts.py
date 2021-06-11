@@ -57,7 +57,7 @@ class VM(object):
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
         self._set_image_details()
-        self.bootstrapped = False
+        self._installed_configs = []
         if self.windows:
             self.prepare_for_windows()
 
@@ -452,12 +452,18 @@ print('{{}} {{}}'.format(distro, codename).lower())
                     display_name, service['status'])
 
     @only_manager
-    def teardown(self):
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.run('cfy_manager remove --force')
+    def teardown(self, kill_certs=True):
+        self._logger.info('Tearing down using any installed configs')
+        for config_name in self._installed_configs:
+            config_path = self._get_config_path(config_name)
+            self._logger.info('Tearing down using {}'.format(config_path))
+            self.run_command('cfy_manager remove -c {}'.format(config_path))
+        self._installed_configs = []
+        if kill_certs:
+            self._logger.info('Removing certs directory')
+            self.run_command('sudo rm -rf /etc/cloudify/ssl')
         if self.api_ca_path and os.path.exists(self.api_ca_path):
             os.unlink(self.api_ca_path)
-        self.bootstrapped = False
 
     @only_manager
     def _create_config_file(self, upload_license=True):
@@ -477,6 +483,13 @@ print('{{}} {{}}'.format(distro, codename).lower())
     def apply_license(self):
         license = util.get_resource_path('test_valid_paying_license.yaml')
         self.client.license.upload(license)
+
+    @only_manager
+    def _get_config_path(self, config_name=None):
+        if config_name:
+            return '/etc/cloudify/{0}_config.yaml'.format(config_name)
+        else:
+            return '/etc/cloudify/config.yaml'
 
     @only_manager
     def bootstrap(self, upload_license=False,
@@ -509,14 +522,15 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 )
 
             if config_name:
-                dest_config_path = \
-                    '/etc/cloudify/{0}_config.yaml'.format(config_name)
+                dest_config_path = self._get_config_path(config_name)
+                self._installed_configs.append(config_name)
                 commands = [
                     'sudo mv /tmp/cloudify.conf {0}'.format(dest_config_path),
                     'cfy_manager install -c {0} > '
                     '/tmp/bs_logs/3_install 2>&1'.format(dest_config_path)
                 ]
             else:
+                self._installed_configs.append(config_name)
                 commands = [
                     'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
                     'cfy_manager install > /tmp/bs_logs/3_install 2>&1'
@@ -563,7 +577,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
             if result == 'done':
                 self._logger.info('Bootstrap complete.')
                 self.finalize_preparation()
-                self.bootstrapped = True
                 return True
             else:
                 # To aid in troubleshooting (e.g. where a VM runs commands too
