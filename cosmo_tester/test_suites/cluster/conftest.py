@@ -6,145 +6,217 @@ from jinja2 import Environment, FileSystemLoader
 from os.path import join, dirname
 import pytest
 
-from cosmo_tester.framework.test_hosts import Hosts, VM
+from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework import util
 
 CONFIG_DIR = join(dirname(__file__), 'config')
+
+
+class InsufficientVmsError(Exception):
+    pass
 
 
 def skip(*args, **kwargs):
     return True
 
 
+@pytest.fixture(scope='session')
+def three_session_vms(request, ssh_key, session_tmpdir, test_config,
+                      session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=3)
+    try:
+        hosts.create()
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
+@pytest.fixture(scope='session')
+def four_session_vms(request, ssh_key, session_tmpdir, test_config,
+                     session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=4)
+    try:
+        hosts.create()
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
+@pytest.fixture(scope='session')
+def six_session_vms(request, ssh_key, session_tmpdir, test_config,
+                    session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=6)
+    try:
+        hosts.create()
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
+@pytest.fixture(scope='session')
+def nine_session_vms(request, ssh_key, session_tmpdir, test_config,
+                     session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=9)
+    try:
+        hosts.create()
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
 @pytest.fixture(scope='function')
-def brokers(ssh_key, module_tmpdir, test_config, logger, request):
-    for _brokers in _get_hosts(ssh_key, module_tmpdir, test_config,
-                               logger, request, broker_count=3):
+def brokers(three_session_vms, test_config, logger):
+    for _brokers in _get_hosts(three_session_vms, test_config, logger,
+                               broker_count=3):
         yield _brokers
+    for vm in three_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def broker(ssh_key, module_tmpdir, test_config, logger, request):
-    for _brokers in _get_hosts(ssh_key, module_tmpdir, test_config,
-                               logger, request, broker_count=1):
+def broker(session_manager, test_config, logger):
+    for _brokers in _get_hosts([session_manager], test_config, logger,
+                               broker_count=1):
         yield _brokers[0]
+    session_manager.teardown()
 
 
 @pytest.fixture(scope='function')
-def dbs(ssh_key, module_tmpdir, test_config, logger, request):
-    for _dbs in _get_hosts(ssh_key, module_tmpdir, test_config,
-                           logger, request, db_count=3):
+def dbs(three_session_vms, test_config, logger):
+    for _dbs in _get_hosts(three_session_vms, test_config, logger,
+                           db_count=3):
         yield _dbs
+    for vm in three_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def brokers_and_manager(ssh_key, module_tmpdir, test_config, logger,
-                        request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir,
-                           test_config, logger, request,
+def brokers_and_manager(three_session_vms, test_config, logger):
+    for _vms in _get_hosts(three_session_vms, test_config, logger,
                            broker_count=2, manager_count=1):
         yield _vms
+    for vm in three_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def brokers3_and_manager(ssh_key, module_tmpdir, test_config, logger,
-                         request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir,
-                           test_config, logger, request,
+def brokers3_and_manager(four_session_vms, test_config, logger):
+    for _vms in _get_hosts(four_session_vms, test_config, logger,
                            broker_count=3, manager_count=1):
         yield _vms
+    for vm in four_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def full_cluster_ips(ssh_key, module_tmpdir, test_config, logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir,
-                           test_config, logger, request,
-                           broker_count=3, db_count=3, manager_count=2,
+def full_cluster_ips(nine_session_vms, test_config, logger):
+    for _vms in _get_hosts(nine_session_vms, test_config, logger,
+                           broker_count=3, db_count=3, manager_count=3,
                            pre_cluster_rabbit=True):
         yield _vms
+    for vm in nine_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def full_cluster_names(ssh_key, module_tmpdir, test_config, logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir,
-                           test_config, logger, request,
-                           broker_count=3, db_count=3, manager_count=2,
+def full_cluster_names(nine_session_vms, test_config, logger):
+    for _vms in _get_hosts(nine_session_vms, test_config, logger,
+                           broker_count=3, db_count=3, manager_count=3,
                            pre_cluster_rabbit=True, use_hostnames=True):
         yield _vms
+    for vm in nine_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def cluster_with_lb(ssh_key, module_tmpdir, test_config, logger,
-                    request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir,
-                           test_config, logger, request,
+def cluster_with_lb(six_session_vms, test_config, logger):
+    for _vms in _get_hosts(six_session_vms, test_config, logger,
                            broker_count=1, db_count=1, manager_count=3,
                            use_load_balancer=True, pre_cluster_rabbit=True):
         yield _vms
+    for vm in six_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def cluster_missing_one_db(ssh_key, module_tmpdir, test_config,
-                           logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir,
-                           test_config, logger, request,
+def cluster_missing_one_db(nine_session_vms, test_config, logger):
+    for _vms in _get_hosts(nine_session_vms, test_config, logger,
+                           broker_count=3, db_count=3, manager_count=3,
                            skip_bootstrap_list=['db3'],
-                           broker_count=3, db_count=3, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
+    for vm in nine_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def cluster_with_single_db(ssh_key, module_tmpdir, test_config,
-                           logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir,
-                           test_config, logger, request,
+def cluster_with_single_db(six_session_vms, test_config, logger):
+    for _vms in _get_hosts(six_session_vms, test_config, logger,
                            broker_count=3, db_count=1, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
+    for vm in six_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def minimal_cluster(ssh_key, module_tmpdir, test_config, logger,
-                    request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request,
+def minimal_cluster(four_session_vms, test_config, logger):
+    for _vms in _get_hosts(four_session_vms, test_config, logger,
                            broker_count=1, db_count=1, manager_count=2,
                            pre_cluster_rabbit=True):
         yield _vms
+    for vm in four_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def three_nodes_cluster(ssh_key, module_tmpdir, test_config, logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request,
+def three_nodes_cluster(three_session_vms, test_config, logger):
+    for _vms in _get_hosts(three_session_vms, test_config, logger,
                            pre_cluster_rabbit=True, three_nodes_cluster=True):
         yield _vms
+    for vm in three_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def three_vms(ssh_key, module_tmpdir, test_config, logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, three_nodes_cluster=True, bootstrap=False):
+def three_vms(three_session_vms, test_config, logger):
+    for vm in three_nodes_cluster:
+        vm.run_command('sudo yum remove cloudify-manager-install')
+    for _vms in _get_hosts(three_session_vms, test_config, logger,
+                           three_nodes_cluster=True, bootstrap=False):
         yield _vms
+    for vm in three_session_vms:
+        vm.teardown()
 
 
 @pytest.fixture(scope='function')
-def nine_vms(ssh_key, module_tmpdir, test_config, logger, request):
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, broker_count=3, db_count=3,
+def nine_vms(nine_session_vms, test_config, logger):
+    for vm in nine_session_vms:
+        vm.run_command('sudo yum remove cloudify-manager-install')
+    for _vms in _get_hosts(nine_session_vms, test_config, logger,
+                           broker_count=3, db_count=3,
                            manager_count=3, bootstrap=False):
         yield _vms
+    for vm in nine_session_vms:
+        vm.teardown()
 
 
-def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
+def _get_hosts(instances, test_config, logger,
                broker_count=0, manager_count=0, db_count=0,
                use_load_balancer=False, skip_bootstrap_list=None,
                # Pre-cluster rabbit determines whether to cluster rabbit
                # during the bootstrap.
                # High security will pre-set all certs (not just required ones)
                # and use postgres client certs.
-               pre_cluster_rabbit=False, high_security=True, extra_node=None,
+               pre_cluster_rabbit=False, high_security=True, extra_node=False,
                use_hostnames=False, three_nodes_cluster=False,
                bootstrap=True):
     number_of_cluster_instances = (
@@ -154,92 +226,78 @@ def _get_hosts(ssh_key, module_tmpdir, test_config, logger, request,
         (1 if use_load_balancer else 0) + has_extra_node
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
-    hosts = Hosts(
-        ssh_key, module_tmpdir, test_config, logger, request,
-        number_of_instances=number_of_instances, bootstrappable=bootstrap)
 
-    tempdir = hosts._tmpdir
+    if len(instances) != number_of_instances:
+        raise InsufficientVmsError('Required %s instances, but got %s',
+                                   number_of_instances, instances)
 
-    try:
-        if not bootstrap:
-            for i in range(number_of_instances):
-                hosts.instances[i] = VM('centos_7', test_config)
+    tempdir = instances[0]._tmpdir_base
 
-        if extra_node:
-            hosts.instances[-1] = VM(extra_node, test_config)
+    if three_nodes_cluster:
+        name_mappings = ['cloudify-1', 'cloudify-2', 'cloudify-3']
+    else:
+        name_mappings = ['rabbit-{}'.format(i)
+                         for i in range(broker_count)]
+        name_mappings.extend([
+            'db-{}'.format(i) for i in range(db_count)
+        ])
+        name_mappings.extend([
+            'manager-{}'.format(i) for i in range(manager_count)
+        ])
+    if use_load_balancer:
+        name_mappings.append('lb')
+    if has_extra_node:
+        name_mappings.append('extra_node')
 
-        for node in hosts.instances:
-            node.verify_services_are_running = skip
+    for idx, node in enumerate(instances):
+        node.wait_for_ssh()
+        # This needs to happen before we start bootstrapping nodes
+        # because the hostname is used by nodes that are being
+        # bootstrapped with reference to nodes that may not have been
+        # bootstrapped yet.
+        node.hostname = name_mappings[idx]
+        node.run_command('sudo hostnamectl set-hostname {}'.format(
+            name_mappings[idx]
+        ))
 
-        hosts.create()
-
-        if three_nodes_cluster:
-            name_mappings = ['cloudify-1', 'cloudify-2', 'cloudify-3']
-        else:
-            name_mappings = ['rabbit-{}'.format(i)
-                             for i in range(broker_count)]
-            name_mappings.extend([
-                'db-{}'.format(i) for i in range(db_count)
-            ])
-            name_mappings.extend([
-                'manager-{}'.format(i) for i in range(manager_count)
-            ])
-        if use_load_balancer:
-            name_mappings.append('lb')
-        if has_extra_node:
-            name_mappings.append('extra_node')
-
-        for idx, node in enumerate(hosts.instances):
-            node.wait_for_ssh()
-            # This needs to happen before we start bootstrapping nodes
-            # because the hostname is used by nodes that are being
-            # bootstrapped with reference to nodes that may not have been
-            # bootstrapped yet.
-            node.hostname = name_mappings[idx]
-            node.run_command('sudo hostnamectl set-hostname {}'.format(
-                name_mappings[idx]
-            ))
-
-        if use_hostnames:
-            hosts_entries = ['\n# Added for hostname test']
-            hosts_entries.extend(
-                '{ip} {name}'.format(ip=node.private_ip_address,
-                                     name=node.hostname)
-                for node in hosts.instances
+    if use_hostnames:
+        hosts_entries = ['\n# Added for hostname test']
+        hosts_entries.extend(
+            '{ip} {name}'.format(ip=node.private_ip_address,
+                                 name=node.hostname)
+            for node in instances
+        )
+        hosts_entries = '\n'.join(hosts_entries)
+        for node in instances:
+            node.install_config['manager']['private_ip'] = node.hostname
+            node.run_command(
+               "echo '{hosts}' | sudo tee -a /etc/hosts".format(
+                   hosts=hosts_entries,
+               )
             )
-            hosts_entries = '\n'.join(hosts_entries)
-            for node in hosts.instances:
-                node.install_config['manager']['private_ip'] = node.hostname
-                node.run_command(
-                   "echo '{hosts}' | sudo tee -a /etc/hosts".format(
-                       hosts=hosts_entries,
-                   )
-                )
 
-        if three_nodes_cluster:
-            brokers = dbs = managers = hosts.instances[:3]
-        else:
-            brokers = hosts.instances[:broker_count]
-            dbs = hosts.instances[broker_count:broker_count + db_count]
-            managers = hosts.instances[broker_count + db_count:
-                                       broker_count + db_count + manager_count]
-        if use_load_balancer:
-            lb = hosts.instances[-1 - has_extra_node]
+    if three_nodes_cluster:
+        brokers = dbs = managers = instances[:3]
+    else:
+        brokers = instances[:broker_count]
+        dbs = instances[broker_count:broker_count + db_count]
+        managers = instances[broker_count + db_count:
+                             broker_count + db_count + manager_count]
+    if use_load_balancer:
+        lb = instances[-1 - has_extra_node]
 
-        if bootstrap:
-            run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
-                                  pre_cluster_rabbit, high_security,
-                                  use_hostnames, tempdir, test_config, logger)
+    if bootstrap:
+        run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
+                              pre_cluster_rabbit, high_security,
+                              use_hostnames, tempdir, test_config, logger)
 
-        if use_load_balancer:
-            _bootstrap_lb_node(lb, managers, tempdir, logger)
+    if use_load_balancer:
+        _bootstrap_lb_node(lb, managers, tempdir, logger)
 
-        logger.info('All nodes are created%s.',
-                    ' and bootstrapped' if bootstrap else '')
+    logger.info('All nodes are created%s.',
+                ' and bootstrapped' if bootstrap else '')
 
-        yield hosts.instances
-    finally:
-        hosts.destroy()
+    yield instances
 
 
 def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
