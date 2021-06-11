@@ -3,7 +3,7 @@ from path import Path
 
 from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
-from cosmo_tester.framework.test_hosts import Hosts
+from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import SSHKey
 from cosmo_tester.test_suites.cluster.conftest import _get_hosts
 
@@ -102,14 +102,23 @@ def image_based_manager(session_manager):
     session_manager.teardown()
 
 
-@pytest.fixture
-def three_node_cluster_with_extra_node(ssh_key, module_tmpdir, test_config,
-                                       logger, request):
+@pytest.fixture(scope='function')
+def three_node_cluster_with_extra_node(ssh_key, session_tmpdir, test_config,
+                                       session_logger, request):
     if hasattr(request, 'param'):
         extra_node = request.param
     else:
         extra_node = 'centos_7'
-    for _vms in _get_hosts(ssh_key, module_tmpdir, test_config, logger,
-                           request, pre_cluster_rabbit=True,
-                           three_nodes_cluster=True, extra_node=extra_node):
-        yield _vms
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=4)
+    hosts.instances[-1] = VM(extra_node, test_config)
+    try:
+        hosts.create()
+        for _vms in _get_hosts(hosts.instances, test_config, session_logger,
+                               pre_cluster_rabbit=True,
+                               three_nodes_cluster=True,
+                               extra_node=True):
+            yield _vms
+    finally:
+        hosts.destroy()
