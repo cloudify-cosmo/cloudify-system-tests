@@ -38,6 +38,9 @@ def _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger):
     _assert_cluster_status(mgr1.client)
 
 
+# It's always fun having a status checker that caches things, let's retry in
+# more places!
+@retrying.retry(stop_max_attempt_number=4, wait_fixed=5000)
 def _verify_status_when_postgres_inactive(db1, db2, logger, client):
     logger.info('Stopping one of the db nodes')
     db1.run_command('supervisorctl stop patroni etcd', use_sudo=True)
@@ -52,8 +55,7 @@ def _verify_status_when_postgres_inactive(db1, db2, logger, client):
     try:
         client.cluster_status.get_status()
     except CloudifyClientError:
-        logger.info('DB cluster is not healthy, must have minimum 2 nodes')
-        pass
+        logger.info('DB cluster is correctly not healthy with 2 nodes gone')
 
     logger.info('Starting Patroni and Etcd on the failed db nodes')
     db1.run_command('supervisorctl start patroni etcd', use_sudo=True)
