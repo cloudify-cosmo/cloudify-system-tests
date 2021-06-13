@@ -73,6 +73,7 @@ def test_three_nodes_cluster_using_provided_certificates(
     three_nodes_config_dict = _get_config_dict(3, test_config)
     _update_three_nodes_config_dict_vms(three_nodes_config_dict, nodes_list)
     three_nodes_config_dict['ca_cert_path'] = join(REMOTE_CERTS_PATH, 'ca.pem')
+    three_nodes_config_dict['ca_key_path'] = join(REMOTE_CERTS_PATH, 'ca.key')
     for i, node in enumerate(nodes_list, start=1):
         three_nodes_config_dict['existing_vms']['node-{0}'.format(i)].update({
             'cert_path': join(REMOTE_CERTS_PATH, 'node-{0}.crt'.format(i)),
@@ -347,3 +348,4 @@ def _create_certificates(local_certs_path, nodes_list, pass_certs=False):
             node.put_remote_file(remote_cert, node_cert)
             node.put_remote_file(remote_key, node_key)
             node.put_remote_file(join(REMOTE_CERTS_PATH, 'ca.pem'), ca_cert)
+            node.put_remote_file(join(REMOTE_CERTS_PATH, 'ca.key'), ca_key)
