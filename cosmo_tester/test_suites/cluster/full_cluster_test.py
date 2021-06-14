@@ -21,7 +21,8 @@ from .cluster_status_shared import (
 
 
 def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
+        full_cluster_ips
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'full_cluster_ips',
@@ -41,7 +42,8 @@ def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
 
 
 def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_names
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
+        full_cluster_names
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'full_cluster_names',
@@ -62,7 +64,8 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
 
 def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
     snapshot_id = 'snap_5.0.5_with_capabilities'
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
+        full_cluster_ips
     _upload_snapshot_from_resource(mgr1, logger, snapshot_id)
     restore_snapshot(mgr1, snapshot_id, logger)
     wait_for_restore(mgr1, logger)
@@ -70,7 +73,8 @@ def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
 
 
 def test_full_cluster_status(full_cluster_ips, logger, module_tmpdir):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
+        full_cluster_ips
 
     _assert_cluster_status(mgr1.client)
     _verify_status_when_syncthing_inactive(mgr1, mgr2, logger)
