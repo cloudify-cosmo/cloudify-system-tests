@@ -30,6 +30,9 @@ def validate_agent(manager, example, test_config,
         expected_system = None
     else:
         expected_system = example.example_host.get_distro()
+        if example.tenant.endswith('centos_8'):
+            # Yes, we manage to get different behaviour for this OS
+            expected_system = 'centos 8'
 
     expected_agent = {
         'ip': example.inputs.get('server_ip', '127.0.0.1'),

@@ -1,52 +1,63 @@
 import time
 
-import pytest
-
 from cosmo_tester.framework.examples import get_example_deployment
-from cosmo_tester.test_suites.agent import (
-    get_test_prerequisites,
-    validate_agent,
-)
+from cosmo_tester.framework.test_hosts import Hosts, VM
+from cosmo_tester.test_suites.agent import validate_agent
 
-
-@pytest.mark.parametrize("vm_os", [
+AGENT_OSES = [
     'ubuntu_16_04',
     'centos_8',
     'centos_7',
     'rhel_7',
     'rhel_8',
     'windows_2012',
-])
-def test_agent_reboot(ssh_key, module_tmpdir, test_config, logger, vm_os,
-                      request):
-    hosts, username, password = get_test_prerequisites(
-        ssh_key, module_tmpdir, test_config, logger, request, vm_os,
-    )
-    manager, vm = hosts.instances
+]
+
+
+def test_agent_reboot(ssh_key, module_tmpdir, test_config, logger, request):
+    hosts = Hosts(ssh_key, module_tmpdir, test_config, logger, request,
+                  len(AGENT_OSES) + 1)
+    manager = hosts.instances[0]
+    agent_vms = {}
+
+    for idx, agent_os in enumerate(AGENT_OSES):
+        hosts.instances[idx + 1] = VM(agent_os, test_config)
+        agent_vms[agent_os] = hosts.instances[idx + 1]
 
     passed = True
 
     try:
         hosts.create()
 
-        example = get_example_deployment(
-            manager, ssh_key, logger, 'agent_reboot_{}'.format(vm_os),
-            test_config, vm=vm,
-        )
-        if 'windows' in vm_os:
-            example.use_windows(username, password)
-        example.upload_and_verify_install()
-        validate_agent(manager, example, test_config)
+        # We could create these one at a time in the next loop, but this way
+        # we still have them if we need to troubleshoot cross-contamination.
+        examples = {
+            agent_os: get_example_deployment(
+                manager, ssh_key, logger, 'agent_reboot_{}'.format(agent_os),
+                test_config, vm=agent_vms[agent_os]
+            )
+            for agent_os in AGENT_OSES
+        }
 
-        if 'windows' in vm_os:
-            vm.run_command('shutdown /r /t 0', warn_only=True)
-        else:
-            vm.run_command('sudo reboot', warn_only=True)
+        for agent_os in AGENT_OSES:
+            example = examples[agent_os]
+            vm = agent_vms[agent_os]
 
-        # Wait for reboot to at least have started
-        time.sleep(10)
+            if 'windows' in agent_os:
+                example.use_windows(vm.username, vm.password)
 
-        example.uninstall()
+            example.upload_and_verify_install()
+            validate_agent(manager, example, test_config)
+
+            if 'windows' in agent_os:
+                vm.run_command('shutdown /r /t 0', warn_only=True)
+            else:
+                vm.run_command('sudo reboot', warn_only=True)
+
+            # Wait for reboot to at least have started
+            time.sleep(10)
+
+            example.uninstall()
     except Exception:
         passed = False
         raise
