@@ -1,79 +1,57 @@
-import json
 import pytest
 
 from cosmo_tester.framework.test_hosts import Hosts, VM
-from cosmo_tester.framework.examples import get_example_deployment
 
-from . import _install_linux_cli, get_linux_image_settings
+from . import (
+    LINUX_OSES,
+    _prepare_linux_cli_test_components,
+    _prepare_windows_cli_test_components,
+    WINDOWS_OSES,
+)
 
 
-@pytest.fixture(
-    scope='module',
-    params=get_linux_image_settings())
-def linux_cli_tester(request, ssh_key, module_tmpdir, test_config,
-                     logger, install_dev_tools=True):
-    instances = [
-        VM('centos_7', test_config),
-        VM('master', test_config),
-    ]
+@pytest.fixture(scope='session')
+def cli_tester(request, ssh_key, session_tmpdir, test_config,
+               session_logger):
+    all_targets = LINUX_OSES + WINDOWS_OSES
 
-    cli_hosts = Hosts(
-        ssh_key, module_tmpdir,
-        test_config, logger, request, instances=instances,
+    hosts = Hosts(
+        ssh_key, session_tmpdir,
+        test_config, session_logger, request, len(all_targets) + 1,
     )
+
+    manager = hosts.instances[0]
+
+    cli_vms = {}
+    for idx, cli_os in enumerate(all_targets):
+        hosts.instances[idx + 1] = VM(cli_os, test_config)
+        cli_vms[cli_os] = hosts.instances[idx + 1]
 
     passed = True
 
+    cli_tests_dict = {'manager': manager,
+                      'tmpdir': session_tmpdir}
+
     try:
-        cli_hosts.create()
+        hosts.create()
 
-        url_key = request.param[1]
-        pkg_type = request.param[2]
-        cli_host, manager_host = cli_hosts.instances
+        for cli_os in all_targets:
+            cli_host = cli_vms[cli_os]
+            windows = 'windows' in cli_os
 
-        _install_linux_cli(cli_host, logger, url_key, pkg_type, test_config)
+            if windows:
+                prep_func = _prepare_windows_cli_test_components
+            else:
+                prep_func = _prepare_linux_cli_test_components
 
-        example = get_example_deployment(
-            manager_host, ssh_key, logger, url_key, test_config)
-        example.inputs['path'] = '/tmp/{}'.format(url_key)
+            cli_tests_dict[cli_os] = prep_func(
+                cli_host, manager, cli_os, ssh_key, session_logger,
+                test_config)
 
-        logger.info('Copying blueprint to CLI host')
-        cli_host.run_command('mkdir -p /tmp/test_blueprint')
-        remote_blueprint_path = '/tmp/test_blueprint/blueprint.yaml'
-        cli_host.put_remote_file(
-            remote_path=remote_blueprint_path,
-            local_path=example.blueprint_file,
-        )
-
-        logger.info('Copying inputs to CLI host')
-        remote_inputs_path = '/tmp/test_blueprint/inputs.yaml'
-        cli_host.put_remote_file_content(
-            remote_path=remote_inputs_path,
-            content=json.dumps(example.inputs),
-        )
-
-        logger.info('Copying agent ssh key to CLI host for secret')
-        remote_ssh_key_path = '/tmp/cli_test_ssh_key.pem'
-        cli_host.put_remote_file(
-            remote_path=remote_ssh_key_path,
-            local_path=ssh_key.private_key_path,
-        )
-
-        yield {
-            'cli_host': cli_host,
-            'example': example,
-            'paths': {
-                'blueprint': remote_blueprint_path,
-                'inputs': remote_inputs_path,
-                'ssh_key': remote_ssh_key_path,
-                # Expected to be in path on linux systems
-                'cfy': 'cfy',
-                'cert': '/home/{user}/manager.crt'.format(
-                    user=cli_host.username),
-            },
-        }
+        yield cli_tests_dict
     except Exception:
         passed = False
         raise
-    finally:
-        cli_hosts.destroy(passed=passed)
+    # Do not put this in a finally, let pytest handle that
+    # Otherwise, --pdb will run /after/ the teardown
+    hosts.destroy(passed=passed)

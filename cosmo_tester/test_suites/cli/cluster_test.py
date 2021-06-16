@@ -11,16 +11,6 @@ from cosmo_tester.test_suites.cli import (
 )
 
 
-def test_cfy_logs_linux(linux_cli_tester, tmpdir, logger):
-    cli_host = linux_cli_tester['cli_host']
-    example = linux_cli_tester['example']
-    paths = linux_cli_tester['paths']
-
-    _prepare(cli_host, example, paths, logger)
-    _test_cfy_logs(cli_host.run_command, cli_host, example, paths, tmpdir,
-                   logger)
-
-
 @pytest.mark.parametrize('three_node_cluster_with_extra_node',
                          [p[0] for p in get_linux_image_settings()],
                          indirect=['three_node_cluster_with_extra_node'])
@@ -109,13 +99,8 @@ def _linux_cluster_cli_tester(request, ssh_key, test_config, logger, cluster):
     cluster_nodes = cluster[:3]
     cli_host = cluster[3]
 
-    for setting in get_linux_image_settings():
-        if setting[0] in request.node.nodeid:
-            _, url_key, pkg_type = setting
-            break
-
     try:
-        _install_linux_cli(cli_host, logger, url_key, pkg_type, test_config)
+        _install_linux_cli(cli_host, logger, test_config)
 
         logger.info('Copying agent ssh key and CA cert to CLI host')
         remote_ssh_key_path = '/tmp/cli_test_ssh_key.pem'
