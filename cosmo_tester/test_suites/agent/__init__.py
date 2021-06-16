@@ -12,11 +12,14 @@ def get_test_prerequisites(ssh_key, module_tmpdir, test_config, logger,
 
 
 def validate_agent(manager, example, test_config,
-                   broken_system=False, install_method='remote'):
-    agents = list(manager.client.agents.list(_all_tenants=True))
+                   broken_system=False, install_method='remote',
+                   upgrade=False):
+    agents = list(manager.client.agents.list(tenant_name=example.tenant,
+                                             _all_tenants=True))
     instances = list(
         manager.client.node_instances.list(
-            _all_tenants=True, node_id='vm',
+            tenant_name=example.tenant, node_id='vm',
+            _all_tenants=True
         )
     )
 
@@ -45,5 +48,9 @@ def validate_agent(manager, example, test_config,
         'node': instance['node_id'],
         'deployment': instance['deployment_id'],
     }
+
+    if upgrade:
+        # Because it gets a UUID tacked onto the end
+        agent['id'] = agent['id'][:len(expected_agent['id'])]
 
     assert agent == expected_agent
