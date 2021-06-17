@@ -5,7 +5,7 @@ from cosmo_tester.test_suites.cluster import check_managers
 
 
 def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, _ = full_cluster_ips
 
     example = get_example_deployment(mgr1, ssh_key, logger, 'remove_db_node',
                                      test_config)
