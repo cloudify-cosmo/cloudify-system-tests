@@ -14,7 +14,7 @@ from cosmo_tester.test_suites.snapshots import (
 
 @pytest.mark.parametrize('three_node_cluster_with_extra_node', ['master'],
                          indirect=['three_node_cluster_with_extra_node'])
-def test_migrate_agent_cluster_to_aio(
+def test_migrate_agents_cluster_to_aio(
         three_node_cluster_with_extra_node, module_tmpdir,
         ssh_key, logger, test_config):
     node1, node2, node3, aio_mgr = three_node_cluster_with_extra_node
@@ -39,14 +39,22 @@ def test_migrate_agent_cluster_to_aio(
                      cert_path=aio_mgr.api_ca_path)
     wait_for_restore(aio_mgr, logger)
 
+    logger.info('Migrating to new agents, stopping old agents')
+    aio_mgr.run_command(
+        'cfy agents install --stop-old-agent --tenant-name {}'.format(
+            example.tenant,
+        )
+    )
+
     logger.info('Verifying agent connectivity on AIO manager')
-    validate_agent(aio_mgr, example, test_config)
+    example.manager = aio_mgr
+    validate_agent(aio_mgr, example, test_config, upgrade=True)
     example.uninstall()
 
 
 @pytest.mark.parametrize('three_node_cluster_with_extra_node', ['master'],
                          indirect=['three_node_cluster_with_extra_node'])
-def test_migrate_agent_aio_to_cluster(
+def test_migrate_agents_aio_to_cluster(
         three_node_cluster_with_extra_node, module_tmpdir,
         ssh_key, logger, test_config):
     node1, node2, node3, aio_mgr = three_node_cluster_with_extra_node
@@ -71,6 +79,14 @@ def test_migrate_agent_aio_to_cluster(
                      cert_path=aio_mgr.api_ca_path)
     wait_for_restore(node2, logger)
 
+    logger.info('Migrating to new agents, stopping old agents')
+    node1.run_command(
+        'cfy agents install --stop-old-agent --tenant-name {}'.format(
+            example.tenant,
+        )
+    )
+
     logger.info('Verifying agent connectivity on cluster')
-    validate_agent(node3, example, test_config)
+    example.manager = node1
+    validate_agent(node3, example, test_config, upgrade=True)
     example.uninstall()
