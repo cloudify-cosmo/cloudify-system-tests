@@ -7,7 +7,8 @@ from cosmo_tester.framework.util import (get_resource_path,
 
 def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
                                          test_config, module_tmpdir):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, _ = full_cluster_ips
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
+        full_cluster_ips
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'cluster_replace_certs', test_config)
@@ -15,7 +16,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
     example.upload_and_verify_install()
     validate_cluster_status_and_agents(mgr1, example.tenant, logger)
 
-    for host in broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2:
+    for host in broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3:
         key_path = join('~', '.cloudify-test-ca',
                         host.private_ip_address + '.key')
         mgr1.run_command('cfy_manager generate-test-cert'
