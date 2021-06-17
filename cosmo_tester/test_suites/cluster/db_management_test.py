@@ -5,7 +5,8 @@ from cosmo_tester.test_suites.cluster import check_managers
 
 
 def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
-    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = full_cluster_ips
+    broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
+        full_cluster_ips
 
     example = get_example_deployment(mgr1, ssh_key, logger, 'remove_db_node',
                                      test_config)
@@ -25,7 +26,7 @@ def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
             db1.private_ip_address,
         )
     )
-    db3.run_command('cfy_manager remove --force')
+    db3.teardown()
 
     db1.run_command('cfy_manager dbs remove -a {}'.format(
         db3.private_ip_address,
