@@ -93,7 +93,7 @@ def _set_ssh_in_profile(run, example, paths):
     )
 
 
-def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
+def _test_cfy_logs(run, cli_host, cli_os, example, paths, tmpdir, logger):
     _set_ssh_in_profile(run, example, paths)
 
     # stop manager services so the logs won't change during the test
@@ -103,37 +103,43 @@ def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
         '{cfy} logs download --json'.format(cfy=paths['cfy'])
     ).stdout.strip())['archive paths']['manager'].values()][0]
 
-    log_hashes = [f.split()[0] for f in example.manager.run_command(
-        'find /var/log/cloudify -type f -not -name \'supervisord.log\''
-        ' -exec md5sum {} + | sort',
-        use_sudo=True
-    ).stdout.splitlines()]
+    log_hashes = {
+        f.split()[1][len('/var/log/cloudify'):]: f.split()[0]
+        for f in example.manager.run_command(
+            'find /var/log/cloudify -type f -not -name \'supervisord.log\''
+            ' -exec md5sum {} + | sort',
+            use_sudo=True
+        ).stdout.splitlines()
+    }
     logger.info('Calculated log hashes for %s are %s',
                 example.manager.private_ip_address,
                 log_hashes)
 
-    local_logs_dump_filepath = str(tmpdir / 'logs.tar')
+    local_logs_dump_filepath = str(tmpdir / cli_os / 'logs.tar')
     cli_host.get_remote_file(logs_dump_filepath, local_logs_dump_filepath)
     logger.info('Start extracting log hashes locally for %s',
                 local_logs_dump_filepath)
     with tarfile.open(local_logs_dump_filepath) as tar:
-        tar.extractall(str(tmpdir))
+        tar.extractall(str(tmpdir / cli_os))
 
-    files = list((tmpdir / 'cloudify').visit('*.*'))
+    local_base = (tmpdir / cli_os / 'cloudify')
+    files = list(local_base.walkfiles())
     logger.info('Checking both `journalctl.log` and '
                 '`supervisord.log` are exist inside %s',
                 local_logs_dump_filepath)
-    assert str(tmpdir / 'cloudify/journalctl.log') in files
-    assert str(tmpdir / 'cloudify/supervisord.log') in files
-    log_hashes_local = sorted(
-        [hashlib.md5(open(f.strpath, 'rb').read()).hexdigest() for f in files
-         if 'journalctl' not in f.basename
-         and 'supervisord' not in f.basename]
-    )
+    assert str(local_base / 'journalctl.log') in files
+    assert str(local_base / 'supervisord.log') in files
+    log_hashes_local = {
+        str(f)[len(local_base):]: hashlib.md5(
+            open(str(f), 'rb').read()).hexdigest()
+        for f in files
+        if 'journalctl' not in f.basename()
+        and 'supervisord' not in f.basename()
+    }
     logger.info('Calculated log hashes locally for %s are %s',
                 example.manager.private_ip_address,
                 log_hashes_local)
-    assert set(log_hashes) == set(log_hashes_local)
+    assert log_hashes == log_hashes_local
 
     logger.info('Testing `cfy logs backup`')
     run('{cfy} logs backup --verbose'.format(cfy=paths['cfy']))
@@ -150,6 +156,9 @@ def _test_cfy_logs(run, cli_host, example, paths, tmpdir, logger):
         ' -exec test -s {} \\; -print -exec false {} +',
         use_sudo=True
     )
+
+    # Start manager services again to allow the next test to work
+    example.manager.run_command('cfy_manager start')
 
 
 def _test_teardown(run, example, paths, logger):
