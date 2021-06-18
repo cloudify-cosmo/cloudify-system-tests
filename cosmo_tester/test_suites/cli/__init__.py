@@ -1,7 +1,8 @@
-import json
-import time
+from contextlib import contextmanager
 import hashlib
+import json
 import tarfile
+import time
 
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import get_cli_package_url
@@ -93,27 +94,84 @@ def _set_ssh_in_profile(run, example, paths):
     )
 
 
-def _test_cfy_logs(run, cli_host, cli_os, example, paths, tmpdir, logger):
+@contextmanager
+def _test_logs_context(run, example, paths, managers, configs=None):
     _set_ssh_in_profile(run, example, paths)
 
-    # stop manager services so the logs won't change during the test
-    example.manager.run_command('cfy_manager stop')
+    if configs is None:
+        configs = ['config']
 
-    logs_dump_filepath = [v for v in json.loads(run(
-        '{cfy} logs download --json'.format(cfy=paths['cfy'])
-    ).stdout.strip())['archive paths']['manager'].values()][0]
+    for manager in managers:
+        for config in configs:
+            # Stop manager services so the logs won't change during the test
+            manager.run_command('cfy_manager stop -c '
+                                '/etc/cloudify/{}.yaml'.format(config))
 
+    yield
+
+    for manager in managers:
+        for config in configs:
+            # Start manager services so other tests can work
+            manager.run_command('cfy_manager start -c '
+                                '/etc/cloudify/{}.yaml'.format(config))
+
+
+def _get_manager_log_hashes(manager, logger):
+    """Get a dict mapping file paths to hashes for logs on the specified
+    manager.
+    File paths will be relative to the root of the logs (/var/log/cloudify).
+    journalctl.log and supervisord.log will be excluded as they can't be kept
+    from changing.
+    """
+    logger.info('Checking log hashes for %s`', manager.private_ip_address)
     log_hashes = {
         f.split()[1][len('/var/log/cloudify'):]: f.split()[0]
-        for f in example.manager.run_command(
+        for f in manager.run_command(
             'find /var/log/cloudify -type f -not -name \'supervisord.log\''
             ' -exec md5sum {} + | sort',
             use_sudo=True
         ).stdout.splitlines()
     }
     logger.info('Calculated log hashes for %s are %s',
-                example.manager.private_ip_address,
+                manager.private_ip_address,
                 log_hashes)
+    return log_hashes
+
+
+def _get_local_log_hashes(local_base, logger):
+    """Get a dict mapping file paths to hashes for logs in the specified
+    local directory.
+    File paths will be relative to the root path of the extracted logs.
+    journalctl.log and supervisord.log will be checked for existence but not
+    contents, as we can't prevent them from changing reliably.
+    """
+    logger.info('Checking local log hashes in %s', str(local_base))
+    files = list(local_base.walkfiles())
+
+    logger.info('Checking both `journalctl.log` and '
+                '`supervisord.log`exist inside %s',
+                str(local_base))
+    assert str(local_base / 'journalctl.log') in files
+    assert str(local_base / 'supervisord.log') in files
+
+    log_hashes_local = {
+        str(f)[len(local_base):]: hashlib.md5(
+            open(str(f), 'rb').read()).hexdigest()
+        for f in files
+        if 'journalctl' not in f.basename()
+        and 'supervisord' not in f.basename()
+    }
+    logger.info('Calculated local log hashes are %s',
+                log_hashes_local)
+    return log_hashes_local
+
+
+def _test_cfy_logs(run, cli_host, cli_os, example, paths, tmpdir, logger):
+    logs_dump_filepath = [v for v in json.loads(run(
+        '{cfy} logs download --json'.format(cfy=paths['cfy'])
+    ).stdout.strip())['archive paths']['manager'].values()][0]
+
+    log_hashes = _get_manager_log_hashes(example.manager, logger)
 
     local_logs_dump_filepath = str(tmpdir / cli_os / 'logs.tar')
     cli_host.get_remote_file(logs_dump_filepath, local_logs_dump_filepath)
@@ -123,22 +181,8 @@ def _test_cfy_logs(run, cli_host, cli_os, example, paths, tmpdir, logger):
         tar.extractall(str(tmpdir / cli_os))
 
     local_base = (tmpdir / cli_os / 'cloudify')
-    files = list(local_base.walkfiles())
-    logger.info('Checking both `journalctl.log` and '
-                '`supervisord.log` are exist inside %s',
-                local_logs_dump_filepath)
-    assert str(local_base / 'journalctl.log') in files
-    assert str(local_base / 'supervisord.log') in files
-    log_hashes_local = {
-        str(f)[len(local_base):]: hashlib.md5(
-            open(str(f), 'rb').read()).hexdigest()
-        for f in files
-        if 'journalctl' not in f.basename()
-        and 'supervisord' not in f.basename()
-    }
-    logger.info('Calculated log hashes locally for %s are %s',
-                example.manager.private_ip_address,
-                log_hashes_local)
+    log_hashes_local = _get_local_log_hashes(local_base, logger)
+
     assert log_hashes == log_hashes_local
 
     logger.info('Testing `cfy logs backup`')
@@ -156,9 +200,6 @@ def _test_cfy_logs(run, cli_host, cli_os, example, paths, tmpdir, logger):
         ' -exec test -s {} \\; -print -exec false {} +',
         use_sudo=True
     )
-
-    # Start manager services again to allow the next test to work
-    example.manager.run_command('cfy_manager start')
 
 
 def _test_teardown(run, example, paths, logger):
@@ -245,6 +286,8 @@ def _install_linux_cli(cli_host, logger, test_config):
 
 def _prepare_linux_cli_test_components(cli_host, manager_host, cli_os,
                                        ssh_key, logger, test_config):
+    cli_host.wait_for_ssh()
+
     _install_linux_cli(cli_host, logger, test_config)
 
     example = get_example_deployment(
