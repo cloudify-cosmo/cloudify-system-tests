@@ -82,11 +82,12 @@ def cluster_cli_tester(request, ssh_key, session_tmpdir, test_config,
     try:
         hosts.create()
 
-        mgr1, mgr2, mgr3 = _get_hosts(
+        managers = _get_hosts(
             hosts.instances[:3], test_config, session_logger,
             pre_cluster_rabbit=True, three_nodes_cluster=True)
+        mgr1, mgr2, mgr3 = managers
 
-        cli_tests_dict = {'managers': [mgr1, mgr2, mgr3],
+        cli_tests_dict = {'managers': managers,
                           'tmpdir': session_tmpdir}
 
         for cli_os in all_targets:
