@@ -5,6 +5,7 @@ from cosmo_tester.test_suites.cli import (
     _get_local_log_hashes,
     _get_manager_log_hashes,
     LINUX_OSES,
+    _prepare,
     _test_logs_context,
 )
 
@@ -20,7 +21,9 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
         tmpdir = cluster_cli_tester['tmpdir']
         managers = cluster_cli_tester['managers']
 
-        with _test_logs_context(cli_host.run_command, example,
+        _prepare(cli_host, example, paths, logger, include_secret=False)
+
+        with _test_logs_context(cli_host.run_command, example, paths,
                                 cluster_cli_tester['managers'],
                                 configs=['db_config', 'rabbit_config',
                                          'manager_config']):
