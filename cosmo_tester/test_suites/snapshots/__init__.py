@@ -49,9 +49,21 @@ def stop_manager(manager, logger):
     manager.stop()
 
 
-def confirm_manager_empty(manager):
-    assert get_plugins_list(manager) == []
-    assert get_deployments_list(manager) == []
+def confirm_manager_empty(manager, logger):
+    logger.info('Confirming only default tenant exists on manager')
+    tenants = [t['name'] for t in manager.client.tenants.list()]
+    assert tenants == ['default_tenant']
+
+    clean = {
+        'default_tenant': {
+            'plugins': [],
+            'blueprints': [],
+            'deployments': [],
+            'secrets': [],
+        }
+    }
+    logger.info('Confirming default tenant has no resources')
+    assert get_manager_state(manager, ['default_tenant'], logger) == clean
 
 
 def create_snapshot(manager, snapshot_id, logger):
@@ -238,64 +250,41 @@ def fix_admin_account(manager, salt, logger):
     test_user('admin', 'admin', manager, logger)
 
 
-def check_plugins(manager, old_plugins, logger, tenant='default_tenant'):
-    """
-        Make sure that all plugins on the manager are correctly installed.
-        This checks not just for their existence in the API, but also that
-        they exist in the correct place on the manager filesystem.
-        This is intended for use checking a new manager has all plugins
-        correctly restored by a snapshot.
+def check_deployments(manager, expected_state, logger):
+    """Make sure the deployments were fully recreated"""
+    for tenant, details in expected_state:
+        deployments = details['deployments']
 
-        :param manager: The manager to check.
-        :param old_plugins: A list of plugins on the old manager. This will be
-                            checked to confirm that all of the plugins have
-                            been restored on the new manager.
-        :param logger: A logger to provide useful output.
-        :param tenant: Set to check tenants other than the default tenant.
-                       Whichever tenant name this is set to will be checked.
-                       Defaults to default_tenant.
-    """
-    _log('Checking plugins', logger, tenant)
-    plugins = get_plugins_list(manager, tenant)
-    assert plugins == old_plugins
-    _log('Plugins as expected', logger, tenant)
-
-
-def check_deployments(manager, old_deployments, logger,
-                      tenant='default_tenant'):
-    deployments = get_deployments_list(manager, tenant)
-    assert sorted(deployments) == sorted(old_deployments)
-
-    _log('Checking deployments', logger, tenant)
-    # Now make sure the envs were recreated
-    with manager.ssh() as fabric_ssh:
-        for deployment in deployments:
-            path = DEPLOYMENT_ENVIRONMENT_PATH.format(
-                tenant=tenant,
-                name=deployment,
-            )
-            logger.info(
-                'Checking deployment env for {name} was recreated.'.format(
+        _log('Checking deployments', logger, tenant)
+        # Now make sure the envs were recreated
+        with manager.ssh() as fabric_ssh:
+            for deployment in deployments:
+                path = DEPLOYMENT_ENVIRONMENT_PATH.format(
+                    tenant=tenant,
                     name=deployment,
                 )
-            )
-            # To aid troubleshooting when the following line fails
-            _log('Listing deployments path', logger, tenant)
-            fabric_ssh.sudo('ls -la {path}'.format(
-                path=TENANT_DEPLOYMENTS_PATH.format(
-                    tenant=tenant,
-                ),
-            ))
-            _log(
-                'Checking deployment path for {name}'.format(
-                    name=deployment,
-                ),
-                logger,
-                tenant,
-            )
-            fabric_ssh.sudo('test -d {path}'.format(path=path))
-            logger.info('Deployment environment was recreated.')
-    _log('Found correct deployments', logger, tenant)
+                logger.info(
+                    'Checking deployment env for {name} was recreated.'.format(
+                        name=deployment,
+                    )
+                )
+                # To aid troubleshooting when the following line fails
+                _log('Listing deployments path', logger, tenant)
+                fabric_ssh.sudo('ls -la {path}'.format(
+                    path=TENANT_DEPLOYMENTS_PATH.format(
+                        tenant=tenant,
+                    ),
+                ))
+                _log(
+                    'Checking deployment path for {name}'.format(
+                        name=deployment,
+                    ),
+                    logger,
+                    tenant,
+                )
+                fabric_ssh.sudo('test -d {path}'.format(path=path))
+                logger.info('Deployment environment was recreated.')
+        _log('Found correct deployments', logger, tenant)
 
 
 @retrying.retry(
@@ -323,30 +312,40 @@ def verify_services_status(manager, logger):
                             format(instance, instance['state']))
 
 
-def get_plugins_list(manager, tenant=None):
-    with set_client_tenant(manager.client, tenant):
-        return [
-            (
-                item['package_name'],
-                item['package_version'],
-                item['distribution'],
-            )
-            for item in manager.client.plugins.list()
-        ]
+def get_manager_state(manager, tenants, logger):
+    tenant_state = {}
+    for tenant in tenants:
+        tenant_state[tenant] = {}
 
+        logger.info('Getting plugin details for tenant %s', tenant)
+        with set_client_tenant(manager.client, tenant):
+            tenant_state[tenant]['plugins'] = sorted([
+                (
+                    item['package_name'],
+                    item['package_version'],
+                    item['distribution'],
+                )
+                for item in manager.client.plugins.list()
+            ])
 
-def get_deployments_list(manager, tenant=None):
-    with set_client_tenant(manager.client, tenant):
-        return [
-            item['id'] for item in manager.client.deployments.list()
-        ]
+        logger.info('Getting blueprints for tenant %s', tenant)
+        with set_client_tenant(manager.client, tenant):
+            tenant_state[tenant]['blueprints'] = sorted([
+                item['id'] for item in manager.client.blueprints.list()
+            ])
 
+        logger.info('Getting deployments for tenant %s', tenant)
+        with set_client_tenant(manager.client, tenant):
+            tenant_state[tenant]['deployments'] = sorted([
+                item['id'] for item in manager.client.deployments.list()
+            ])
 
-def get_secrets_list(manager, tenant=None):
-    with set_client_tenant(manager.client, tenant):
-        return [
-            item['key'] for item in manager.client.secrets.list()
-        ]
+        logger.info('Getting secrets for tenant %s', tenant)
+        with set_client_tenant(manager.client, tenant):
+            tenant_state[tenant]['secrets'] = sorted([
+                item['key'] for item in manager.client.secrets.list()
+            ])
+    return tenant_state
 
 
 def _log(message, logger, tenant=None):
