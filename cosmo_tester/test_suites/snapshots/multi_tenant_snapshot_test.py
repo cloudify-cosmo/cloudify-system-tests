@@ -5,22 +5,19 @@ from cosmo_tester.framework.deployment_update import (
 )
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
+    change_salt_on_new_manager,
     check_credentials,
     check_deployments,
-    verify_services_status,
-    change_salt_on_new_manager,
-    check_plugins,
     confirm_manager_empty,
     create_copy_and_restore_snapshot,
-    stop_manager,
-    get_deployments_list,
-    get_plugins_list,
-    get_secrets_list,
+    get_manager_state,
     prepare_credentials_tests,
     set_client_tenant,
     SNAPSHOT_ID,
+    stop_manager,
     update_credentials,
     upgrade_agents,
+    verify_services_status,
 )
 from cosmo_tester.framework.util import get_resource_path
 
@@ -42,7 +39,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     old_manager, new_manager, win_vm, lin_vm = hosts.instances
 
-    confirm_manager_empty(new_manager)
+    confirm_manager_empty(new_manager, logger)
 
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
@@ -50,18 +47,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
                                                      ssh_key, test_config,
                                                      win_vm, lin_vm)
 
-    old_plugins = {
-        tenant: get_plugins_list(old_manager, tenant)
-        for tenant in TENANTS
-    }
-    old_secrets = {
-        tenant: get_secrets_list(old_manager, tenant)
-        for tenant in TENANTS
-    }
-    old_deployments = {
-        tenant: get_deployments_list(old_manager, tenant)
-        for tenant in TENANTS
-    }
+    old_manager_state = get_manager_state(old_manager, TENANTS, logger)
 
     change_salt_on_new_manager(new_manager, logger)
     prepare_credentials_tests(old_manager, logger)
@@ -97,9 +83,9 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     for example in example_mappings.values():
         example.check_files()
 
-    check_tenant_secrets(new_manager, TENANTS, old_secrets, logger)
-    check_tenant_plugins(new_manager, old_plugins, TENANTS, logger)
-    check_tenant_deployments(new_manager, old_deployments, TENANTS, logger)
+    new_manager_state = get_manager_state(new_manager, TENANTS, logger)
+    assert new_manager_state == old_manager_state
+    check_deployments(new_manager, old_manager_state, logger)
 
     upgrade_agents(new_manager, logger, test_config)
 
@@ -206,56 +192,7 @@ def create_tenant_secrets(manager, tenants, logger):
                 key=tenant,
                 value=tenant,
             )
-        assert tenant in get_secrets_list(manager, tenant), (
-            'Failed to create secret for {tenant}'.format(tenant=tenant)
-        )
     logger.info('Secrets created.')
-
-
-def check_tenant_secrets(manager, tenants, old_secrets, logger):
-    """
-        Check that secrets are correctly restored onto a new manager.
-        This includes confirming that no new secrets are created except for
-        those that are created as part of the SSH key -> secret migrations.
-
-        :param manager: The manager to check for restored secrets.
-        :param tenants: The tenants to check.
-        :param old_secrets: A dict containing lists of secrets keyed by tenant
-                            name.
-        :param logger: A logger to provide useful output.
-    """
-    for tenant in tenants:
-        logger.info('Checking secrets for {tenant}'.format(tenant=tenant))
-        secrets = get_secrets_list(manager, tenant)
-        logger.info('Found secrets for {tenant} on manager: {secrets}'.format(
-            tenant=tenant,
-            secrets=', '.join(secrets),
-        ))
-
-        old_tenant_secrets = old_secrets[tenant]
-        old_tenant_secrets.sort()
-
-        assert secrets == old_tenant_secrets, (
-            'Secrets for {tenant} do not match old secrets!'.format(
-                tenant=tenant,
-            )
-        )
-        logger.info('Secrets for {tenant} are correct.'.format(tenant=tenant))
-
-
-def check_tenant_plugins(manager, old_plugins, tenants, logger):
-    logger.info('Checking uploaded plugins are correct for all tenants.')
-    for tenant in tenants:
-        check_plugins(manager, old_plugins[tenant], logger, tenant)
-    logger.info('Uploaded plugins are correct for all tenants.')
-
-
-def check_tenant_deployments(manager, old_deployments, tenants, logger):
-    logger.info('Checking deployments are correct for all tenants.')
-    for tenant in tenants:
-        check_deployments(manager, old_deployments[tenant], logger,
-                          tenant=tenant)
-    logger.info('Deployments are correct for all tenants.')
 
 
 def create_tenants(manager, logger, tenants=('tenant1', 'tenant2')):
