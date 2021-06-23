@@ -25,96 +25,42 @@ from cosmo_tester.test_suites.snapshots import (
 from cosmo_tester.framework.util import get_resource_path
 
 
+FROM_SOURCE_TENANT = 'from_source'
+WIN_TENANT = 'default_tenant'
+LIN_TENANT = 'lin_tenant'
+NOINSTALL_TENANT = 'noinstall'
+
+INSTALL_TENANTS = [FROM_SOURCE_TENANT, WIN_TENANT, LIN_TENANT]
+TENANTS = [FROM_SOURCE_TENANT, WIN_TENANT, LIN_TENANT,
+           NOINSTALL_TENANT]
+
+
 def test_restore_snapshot_and_agents_upgrade_multitenant(
         hosts, logger, tmpdir, ssh_key, test_config):
     if not test_config['premium']:
         pytest.skip('Multi tenant snapshots are not valid for community.')
 
-    local_snapshot_path = str(tmpdir / 'snapshot.zip')
-
-    from_source_tenant = 'from_source'
-    win_tenant = 'default_tenant'
-    lin_tenant = 'lin_tenant'
-    noinstall_tenant = 'noinstall'
-
-    install_tenants = [from_source_tenant, win_tenant, lin_tenant]
-    tenants = [from_source_tenant, win_tenant, lin_tenant,
-               noinstall_tenant]
-
     old_manager, new_manager, win_vm, lin_vm = hosts.instances
 
     confirm_manager_empty(new_manager)
 
-    create_tenants(old_manager, logger, tenants=tenants)
+    local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
-    example_mappings = {}
-
-    # A deployment with a plugin installed from-source
-    # Note: This needs to be a central executor plugin or the later check will
-    # fail.
-    example_mappings[from_source_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, from_source_tenant, test_config,
-        using_agent=False, upload_plugin=False,
-    )
-    # We'll use an older blueprint style for this to confirm they still work
-    example_mappings[from_source_tenant].blueprint_file = get_resource_path(
-        'blueprints/compute/central_executor_4_3_3.yaml'
-    )
-
-    # A 'normal' windows deployment
-    example_mappings[win_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, win_tenant, test_config,
-        win_vm, suffix='_win',
-    )
-    example_mappings[win_tenant].use_windows(win_vm.username, win_vm.password)
-
-    # A 'normal' linux deployment
-    example_mappings[lin_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, lin_tenant, test_config,
-        lin_vm, suffix='_lin',
-    )
-
-    # A deployment that hasn't been installed
-    example_mappings[noinstall_tenant] = get_example_deployment(
-        old_manager, ssh_key, logger, noinstall_tenant, test_config, lin_vm,
-    )
-
-    if old_manager.image_type == '5.1.0':
-        # We need to use the updated windows agent or it can't work
-        agent_url = (
-            'https://cloudify-release-eu.s3-eu-west-1.amazonaws.com/cloudify/'
-            '5.1.0/ga-release/cloudify-windows-agent_5.1.0-ga.exe'
-        )
-        tmp_path = '/tmp/winagent.exe'
-        agent_destination = (
-            '/opt/manager/resources/packages/agents/'
-            'cloudify-windows-agent.exe'
-        )
-        old_manager.run_command('curl -Lo {} {}'.format(tmp_path, agent_url))
-        old_manager.run_command('sudo cp {} {}'.format(
-            tmp_path, agent_destination))
-
-    for tenant in install_tenants:
-        skip_validation = tenant == from_source_tenant
-        example_mappings[tenant].upload_and_verify_install(
-            skip_plugins_validation=skip_validation,
-        )
-    example_mappings[noinstall_tenant].upload_blueprint()
-    example_mappings[noinstall_tenant].create_deployment()
-
-    create_tenant_secrets(old_manager, tenants, logger)
+    example_mappings = prepare_old_manager_resources(old_manager, logger,
+                                                     ssh_key, test_config,
+                                                     win_vm, lin_vm)
 
     old_plugins = {
         tenant: get_plugins_list(old_manager, tenant)
-        for tenant in tenants
+        for tenant in TENANTS
     }
     old_secrets = {
         tenant: get_secrets_list(old_manager, tenant)
-        for tenant in tenants
+        for tenant in TENANTS
     }
     old_deployments = {
         tenant: get_deployments_list(old_manager, tenant)
-        for tenant in tenants
+        for tenant in TENANTS
     }
 
     change_salt_on_new_manager(new_manager, logger)
@@ -135,11 +81,11 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     # We need to use the new manager when checking for files for the
     # from-source plugin
-    example_mappings[from_source_tenant].example_host = new_manager
+    example_mappings[FROM_SOURCE_TENANT].example_host = new_manager
 
     # Because of the way the from-source central executor plugin works, we
     # need to re-run the file creation so that checks for them will succeed.
-    example_mappings[from_source_tenant].execute(
+    example_mappings[FROM_SOURCE_TENANT].execute(
         'execute_operation',
         parameters={
             'node_ids': 'file',
@@ -151,9 +97,9 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     for example in example_mappings.values():
         example.check_files()
 
-    check_tenant_secrets(new_manager, tenants, old_secrets, logger)
-    check_tenant_plugins(new_manager, old_plugins, tenants, logger)
-    check_tenant_deployments(new_manager, old_deployments, tenants, logger)
+    check_tenant_secrets(new_manager, TENANTS, old_secrets, logger)
+    check_tenant_plugins(new_manager, old_plugins, TENANTS, logger)
+    check_tenant_deployments(new_manager, old_deployments, TENANTS, logger)
 
     upgrade_agents(new_manager, logger, test_config)
 
@@ -167,7 +113,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     # Make sure we can still run deployment updates
     apply_and_check_deployment_update(
-        new_manager, example_mappings[lin_tenant], logger)
+        new_manager, example_mappings[LIN_TENANT], logger)
 
     # Make sure we can correctly remove all test files
     for tenant, example in example_mappings.items():
@@ -175,6 +121,73 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         if example.installed:
             logger.info('Uninstalling deployment for %s', tenant)
             example.uninstall()
+
+
+def prepare_old_manager_resources(manager, logger, ssh_key, test_config,
+                                  win_vm, lin_vm):
+    """Install resources on the old manager.
+    These are the resources we will be restoring on the new manager.
+    """
+    create_tenants(manager, logger, tenants=TENANTS)
+
+    example_mappings = {}
+
+    # A deployment with a plugin installed from-source
+    # Note: This needs to be a central executor plugin or the later check will
+    # fail.
+    example_mappings[FROM_SOURCE_TENANT] = get_example_deployment(
+        manager, ssh_key, logger, FROM_SOURCE_TENANT, test_config,
+        using_agent=False, upload_plugin=False,
+    )
+    # We'll use an older blueprint style for this to confirm they still work
+    example_mappings[FROM_SOURCE_TENANT].blueprint_file = get_resource_path(
+        'blueprints/compute/central_executor_4_3_3.yaml'
+    )
+
+    # A 'normal' windows deployment
+    example_mappings[WIN_TENANT] = get_example_deployment(
+        manager, ssh_key, logger, WIN_TENANT, test_config,
+        win_vm, suffix='_win',
+    )
+    example_mappings[WIN_TENANT].use_windows(win_vm.username, win_vm.password)
+
+    # A 'normal' linux deployment
+    example_mappings[LIN_TENANT] = get_example_deployment(
+        manager, ssh_key, logger, LIN_TENANT, test_config,
+        lin_vm, suffix='_lin',
+    )
+
+    # A deployment that hasn't been installed
+    example_mappings[NOINSTALL_TENANT] = get_example_deployment(
+        manager, ssh_key, logger, NOINSTALL_TENANT, test_config, lin_vm,
+    )
+
+    if manager.image_type == '5.1.0':
+        # We need to use the updated windows agent or it can't work
+        agent_url = (
+            'https://cloudify-release-eu.s3-eu-west-1.amazonaws.com/cloudify/'
+            '5.1.0/ga-release/cloudify-windows-agent_5.1.0-ga.exe'
+        )
+        tmp_path = '/tmp/winagent.exe'
+        agent_destination = (
+            '/opt/manager/resources/packages/agents/'
+            'cloudify-windows-agent.exe'
+        )
+        manager.run_command('curl -Lo {} {}'.format(tmp_path, agent_url))
+        manager.run_command('sudo cp {} {}'.format(
+            tmp_path, agent_destination))
+
+    for tenant in INSTALL_TENANTS:
+        skip_validation = tenant == FROM_SOURCE_TENANT
+        example_mappings[tenant].upload_and_verify_install(
+            skip_plugins_validation=skip_validation,
+        )
+    example_mappings[NOINSTALL_TENANT].upload_blueprint()
+    example_mappings[NOINSTALL_TENANT].create_deployment()
+
+    create_tenant_secrets(manager, TENANTS, logger)
+
+    return example_mappings
 
 
 def create_tenant_secrets(manager, tenants, logger):
