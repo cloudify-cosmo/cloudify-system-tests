@@ -226,20 +226,16 @@ def check_tenant_secrets(manager, tenants, old_secrets, logger):
     """
     for tenant in tenants:
         logger.info('Checking secrets for {tenant}'.format(tenant=tenant))
-        non_agentkey_secrets = [
-            secret for secret in get_secrets_list(manager, tenant)
-            if not secret.startswith('cfyagent_key__')
-        ]
-        non_agentkey_secrets.sort()
+        secrets = get_secrets_list(manager, tenant)
         logger.info('Found secrets for {tenant} on manager: {secrets}'.format(
             tenant=tenant,
-            secrets=', '.join(non_agentkey_secrets),
+            secrets=', '.join(secrets),
         ))
 
         old_tenant_secrets = old_secrets[tenant]
         old_tenant_secrets.sort()
 
-        assert non_agentkey_secrets == old_tenant_secrets, (
+        assert secrets == old_tenant_secrets, (
             'Secrets for {tenant} do not match old secrets!'.format(
                 tenant=tenant,
             )
