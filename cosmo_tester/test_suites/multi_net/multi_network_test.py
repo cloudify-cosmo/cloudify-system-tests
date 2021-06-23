@@ -5,13 +5,9 @@ from copy import deepcopy
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
-    create_snapshot,
-    download_snapshot,
-    restore_snapshot,
+    create_copy_and_restore_snapshot,
     stop_manager,
     upgrade_agents,
-    upload_snapshot,
-    wait_for_restore,
 )
 
 POST_BOOTSTRAP_NET = 'network_3'
@@ -124,15 +120,9 @@ def test_multiple_networks(managers_and_vms,
     for example in examples:
         example.upload_and_verify_install()
 
-    create_snapshot(old_manager, snapshot_id, logger)
-    download_snapshot(old_manager, local_snapshot_path, snapshot_id, logger)
-
-    upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
-    restore_snapshot(new_manager, snapshot_id, logger,
-                     change_manager_password=False,
-                     wait_for_post_restore_commands=False)
-
-    wait_for_restore(new_manager, logger)
+    create_copy_and_restore_snapshot(
+        old_manager, new_manager, snapshot_id, local_snapshot_path, logger,
+        change_manager_password=False, wait_for_post_restore_commands=False)
 
     upgrade_agents(new_manager, logger, test_config)
     stop_manager(old_manager, logger)
