@@ -29,6 +29,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         hosts, logger, tmpdir, ssh_key, test_config):
     if not test_config['premium']:
         pytest.skip('Multi tenant snapshots are not valid for community.')
+
     local_snapshot_path = str(tmpdir / 'snapshot.zip')
 
     from_source_tenant = 'from_source'
@@ -126,7 +127,6 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     update_credentials(new_manager, logger)
 
     verify_services_status(new_manager, logger)
-
     check_credentials(new_manager, logger)
 
     # Use the new manager for the test deployments
@@ -151,14 +151,9 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     for example in example_mappings.values():
         example.check_files()
 
-    # We don't check agent keys are converted to secrets because that is only
-    # expected to happen for 3.x restores now.
     check_tenant_secrets(new_manager, tenants, old_secrets, logger)
     check_tenant_plugins(new_manager, old_plugins, tenants, logger)
     check_tenant_deployments(new_manager, old_deployments, tenants, logger)
-
-    new_manager.run_command('cfy profiles set --manager-password {}'.format(
-                            CHANGED_ADMIN_PASSWORD))
 
     upgrade_agents(new_manager, logger, test_config)
 
