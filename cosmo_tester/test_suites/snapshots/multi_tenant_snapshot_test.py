@@ -37,76 +37,103 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     if not test_config['premium']:
         pytest.skip('Multi tenant snapshots are not valid for community.')
 
-    old_manager, new_manager, win_vm, lin_vm = hosts.instances
+    new_manager, win_vm, lin_vm, old_manager_mappings = hosts
 
-    confirm_manager_empty(new_manager, logger)
+    old_versions = sorted(old_manager_mappings.keys())
+    last_old_version = old_versions[-1]
 
-    local_snapshot_path = str(tmpdir / 'snapshot.zip')
+    for old_ver in old_versions:
+        old_mgr = old_manager_mappings[old_ver]
+        if old_ver in ['5.0.5', '5.1.0']:
+            old_mgr.wait_for_manager()
+            # This is inconsistent in places, so let's cope with pre-fixed...
+            old_mgr.run_command('mv /etc/cloudify/ssl/rabbitmq{_,-}cert.pem',
+                                use_sudo=True, warn_only=True)
+            old_mgr.run_command('mv /etc/cloudify/ssl/rabbitmq{_,-}key.pem',
+                                use_sudo=True, warn_only=True)
+            # ...and then validate that the fix is in.
+            old_mgr.run_command('test -f /etc/cloudify/ssl/rabbitmq-cert.pem')
+            old_mgr.run_command('test -f /etc/cloudify/ssl/rabbitmq-key.pem')
+            old_mgr.run_command(
+                'chown rabbitmq. /etc/cloudify/ssl/rabbitmq-*', use_sudo=True)
+            old_mgr.run_command('systemctl restart cloudify-rabbitmq',
+                                use_sudo=True)
 
-    example_mappings = prepare_old_manager_resources(old_manager, logger,
-                                                     ssh_key, test_config,
-                                                     win_vm, lin_vm)
+        confirm_manager_empty(new_manager, logger)
 
-    old_manager_state = get_manager_state(old_manager, TENANTS, logger)
+        local_snapshot_path = str(tmpdir / 'snapshot-{}.zip'.format(old_ver))
 
-    change_salt_on_new_manager(new_manager, logger)
-    prepare_credentials_tests(old_manager, logger)
+        example_mappings = prepare_old_manager_resources(old_mgr, logger,
+                                                         ssh_key, test_config,
+                                                         win_vm, lin_vm)
 
-    create_copy_and_restore_snapshot(
-        old_manager, new_manager, SNAPSHOT_ID, local_snapshot_path, logger,
-        wait_for_post_restore_commands=False)
+        old_manager_state = get_manager_state(old_mgr, TENANTS, logger)
 
-    update_credentials(new_manager, logger)
+        change_salt_on_new_manager(new_manager, logger)
+        prepare_credentials_tests(old_mgr, logger)
 
-    verify_services_status(new_manager, logger)
-    check_credentials(new_manager, logger)
+        create_copy_and_restore_snapshot(
+            old_mgr, new_manager, SNAPSHOT_ID, local_snapshot_path,
+            logger, wait_for_post_restore_commands=False)
 
-    # Use the new manager for the test deployments
-    for example in example_mappings.values():
-        example.manager = new_manager
+        update_credentials(new_manager, logger)
 
-    # We need to use the new manager when checking for files for the
-    # from-source plugin
-    example_mappings[FROM_SOURCE_TENANT].example_host = new_manager
+        verify_services_status(new_manager, logger)
+        check_credentials(new_manager, logger)
 
-    # Because of the way the from-source central executor plugin works, we
-    # need to re-run the file creation so that checks for them will succeed.
-    example_mappings[FROM_SOURCE_TENANT].execute(
-        'execute_operation',
-        parameters={
-            'node_ids': 'file',
-            'operation': 'cloudify.interfaces.lifecycle.create',
-        },
-    )
+        # Use the new manager for the test deployments
+        for example in example_mappings.values():
+            example.manager = new_manager
 
-    # Make sure we still have the test files after the restore
-    for example in example_mappings.values():
-        example.check_files()
+        # We need to use the new manager when checking for files for the
+        # from-source plugin
+        example_mappings[FROM_SOURCE_TENANT].example_host = new_manager
 
-    new_manager_state = get_manager_state(new_manager, TENANTS, logger)
-    assert new_manager_state == old_manager_state
-    check_deployments(new_manager, old_manager_state, logger)
+        # Because of the way the from-source central executor plugin works, we
+        # need to re-run the file creation so that checks for them succeed.
+        example_mappings[FROM_SOURCE_TENANT].execute(
+            'execute_operation',
+            parameters={
+                'node_ids': 'file',
+                'operation': 'cloudify.interfaces.lifecycle.create',
+            },
+        )
 
-    upgrade_agents(new_manager, logger, test_config)
+        # Make sure we still have the test files after the restore
+        for example in example_mappings.values():
+            example.check_files()
 
-    # The old manager needs to exist until the agents install is run
-    stop_manager(old_manager, logger)
+        new_manager_state = get_manager_state(new_manager, TENANTS, logger)
+        assert new_manager_state == old_manager_state
+        check_deployments(new_manager, old_manager_state, logger)
 
-    # Make sure the agent upgrade and old manager removal didn't
-    # damage the test files
-    for example in example_mappings.values():
-        example.check_files()
+        upgrade_agents(new_manager, logger, test_config)
 
-    # Make sure we can still run deployment updates
-    apply_and_check_deployment_update(
-        new_manager, example_mappings[LIN_TENANT], logger)
+        # The old manager needed to exist until the agents were upgraded, but
+        # we want it not to afterwards so we don't pass the test due to the
+        # old manager handling things we thought the new one was.
+        stop_manager(old_mgr, logger)
 
-    # Make sure we can correctly remove all test files
-    for tenant, example in example_mappings.items():
-        logger.info('Checking example deployment %s', tenant)
-        if example.installed:
-            logger.info('Uninstalling deployment for %s', tenant)
-            example.uninstall()
+        # Make sure the agent upgrade and old manager removal didn't
+        # damage the test files
+        for example in example_mappings.values():
+            example.check_files()
+
+        # Make sure we can still run deployment updates
+        apply_and_check_deployment_update(
+            new_manager, example_mappings[LIN_TENANT], logger)
+
+        # Make sure we can correctly remove all test files
+        for tenant, example in example_mappings.items():
+            logger.info('Checking example deployment %s', tenant)
+            if example.installed:
+                logger.info('Uninstalling deployment for %s', tenant)
+                example.uninstall()
+
+        if old_ver != last_old_version:
+            logger.info('Cleaning new manager for next restore')
+            new_manager.teardown()
+            new_manager.bootstrap()
 
 
 def prepare_old_manager_resources(manager, logger, ssh_key, test_config,

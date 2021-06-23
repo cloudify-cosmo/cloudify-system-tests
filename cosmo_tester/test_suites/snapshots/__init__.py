@@ -252,7 +252,7 @@ def fix_admin_account(manager, salt, logger):
 
 def check_deployments(manager, expected_state, logger):
     """Make sure the deployments were fully recreated"""
-    for tenant, details in expected_state:
+    for tenant, details in expected_state.items():
         deployments = details['deployments']
 
         _log('Checking deployments', logger, tenant)
