@@ -561,6 +561,10 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def bootstrap_is_complete(self):
+        if self.image_type == '5.0.5':
+            # We don't have a bootstrappable 5.0.5, so we use pre-bootstrapped
+            return True
+
         with self.ssh() as fabric_ssh:
             # Using a bash construct because fabric seems to change its mind
             # about how non-zero exit codes should be handled frequently
@@ -896,8 +900,15 @@ class Hosts(object):
                     # A pre-bootstrapped manager is desired for this test,
                     # let's make it happen.
                     instance.bootstrap(
-                        upload_license=self._test_config['premium'])
+                        upload_license=self._test_config['premium'],
+                        blocking=False)
 
+            for instance in self.instances:
+                if instance.is_manager and not instance.bootstrappable:
+                    self._logger.info('Waiting for instance %s to bootstrap',
+                                      instance.image_name)
+                    while not instance.bootstrap_is_complete():
+                        time.sleep(3)
                 if instance.should_finalize:
                     instance.finalize_preparation()
         except Exception as err:
