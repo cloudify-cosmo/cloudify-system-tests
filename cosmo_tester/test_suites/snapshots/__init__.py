@@ -66,6 +66,22 @@ def create_snapshot(manager, snapshot_id, logger):
     assert_snapshot_created(manager, snapshot_id)
 
 
+def create_copy_and_restore_snapshot(old_manager, new_manager,
+                                     snapshot_id, local_snapshot_path,
+                                     logger,
+                                     wait_for_post_restore_commands=True,
+                                     cert_path=None,
+                                     change_manager_password=True):
+    create_snapshot(old_manager, SNAPSHOT_ID, logger)
+    download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)
+    upload_snapshot(new_manager, local_snapshot_path, SNAPSHOT_ID, logger)
+    restore_snapshot(
+        new_manager, SNAPSHOT_ID, logger,
+        wait_for_post_restore_commands=wait_for_post_restore_commands,
+        cert_path=cert_path, change_manager_password=change_manager_password)
+    wait_for_restore(new_manager, logger)
+
+
 def download_snapshot(manager, local_path, snapshot_id, logger):
     logger.info('Downloading snapshot from old manager..')
     manager.client.snapshots.list()

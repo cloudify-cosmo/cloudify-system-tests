@@ -5,27 +5,22 @@ from cosmo_tester.framework.deployment_update import (
 )
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
-    CHANGED_ADMIN_PASSWORD,
     check_credentials,
     check_deployments,
     verify_services_status,
     change_salt_on_new_manager,
     check_plugins,
     confirm_manager_empty,
-    create_snapshot,
+    create_copy_and_restore_snapshot,
     stop_manager,
-    download_snapshot,
     get_deployments_list,
     get_plugins_list,
     get_secrets_list,
     prepare_credentials_tests,
-    restore_snapshot,
     set_client_tenant,
     SNAPSHOT_ID,
     update_credentials,
     upgrade_agents,
-    upload_snapshot,
-    wait_for_restore,
 )
 from cosmo_tester.framework.util import get_resource_path
 
@@ -124,14 +119,9 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
     change_salt_on_new_manager(new_manager, logger)
     prepare_credentials_tests(old_manager, logger)
 
-    create_snapshot(old_manager, SNAPSHOT_ID, logger)
-    download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)
-    upload_snapshot(new_manager, local_snapshot_path, SNAPSHOT_ID, logger)
-
-    restore_snapshot(new_manager, SNAPSHOT_ID, logger,
-                     wait_for_post_restore_commands=False)
-
-    wait_for_restore(new_manager, logger)
+    create_copy_and_restore_snapshot(
+        old_manager, new_manager, SNAPSHOT_ID, local_snapshot_path, logger,
+        wait_for_post_restore_commands=False)
 
     update_credentials(new_manager, logger)
 

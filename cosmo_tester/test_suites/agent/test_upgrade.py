@@ -3,10 +3,7 @@ from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.test_hosts import Hosts, VM
 
 from cosmo_tester.test_suites.snapshots import (
-    create_snapshot,
-    download_snapshot,
-    restore_snapshot,
-    upload_snapshot,
+    create_copy_and_restore_snapshot,
 )
 
 from cosmo_tester.test_suites.agent import validate_agent
@@ -59,12 +56,9 @@ def test_old_agent_stopped_after_upgrade(ssh_key, module_tmpdir,
         local_snapshot_path = str(tmpdir / 'snapshot.zip')
         snapshot_id = 'snap'
 
-        create_snapshot(old_manager, snapshot_id, logger)
-        old_manager.wait_for_all_executions()
-        download_snapshot(old_manager, local_snapshot_path, snapshot_id,
-                          logger)
-        upload_snapshot(new_manager, local_snapshot_path, snapshot_id, logger)
-        restore_snapshot(new_manager, snapshot_id, logger)
+        create_copy_and_restore_snapshot(
+            old_manager, new_manager, snapshot_id, local_snapshot_path, logger,
+            wait_for_post_restore_commands=True)
 
         for agent_os in AGENT_OSES:
             example = examples[agent_os]

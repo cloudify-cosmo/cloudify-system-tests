@@ -4,11 +4,7 @@ from os.path import join
 from cosmo_tester.test_suites.agent import validate_agent
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
-    create_snapshot,
-    restore_snapshot,
-    wait_for_restore,
-    download_snapshot,
-    upload_snapshot
+    create_copy_and_restore_snapshot,
 )
 
 
@@ -30,14 +26,10 @@ def test_migrate_agents_cluster_to_aio(
     logger.info('Creating snapshot on cluster')
     snapshot_id = 'cluster_to_aio_aio_agents'
     snapshot_path = join(str(module_tmpdir), snapshot_id) + '.zip'
-    create_snapshot(node3, snapshot_id, logger)
-    download_snapshot(node1, snapshot_path, snapshot_id, logger)
 
-    logger.info('Restoring snapshot on AIO manager')
-    upload_snapshot(aio_mgr, snapshot_path, snapshot_id, logger)
-    restore_snapshot(aio_mgr, snapshot_id, logger, force=True,
-                     cert_path=aio_mgr.api_ca_path)
-    wait_for_restore(aio_mgr, logger)
+    create_copy_and_restore_snapshot(
+        node1, aio_mgr, snapshot_id, snapshot_path, logger,
+        cert_path=aio_mgr.api_ca_path)
 
     logger.info('Migrating to new agents, stopping old agents')
     aio_mgr.run_command(
@@ -70,14 +62,10 @@ def test_migrate_agents_aio_to_cluster(
     logger.info('Creating snapshot on AIO manager')
     snapshot_id = 'cluster_to_aio_aio_agents'
     snapshot_path = join(str(module_tmpdir), snapshot_id) + '.zip'
-    create_snapshot(node3, snapshot_id, logger)
-    download_snapshot(node3, snapshot_path, snapshot_id, logger)
 
-    logger.info('Restoring snapshot on cluster')
-    upload_snapshot(node1, snapshot_path, snapshot_id, logger)
-    restore_snapshot(node2, snapshot_id, logger, force=True,
-                     cert_path=aio_mgr.api_ca_path)
-    wait_for_restore(node2, logger)
+    create_copy_and_restore_snapshot(
+        aio_mgr, node1, snapshot_id, snapshot_path, logger,
+        cert_path=aio_mgr.api_ca_path)
 
     logger.info('Migrating to new agents, stopping old agents')
     node1.run_command(
