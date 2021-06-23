@@ -175,6 +175,9 @@ def prepare_credentials_tests(manager, logger):
 def update_credentials(manager, logger):
     logger.info('Changing to modified admin credentials')
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+    logger.info('Updating manager CLI credentials')
+    manager.run_command('cfy profiles set --manager-password {}'.format(
+                        CHANGED_ADMIN_PASSWORD))
 
 
 def check_credentials(manager, logger):
