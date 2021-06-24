@@ -1294,6 +1294,9 @@ class Hosts(object):
         for vm_id, execution in self._test_vm_uninstalls.items():
             util.wait_for_execution(self._infra_client, execution,
                                     self._logger)
+        # Do this separately to cope with large deployment counts and small
+        # mgmtworker worker counts
+        for vm_id, execution in self._test_vm_uninstalls.items():
             util.delete_deployment(self._infra_client, vm_id,
                                    self._logger)
 
