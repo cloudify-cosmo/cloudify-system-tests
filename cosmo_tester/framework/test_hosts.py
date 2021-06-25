@@ -118,13 +118,12 @@ class VM(object):
                 addr=self.ip_address,
             )
         else:
+            subprocess.check_call(['ssh-keygen', '-R', self.ip_address])
             script_content = (
-                'ssh-keygen -R "{addr}"\n'
-                'ssh -i {key} -o StrictHostKeyChecking=no {user}@{addr}\n'
+                'ssh -i {key} -o StrictHostKeyChecking=no {connstr} ${{*}}\n'
             ).format(
                 key=self._ssh_key.private_key_path,
-                user=self.username,
-                addr=self.ip_address,
+                connstr='{}@{}'.format(self.username, self.ip_address),
             )
         with open(script_path, 'w') as fh:
             fh.write(script_content)
