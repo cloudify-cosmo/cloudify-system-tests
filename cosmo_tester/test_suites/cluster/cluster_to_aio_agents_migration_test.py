@@ -1,4 +1,3 @@
-import pytest
 from os.path import join
 
 from cosmo_tester.test_suites.agent import validate_agent
@@ -8,12 +7,10 @@ from cosmo_tester.test_suites.snapshots import (
 )
 
 
-@pytest.mark.parametrize('three_node_cluster_with_extra_node', ['master'],
-                         indirect=['three_node_cluster_with_extra_node'])
 def test_migrate_agents_cluster_to_aio(
-        three_node_cluster_with_extra_node, module_tmpdir,
+        three_node_cluster_with_extra_manager, module_tmpdir,
         ssh_key, logger, test_config):
-    node1, node2, node3, aio_mgr = three_node_cluster_with_extra_node
+    node1, node2, node3, aio_mgr = three_node_cluster_with_extra_manager
     aio_mgr.bootstrap()
 
     logger.info('Installing example deployment on cluster')
@@ -24,7 +21,7 @@ def test_migrate_agents_cluster_to_aio(
     validate_agent(node2, example, test_config)
 
     logger.info('Creating snapshot on cluster')
-    snapshot_id = 'cluster_to_aio_aio_agents'
+    snapshot_id = 'cluster_to_aio_agents'
     snapshot_path = join(str(module_tmpdir), snapshot_id) + '.zip'
 
     create_copy_and_restore_snapshot(
@@ -44,12 +41,10 @@ def test_migrate_agents_cluster_to_aio(
     example.uninstall()
 
 
-@pytest.mark.parametrize('three_node_cluster_with_extra_node', ['master'],
-                         indirect=['three_node_cluster_with_extra_node'])
 def test_migrate_agents_aio_to_cluster(
-        three_node_cluster_with_extra_node, module_tmpdir,
+        three_node_cluster_with_extra_manager, module_tmpdir,
         ssh_key, logger, test_config):
-    node1, node2, node3, aio_mgr = three_node_cluster_with_extra_node
+    node1, node2, node3, aio_mgr = three_node_cluster_with_extra_manager
     aio_mgr.bootstrap()
 
     logger.info('Installing example deployment on AIO manager')
@@ -60,7 +55,7 @@ def test_migrate_agents_aio_to_cluster(
     validate_agent(aio_mgr, example, test_config)
 
     logger.info('Creating snapshot on AIO manager')
-    snapshot_id = 'cluster_to_aio_aio_agents'
+    snapshot_id = 'aio_to_cluster_agents'
     snapshot_path = join(str(module_tmpdir), snapshot_id) + '.zip'
 
     create_copy_and_restore_snapshot(
