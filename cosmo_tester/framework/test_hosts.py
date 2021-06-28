@@ -118,7 +118,9 @@ class VM(object):
                 addr=self.ip_address,
             )
         else:
-            subprocess.check_call(['ssh-keygen', '-R', self.ip_address])
+            # Don't check this call- it might fail due to missing known_hosts
+            # file or similar, and we shouldn't fail the test because of that.
+            subprocess.call(['ssh-keygen', '-R', self.ip_address])
             script_content = (
                 'ssh -i {key} -o StrictHostKeyChecking=no {connstr} ${{*}}\n'
             ).format(
