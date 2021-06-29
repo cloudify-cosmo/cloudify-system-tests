@@ -95,22 +95,26 @@ def _set_ssh_in_profile(run, example, paths):
 
 
 @contextmanager
-def _test_logs_context(run, example, paths, managers, configs=None):
+def _test_logs_context(run, example, paths, managers):
     _set_ssh_in_profile(run, example, paths)
 
-    if configs is None:
+    if len(managers) > 1:
+        configs = ['db_config', 'rabbit_config', 'manager_config']
+    else:
         configs = ['config']
 
-    for manager in managers:
-        for config in configs:
+    # Stop managers before stopping things managers depend on
+    for config in reversed(configs):
+        for manager in managers:
             # Stop manager services so the logs won't change during the test
             manager.run_command('cfy_manager stop -c '
                                 '/etc/cloudify/{}.yaml'.format(config))
 
     yield
 
-    for manager in managers:
-        for config in configs:
+    for config in configs:
+        # Must be started in reversed order because of rabbit (see RD-2651)
+        for manager in reversed(managers):
             # Start manager services so other tests can work
             manager.run_command('cfy_manager start -c '
                                 '/etc/cloudify/{}.yaml'.format(config))
