@@ -9,6 +9,7 @@ secrets_mapping:
     aws_access_key_id: access_key_id
     aws_secret_access_key: access_key_secret
     ec2_region_name: region
+    owner_tag: owner_tag
 plugin_package_name:
   description: Package name of plugin for this platform. This plugin must be installed on the infrastructure manager with visibility=global.
   default: cloudify-aws-plugin
@@ -56,3 +57,5 @@ access_key_id:
   description: The AWS access key ID for the key used to access AWS.
 access_key_secret:
   description: The secret component of the AWS access key used to access AWS.
+owner_tag:
+  description: The name or identifier to tag test resources with (to aid in cleanup/resource tracking).
