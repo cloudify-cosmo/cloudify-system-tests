@@ -24,10 +24,7 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
         _prepare(cli_host, example, paths, logger, include_secret=False)
 
         with _test_logs_context(cli_host.run_command, example, paths,
-                                cluster_cli_tester['managers'],
-                                configs=['db_config', 'rabbit_config',
-                                         'manager_config']):
-
+                                cluster_cli_tester['managers']):
             log_dump_paths = json.loads(cli_host.run_command(
                 '{cfy} logs download --all-nodes --json'.format(
                     cfy=paths['cfy'])
@@ -47,7 +44,7 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
                     [log_dump_paths['db'][manager_ip]] + \
                     [log_dump_paths['broker'][manager_ip]]
                 for i, dump_filepath in enumerate(mgr_dump_paths):
-                    tar_name = 'logs_{0}_{1}'.format(manager.hostname, i)
+                    tar_name = 'logs_{}_{}_{}'.format(manager.hostname, i, os)
                     logger.info('Start extracting log hashes locally for %s',
                                 tar_name)
                     local_dump_filepath = str(tmpdir / '{}.tar'.format(
