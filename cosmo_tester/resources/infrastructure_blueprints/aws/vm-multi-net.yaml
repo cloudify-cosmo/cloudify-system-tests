@@ -46,6 +46,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { get_input: test_infrastructure_name }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
     relationships:
       - type: cloudify.relationships.depends_on
         target: nic
@@ -69,6 +71,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
     relationships:
       - type: cloudify.relationships.depends_on
         target: subnet
@@ -86,6 +90,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
     relationships:
       - type: cloudify.relationships.depends_on
         target: subnet_2
@@ -103,6 +109,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
     relationships:
       - type: cloudify.relationships.depends_on
         target: subnet_3
@@ -116,6 +124,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ]}
+        - Key: Owner
+          Value: { get_secret: owner_tag }
     relationships:
       - type: cloudify.relationships.depends_on
         target: nic
@@ -132,6 +142,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
 
   subnet_2:
     type: cloudify.nodes.aws.ec2.Subnet
@@ -145,6 +157,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-2" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
 
   subnet_3:
     type: cloudify.nodes.aws.ec2.Subnet
@@ -158,6 +172,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-3" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
 
   security_group:
     type: cloudify.nodes.aws.ec2.SecurityGroup
@@ -180,6 +196,8 @@ node_templates:
       Tags:
         - Key: Name
           Value: { get_input: test_infrastructure_name }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
       client_config: *client_config
 
   image:
