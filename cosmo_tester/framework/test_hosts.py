@@ -671,13 +671,11 @@ print('{{}} {{}}'.format(distro, codename).lower())
             self._logger.info('Rest client generation SSL check response: %s',
                               ssl_check.text)
             if 'SSL_REQUIRED' in ssl_check.text:
-                self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
                 proto = 'https'
-                if not os.path.exists(self.api_ca_path):
-                    self.get_remote_file(
-                        '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
-                        self.api_ca_path,
-                    )
+
+        if proto == 'https':
+            self.download_rest_ca()
+
         return util.create_rest_client(
             self.ip_address,
             username=username,
@@ -686,6 +684,20 @@ print('{{}} {{}}'.format(distro, codename).lower())
             cert=self.api_ca_path,
             protocol=proto,
         )
+
+    @only_manager
+    def download_rest_ca(self):
+        self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
+        if os.path.exists(self.api_ca_path):
+            self._logger.info('Skipping rest CA download, already in %s',
+                              self.api_ca_path)
+        else:
+            self._logger.info('Downloading rest CA to %s',
+                              self.api_ca_path)
+            self.get_remote_file(
+                '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
+                self.api_ca_path,
+            )
 
     @only_manager
     def enable_nics(self):
