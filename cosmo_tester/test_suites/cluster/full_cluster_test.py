@@ -20,6 +20,7 @@ from .cluster_status_shared import (
 )
 
 
+@pytest.mark.nine_vms
 def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips
@@ -41,6 +42,7 @@ def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
     check_managers(mgr1, mgr2, example)
 
 
+@pytest.mark.nine_vms
 def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_names
@@ -62,6 +64,7 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
     check_managers(mgr1, mgr2, example)
 
 
+@pytest.mark.nine_vms
 def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
     snapshot_id = 'snap_5.0.5_with_capabilities'
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
@@ -72,6 +75,7 @@ def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
     _verify_uninstall_idd_guards(mgr1, logger, 'capable', 'infra')
 
 
+@pytest.mark.nine_vms
 def test_full_cluster_status(full_cluster_ips, logger, module_tmpdir):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips

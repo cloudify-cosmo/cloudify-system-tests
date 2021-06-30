@@ -1,3 +1,5 @@
+import pytest
+
 from cosmo_tester.test_suites.cluster import check_managers
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
@@ -9,6 +11,7 @@ from cosmo_tester.test_suites.snapshots import (
 # This is to confirm that we work with a single DB endpoint set (e.g. on a
 # PaaS).
 # It is not intended that a single external DB be used in production.
+@pytest.mark.six_vms
 def test_cluster_single_db(cluster_with_single_db, logger, ssh_key,
                            test_config):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db

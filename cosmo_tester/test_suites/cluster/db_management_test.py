@@ -1,9 +1,12 @@
 import retrying
 
+import pytest
+
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.cluster import check_managers
 
 
+@pytest.mark.nine_vms
 def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips
@@ -45,6 +48,7 @@ def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
     check_managers(mgr1, mgr2, example)
 
 
+@pytest.mark.nine_vms
 def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2 = \
         cluster_missing_one_db
@@ -77,6 +81,7 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     check_managers(mgr1, mgr2, example)
 
 
+@pytest.mark.three_vms
 def test_db_set_master(dbs, logger):
     db1, db2, db3 = dbs
 
@@ -111,6 +116,7 @@ def test_db_set_master(dbs, logger):
     _check_cluster(after_change)
 
 
+@pytest.mark.three_vms
 def test_db_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
@@ -126,6 +132,7 @@ def test_db_reinit(dbs, logger):
     _check_cluster(listing)
 
 
+@pytest.mark.three_vms
 def test_fail_to_remove_db_leader(dbs, logger):
     db1, db2, db3 = dbs
 
@@ -140,6 +147,7 @@ def test_fail_to_remove_db_leader(dbs, logger):
     assert 'cannot be removed' in result.stdout
 
 
+@pytest.mark.three_vms
 def test_fail_to_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
