@@ -1,6 +1,7 @@
 import json
 import time
 
+import pytest
 import retrying
 
 
@@ -72,6 +73,7 @@ def prepare_cluster_for_removal_tests(brokers):
     join_cluster(brokers[2], brokers[0])
 
 
+@pytest.mark.three_vms
 def test_list(brokers, logger):
     # Testing multiple lists in one test because each deploy of brokers takes
     # several minutes
@@ -139,6 +141,7 @@ def test_list(brokers, logger):
     logger.info('Cluster down check successful.')
 
 
+@pytest.mark.one_vm
 def test_auth_fail(broker, logger):
     broker.run_command(
         "sed -i 's/password: .*/password: wrongpassword/' "
@@ -152,6 +155,7 @@ def test_auth_fail(broker, logger):
     assert 'fail' in result
 
 
+@pytest.mark.three_vms
 def test_add(brokers, logger):
     logger.info('Preparing hosts files')
     add_to_hosts(brokers[0], brokers[1:])
@@ -230,6 +234,7 @@ def test_add(brokers, logger):
     logger.info('Correct error trying to join unreachable node.')
 
 
+@pytest.mark.three_vms
 def test_remove(brokers, logger):
     logger.info('Preparing cluster.')
     prepare_cluster_for_removal_tests(brokers)
@@ -291,6 +296,7 @@ def test_remove(brokers, logger):
     logger.info('Cluster failure recovery successful.')
 
 
+@pytest.mark.four_vms
 def test_remove_broker_from_manager(brokers3_and_manager, logger):
     logger.info('Preparing cluster.')
     brokers, manager = brokers3_and_manager[:3], brokers3_and_manager[3]
@@ -332,6 +338,7 @@ def test_remove_broker_from_manager(brokers3_and_manager, logger):
     logger.info('Manager status OK.')
 
 
+@pytest.mark.three_vms
 def test_broker_management(brokers_and_manager, logger):
     # All in one test for speed until such time as complexity of these
     # operations increases to the point that extra tests are needed.

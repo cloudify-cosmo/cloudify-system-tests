@@ -1,5 +1,7 @@
 from os.path import join
 
+import pytest
+
 from cosmo_tester.test_suites.agent import validate_agent
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
@@ -7,6 +9,7 @@ from cosmo_tester.test_suites.snapshots import (
 )
 
 
+@pytest.mark.four_vms
 def test_migrate_agents_cluster_to_aio(
         three_node_cluster_with_extra_manager, module_tmpdir,
         ssh_key, logger, test_config):
@@ -41,6 +44,7 @@ def test_migrate_agents_cluster_to_aio(
     example.uninstall()
 
 
+@pytest.mark.four_vms
 def test_migrate_agents_aio_to_cluster(
         three_node_cluster_with_extra_manager, module_tmpdir,
         ssh_key, logger, test_config):

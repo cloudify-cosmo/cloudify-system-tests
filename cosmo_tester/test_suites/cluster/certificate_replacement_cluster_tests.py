@@ -1,10 +1,13 @@
 from os.path import join
 
+import pytest
+
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import (get_resource_path,
                                          validate_cluster_status_and_agents)
 
 
+@pytest.mark.nine_vms
 def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
                                          test_config, module_tmpdir):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \

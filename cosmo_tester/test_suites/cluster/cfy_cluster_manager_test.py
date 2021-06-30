@@ -34,6 +34,7 @@ def local_config_files(tmp_path):
     return dir_path
 
 
+@pytest.mark.three_vms
 def test_create_three_nodes_cluster(three_vms, test_config, ssh_key, logger):
     """Tests that a three nodes cluster is successfully created."""
     node1, node2, node3 = three_vms
@@ -45,6 +46,7 @@ def test_create_three_nodes_cluster(three_vms, test_config, ssh_key, logger):
                      logger)
 
 
+@pytest.mark.nine_vms
 def test_create_nine_nodes_cluster(nine_vms, test_config, ssh_key, logger):
     """Tests that a nine nodes cluster is successfully created."""
     nodes_list = [node for node in nine_vms]
@@ -55,6 +57,7 @@ def test_create_nine_nodes_cluster(nine_vms, test_config, ssh_key, logger):
                      ssh_key, logger)
 
 
+@pytest.mark.three_vms
 def test_three_nodes_cluster_using_provided_certificates(
         three_vms, test_config, ssh_key, local_certs_path, logger):
     """Tests that the provided certificates are being used in the cluster."""
@@ -104,6 +107,7 @@ def test_three_nodes_cluster_using_provided_certificates(
                 node.get_remote_file_content(ca_path_in_use))
 
 
+@pytest.mark.three_vms
 def test_three_nodes_using_provided_config_files(
         three_vms, test_config, ssh_key, local_certs_path,
         local_config_files, logger):
@@ -139,6 +143,7 @@ def test_three_nodes_using_provided_config_files(
                 )
 
 
+@pytest.mark.three_vms
 def test_three_nodes_cluster_override(
         three_vms, test_config, ssh_key, local_certs_path,
         local_config_files, logger):
@@ -169,6 +174,7 @@ def test_three_nodes_cluster_override(
                          logger, override=True)
 
 
+@pytest.mark.three_vms
 def test_three_nodes_cluster_offline(
         three_vms, test_config, ssh_key, logger):
     """Tests the cluster install in offline environment."""

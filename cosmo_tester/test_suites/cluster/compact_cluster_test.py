@@ -2,6 +2,8 @@ import copy
 import random
 import string
 
+import pytest
+
 from cosmo_tester.test_suites.cluster.conftest import run_cluster_bootstrap
 from cosmo_tester.framework.examples import get_example_deployment
 from .cluster_status_shared import (
@@ -12,6 +14,7 @@ from .cluster_status_shared import (
 )
 
 
+@pytest.mark.three_vms
 def test_three_nodes_cluster_status(three_nodes_cluster, logger):
     node1, node2, node3 = three_nodes_cluster
     _assert_cluster_status(node1.client)
@@ -21,6 +24,7 @@ def test_three_nodes_cluster_status(three_nodes_cluster, logger):
                                         node1.client)
 
 
+@pytest.mark.three_vms
 def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
                                       test_config, module_tmpdir, logger):
     """Tests a cluster teardown"""
