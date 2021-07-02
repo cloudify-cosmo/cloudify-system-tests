@@ -60,57 +60,39 @@ def test_inplace_restore(manager_and_vm,
 
     create_snapshot(manager, snapshot_name, logger)
     download_snapshot(manager, snapshot_path, snapshot_name, logger)
+    # We need the certs to be the same for the 'new' manager otherwise an
+    # inplace upgrade can't properly work
+    manager.run_command('mkdir /tmp/ssl_backup')
+    manager.run_command('cp /etc/cloudify/ssl/* /tmp/ssl_backup',
+                        use_sudo=True)
     manager.teardown()
     with manager.ssh() as fabric_ssh:
         # The teardown doesn't properly clean up rabbitmq
         fabric_ssh.sudo('pkill -f rabbitmq')
         fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
+    manager.install_config['rabbitmq'] = {
+        'ca_path': '/tmp/ssl_backup/cloudify_internal_ca_cert.pem',
+        'cert_path': '/tmp/ssl_backup/rabbitmq-cert.pem',
+        'key_path': '/tmp/ssl_backup/rabbitmq-key.pem',
+    }
+    manager.install_config['prometheus'] = {
+        'ca_path': '/tmp/ssl_backup/cloudify_internal_ca_cert.pem',
+        'cert_path': '/tmp/ssl_backup/monitoring_cert.pem',
+        'key_path': '/tmp/ssl_backup/monitoring_key.pem',
+    }
+    manager.install_config['ssl_inputs'] = {
+        'external_cert_path': '/tmp/ssl_backup/cloudify_external_cert.pem',
+        'external_key_path': '/tmp/ssl_backup/cloudify_external_key.pem',
+        'internal_cert_path': '/tmp/ssl_backup/cloudify_internal_cert.pem',
+        'internal_key_path': '/tmp/ssl_backup/cloudify_internal_key.pem',
+        'ca_cert_path': '/tmp/ssl_backup/cloudify_internal_ca_cert.pem',
+        'external_ca_cert_path':
+            '/tmp/ssl_backup/cloudify_internal_ca_cert.pem',
+    }
     manager.bootstrap()
     upload_snapshot(manager, snapshot_path, snapshot_name, logger)
 
-    with manager.ssh() as fabric_ssh:
-        # Perform the restore after opening the ssh session and don't wait for
-        # the execution to finish to avoid a race condition that occasionally
-        # causes test failures when we don't ssh in before the shutdown.
-        restore_snapshot(manager, snapshot_name, logger,
-                         restore_certificates=True, blocking=False)
-        retry_delay = 1
-        max_attempts = 240
-        reboot_triggered = False
-        reboot_performed = False
-        for attempt in range(0, max_attempts):
-            try:
-                if fabric_ssh.run(
-                    'ps aux | grep shutdown | grep -v grep || true'
-                ).stdout.strip():
-                    # Still waiting for post-restore reboot
-                    sleep(retry_delay)
-                    reboot_triggered = True
-                    logger.info('Reboot trigger has been set.')
-                    continue
-                elif reboot_triggered:
-                    reboot_performed = True
-                    logger.info('Reboot has been performed, continuing.')
-                    break
-                else:
-                    sleep(retry_delay)
-            except Exception:
-                if attempt == max_attempts - 1:
-                    raise
-                sleep(retry_delay)
-        if not reboot_triggered:
-            log_tail = fabric_ssh.run(
-                'sudo tail -n30 '
-                '/var/log/cloudify/mgmtworker/logs/__system__.log'
-            ).stdout.strip()
-            raise RuntimeError(
-                'Did not see reboot trigger. '
-                'Did the manager already reboot?\n'
-                'End of snapshot log:\n'
-                '{log_tail}'.format(log_tail=log_tail)
-            )
-        if not reboot_performed:
-            raise RuntimeError('Expected reboot did not happen.')
+    restore_snapshot(manager, snapshot_name, logger, blocking=False)
     manager.wait_for_manager()
 
     logger.info('Waiting 35 seconds for agents to reconnect. '
