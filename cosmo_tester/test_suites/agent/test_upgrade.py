@@ -108,6 +108,7 @@ def _assert_agent_not_running(manager, vm, node_name, tenant, windows=False):
         assert service_state.strip().lower() == b'stopped'
     else:
         response = vm.run_command(
-            'sudo service cloudify-worker-{} status'.format(agent['name']),
-            warn_only=True).stdout
-        assert 'inactive' in response.lower()
+            'sudo service cloudify-worker-{} status | grep -q inactive'
+            .format(agent['name']),
+            warn_only=True)
+        assert response.return_code == 0
