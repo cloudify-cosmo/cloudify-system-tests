@@ -5,7 +5,7 @@ from cosmo_tester.framework.util import get_resource_path
 from cosmo_tester.framework.examples import get_example_deployment
 
 
-def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config, module_tmpdir):
+def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config):
     example = get_example_deployment(
         image_based_manager, ssh_key, logger, 'aio_replace_certs', test_config)
     example.upload_and_verify_install()
@@ -17,12 +17,9 @@ def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config, mo
                                       replace_certs_config_path,
                                       ssh_key.private_key_path)
 
-    local_new_ca_path = join(str(module_tmpdir), 'new_ca.crt')
-    image_based_manager.get_remote_file('~/.cloudify-test-ca/ca.crt', local_new_ca_path)
-    image_based_manager.client._client.cert = local_new_ca_path
-
     image_based_manager.run_command('cfy certificates replace -i {0} '
                                     '-v'.format(replace_certs_config_path))
+    image_based_manager.download_rest_ca(force=True)
 
     validate_agents(image_based_manager, example.tenant)
     example.uninstall()

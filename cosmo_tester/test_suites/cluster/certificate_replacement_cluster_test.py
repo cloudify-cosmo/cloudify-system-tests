@@ -9,7 +9,7 @@ from cosmo_tester.framework.util import (get_resource_path,
 
 @pytest.mark.nine_vms
 def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
-                                         test_config, module_tmpdir):
+                                         test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips
 
@@ -30,12 +30,9 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
     _create_replace_certs_config_file(mgr1, replace_certs_config_path,
                                       ssh_key.private_key_path)
 
-    local_new_ca_path = join(str(module_tmpdir), 'new_ca.crt')
-    mgr1.get_remote_file('~/.cloudify-test-ca/ca.crt', local_new_ca_path)
-    mgr1.client._client.cert = local_new_ca_path
-
     mgr1.run_command('cfy certificates replace -i {0} -v'.format(
         replace_certs_config_path))
+    mgr1.download_rest_ca(force=True)
 
     validate_cluster_status_and_agents(mgr1, example.tenant, logger)
     example.uninstall()
