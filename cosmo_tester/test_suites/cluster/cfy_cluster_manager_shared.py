@@ -117,7 +117,8 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     manager = nodes_list[-3]
     node_count = len(nodes_list)
 
-    config_dict = _get_config_dict(node_count, test_config)
+    config_dict = _get_config_dict(node_count, test_config,
+                                   nodes_list[0].username)
 
     _set_rpm_path(config_dict, test_config, base_version)
 
@@ -132,7 +133,7 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     _upgrade_cluster(nodes_list, manager, test_config, logger)
 
 
-def _get_config_dict(node_count, test_config):
+def _get_config_dict(node_count, test_config, vm_user):
     config_file_name = '{}_nodes_config.yaml'.format(node_count)
     config_path = join(CLUSTER_MANAGER_RESOURCES_PATH, config_file_name)
     with open(config_path) as config_file:
@@ -140,7 +141,7 @@ def _get_config_dict(node_count, test_config):
 
     basic_config_dict = {
         'ssh_key_path': REMOTE_SSH_KEY_PATH,
-        'ssh_user': 'centos',
+        'ssh_user': vm_user,
         'cloudify_license_path': REMOTE_LICENSE_PATH,
         'manager_rpm_path': util.substitute_testing_version(
             test_config['package_urls']['manager_install_rpm_path'],
