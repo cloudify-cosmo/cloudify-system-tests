@@ -13,29 +13,36 @@ def generate_replace_certs_config(replace_certs_config_path,
         replace_certs_config = yaml.load(replace_certs_file, yaml.Loader)
 
     certs_dir = '~/.cloudify-test-ca/'
-    ca_path = certs_dir + 'ca.crt'
+    ca_cert_path = certs_dir + 'ca.crt'
+    ca_key_path = certs_dir + 'ca.key'
     if is_cluster:
         for instance_name in 'manager', 'postgresql_server', 'rabbitmq':
             for node in replace_certs_config[instance_name]['cluster_members']:
                 cert_path = certs_dir + node['host_ip'] + '.crt'
                 key_path = certs_dir + node['host_ip'] + '.key'
                 for cert_name in node:
-                    if 'ca' in cert_name:
-                        node[cert_name] = ca_path
+                    if 'ca_cert' in cert_name:
+                        node[cert_name] = ca_cert_path
+                    elif 'ca_key' in cert_name:
+                        node[cert_name] = ca_key_path
                     elif 'cert' in cert_name:
                         node[cert_name] = cert_path
                     elif 'key' in cert_name:
                         node[cert_name] = key_path
             for key in replace_certs_config[instance_name]:
-                if 'ca' in key:
-                    replace_certs_config[instance_name][key] = ca_path
+                if 'ca_cert' in key:
+                    replace_certs_config[instance_name][key] = ca_cert_path
+                elif 'ca_key' in key:
+                    replace_certs_config[instance_name][key] = ca_key_path
     else:
         for instance_name, instance_dict in replace_certs_config.items():
             cert_path = certs_dir + host_ip + '.crt'
             key_path = certs_dir + host_ip + '.key'
             for cert_name in instance_dict:
-                if 'ca' in cert_name:
-                    instance_dict[cert_name] = ca_path
+                if 'ca_cert' in cert_name:
+                    instance_dict[cert_name] = ca_cert_path
+                elif 'ca_key' in cert_name:
+                    instance_dict[cert_name] = ca_key_path
                 elif 'cert' in cert_name:
                     instance_dict[cert_name] = cert_path
                 elif 'key' in cert_name:
