@@ -74,6 +74,8 @@ def nine_session_vms(request, ssh_key, session_tmpdir, test_config,
 
 @pytest.fixture(scope='function')
 def brokers(three_session_vms, test_config, logger):
+    for vm in three_session_vms:
+        _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      broker_count=3)
     for vm in three_session_vms:
@@ -90,6 +92,8 @@ def broker(session_manager, test_config, logger):
 
 @pytest.fixture(scope='function')
 def dbs(three_session_vms, test_config, logger):
+    for vm in three_session_vms:
+        _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      db_count=3)
     for vm in three_session_vms:
@@ -98,6 +102,8 @@ def dbs(three_session_vms, test_config, logger):
 
 @pytest.fixture(scope='function')
 def brokers_and_manager(three_session_vms, test_config, logger):
+    for vm in three_session_vms:
+        _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      broker_count=2, manager_count=1)
     for vm in three_session_vms:
@@ -114,6 +120,8 @@ def brokers3_and_manager(four_session_vms, test_config, logger):
 
 @pytest.fixture(scope='function')
 def full_cluster_ips(nine_session_vms, test_config, logger):
+    for vm in nine_session_vms:
+        _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3, manager_count=3,
                      pre_cluster_rabbit=True)
@@ -123,6 +131,8 @@ def full_cluster_ips(nine_session_vms, test_config, logger):
 
 @pytest.fixture(scope='function')
 def full_cluster_names(nine_session_vms, test_config, logger):
+    for vm in nine_session_vms:
+        _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3, manager_count=3,
                      pre_cluster_rabbit=True, use_hostnames=True)
@@ -141,6 +151,8 @@ def cluster_with_lb(six_session_vms, test_config, logger):
 
 @pytest.fixture(scope='function')
 def cluster_missing_one_db(nine_session_vms, test_config, logger):
+    for vm in nine_session_vms:
+        _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3, manager_count=3,
                      skip_bootstrap_list=['db3'],
@@ -169,6 +181,8 @@ def minimal_cluster(four_session_vms, test_config, logger):
 
 @pytest.fixture(scope='function')
 def three_nodes_cluster(three_session_vms, test_config, logger):
+    for vm in three_session_vms:
+        _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      pre_cluster_rabbit=True, three_nodes_cluster=True)
     for vm in three_session_vms:
@@ -178,7 +192,7 @@ def three_nodes_cluster(three_session_vms, test_config, logger):
 @pytest.fixture(scope='function')
 def three_vms(three_session_vms, test_config, logger):
     for vm in three_nodes_cluster:
-        vm.run_command('sudo yum remove cloudify-manager-install')
+        _ensure_installer_not_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
     for vm in three_session_vms:
@@ -188,12 +202,28 @@ def three_vms(three_session_vms, test_config, logger):
 @pytest.fixture(scope='function')
 def nine_vms(nine_session_vms, test_config, logger):
     for vm in nine_session_vms:
-        vm.run_command('sudo yum remove cloudify-manager-install')
+        _ensure_installer_not_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3,
                      manager_count=3, bootstrap=False)
     for vm in nine_session_vms:
         vm.teardown()
+
+
+def _ensure_installer_not_installed(vm):
+    vm.wait_for_ssh()
+    vm.run_command(
+        'rpm -qi cloudify-manager-install '
+        '&& sudo yum remove -y cloudify-manager-install'
+    )
+
+
+def _ensure_installer_installed(vm):
+    vm.wait_for_ssh()
+    vm.run_command(
+        'rpm -qi cloudify-manager-install '
+        '|| sudo yum install -y cloudify-manager-install.rpm'
+    )
 
 
 def _get_hosts(instances, test_config, logger,
