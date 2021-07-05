@@ -19,6 +19,7 @@ def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config):
 
     image_based_manager.run_command('cfy certificates replace -i {0} '
                                     '-v'.format(replace_certs_config_path))
+    image_based_manager.download_rest_ca(force=True)
 
     validate_agents(image_based_manager, example.tenant)
     example.uninstall()
