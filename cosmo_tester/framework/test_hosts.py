@@ -686,18 +686,20 @@ print('{{}} {{}}'.format(distro, codename).lower())
         )
 
     @only_manager
-    def download_rest_ca(self):
+    def download_rest_ca(self, force=False):
         self.api_ca_path = self._tmpdir / self.server_id + '_api.crt'
         if os.path.exists(self.api_ca_path):
-            self._logger.info('Skipping rest CA download, already in %s',
-                              self.api_ca_path)
-        else:
-            self._logger.info('Downloading rest CA to %s',
-                              self.api_ca_path)
-            self.get_remote_file(
-                '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
-                self.api_ca_path,
-            )
+            if force:
+                os.unlink(self.api_ca_path)
+            else:
+                self._logger.info('Skipping rest CA download, already in %s',
+                                  self.api_ca_path)
+                return
+        self._logger.info('Downloading rest CA to %s', self.api_ca_path)
+        self.get_remote_file(
+            '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
+            self.api_ca_path,
+        )
 
     @only_manager
     def enable_nics(self):
