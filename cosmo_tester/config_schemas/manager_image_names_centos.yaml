@@ -1,10 +1,22 @@
 namespace: manager_image_names_centos
 "master":
   description: Name of main manager image to test. This will be used in all manager tests.
-  default: cloudify-manager-premium-5.2.2
+  default: cloudify-manager-premium-5.2.4
 "installer":
   description: Name of image with manager installer for bootstrap or cluster installs.
+  default: cfy-installer-premium-5.2.4
+"5_2_3_installer":
+  description: Name of image with 5.2.3 manager installer for bootstrap or cluster installs.
+  default: cfy-installer-premium-5.2.3
+"5_2_3":
+  description: Name of manager image for 5.2.3. All non master images are only used for upgrade tests.
+  default: cloudify-manager-premium-5.2.3
+"5_2_2_installer":
+  description: Name of image with 5.2.2 manager installer for bootstrap or cluster installs.
   default: cfy-installer-premium-5.2.2
+"5_2_2":
+  description: Name of manager image for 5.2.2. All non master images are only used for upgrade tests.
+  default: cloudify-manager-premium-5.2.2
 "5_2_1_installer":
   description: Name of image with 5.2.1 manager installer for bootstrap or cluster installs.
   default: cfy-installer-premium-5.2.1
