@@ -51,7 +51,7 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
 
     with bootstrap_test_manager.ssh() as fabric:
         assert not fabric.run(
-            'ls -A /opt/cloudify-agent-5.2.0').stdout.strip()
+            'ls -A /opt/cloudify-agent-5.2.4').stdout.strip()
 
     assert diffs == expected_diffs
 
