@@ -66,6 +66,11 @@ def test_migrate_agents_aio_to_cluster(
         aio_mgr, node1, snapshot_id, snapshot_path, logger,
         cert_path=aio_mgr.api_ca_path)
 
+    for mgr in node1, node2, node3:
+        # Restart restservice to use correct rest secret
+        mgr.run_command('sudo supervisorctl restart cloudify-restservice')
+        mgr.wait_for_manager()
+
     logger.info('Migrating to new agents, stopping old agents')
     node1.run_command(
         'cfy agents install --stop-old-agent --tenant-name {}'.format(
