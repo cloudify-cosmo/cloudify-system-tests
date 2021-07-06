@@ -44,7 +44,7 @@ def validate_agent(manager, example, test_config,
         'system': expected_system,
         'id': instance['host_id'],
         'host_id': instance['host_id'],
-        'version': test_config['testing_version'],
+        'version': test_config['testing_version'].replace('-ga', ''),
         'node': instance['node_id'],
         'deployment': instance['deployment_id'],
     }
