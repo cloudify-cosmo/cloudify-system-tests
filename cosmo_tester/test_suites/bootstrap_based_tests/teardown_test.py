@@ -68,7 +68,7 @@ def check_pre_bootstrap_state(manager):
         'python_NOTICE.txt',
         'lib',
         'cloudify-manager-install',
-        'cloudify-agent-5.2.0',
+        'cloudify-agent-5.2.4',
     ]
     pre_bootstrap_state['init_d service files (/etc/rc.d/init.d/)'] += [
         'jexec'
