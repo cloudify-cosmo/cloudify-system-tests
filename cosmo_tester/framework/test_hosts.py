@@ -621,7 +621,7 @@ class _CloudifyManager(VM):
         else:
             return self._new_wait_for_manager()
 
-    @retrying.retry(stop_max_attempt_number=90, wait_fixed=1000)
+    @retrying.retry(stop_max_attempt_number=120, wait_fixed=1000)
     def _new_wait_for_manager(self):
         with self.ssh() as fabric_ssh:
             # If we don't wait for this then tests get a bit racier
