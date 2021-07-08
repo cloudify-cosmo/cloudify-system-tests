@@ -12,3 +12,5 @@ def check_managers(mgr1, mgr2, example):
     example.install()
     example.check_files()
     mgr1.run_command('sudo supervisorctl start cloudify-mgmtworker')
+    # Uninstall to not contaminate other tests
+    example.uninstall()
