@@ -37,6 +37,15 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
     expected_diffs['os groups'] = {'cfyagent'}
 
     bootstrap_test_manager.teardown(kill_certs=False)
+
+    # The agents dir should be empty, so let's remove it.
+    bootstrap_test_manager.run_command(
+        'rmdir /opt/cloudify-agent-{}'.format(
+            test_config['testing_version'].replace('-ga', '')
+        ),
+        use_sudo=True,
+    )
+
     current_state = _get_system_state(bootstrap_test_manager)
     diffs = {}
 
