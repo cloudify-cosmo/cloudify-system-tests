@@ -292,6 +292,10 @@ def _get_hosts(instances, test_config, logger,
                    hosts=hosts_entries,
                )
             )
+    else:
+        for node in instances:
+            node.install_config['manager'][
+                'private_ip'] = node.private_ip_address
 
     if three_nodes_cluster:
         brokers = dbs = managers = instances[:3]
