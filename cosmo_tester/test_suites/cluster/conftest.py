@@ -286,6 +286,9 @@ def _get_hosts(instances, test_config, logger,
         )
         hosts_entries = '\n'.join(hosts_entries)
         for node in instances:
+            if not hasattr(node, 'install_config'):
+                # This is a load balancer or other non-cloudify node
+                continue
             node.install_config['manager']['private_ip'] = node.hostname
             node.run_command(
                "echo '{hosts}' | sudo tee -a /etc/hosts".format(
@@ -294,6 +297,9 @@ def _get_hosts(instances, test_config, logger,
             )
     else:
         for node in instances:
+            if not hasattr(node, 'install_config'):
+                # This is a load balancer or other non-cloudify node
+                continue
             node.install_config['manager'][
                 'private_ip'] = node.private_ip_address
 
