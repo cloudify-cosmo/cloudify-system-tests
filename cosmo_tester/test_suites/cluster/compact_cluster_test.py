@@ -66,6 +66,16 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
     _assert_cluster_status(node1.client)
 
 
+@pytest.mark.three_vms_ipv6
+def test_three_nodes_cluster_ipv6_status(three_nodes_ipv6_cluster, logger):
+    node1, node2, node3 = three_nodes_ipv6_cluster
+    _assert_cluster_status(node1.client)
+    _verify_status_when_syncthing_inactive(node1, node2, logger)
+    _verify_status_when_postgres_inactive(node1, node2, logger, node3.client)
+    _verify_status_when_rabbit_inactive(node1, node2, node3, logger,
+                                        node1.client)
+
+
 def _get_new_credentials():
     monitoring_creds = {
         'username': _random_credential_generator(),
