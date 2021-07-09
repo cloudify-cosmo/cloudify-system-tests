@@ -100,6 +100,16 @@ def image_based_manager(session_manager):
     session_manager.teardown()
 
 
+@pytest.fixture(scope='function')
+def function_scoped_manager(request, ssh_key, session_tmpdir, test_config,
+                            session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True)
+    hosts.create()
+    yield hosts.instances[0]
+    hosts.destroy()
+
+
 @pytest.fixture(scope='session')
 def three_plus_one_session_vms(ssh_key, session_tmpdir, test_config,
                                session_logger, request):

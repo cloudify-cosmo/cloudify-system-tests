@@ -1,31 +1,17 @@
-########
-# Copyright (c) 2015 GigaSpaces Technologies Ltd. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-#    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    * See the License for the specific language governing permissions and
-#    * limitations under the License.
-
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import substitute_testing_version
 
 pre_bootstrap_state = None
 
 
-def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
-    check_pre_bootstrap_state(bootstrap_test_manager)
-    bootstrap_test_manager.bootstrap(blocking=True)
+def test_teardown(function_scoped_manager, ssh_key, logger, test_config):
+    function_scoped_manager.wait_for_ssh()
+    check_pre_bootstrap_state(function_scoped_manager)
+    function_scoped_manager.bootstrap(blocking=True)
 
     expected_diffs = {}
 
-    example = get_example_deployment(bootstrap_test_manager,
+    example = get_example_deployment(function_scoped_manager,
                                      ssh_key, logger, 'teardown',
                                      test_config)
     example.upload_and_verify_install()
@@ -36,17 +22,17 @@ def test_teardown(bootstrap_test_manager, ssh_key, logger, test_config):
     # that group.
     expected_diffs['os groups'] = {'cfyagent'}
 
-    bootstrap_test_manager.teardown(kill_certs=False)
+    function_scoped_manager.teardown(kill_certs=False)
 
     # The agents dir should be empty, so let's remove it.
-    bootstrap_test_manager.run_command(
+    function_scoped_manager.run_command(
         'rmdir /opt/cloudify-agent-{}'.format(
             test_config['testing_version'].replace('-ga', '')
         ),
         use_sudo=True,
     )
 
-    current_state = _get_system_state(bootstrap_test_manager)
+    current_state = _get_system_state(function_scoped_manager)
     diffs = {}
 
     for key in current_state:
