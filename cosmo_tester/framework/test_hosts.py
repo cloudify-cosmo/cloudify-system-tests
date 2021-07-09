@@ -1346,7 +1346,8 @@ class Hosts(object):
         runtime_props = node_instance['runtime_properties']
 
         public_ip_address = runtime_props['public_ip_address']
-        private_ip_address = runtime_props['ip']
+        private_ip_address = runtime_props['ipv6_address'] if self.ipv6_net \
+            else runtime_props['ip']
 
         node_instance_id = node_instance['id']
         deployment_id = node_instance['deployment_id']
