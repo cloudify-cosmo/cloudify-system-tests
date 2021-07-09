@@ -1306,6 +1306,7 @@ class Hosts(object):
         self._platform_resource_ids = resource_ids
 
     def _finish_deploy_test_vms(self):
+        node_instances = {}
         for vm_id, details in self._test_vm_installs.items():
             execution, index = details
             util.wait_for_execution(self._infra_client, execution,
@@ -1320,6 +1321,11 @@ class Hosts(object):
                 index,
                 node_instance,
             )
+
+            node_instances[index] = node_instance
+
+        if self.ipv6_net:
+            self._disable_ipv4(node_instances)
 
     def _start_undeploy_test_vms(self):
         # Operate on all deployments except the infrastructure one
@@ -1384,3 +1390,21 @@ class Hosts(object):
             server_id,
             server_index,
         )
+
+    def _disable_ipv4(self, node_instances):
+        self._logger.info('Disabling IPv4 on private interfaces.')
+
+        for server_index, node_instance in node_instances.items():
+            instance = self.instances[server_index]
+
+            instance.wait_for_ssh()
+
+            for ip in [ni['runtime_properties']['ip']
+                       for i, ni in node_instances.items()
+                       if i != server_index]:
+                self._logger.info(
+                    'Poisoning ARP to disable IPv4 communication {0}->{1}.'
+                    .format(node_instance['runtime_properties']['ip'], ip))
+
+                instance.run_command('sudo arp -s {0} de:ad:be:ef:ca:fe'
+                                     .format(ip))
