@@ -828,7 +828,8 @@ class Hosts(object):
                  flavor=None,
                  multi_net=False,
                  bootstrappable=False,
-                 vm_net_mappings=None):
+                 vm_net_mappings=None,
+                 ipv6_net=False):
         """
         instances: supply a list of VM instances.
         This allows pre-configuration to happen before starting the hosts, or
@@ -867,6 +868,15 @@ class Hosts(object):
 
         self.multi_net = multi_net
         self.vm_net_mappings = vm_net_mappings or {}
+        self.ipv6_net = ipv6_net
+
+        if self.ipv6_net:
+            if self._test_config['target_platform'].lower() != 'aws':
+                raise RuntimeError('Tests in the IPv6-enabled environments '
+                                   'require AWS target platform.')
+            if self.multi_net:
+                raise RuntimeError('Cannot initialize both multi-net and '
+                                   'IPv6-enabled infrastructure.')
 
         infra_mgr_config = self._test_config['infrastructure_manager']
         self._infra_client = util.create_rest_client(
@@ -1105,7 +1115,9 @@ class Hosts(object):
         self._logger.info(
             'Uploading test blueprints to infrastructure manager.'
         )
-        suffix = '-multi-net' if self.multi_net else ""
+        suffix = '-multi-net' if self.multi_net \
+            else '-ipv6-net' if self.ipv6_net \
+            else ''
         self._infra_client.blueprints.upload(
             util.get_resource_path(
                 'infrastructure_blueprints/{}/infrastructure{}.yaml'.format(
@@ -1122,6 +1134,8 @@ class Hosts(object):
         test_vm_suffixes = ['']
         if self.multi_net:
             test_vm_suffixes.append('-multi-net')
+        elif self.ipv6_net:
+            test_vm_suffixes.append('-ipv6-net')
 
         for suffix in test_vm_suffixes:
             blueprint_id = "test_vm{}".format(suffix)
