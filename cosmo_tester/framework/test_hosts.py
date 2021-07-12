@@ -1397,7 +1397,9 @@ class Hosts(object):
 
     def _disable_ipv4(self, node_instances):
         self._logger.info('Disabling IPv4 on private interfaces.')
-
+        # This code needs to be run when all of the cluster VMs are already set
+        # up and running.  This is because we must know IP addresses of all of
+        # the nodes in order to disable IPv4 communication across the cluster.
         for server_index, node_instance in node_instances.items():
             instance = self.instances[server_index]
 
