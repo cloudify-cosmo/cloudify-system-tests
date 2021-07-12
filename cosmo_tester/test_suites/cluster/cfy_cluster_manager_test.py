@@ -215,8 +215,9 @@ def test_three_nodes_cluster_offline(
                      logger)
 
 
-@pytest.mark.parametrize('base_version', ['5_1_0', '5_1_1', '5_1_2', '5_1_3',
-                                          '5_1_4', '5_2_0', '5_2_1'])
+@pytest.mark.parametrize('base_version', ['5_1_1', '5_1_2', '5_1_3', '5_1_4',
+                                          '5_2_0', '5_2_1', '5_2_2', '5_2_3',
+                                         ])
 def test_three_nodes_cluster_upgrade(base_version, three_vms,
                                      three_nodes_config_dict, test_config,
                                      ssh_key, logger):
@@ -234,8 +235,9 @@ def test_three_nodes_cluster_upgrade(base_version, three_vms,
     _upgrade_cluster(nodes_list, node1, test_config, logger)
 
 
-@pytest.mark.parametrize('base_version', ['5_1_0', '5_1_1', '5_1_2', '5_1_3',
-                                          '5_1_4', '5_2_0', '5_2_1'])
+@pytest.mark.parametrize('base_version', ['5_1_1', '5_1_2', '5_1_3', '5_1_4',
+                                          '5_2_0', '5_2_1', '5_2_2', '5_2_3',
+                                         ])
 def test_nine_nodes_cluster_upgrade(base_version, nine_vms,
                                     nine_nodes_config_dict,
                                     test_config, ssh_key, logger):

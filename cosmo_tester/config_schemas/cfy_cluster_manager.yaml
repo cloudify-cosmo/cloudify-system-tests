@@ -5,9 +5,6 @@ rpm_path:
 manager_install_rpm_path:
   description: The manager-install RPM path to install.
   default: 'https://repository.cloudifysource.org/cloudify/5.2.0/.dev1-release/cloudify-manager-install-5.2.0-.dev1.el7.x86_64.rpm'
-5_1_0_manager_install_rpm_path:
-  description: manager-install v5.1.0 RPM path to install.
-  default: 'https://repository.cloudifysource.org/cloudify/5.1.0/ga-release/cloudify-manager-install-5.1.0ga.rpm'
 5_1_1_manager_install_rpm_path:
   description: manager-install v5.1.1 RPM path to install.
   default: 'https://repository.cloudifysource.org/cloudify/5.1.1/ga-release/cloudify-manager-install-5.1.1-ga.el7.x86_64.rpm'
@@ -26,3 +23,9 @@ manager_install_rpm_path:
 5_2_1_manager_install_rpm_path:
   description: manager-install v5.2.1 RPM path to install.
   default: 'https://repository.cloudifysource.org/cloudify/5.2.1/ga-release/cloudify-manager-install-5.2.1-ga.el7.x86_64.rpm'
+5_2_2_manager_install_rpm_path:
+  description: manager-install v5.2.2 RPM path to install.
+  default: 'https://repository.cloudifysource.org/cloudify/5.2.2/ga-release/cloudify-manager-install-5.2.2-ga.el7.x86_64.rpm'
+5_2_3_manager_install_rpm_path:
+  description: manager-install v5.2.3 RPM path to install.
+  default: 'https://repository.cloudifysource.org/cloudify/5.2.3/ga-release/cloudify-manager-install-5.2.3-ga.el7.x86_64.rpm'
