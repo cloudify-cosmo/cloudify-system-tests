@@ -1119,9 +1119,7 @@ class Hosts(object):
         if self.ipv6_net:
             suffix = '{}-ipv6'.format(suffix)
         if self.multi_net:
-            suffix = '{}-multi'.format(suffix)
-        if suffix:
-            suffix = '{}-net'.format(suffix)
+            suffix = '{}-multi-net'.format(suffix)
         self._infra_client.blueprints.upload(
             util.get_resource_path(
                 'infrastructure_blueprints/{}/infrastructure{}.yaml'.format(
@@ -1136,10 +1134,10 @@ class Hosts(object):
 
         self.blueprints.append('infrastructure')
         test_vm_suffixes = ['']
-        if self.multi_net:
+        if self.ipv6_net:
+            test_vm_suffixes.append('-ipv6')
+        elif self.multi_net:
             test_vm_suffixes.append('-multi-net')
-        elif self.ipv6_net:
-            test_vm_suffixes.append('-ipv6-net')
 
         for suffix in test_vm_suffixes:
             blueprint_id = "test_vm{}".format(suffix)
