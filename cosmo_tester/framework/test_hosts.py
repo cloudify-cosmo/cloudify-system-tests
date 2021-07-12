@@ -10,6 +10,7 @@ import re
 import string
 import socket
 import subprocess
+import sys
 import time
 import uuid
 import yaml
@@ -658,7 +659,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def get_rest_client(self, username=None, password=None, tenant=None,
-                        proto='auto'):
+                        proto='auto', download_ca=True):
         test_mgr_conf = self._test_config['test_manager']
         username = username or test_mgr_conf['username']
         password = password or test_mgr_conf['password']
@@ -673,7 +674,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             if 'SSL_REQUIRED' in ssl_check.text:
                 proto = 'https'
 
-        if proto == 'https':
+        if proto == 'https' and download_ca:
             self.download_rest_ca()
 
         return util.create_rest_client(
@@ -834,6 +835,17 @@ class Hosts(object):
         for a list of instances of different versions to be created at once.
         if instances is provided, number_of_instances will be ignored
         """
+        if sys.stdout.encoding.lower() != 'utf-8':
+            raise RuntimeError(
+                'Trying to run without IO encoding being set to utf-8 '
+                'will occasionally result in errors. Current encoding is '
+                '{current}. Please re-run, e.g. '
+                'PYTHONIOENCODING=utf-8 {command}'.format(
+                    current=sys.stdout.encoding,
+                    command=' '.join(sys.argv),
+                )
+            )
+
         self._logger = logger
         self._test_config = test_config
         self._tmpdir = tmpdir

@@ -32,7 +32,7 @@ def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
     example.upload_and_verify_install()
 
     logger.info('Creating snapshot')
-    snapshot_id = 'cluster_test_snapshot'
+    snapshot_id = 'cluster_test_snapshot_ips'
     create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')
@@ -54,7 +54,7 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
     example.upload_and_verify_install()
 
     logger.info('Creating snapshot')
-    snapshot_id = 'cluster_test_snapshot'
+    snapshot_id = 'cluster_test_snapshot_names'
     create_snapshot(mgr1, snapshot_id, logger)
 
     logger.info('Restoring snapshot')

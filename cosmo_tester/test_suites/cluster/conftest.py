@@ -286,12 +286,22 @@ def _get_hosts(instances, test_config, logger,
         )
         hosts_entries = '\n'.join(hosts_entries)
         for node in instances:
+            if not hasattr(node, 'install_config'):
+                # This is a load balancer or other non-cloudify node
+                continue
             node.install_config['manager']['private_ip'] = node.hostname
             node.run_command(
                "echo '{hosts}' | sudo tee -a /etc/hosts".format(
                    hosts=hosts_entries,
                )
             )
+    else:
+        for node in instances:
+            if not hasattr(node, 'install_config'):
+                # This is a load balancer or other non-cloudify node
+                continue
+            node.install_config['manager'][
+                'private_ip'] = node.private_ip_address
 
     if three_nodes_cluster:
         brokers = dbs = managers = instances[:3]
@@ -682,7 +692,7 @@ def _bootstrap_lb_node(node, managers, tempdir, logger):
     node.run_command('sudo systemctl restart haproxy')
 
     node.is_manager = True
-    node.client = node.get_rest_client(proto='https')
+    node.client = node.get_rest_client(proto='https', download_ca=False)
 
 
 def _add_monitoring_config(node, manager=False):
