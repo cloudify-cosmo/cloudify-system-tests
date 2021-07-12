@@ -659,7 +659,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def get_rest_client(self, username=None, password=None, tenant=None,
-                        proto='auto'):
+                        proto='auto', download_ca=True):
         test_mgr_conf = self._test_config['test_manager']
         username = username or test_mgr_conf['username']
         password = password or test_mgr_conf['password']
@@ -674,7 +674,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             if 'SSL_REQUIRED' in ssl_check.text:
                 proto = 'https'
 
-        if proto == 'https':
+        if proto == 'https' and download_ca:
             self.download_rest_ca()
 
         return util.create_rest_client(
