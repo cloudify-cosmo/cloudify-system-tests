@@ -1115,9 +1115,13 @@ class Hosts(object):
         self._logger.info(
             'Uploading test blueprints to infrastructure manager.'
         )
-        suffix = '-multi-net' if self.multi_net \
-            else '-ipv6-net' if self.ipv6_net \
-            else ''
+        suffix = ''
+        if self.ipv6_net:
+            suffix = '{}-ipv6'.format(suffix)
+        if self.multi_net:
+            suffix = '{}-multi'.format(suffix)
+        if suffix:
+            suffix = '{}-net'.format(suffix)
         self._infra_client.blueprints.upload(
             util.get_resource_path(
                 'infrastructure_blueprints/{}/infrastructure{}.yaml'.format(
