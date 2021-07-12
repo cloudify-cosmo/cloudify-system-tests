@@ -692,7 +692,7 @@ def _bootstrap_lb_node(node, managers, tempdir, logger):
     node.run_command('sudo systemctl restart haproxy')
 
     node.is_manager = True
-    node.client = node.get_rest_client(proto='https')
+    node.client = node.get_rest_client(proto='https', download_ca=False)
 
 
 def _add_monitoring_config(node, manager=False):
