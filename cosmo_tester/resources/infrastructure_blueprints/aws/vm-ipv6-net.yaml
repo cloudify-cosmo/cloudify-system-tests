@@ -98,6 +98,8 @@ node_templates:
       resource_config:
         CidrBlock: 192.168.42.0/24
         AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+        # IPv4 address is necessary for Elastic IP to work.
+        # Elastic IP is used in system-tests to communicate with a VM.
       Tags:
         - Key: Name
           Value: { concat: [ { get_input: test_infrastructure_name }, "-", { get_input: use_net } ] }
