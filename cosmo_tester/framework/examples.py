@@ -195,7 +195,7 @@ class BaseExample(object):
                 assert data.decode('utf-8') == expected_content
 
     # Proxy test has been suffering temporary ssh timeout issues
-    @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+    @retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
     def check_all_test_files_deleted(self, path=None):
         if path is None:
             path = self.inputs['path']
