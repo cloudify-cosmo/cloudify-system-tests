@@ -828,7 +828,8 @@ class Hosts(object):
                  flavor=None,
                  multi_net=False,
                  bootstrappable=False,
-                 vm_net_mappings=None):
+                 vm_net_mappings=None,
+                 ipv6_net=False):
         """
         instances: supply a list of VM instances.
         This allows pre-configuration to happen before starting the hosts, or
@@ -867,6 +868,15 @@ class Hosts(object):
 
         self.multi_net = multi_net
         self.vm_net_mappings = vm_net_mappings or {}
+        self.ipv6_net = ipv6_net
+
+        if self.ipv6_net:
+            if self._test_config['target_platform'].lower() != 'aws':
+                raise RuntimeError('Tests in the IPv6-enabled environments '
+                                   'require AWS target platform.')
+            if self.multi_net:
+                raise RuntimeError('Cannot initialize both multi-net and '
+                                   'IPv6-enabled infrastructure.')
 
         infra_mgr_config = self._test_config['infrastructure_manager']
         self._infra_client = util.create_rest_client(
@@ -1105,7 +1115,11 @@ class Hosts(object):
         self._logger.info(
             'Uploading test blueprints to infrastructure manager.'
         )
-        suffix = '-multi-net' if self.multi_net else ""
+        suffix = ''
+        if self.ipv6_net:
+            suffix = '{}-ipv6'.format(suffix)
+        if self.multi_net:
+            suffix = '{}-multi-net'.format(suffix)
         self._infra_client.blueprints.upload(
             util.get_resource_path(
                 'infrastructure_blueprints/{}/infrastructure{}.yaml'.format(
@@ -1120,7 +1134,9 @@ class Hosts(object):
 
         self.blueprints.append('infrastructure')
         test_vm_suffixes = ['']
-        if self.multi_net:
+        if self.ipv6_net:
+            test_vm_suffixes.append('-ipv6')
+        elif self.multi_net:
             test_vm_suffixes.append('-multi-net')
 
         for suffix in test_vm_suffixes:
@@ -1292,6 +1308,7 @@ class Hosts(object):
         self._platform_resource_ids = resource_ids
 
     def _finish_deploy_test_vms(self):
+        node_instances = {}
         for vm_id, details in self._test_vm_installs.items():
             execution, index = details
             util.wait_for_execution(self._infra_client, execution,
@@ -1306,6 +1323,11 @@ class Hosts(object):
                 index,
                 node_instance,
             )
+
+            node_instances[index] = node_instance
+
+        if self.ipv6_net:
+            self._disable_ipv4(node_instances)
 
     def _start_undeploy_test_vms(self):
         # Operate on all deployments except the infrastructure one
@@ -1332,7 +1354,8 @@ class Hosts(object):
         runtime_props = node_instance['runtime_properties']
 
         public_ip_address = runtime_props['public_ip_address']
-        private_ip_address = runtime_props['ip']
+        private_ip_address = runtime_props['ipv6_address'] if self.ipv6_net \
+            else runtime_props['ip']
 
         node_instance_id = node_instance['id']
         deployment_id = node_instance['deployment_id']
@@ -1369,3 +1392,23 @@ class Hosts(object):
             server_id,
             server_index,
         )
+
+    def _disable_ipv4(self, node_instances):
+        self._logger.info('Disabling IPv4 on private interfaces.')
+        # This code needs to be run when all of the cluster VMs are already set
+        # up and running.  This is because we must know IP addresses of all of
+        # the nodes in order to disable IPv4 communication across the cluster.
+        for server_index, node_instance in node_instances.items():
+            instance = self.instances[server_index]
+
+            instance.wait_for_ssh()
+
+            for ip in [ni['runtime_properties']['ip']
+                       for i, ni in node_instances.items()
+                       if i != server_index]:
+                self._logger.info(
+                    'Poisoning ARP to disable IPv4 communication {0}->{1}.'
+                    .format(node_instance['runtime_properties']['ip'], ip))
+
+                instance.run_command('sudo arp -s {0} de:ad:be:ef:ca:fe'
+                                     .format(ip))
