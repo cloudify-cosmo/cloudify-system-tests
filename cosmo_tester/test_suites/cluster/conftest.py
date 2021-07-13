@@ -34,6 +34,19 @@ def three_session_vms(request, ssh_key, session_tmpdir, test_config,
 
 
 @pytest.fixture(scope='session')
+def three_ipv6_session_vms(request, ssh_key, session_tmpdir, test_config,
+                           session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=3, ipv6_net=True)
+    try:
+        hosts.create()
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
+@pytest.fixture(scope='session')
 def four_session_vms(request, ssh_key, session_tmpdir, test_config,
                      session_logger):
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
@@ -190,12 +203,32 @@ def three_nodes_cluster(three_session_vms, test_config, logger):
 
 
 @pytest.fixture(scope='function')
+def three_nodes_ipv6_cluster(three_ipv6_session_vms, test_config, logger):
+    for vm in three_ipv6_session_vms:
+        _ensure_installer_installed(vm)
+    yield _get_hosts(three_ipv6_session_vms, test_config, logger,
+                     pre_cluster_rabbit=True, three_nodes_cluster=True)
+    for vm in three_ipv6_session_vms:
+        vm.teardown()
+
+
+@pytest.fixture(scope='function')
 def three_vms(three_session_vms, test_config, logger):
     for vm in three_nodes_cluster:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
     for vm in three_session_vms:
+        vm.teardown()
+
+
+@pytest.fixture(scope='function')
+def three_vms_ipv6(three_ipv6_session_vms, test_config, logger):
+    for vm in three_nodes_ipv6_cluster:
+        _ensure_installer_not_installed(vm)
+    yield _get_hosts(three_ipv6_session_vms, test_config, logger,
+                     three_nodes_cluster=True, bootstrap=False)
+    for vm in three_ipv6_session_vms:
         vm.teardown()
 
 

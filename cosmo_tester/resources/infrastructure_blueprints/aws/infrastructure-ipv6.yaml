@@ -1,0 +1,173 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - https://cloudify.co/spec/cloudify/5.1.0/types.yaml
+  - plugin:cloudify-aws-plugin
+
+inputs:
+  test_infrastructure_name: {}
+
+dsl_definitions:
+  client_config: &client_config
+    aws_access_key_id: { get_secret: aws_access_key_id }
+    aws_secret_access_key: { get_secret: aws_secret_access_key }
+    region_name: { get_secret: ec2_region_name }
+
+node_templates:
+  keypair:
+    type: cloudify.nodes.aws.ec2.Keypair
+    properties:
+      resource_config:
+        KeyName: { get_input: test_infrastructure_name }
+        PublicKeyMaterial: { get_secret: ssh_public_key }
+      store_in_runtime_properties: true
+      client_config: *client_config
+
+  test_subnet_1:
+    type: cloudify.nodes.aws.ec2.Subnet
+    properties:
+      resource_config:
+        CidrBlock: 192.168.42.0/24
+        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+        kwargs:
+          Ipv6CidrBlock: { get_attribute: [ vpc, create_response, Ipv6CidrBlockAssociationSet, 0, Ipv6CidrBlock ] }
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: vpc
+      - type: cloudify.relationships.depends_on
+        target: internet_gateway_1
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        configure:
+          implementation: aws.cloudify_aws.ec2.resources.subnet.create
+          inputs:
+            modify_subnet_attribute_args:
+              AssignIpv6AddressOnCreation:
+                Value: True
+
+  vpc:
+    type: cloudify.nodes.aws.ec2.Vpc
+    properties:
+      resource_config:
+        CidrBlock: 192.168.0.0/16
+        kwargs:
+          AmazonProvidedIpv6CidrBlock: true
+      Tags:
+        - Key: Name
+          Value: { get_input: test_infrastructure_name }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
+      client_config: *client_config
+
+  internet_gateway_1:
+    type: cloudify.nodes.aws.ec2.InternetGateway
+    properties:
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
+    relationships:
+      - type: cloudify.relationships.connected_to
+        target: vpc
+
+  subnet_routetable_1:
+    type: cloudify.nodes.aws.ec2.RouteTable
+    properties:
+      client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { concat: [ { get_input: test_infrastructure_name }, "-1" ] }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
+    relationships:
+    - type: cloudify.relationships.contained_in
+      target: vpc
+    - type: cloudify.relationships.connected_to
+      target: test_subnet_1
+
+  route_subnet_internet_gateway_1:
+    type: cloudify.nodes.aws.ec2.Route
+    properties:
+      resource_config:
+        kwargs:
+          DestinationCidrBlock: '0.0.0.0/0'
+      client_config: *client_config
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: subnet_routetable_1
+      - type: cloudify.relationships.connected_to
+        target: internet_gateway_1
+
+  security_group:
+    type: cloudify.nodes.aws.ec2.SecurityGroup
+    properties:
+      resource_config:
+        GroupName: { get_input: test_infrastructure_name }
+        Description: Security group for tests.
+        VpcId: { get_attribute: [ vpc, aws_resource_id] }
+      client_config: *client_config
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: vpc
+
+  security_group_rules:
+    type: cloudify.nodes.aws.ec2.SecurityGroupRuleIngress
+    properties:
+     client_config: *client_config
+     resource_config:
+      IpPermissions:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        IpRanges:
+        - CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        IpRanges:
+        - CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        IpRanges:
+        - CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 3389
+        ToPort: 3389
+        IpRanges:
+        - CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 5985
+        ToPort: 5985
+        IpRanges:
+        - CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 1
+        ToPort: 65535
+        IpRanges:
+        - CidrIp: 10.0.0.0/8
+        - CidrIp: 192.168.0.0/16
+        - CidrIp: 172.16.0.0/12
+      - IpProtocol: icmpv6
+        FromPort: -1
+        ToPort: -1
+        Ipv6Ranges:
+          - CidrIpv6: 2a05:d018::/32
+            Description: ICMPv6 on a AWS-provided IPv6 address range
+      - IpProtocol: tcp
+        FromPort: 1
+        ToPort: 65535
+        Ipv6Ranges:
+          - CidrIpv6: 2a05:d018::/32
+            Description: TCP on a AWS-provided IPv6 address range
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: security_group
