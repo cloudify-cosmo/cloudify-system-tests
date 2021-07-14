@@ -246,8 +246,35 @@ def nine_vms(nine_session_vms, test_config, logger):
 def _ensure_installer_not_installed(vm):
     vm.wait_for_ssh()
     vm.run_command(
-        'rpm -qi cloudify-manager-install '
-        '&& sudo yum remove -y cloudify-manager-install'
+        'if rpm -qi cloudify-manager-install; then sudo yum clean all; '
+        'sudo yum remove -y cloudify-manager-install {}; fi'.format(
+            # We need to remove the other components as well or we end up with
+            # failures when installing older clusters in the upgrade tests
+            ' '.join([
+                'cloudify-cli',
+                'cloudify-composer',
+                'cloudify-management-worker',
+                'cloudify-premium',
+                'cloudify-rabbitmq',
+                'cloudify-rest-service',
+                'cloudify-stage',
+                'erlang',
+                'etcd',
+                'nginx',
+                'node_exporter',
+                'nodejs',
+                'patroni',
+                'postgres_exporter',
+                'postgresql95',
+                'postgresql95-contrib',
+                'postgresql95-devel',
+                'postgresql95-libs',
+                'postgresql95-server',
+                'prometheus',
+                'python-psycopg2',
+                'rabbitmq-server',
+            ]),
+        )
     )
 
 
