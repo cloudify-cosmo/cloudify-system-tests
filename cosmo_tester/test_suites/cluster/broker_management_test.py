@@ -43,6 +43,17 @@ def add_to_hosts(target_broker, new_entry_brokers):
         ))
 
 
+def backup_hosts(brokers_list):
+    for broker in brokers_list:
+        broker.run_command('sudo cp /etc/hosts /etc/hosts.bak')
+
+
+def restore_hosts(brokers_list):
+    for broker in brokers_list:
+        broker.run_command('sudo cp /etc/hosts.bak /etc/hosts')
+        broker.run_command('sudo rm /etc/hosts.bak')
+
+
 def join_cluster(new_broker, cluster_member):
     new_broker.run_command('cfy_manager brokers add -j {cluster_node}'.format(
         cluster_node=cluster_member.hostname,
@@ -75,6 +86,8 @@ def prepare_cluster_for_removal_tests(brokers):
 
 @pytest.mark.three_vms
 def test_list(brokers, logger):
+    backup_hosts(brokers)
+
     # Testing multiple lists in one test because each deploy of brokers takes
     # several minutes
     logger.info('Checking single broker only lists itself.')
@@ -139,6 +152,7 @@ def test_list(brokers, logger):
     assert 'cluster' in result
     assert 'failed' in result
     logger.info('Cluster down check successful.')
+    restore_hosts(brokers)
 
 
 @pytest.mark.one_vm
@@ -157,6 +171,8 @@ def test_auth_fail(broker, logger):
 
 @pytest.mark.three_vms
 def test_add(brokers, logger):
+    backup_hosts(brokers)
+
     logger.info('Preparing hosts files')
     add_to_hosts(brokers[0], brokers[1:])
     add_to_hosts(brokers[1], [brokers[0], brokers[2]])
@@ -232,10 +248,13 @@ def test_add(brokers, logger):
     ).stdout.lower()
     assert 'unreachable' in result
     logger.info('Correct error trying to join unreachable node.')
+    restore_hosts(brokers)
 
 
 @pytest.mark.three_vms
 def test_remove(brokers, logger):
+    backup_hosts(brokers)
+
     logger.info('Preparing cluster.')
     prepare_cluster_for_removal_tests(brokers)
     logger.info('Cluster prepared.')
@@ -294,12 +313,14 @@ def test_remove(brokers, logger):
     )
     get_cluster_listing([brokers[0]])
     logger.info('Cluster failure recovery successful.')
+    restore_hosts(brokers)
 
 
 @pytest.mark.four_vms
 def test_remove_broker_from_manager(brokers3_and_manager, logger):
     logger.info('Preparing cluster.')
     brokers, manager = brokers3_and_manager[:3], brokers3_and_manager[3]
+    backup_hosts(brokers)
     prepare_cluster_for_removal_tests(brokers)
     logger.info('Cluster prepared.')
 
@@ -336,6 +357,7 @@ def test_remove_broker_from_manager(brokers3_and_manager, logger):
     result = manager.run_command('cfy status --json 2>&1 || true').stdout
     assert json.loads(result.strip('\033[0m'))['status'] == 'OK'
     logger.info('Manager status OK.')
+    restore_hosts(brokers)
 
 
 @pytest.mark.three_vms
