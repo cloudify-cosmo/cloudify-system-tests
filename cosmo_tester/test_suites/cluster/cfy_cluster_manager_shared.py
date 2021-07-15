@@ -62,8 +62,10 @@ def _install_cluster(node, config_dict, test_config, ssh_key, logger,
                              local_path=util.get_resource_path(
                                  'test_valid_paying_license.yaml'))
 
-        node.run_command('yum install -y {0}'.format(
-            test_config['cfy_cluster_manager']['rpm_path']), use_sudo=True)
+        node.run_command(
+            'rpm -qi cloudify-cluster-manager || '
+            'sudo yum install -y {0}'.format(
+                test_config['cfy_cluster_manager']['rpm_path']), use_sudo=True)
 
     node.run_command(
         'cfy_cluster_manager install -v --config-path {cfg} {override}'.format(
