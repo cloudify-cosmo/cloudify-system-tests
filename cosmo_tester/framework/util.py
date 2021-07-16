@@ -455,12 +455,7 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=10*60,
                     raise
 
             if current_time >= timeout_time:
-                raise ExecutionTimeout(
-                    'Execution {exc_id} timed out in state: {status}'.format(
-                        exc_id=execution['id'],
-                        status=execution.status,
-                    )
-                )
+                _fail_wait_for_execution(client, logger, execution, 'timeout')
 
             if execution.status in execution.END_STATES:
                 # Give time for any last second events
@@ -468,13 +463,8 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=10*60,
                 output_events(client, execution, logger, current_time)
 
                 if execution.status != execution.TERMINATED:
-                    logger.warning('Execution failed')
-                    raise ExecutionFailed(
-                        '{status}: {error}'.format(
-                            status=execution.status,
-                            error=execution['error'],
-                        )
-                    )
+                    _fail_wait_for_execution(client, logger, execution,
+                                             'failed')
 
                 logger.info('Execution completed in state {status}'.format(
                         status=execution.status,
@@ -483,6 +473,31 @@ def wait_for_execution(client, execution, logger, tenant=None, timeout=10*60,
                 break
 
     return execution
+
+
+def _fail_wait_for_execution(client, logger, execution, error_type):
+    exceptions = {
+        'failed': ExecutionFailed,
+        'timeout': ExecutionTimeout,
+    }
+
+    logger.error('Failure waiting for execution. Execution %s', error_type)
+    events = client.events.list(execution['id'])
+    for event in events:
+        logger.error('{reported_timestamp} {message}'.format(**event))
+    raise exceptions[error_type](
+        'Execution {exc_id} {error_type} in state: {status}. '
+        '{error}'.format(
+            exc_id=execution['id'],
+            error_type=error_type,
+            status=execution.status,
+            error=(
+                'Error: {}'.format(execution.get('error'))
+                if execution.get('error')
+                else ''
+            ),
+        )
+    )
 
 
 def run_blocking_execution(client, deployment_id, workflow_id, logger,
