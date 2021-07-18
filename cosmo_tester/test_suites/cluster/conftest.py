@@ -8,6 +8,7 @@ import pytest
 
 from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework import util
+from .cfy_cluster_manager_shared import REMOTE_CLUSTER_CONFIG_PATH
 
 CONFIG_DIR = join(dirname(__file__), 'config')
 
@@ -219,6 +220,7 @@ def three_vms(three_session_vms, test_config, logger):
     yield _get_hosts(three_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
     for vm in three_session_vms:
+        _remove_cluster(vm, logger)
         vm.teardown()
 
 
@@ -240,6 +242,7 @@ def nine_vms(nine_session_vms, test_config, logger):
                      broker_count=3, db_count=3,
                      manager_count=3, bootstrap=False)
     for vm in nine_session_vms:
+        _remove_cluster(vm, logger)
         vm.teardown()
 
 
@@ -781,3 +784,14 @@ def _add_monitoring_config(node, manager=False):
                 'password': monitoring_pass,
             }
             config[section_name] = section
+
+
+def _remove_cluster(node, logger):
+    logger.info('Attempting to clean up cluster using '
+                'cloudify_cluster_manager')
+    logger.info('Checking for cluster manager on {}'.format(node.hostname))
+    if node.run_command('which cfy_cluster_manager', warn_only=True).ok:
+        logger.info('Found cluster manager on {}, tearing down '
+                    'cluster...'.format(node.hostname))
+        node.run_command('sudo cfy_cluster_manager remove --config-path '
+                         '{}'.format(REMOTE_CLUSTER_CONFIG_PATH))
