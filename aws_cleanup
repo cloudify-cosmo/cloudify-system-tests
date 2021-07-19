@@ -1,0 +1,465 @@
+#! /usr/bin/env python
+import argparse
+from datetime import datetime
+import sys
+import time
+import yaml
+
+try:
+    import boto3
+    import botocore
+except ImportError:
+    print('You need to pip install boto3==1.12.13')
+    sys.exit(1)
+
+NOT_TERMINATED = [
+    'pending', 'running', 'shutting-down', 'stopping', 'stopped'
+]
+ENTITY_TYPES = {
+    'instances': {'tag_key': 'Tags', 'id_key': 'InstanceId'},
+    'interfaces': {'tag_key': 'TagSet', 'id_key': 'NetworkInterfaceId',
+                   'result_key': 'NetworkInterfaces',
+                   'describe_id_key': 'network-interface-id',
+                   'delete_func_name': 'delete_network_interface',
+                   'describe_func_name': 'describe_network_interfaces'},
+    'route tables': {'tag_key': 'Tags', 'id_key': 'RouteTableId',
+                     'describe_id_key': 'route-table-id',
+                     'result_key': 'RouteTables',
+                     'delete_func_name': 'delete_route_table',
+                     'describe_func_name': 'describe_route_tables'},
+    'security groups': {'tag_key': 'Tags', 'id_key': 'GroupId',
+                        'describe_id_key': 'group-id',
+                        'result_key': 'SecurityGroups',
+                        'delete_func_name': 'delete_security_group',
+                        'describe_func_name': 'describe_security_groups'},
+    'subnets': {'tag_key': 'Tags', 'id_key': 'SubnetId',
+                'describe_id_key': 'subnet-id',
+                'result_key': 'Subnets',
+                'delete_func_name': 'delete_subnet',
+                'describe_func_name': 'describe_subnets'},
+    'elastic ips': {'tag_key': 'Tags', 'id_key': 'AllocationId'},
+    'internet gateways': {'tag_key': 'Tags', 'id_key': 'InternetGatewayId'},
+    'vpcs': {'tag_key': 'Tags', 'id_key': 'VpcId'},
+}
+
+
+def load_config():
+    with open('test_config.yaml') as fh:
+        data = fh.read()
+    return yaml.safe_load(data)
+
+
+def get_ec2_client(conf):
+    key = conf['aws']['access_key_id']
+    secret = conf['aws']['access_key_secret']
+    return boto3.client('ec2',
+                        aws_access_key_id=key, aws_secret_access_key=secret)
+
+
+def tags_to_dict(entity, tag_key):
+    """Yes, it'll fail badly if a tag name is duplicated. We don't do that."""
+    return {item['Key']: item['Value'] for item in entity[tag_key]}
+
+
+def _append_entities_to_previous_tests(entities, entity_type, previous_tests):
+    tag_key = ENTITY_TYPES[entity_type]['tag_key']
+    id_key = ENTITY_TYPES[entity_type]['id_key']
+    for entity in entities:
+        tags = tags_to_dict(entity, tag_key)
+        test_name = tags['Name']
+        if entity_type in ['interfaces', 'subnets', 'route tables',
+                           'internet gateways', 'elastic ips']:
+            test_name = test_name.rsplit('-', 1)[0]
+        if test_name not in previous_tests:
+            previous_tests[test_name] = {e: [] for e in ENTITY_TYPES}
+        previous_tests[test_name][entity_type].append(entity[id_key])
+
+
+def group_by_previous_tests(instances, interfaces, vpcs, subnets, elastic_ips,
+                            route_tables, internet_gateways, security_groups):
+    previous_tests = {}
+
+    _append_entities_to_previous_tests(
+        entities=instances,
+        entity_type='instances',
+        previous_tests=previous_tests,
+    )
+    _append_entities_to_previous_tests(
+        entities=interfaces,
+        entity_type='interfaces',
+        previous_tests=previous_tests,
+    )
+    _append_entities_to_previous_tests(
+        entities=vpcs,
+        entity_type='vpcs',
+        previous_tests=previous_tests,
+    )
+    _append_entities_to_previous_tests(
+        entities=subnets,
+        entity_type='subnets',
+        previous_tests=previous_tests,
+    )
+    _append_entities_to_previous_tests(
+        entities=elastic_ips,
+        entity_type='elastic ips',
+        previous_tests=previous_tests,
+    )
+    _append_entities_to_previous_tests(
+        entities=route_tables,
+        entity_type='route tables',
+        previous_tests=previous_tests,
+    )
+    _append_entities_to_previous_tests(
+        entities=internet_gateways,
+        entity_type='internet gateways',
+        previous_tests=previous_tests,
+    )
+    _append_entities_to_previous_tests(
+        entities=security_groups,
+        entity_type='security groups',
+        previous_tests=previous_tests,
+    )
+
+    return previous_tests
+
+
+def get_instances(client, owner):
+    reservations = client.describe_instances(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]},
+            {'Name': 'instance-state-name', 'Values': NOT_TERMINATED},
+        ],
+    )['Reservations']
+    return [res['Instances'][0] for res in reservations]
+
+
+def get_interfaces(client, owner):
+    return client.describe_network_interfaces(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]}
+        ],
+    )['NetworkInterfaces']
+
+
+def get_vpcs(client, owner):
+    return client.describe_vpcs(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]}
+        ],
+    )['Vpcs']
+
+
+def get_subnets(client, owner):
+    return client.describe_subnets(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]}
+        ],
+    )['Subnets']
+
+
+def get_elastic_ips(client, owner):
+    return client.describe_addresses(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]}
+        ],
+    )['Addresses']
+
+
+def get_route_tables(client, owner):
+    return client.describe_route_tables(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]}
+        ],
+    )['RouteTables']
+
+
+def get_internet_gateways(client, owner):
+    return client.describe_internet_gateways(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]}
+        ],
+    )['InternetGateways']
+
+
+def get_security_groups(client, owner):
+    return client.describe_security_groups(
+        Filters=[
+            {'Name': 'tag:Owner', 'Values': [owner]}
+        ],
+    )['SecurityGroups']
+
+
+def estimate_age(test_name):
+    """Woe betide you if NTP is not involved and drift has been unkind."""
+    test_time = datetime.strptime(test_name.split('_')[-1], '%Y%m%d%H%M%S')
+    now = datetime.now()
+
+    difference = now - test_time
+    hours = difference.seconds // 60 // 60
+    if hours == 0:
+        minutes = difference.seconds // 60
+    else:
+        minutes = difference.seconds // 60 % (60 * hours)
+    return hours, minutes
+
+
+def filter_test_groups(resources_by_test, older_than, newer_than):
+    remove = set()
+    for test_name in resources_by_test:
+        test_age_in_hours = estimate_age(test_name)[0]
+        if test_age_in_hours > newer_than:
+            remove.add(test_name)
+        if test_age_in_hours < older_than:
+            remove.add(test_name)
+    for test_name in remove:
+        resources_by_test.pop(test_name)
+
+
+def output_resources_by_test(resources_by_test):
+    if resources_by_test:
+        print('{} previous test runs found:'.format(len(resources_by_test)))
+        for test_name in sorted(resources_by_test.keys()):
+            print('  {}:'.format(test_name))
+            for entity_type in sorted(ENTITY_TYPES.keys()):
+                entities = resources_by_test[test_name][entity_type]
+                if entities:
+                    print('    {}: {}'.format(
+                        entity_type.title(),
+                        ', '.join(entities),
+                    ))
+            print('    Estimated age: {}:{:0>2d} (hours:minutes)'.format(
+                *estimate_age(test_name)))
+            print()  # Blank line for readability
+    else:
+        print('No tests found.')
+
+
+def wait_for_instances_to_terminate(client, instances):
+    all_terminated = False
+    max_attempts = 30
+    attempt = 0
+    while not all_terminated:
+        time.sleep(2)
+        attempt += 1
+        print('Seeing if instances {} are terminated...'.format(
+            ', '.join(instances),
+        ))
+        reservations = client.describe_instances(
+            Filters=[
+                {'Name': 'instance-id', 'Values': instances},
+            ],
+        )['Reservations']
+        remaining_instances = [res['Instances'][0] for res in reservations]
+
+        all_terminated = all(instance['State']['Name'] == 'terminated'
+                             for instance in remaining_instances)
+
+        if attempt == max_attempts and not all_terminated:
+            sys.stderr.write('Failed waiting for instances to stop.')
+            sys.exit(1)
+    print('...they are.')
+
+
+def wait_for_internet_gateways_to_detach(client, internet_gateways):
+    all_detached = False
+    max_attempts = 30
+    attempt = 0
+    while not all_detached:
+        time.sleep(2)
+        attempt += 1
+        print('Seeing if internet gateways {} are detached...'.format(
+            ', '.join(internet_gateways),
+        ))
+        remaining = client.describe_internet_gateways(
+            Filters=[
+                {'Name': 'internet-gateway-id', 'Values': internet_gateways},
+            ],
+        )['InternetGateways']
+
+        all_detached = all(len(igw['Attachments']) == 0
+                           for igw in remaining)
+
+        if attempt == max_attempts and not all_detached:
+            sys.stderr.write(
+                'Failed waiting for internet gateways to detach.')
+            sys.exit(1)
+    print('...they are.')
+
+
+def wait_for_entities_to_be_deleted(client, entities, resource_type):
+    entity_details = ENTITY_TYPES[resource_type]
+    func = getattr(client, entity_details['describe_func_name'])
+
+    all_deleted = False
+    max_attempts = 30
+    attempt = 0
+    while not all_deleted:
+        time.sleep(2)
+        attempt += 1
+        print('Seeing if {} {} are deleted...'.format(
+            resource_type,
+            ', '.join(entities),
+        ))
+        remaining_entities = func(
+            Filters=[
+                {'Name': entity_details['describe_id_key'],
+                 'Values': entities},
+            ],
+        )[entity_details['result_key']]
+
+        all_deleted = len(remaining_entities) == 0
+        if attempt == max_attempts and not all_deleted:
+            sys.stderr.write('Failed waiting for {} to delete.'.format(
+                resource_type))
+            sys.exit(1)
+    print('...they are.')
+
+
+def _delete_non_instance_resources(client, resources_by_test, resource_type):
+    entity_details = ENTITY_TYPES[resource_type]
+
+    for test_name, resources in resources_by_test.items():
+        if resources[resource_type]:
+            print('Deleting {} for {}'.format(resource_type, test_name))
+            for entity in resources[resource_type]:
+                args = {entity_details['id_key']: entity}
+                func = getattr(client, entity_details['delete_func_name'])
+                func(**args)
+
+    for test_name, resources in resources_by_test.items():
+        if resources[resource_type]:
+            print('Waiting for {} to delete for {}'.format(resource_type,
+                                                           test_name))
+            wait_for_entities_to_be_deleted(
+                client,
+                resources[resource_type],
+                resource_type,
+            )
+
+
+def delete_resources(client, resources_by_test):
+    for test_name, resources in resources_by_test.items():
+        if resources['instances']:
+            print('Terminating instances for {}'.format(test_name))
+            client.terminate_instances(InstanceIds=resources['instances'])
+
+    for test_name, resources in resources_by_test.items():
+        if resources['instances']:
+            print('Waiting for instances to terminate for {}'.format(
+                test_name))
+            wait_for_instances_to_terminate(client, resources['instances'])
+
+    for resource_type in ['interfaces', 'subnets', 'route tables',
+                          'security groups']:
+        _delete_non_instance_resources(client, resources_by_test,
+                                       resource_type)
+
+    for test_name, resources in resources_by_test.items():
+        if resources['internet gateways']:
+            print('Detaching internet gateways for {}'.format(test_name))
+            # There should be only one of each of these unless something
+            # went really wrong.
+            for igw in resources['internet gateways']:
+                for vpc in resources['vpcs']:
+                    try:
+                        client.detach_internet_gateway(
+                            InternetGatewayId=igw,
+                            VpcId=vpc,
+                        )
+                    except botocore.exceptions.ClientError as err:
+                        if 'Gateway.NotAttached' in str(err):
+                            pass
+
+    for test_name, resources in resources_by_test.items():
+        if resources['internet gateways']:
+            print('Waiting for internet gateways to detach for {}'.format(
+                test_name))
+            wait_for_internet_gateways_to_detach(
+                client, resources['internet gateways'])
+            # We don't need to wait for these, so lazily delete them
+            for igw in resources['internet gateways']:
+                client.delete_internet_gateway(InternetGatewayId=igw)
+
+    for test_name, resources in resources_by_test.items():
+        if resources['elastic ips']:
+            print('Releasing elastic IPs for {}'.format(test_name))
+            # We don't need to wait for these, so lazily delete them
+            for address in resources['elastic ips']:
+                client.release_address(AllocationId=address)
+
+    for test_name, resources in resources_by_test.items():
+        print('Deleting VPC for {}'.format(test_name))
+        for vpc in resources['vpcs']:
+            # We only needed to wait on other resources so this wouldn't fail.
+            # No need to wait after this, just run the script again or
+            # investigate by hand if the script can't handle it.
+            client.delete_vpc(VpcId=vpc)
+
+
+def main(older_than, newer_than, owner, delete):
+    conf = load_config()
+    client = get_ec2_client(conf)
+
+    if not owner:
+        owner = conf['aws']['owner_tag']
+
+    instances = get_instances(client, owner)
+    interfaces = get_interfaces(client, owner)
+    vpcs = get_vpcs(client, owner)
+    subnets = get_subnets(client, owner)
+    elastic_ips = get_elastic_ips(client, owner)
+    route_tables = get_route_tables(client, owner)
+    internet_gateways = get_internet_gateways(client, owner)
+    security_groups = get_security_groups(client, owner)
+
+    resources_by_test = group_by_previous_tests(instances, interfaces, vpcs,
+                                                subnets, elastic_ips,
+                                                route_tables,
+                                                internet_gateways,
+                                                security_groups)
+
+    filter_test_groups(resources_by_test, older_than, newer_than)
+
+    output_resources_by_test(resources_by_test)
+
+    if delete:
+        print('Deleting')
+        delete_resources(client, resources_by_test)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description=(
+            'See what test resources you have left lying around and '
+            'optionally delete them.'
+        ),
+    )
+
+    parser.add_argument(
+        '-o', '--older',
+        help='Only look for tests equal to/older than x hours',
+        default=0,
+        type=int,
+    )
+    parser.add_argument(
+        '-n', '--newer',
+        help='Only look for tests equal to/newer than y hours',
+        default=99999999999999,
+        type=int,
+    )
+    parser.add_argument(
+        '-O', '--owner',
+        help='Look at test resources created by a different user.',
+        default=None,
+    )
+    parser.add_argument(
+        '-d', '--delete',
+        help='Delete discovered resources.',
+        action='store_true',
+        default=False,
+    )
+
+    args = parser.parse_args()
+
+    main(older_than=args.older, newer_than=args.newer, owner=args.owner,
+         delete=args.delete)
