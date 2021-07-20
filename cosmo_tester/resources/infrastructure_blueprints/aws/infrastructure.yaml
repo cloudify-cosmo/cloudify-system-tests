@@ -102,6 +102,11 @@ node_templates:
         Description: Security group for tests.
         VpcId: { get_attribute: [ vpc, aws_resource_id] }
       client_config: *client_config
+      Tags:
+        - Key: Name
+          Value: { get_input: test_infrastructure_name }
+        - Key: Owner
+          Value: { get_secret: owner_tag }
     relationships:
       - type: cloudify.relationships.depends_on
         target: vpc
