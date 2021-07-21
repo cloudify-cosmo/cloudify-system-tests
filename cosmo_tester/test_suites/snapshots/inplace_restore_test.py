@@ -92,7 +92,8 @@ def test_inplace_restore(manager_and_vm,
     manager.bootstrap()
     upload_snapshot(manager, snapshot_path, snapshot_name, logger)
 
-    restore_snapshot(manager, snapshot_name, logger, blocking=False)
+    restore_snapshot(manager, snapshot_name, logger,
+                     change_manager_password=False)
     manager.wait_for_manager()
 
     logger.info('Waiting 35 seconds for agents to reconnect. '
