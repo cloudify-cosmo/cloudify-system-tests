@@ -4,7 +4,7 @@ description: >
   Create a file on a vm owned by another deployment, using capabilities.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/5.1.0/types.yaml
   - plugin:test-plugin
 
 inputs:

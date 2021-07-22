@@ -5,7 +5,7 @@ description: >
   Also create another in another arbitrary location, intended for deployment update tests.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/5.1.0/types.yaml
   - plugin:test-plugin
 
 inputs:
