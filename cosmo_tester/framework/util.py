@@ -110,7 +110,7 @@ def get_cli_package_url(platform, test_config):
         else:
             filename = 'cli-packages.yaml'
             packages_key = 'cli_packages_urls'
-        url = yaml.load(_get_package_url(filename, test_config))[
+        url = yaml.safe_load(_get_package_url(filename, test_config))[
             packages_key][platform]
 
     test_cli_package_url(url)
