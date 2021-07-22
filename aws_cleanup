@@ -52,7 +52,8 @@ def load_config():
 def get_ec2_client(conf):
     key = conf['aws']['access_key_id']
     secret = conf['aws']['access_key_secret']
-    return boto3.client('ec2',
+    region = conf['aws'].get('region', 'eu-west-1')
+    return boto3.client('ec2', region_name=region,
                         aws_access_key_id=key, aws_secret_access_key=secret)
 
 
