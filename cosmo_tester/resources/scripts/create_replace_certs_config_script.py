@@ -10,7 +10,7 @@ def generate_replace_certs_config(replace_certs_config_path,
     subprocess.call(['cfy', 'certificates', 'generate-replace-config', '-o',
                      '{0}'.format(replace_certs_config_path)])
     with open(replace_certs_config_path) as replace_certs_file:
-        replace_certs_config = yaml.safe_load(replace_certs_file, yaml.Loader)
+        replace_certs_config = yaml.safe_load(replace_certs_file)
 
     certs_dir = '~/.cloudify-test-ca/'
     ca_path = certs_dir + 'ca.crt'
