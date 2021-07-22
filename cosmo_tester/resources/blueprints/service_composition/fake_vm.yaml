@@ -4,7 +4,7 @@ description: >
   Create compute resource for use in service composition tests.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/5.1.0/types.yaml
 
 inputs:
   server_ip:

@@ -5,7 +5,7 @@ description: >
   (as a component), which in turn uses another deployment to deploy a VM
   (i.e. a a component of a component)
 imports:
-  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/5.1.0/types.yaml
 
 inputs:
   server_ip:
