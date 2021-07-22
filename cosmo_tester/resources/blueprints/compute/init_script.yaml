@@ -4,7 +4,7 @@ description: >
   Create a file in an arbitrary location on a pre-existing VM using a plugin.
 
 imports:
-  - http://www.getcloudify.org/spec/cloudify/5.1.0.dev1/types.yaml
+  - http://www.getcloudify.org/spec/cloudify/5.1.0/types.yaml
   - plugin:test-plugin
   - plugin:init-script-plugin
 
