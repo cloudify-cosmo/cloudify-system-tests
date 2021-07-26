@@ -37,7 +37,7 @@ class SSHKey(object):
 
     def create(self):
         self.logger.info('Creating SSH keys at: %s', self.tmpdir)
-        subprocess.check_call(['ssh-keygen', '-t', 'rsa', '-f',
+        subprocess.check_call(['ssh-keygen', '-t', 'rsa', '-m', 'pem', '-f',
                                self.private_key_path, '-q', '-N', ''])
         os.chmod(self.private_key_path, 0o400)
 
