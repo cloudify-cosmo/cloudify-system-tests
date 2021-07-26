@@ -237,10 +237,10 @@ def output_resources_by_test(resources_by_test):
 
 def wait_for_instances_to_terminate(client, instances):
     all_terminated = False
-    max_attempts = 30
+    max_attempts = 120
     attempt = 0
     while not all_terminated:
-        time.sleep(2)
+        time.sleep(5)
         attempt += 1
         print('Seeing if instances {} are terminated...'.format(
             ', '.join(instances),
