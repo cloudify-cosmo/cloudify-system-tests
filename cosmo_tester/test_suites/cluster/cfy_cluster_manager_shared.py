@@ -132,6 +132,10 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     _install_cluster(manager, config_dict, test_config, ssh_key,
                      logger)
 
+    for vm in nodes_list:
+        vm.run_command(
+            'if rpm -qi cloudify-manager-install; then sudo yum clean all; fi')
+
     _upgrade_cluster(nodes_list, manager, test_config, logger)
 
 
