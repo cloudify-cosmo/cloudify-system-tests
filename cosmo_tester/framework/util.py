@@ -416,7 +416,7 @@ class ExecutionFailed(Exception):
     """Execution failed."""
 
 
-def wait_for_execution(client, execution, logger, tenant=None, timeout=10*60,
+def wait_for_execution(client, execution, logger, tenant=None, timeout=20*60,
                        allow_client_error=False):
     logger.info(
         'Getting workflow execution [id={execution}]'.format(
