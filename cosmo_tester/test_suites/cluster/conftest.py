@@ -284,6 +284,7 @@ def _ensure_installer_not_installed(vm):
 def _ensure_installer_installed(vm):
     vm.wait_for_ssh()
     vm.run_command(
+        'sudo yum clean all && '
         'rpm -qi cloudify-manager-install '
         '|| sudo yum install -y cloudify-manager-install.rpm'
     )
