@@ -129,6 +129,11 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     else:
         _update_three_nodes_config_dict_vms(config_dict, nodes_list)
 
+    for node in nodes_list:
+        # Because this is removed during cleanup and pre 6.1.0 cloudify yum
+        # repo doesn't have logrotate included
+        node.run_command('sudo yum install -y logrotate')
+
     _install_cluster(manager, config_dict, test_config, ssh_key,
                      logger)
 
