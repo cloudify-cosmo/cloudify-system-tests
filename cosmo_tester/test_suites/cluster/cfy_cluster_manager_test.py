@@ -60,13 +60,13 @@ def test_create_nine_nodes_cluster(nine_vms, test_config, ssh_key, logger):
 
 @pytest.mark.three_vms
 def test_three_nodes_cluster_using_provided_certificates(
-        three_vms, test_config, ssh_key, local_certs_path, logger):
+        three_vms, test_config, ssh_key, local_certs_path, logger, tmpdir):
     """Tests that the provided certificates are being used in the cluster."""
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
 
     logger.info('Creating certificates')
-    _create_certificates(local_certs_path, nodes_list)
+    _create_certificates(local_certs_path, nodes_list, tmpdir)
 
     logger.info('Copying certificates to node-1')
     for cert in local_certs_path.iterdir():
@@ -111,7 +111,7 @@ def test_three_nodes_cluster_using_provided_certificates(
 @pytest.mark.three_vms
 def test_three_nodes_using_provided_config_files(
         three_vms, test_config, ssh_key, local_certs_path,
-        local_config_files, logger):
+        local_config_files, logger, tmpdir):
     node1, node2, node3 = three_vms
     nodes_list = [node1, node2, node3]
 
@@ -119,7 +119,7 @@ def test_three_nodes_using_provided_config_files(
                                                node1.username)
     _install_cluster_using_provided_config_files(
         nodes_list, three_nodes_config_dict, test_config,
-        ssh_key, local_certs_path, local_config_files, logger)
+        ssh_key, local_certs_path, local_config_files, logger, tmpdir)
 
     logger.info('Asserting config_files')
     cluster_manager_config_files = '/tmp/cloudify_cluster_manager/config_files'
@@ -148,7 +148,7 @@ def test_three_nodes_using_provided_config_files(
 @pytest.mark.three_vms
 def test_three_nodes_cluster_override(
         three_vms, test_config, ssh_key, local_certs_path,
-        local_config_files, logger):
+        local_config_files, logger, tmpdir):
     """Tests the override install Mechanism.
 
     The test goes as follows:
@@ -166,7 +166,8 @@ def test_three_nodes_cluster_override(
     try:
         _install_cluster_using_provided_config_files(
             nodes_list, first_config_dict, test_config, ssh_key,
-            local_certs_path, local_config_files, logger, cause_error=True)
+            local_certs_path, local_config_files, logger, tmpdir,
+            cause_error=True)
     except UnexpectedExit:  # This is the error Fabric raises
         logger.info('Error caught. Installing the cluster using override.')
         _update_three_nodes_config_dict_vms(three_nodes_config_dict,
@@ -196,7 +197,7 @@ def test_three_nodes_cluster_offline(
 
 def _install_cluster_using_provided_config_files(
         nodes_list, three_nodes_config_dict, test_config,
-        ssh_key, local_certs_path, local_config_files, logger,
+        ssh_key, local_certs_path, local_config_files, logger, tmpdir,
         cause_error=False, override=False):
     """Install a Cloudify cluster using generated config files.
 
@@ -211,7 +212,8 @@ def _install_cluster_using_provided_config_files(
     """
     node1 = nodes_list[0]
     logger.info('Creating certificates and passing them to the instances')
-    _create_certificates(local_certs_path, nodes_list, pass_certs=True)
+    _create_certificates(local_certs_path, nodes_list, tmpdir,
+                         pass_certs=True)
 
     logger.info('Preparing config files')
     _prepare_three_nodes_config_files(nodes_list, local_config_files,
@@ -332,7 +334,8 @@ def _prepare_rabbitmq_config_files(template, nodes_list, rabbitmq_cluster,
         node.remote_rabbitmq_config_path = remote_config_path
 
 
-def _create_certificates(local_certs_path, nodes_list, pass_certs=False):
+def _create_certificates(local_certs_path, nodes_list, tmpdir,
+                         pass_certs=False):
     ca_base = str(local_certs_path / 'ca.')
     ca_cert = ca_base + 'pem'
     ca_key = ca_base + 'key'
@@ -343,6 +346,7 @@ def _create_certificates(local_certs_path, nodes_list, pass_certs=False):
         generate_ssl_certificate(
             [node.private_ip_address, node.ip_address],
             node.hostname,
+            tmpdir,
             node_cert,
             node_key,
             ca_cert,
