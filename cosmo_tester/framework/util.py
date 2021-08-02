@@ -2,7 +2,6 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 import errno
 import glob
-import json
 import logging
 import os
 import requests
@@ -11,7 +10,6 @@ import shlex
 import socket
 import subprocess
 import sys
-from tempfile import mkstemp
 import time
 import yaml
 
@@ -242,18 +240,6 @@ def run(command, retries=0, stdin=b'', ignore_failures=False,
     return proc
 
 
-def write_to_tempfile(contents, json_dump=False):
-    fd, file_path = mkstemp()
-    os.close(fd)
-    if json_dump:
-        contents = json.dumps(contents)
-
-    with open(file_path, 'w') as f:
-        f.write(contents)
-
-    return file_path
-
-
 CSR_CONFIG_TEMPLATE = """
 [req]
 distinguished_name = req_distinguished_name
@@ -267,7 +253,7 @@ commonName_default = {cn}
 
 
 @contextmanager
-def _csr_config(cn, metadata=None, logger=logging):
+def _csr_config(tempdir, cn, metadata=None, logger=logging):
     """Prepare a config file for creating a ssl CSR.
 
     :param cn: the subject commonName
@@ -278,7 +264,10 @@ def _csr_config(cn, metadata=None, logger=logging):
         cn, metadata
     ))
     csr_config = CSR_CONFIG_TEMPLATE.format(cn=cn, metadata=metadata)
-    temp_config_path = write_to_tempfile(csr_config)
+
+    temp_config_path = os.path.join(tempdir, 'csr_config')
+    with open(temp_config_path, 'w') as tempfile_handle:
+        tempfile_handle.write(csr_config)
 
     yield temp_config_path
 
@@ -321,6 +310,7 @@ def _format_ips(ips):
 
 def generate_ssl_certificate(ips,
                              cn,
+                             tempdir,
                              cert_path,
                              key_path,
                              sign_cert=None,
@@ -352,7 +342,7 @@ def generate_ssl_certificate(ips,
 
     csr_path = '{0}.csr'.format(cert_path)
 
-    with _csr_config(cn, subject_altnames) as conf_path:
+    with _csr_config(tempdir, cn, subject_altnames) as conf_path:
         run([
             'openssl', 'req',
             '-newkey', 'rsa:2048',

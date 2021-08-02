@@ -458,6 +458,7 @@ def _base_prep(node, tempdir):
          node.private_ip_address,
          node.ip_address],
         node.hostname,
+        tempdir,
         node_cert,
         node_key,
         ca_cert,
