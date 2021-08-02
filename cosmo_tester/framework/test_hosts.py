@@ -13,9 +13,13 @@ import subprocess
 import sys
 import time
 import uuid
+import warnings
 import yaml
 
-from fabric import Connection
+with warnings.catch_warnings():
+    # Fabric maintenance is lagging a bit so let's suppress these warnings.
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    from fabric import Connection
 from ipaddress import ip_address, ip_network
 from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 import requests
