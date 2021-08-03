@@ -7,7 +7,7 @@ pre_bootstrap_state = None
 def test_teardown(function_scoped_manager, ssh_key, logger, test_config):
     function_scoped_manager.wait_for_ssh()
     check_pre_bootstrap_state(function_scoped_manager)
-    function_scoped_manager.bootstrap(blocking=True)
+    function_scoped_manager.bootstrap(blocking=True, include_sanity=True)
 
     expected_diffs = {}
 
