@@ -3,6 +3,7 @@ import pytest
 
 from cosmo_tester.framework.constants import SUPPORTED_FOR_RPM_UPGRADE
 from cosmo_tester.framework.examples import get_example_deployment
+from cosmo_tester.test_suites.snapshots import upgrade_agents
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import (get_manager_install_version,
                                          substitute_testing_version,
@@ -150,6 +151,8 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
 
     expected_version = test_config['testing_version'].split('-')[0]
     assert get_manager_install_version(base_manager) == expected_version
+
+    upgrade_agents(base_manager, logger, test_config)
 
     validate_cluster_status_and_agents(base_manager, example.tenant, logger)
     example.uninstall()
