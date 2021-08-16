@@ -7,6 +7,7 @@ from cosmo_tester.test_suites.cli import (
     LINUX_OSES,
     _prepare,
     _test_logs_context,
+    _unlock_log_files,
 )
 
 
@@ -67,6 +68,7 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
             assert 'cloudify-manager-logs_' in output
 
             logger.info('Testing `cfy logs purge`')
+            _unlock_log_files(managers)
             cli_host.run_command('{cfy} logs purge --force'.format(
                                   cfy=paths['cfy']))
             # Verify that each file under /var/log/cloudify is size zero

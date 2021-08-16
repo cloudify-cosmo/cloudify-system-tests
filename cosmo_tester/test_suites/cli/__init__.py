@@ -94,6 +94,18 @@ def _set_ssh_in_profile(run, example, paths):
     )
 
 
+def _lock_log_files(managers):
+    for manager in managers:
+        manager.run_command('sudo find /var/log/cloudify -type f -exec '
+                            'sudo chattr +i {} \\;')
+
+
+def _unlock_log_files(managers):
+    for manager in managers:
+        manager.run_command('sudo find /var/log/cloudify -type f -exec '
+                            'sudo chattr -i {} \\;')
+
+
 @contextmanager
 def _test_logs_context(run, example, paths, managers):
     _set_ssh_in_profile(run, example, paths)
@@ -110,7 +122,12 @@ def _test_logs_context(run, example, paths, managers):
             manager.run_command('cfy_manager stop -c '
                                 '/etc/cloudify/{}.yaml'.format(config))
 
+    # As the services sometimes stop slowly, let's make sure logs don't change
+    _lock_log_files(managers)
+
     yield
+
+    _unlock_log_files(managers)
 
     for config in configs:
         # Must be started in reversed order because of rabbit (see RD-2651)
@@ -195,6 +212,7 @@ def _test_cfy_logs(run, cli_host, cli_os, example, paths, tmpdir, logger):
     assert 'cloudify-manager-logs_' in output
 
     logger.info('Testing `cfy logs purge`')
+    _unlock_log_files([example.manager])
     example.manager.run_command('cfy_manager stop')
     run('{cfy} logs purge --force'.format(cfy=paths['cfy']))
     # Verify that each file under /var/log/cloudify is size zero

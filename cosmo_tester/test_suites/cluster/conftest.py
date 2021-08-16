@@ -249,11 +249,14 @@ def nine_vms(nine_session_vms, test_config, logger):
 def _ensure_installer_not_installed(vm):
     vm.wait_for_ssh()
     vm.run_command(
-        'if rpm -qi cloudify-manager-install; then sudo yum clean all; '
+        'if rpm -qi cloudify-manager-install; then '
+        # yum clean all doesn't clean all, so let's be more forceful
+        'sudo rm -rf /var/cache/yum ; '
         'sudo yum remove -y cloudify-manager-install {}; fi'.format(
             # We need to remove the other components as well or we end up with
             # failures when installing older clusters in the upgrade tests
             ' '.join([
+                'cloudify-agents',
                 'cloudify-cli',
                 'cloudify-composer',
                 'cloudify-management-worker',
@@ -284,8 +287,10 @@ def _ensure_installer_not_installed(vm):
 def _ensure_installer_installed(vm):
     vm.wait_for_ssh()
     vm.run_command(
-        'rpm -qi cloudify-manager-install '
-        '|| sudo yum install -y cloudify-manager-install.rpm'
+        # yum clean all doesn't clean all, so let's be more forceful
+        'sudo rm -rf /var/cache/yum '
+        '&& (rpm -qi cloudify-manager-install '
+        '|| sudo yum install -y cloudify-manager-install.rpm)'
     )
 
 
@@ -457,6 +462,7 @@ def _base_prep(node, tempdir):
          node.private_ip_address,
          node.ip_address],
         node.hostname,
+        tempdir,
         node_cert,
         node_key,
         ca_cert,
@@ -795,3 +801,6 @@ def _remove_cluster(node, logger):
                     'cluster...'.format(node.hostname))
         node.run_command('sudo cfy_cluster_manager remove --config-path '
                          '{}'.format(REMOTE_CLUSTER_CONFIG_PATH))
+
+    # yum clean all doesn't clean all, so let's be more forceful
+    node.run_command('sudo rm -rf /var/cache/yum')
