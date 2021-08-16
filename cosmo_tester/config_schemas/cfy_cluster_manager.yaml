@@ -29,3 +29,6 @@ manager_install_rpm_path:
 5_2_3_manager_install_rpm_path:
   description: manager-install v5.2.3 RPM path to install.
   default: 'https://repository.cloudifysource.org/cloudify/5.2.3/ga-release/cloudify-manager-install-5.2.3-ga.el7.x86_64.rpm'
+5_2_4_manager_install_rpm_path:
+  description: manager-install v5.2.4 RPM path to install.
+  default: 'https://repository.cloudifysource.org/cloudify/5.2.4/ga-release/cloudify-manager-install-5.2.4-ga.el7.x86_64.rpm'
