@@ -102,6 +102,7 @@ class VM(object):
                             'test_manager']['username'],
                         'admin_password': self._test_config[
                             'test_manager']['password'],
+                        'ssl_enabled': True,
                     },
                 },
                 'sanity': {'skip_sanity': True},
