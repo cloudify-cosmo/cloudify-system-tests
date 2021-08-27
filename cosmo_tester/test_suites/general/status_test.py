@@ -36,14 +36,5 @@ def _check_status(manager, logger, healthy=True):
         expected_return = 500
 
     status = manager.client.manager.get_status()
-    logger.debug('Got status: %s', status)
-    short_status = requests.get(
-        'https://{}/api/v3.1/ok'.format(manager.ip_address),
-        verify=manager.api_ca_path,
-    )
-    logger.debug('Got short status: %s', short_status)
 
     assert status.get('status') == expected_status
-    assert short_status.text.strip() == '"{}"'.format(
-        expected_status.upper())
-    assert short_status.status_code == expected_return
