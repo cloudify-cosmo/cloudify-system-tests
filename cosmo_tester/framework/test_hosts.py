@@ -702,10 +702,18 @@ print('{{}} {{}}'.format(distro, codename).lower())
                                   self.api_ca_path)
                 return
         self._logger.info('Downloading rest CA to %s', self.api_ca_path)
-        self.get_remote_file(
+        ca = self.get_remote_file_content(
             '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
-            self.api_ca_path,
         )
+        self._logger.info('Handling possible self-signed external')
+        external_cert = self.get_remote_file_content(
+            '/etc/cloudify/ssl/cloudify_external_cert.pem',
+        )
+        with open(str(self.api_ca_path), 'w') as ca_handle:
+            ca_handle.write(ca)
+            ca_handle.write(external_cert)
+        self._logger.info('Saved CA and external cert to {}'.format(
+                          self.api_ca_path))
 
     @only_manager
     def enable_nics(self):
