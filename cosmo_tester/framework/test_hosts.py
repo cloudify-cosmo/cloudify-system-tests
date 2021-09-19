@@ -293,6 +293,9 @@ print('{{}} {{}}'.format(distro, codename).lower())
             'chmod 444 {}'.format(remote_tmp),
             use_sudo=True,
         )
+        local_dir = os.path.dirname(local_path)
+        if not os.path.exists(local_dir):
+            os.makedirs(local_dir)
 
         with self.ssh() as fabric_ssh:
             fabric_ssh.get(
