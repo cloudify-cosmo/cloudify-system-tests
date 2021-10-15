@@ -66,25 +66,6 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
     _assert_cluster_status(node1.client)
 
 
-@pytest.mark.three_vms_ipv6
-def test_three_nodes_cluster_ipv6(three_nodes_ipv6_cluster, logger,
-                                  ssh_key, test_config):
-    node1, node2, node3 = three_nodes_ipv6_cluster
-    _assert_cluster_status(node1.client)
-
-    logger.info('Installing example deployment on cluster')
-    example = get_example_deployment(node1, ssh_key, logger,
-                                     'ipv6_cluster_agent', test_config)
-    example.inputs['server_ip'] = node1.private_ip_address
-    example.upload_and_verify_install()
-    example.uninstall()
-
-    _verify_status_when_syncthing_inactive(node1, node2, logger)
-    _verify_status_when_postgres_inactive(node1, node2, logger, node3.client)
-    _verify_status_when_rabbit_inactive(node1, node2, node3, logger,
-                                        node1.client)
-
-
 def _get_new_credentials():
     monitoring_creds = {
         'username': _random_credential_generator(),
