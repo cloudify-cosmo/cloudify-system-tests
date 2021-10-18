@@ -24,6 +24,7 @@ setup(
     license='LICENSE',
     description='Cosmo system tests framework',
     install_requires=[
+        'cffi<1.15',
         'fabric',
         'PyYAML',
         'requests>=2.7.0,<3.0.0',
