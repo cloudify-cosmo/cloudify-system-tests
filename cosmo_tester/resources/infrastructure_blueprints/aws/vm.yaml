@@ -48,6 +48,8 @@ node_templates:
           Value: { get_input: test_infrastructure_name }
         - Key: Owner
           Value: { get_secret: owner_tag }
+        - Key: protected
+          Value: { concat: [ 'System test for ' , { get_secret: owner_tag } ] }
     relationships:
       - type: cloudify.relationships.depends_on
         target: nic
