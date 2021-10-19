@@ -20,6 +20,7 @@ with warnings.catch_warnings():
     # Fabric maintenance is lagging a bit so let's suppress these warnings.
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     from fabric import Connection
+    from invoke import UnexpectedExit
 from ipaddress import ip_address, ip_network
 from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 import requests
@@ -387,10 +388,17 @@ print('{{}} {{}}'.format(distro, codename).lower())
         else:
             hide = 'stdout' if hide_stdout else None
             with self.ssh() as fabric_ssh:
-                if use_sudo:
-                    return fabric_ssh.sudo(command, warn=warn_only, hide=hide)
-                else:
-                    return fabric_ssh.run(command, warn=warn_only, hide=hide)
+                try:
+                    if use_sudo:
+                        result = fabric_ssh.sudo(
+                            command, warn=warn_only, hide=hide)
+                    else:
+                        result = fabric_ssh.run(
+                            command, warn=warn_only, hide=hide)
+                except UnexpectedExit as e:
+                    self._logger.error('Unexpected Exit: %s', e.result)
+                    raise
+                return result
 
     @only_manager
     def upload_init_script_plugin(self, tenant_name='default_tenant'):
