@@ -51,31 +51,6 @@ def _check_custom_execute_operation(app, logger):
         workflow_id='execute_operation')[0].status == 'terminated'
 
 
-def _verify_custom_execution_cancel_and_resume(app, logger):
-    # plant runtime property which conditions the execution to fail
-    instances = app.manager.client.node_instances.list(deployment_id='app',
-                                                       node_id='app')
-    app.manager.client.node_instances.update(
-        instances[0].id,
-        runtime_properties={'fail_commit': True},
-        version=instances[0].version + 1
-    )
-    rollout = app.manager.client.executions.start('app', 'rollout')
-
-    logger.info('Testing execution cancel.')
-    app.manager.client.executions.cancel(rollout.id)
-    util.wait_for_execution_status(app, rollout.id, 'cancelled')
-
-    app.manager.client.node_instances.update(
-        instances[0].id,
-        runtime_properties={'fail_commit': False},
-        version=instances[0].version + 1
-    )
-    logger.info('Testing execution resume.')
-    app.manager.client.executions.resume(rollout.id)
-    util.wait_for_execution_status(app, rollout.id, 'terminated')
-
-
 def _verify_deployments_and_nodes(app, number_of_deployments):
     # verify all deployments exist
     assert len(app.manager.client.deployments.list()) == number_of_deployments

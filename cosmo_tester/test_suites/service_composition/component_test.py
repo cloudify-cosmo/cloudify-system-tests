@@ -1,6 +1,5 @@
 from cosmo_tester.framework import util
 from . import (_infra, _app, _check_custom_execute_operation,
-               _verify_custom_execution_cancel_and_resume,
                _verify_deployments_and_nodes)
 
 
@@ -19,7 +18,6 @@ def test_component(image_based_manager, ssh_key, logger, test_config):
     with util.set_client_tenant(app.manager.client, tenant):
         _verify_deployments_and_nodes(app, 2)
         _check_custom_execute_operation(app, logger)
-        _verify_custom_execution_cancel_and_resume(app, logger)
 
         # verify that uninstall of app removes the infra + its deployment
         logger.info('Testing component uninstall.')
