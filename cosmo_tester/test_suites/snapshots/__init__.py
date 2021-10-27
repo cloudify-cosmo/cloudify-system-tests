@@ -142,6 +142,7 @@ def restore_snapshot(manager, snapshot_id, logger,
         # Because the DB migrations are really temperamental since 5.0.5, so
         # let's try to give less activity
         sleep(60)
+        completed = False
         try:
             # Retry while the password is still being reset
             attempt = 0
@@ -152,6 +153,7 @@ def restore_snapshot(manager, snapshot_id, logger,
                         restore_execution,
                         logger,
                         allow_client_error=True)
+                    completed = True
                     break
                 except UserUnauthorizedError:
                     # We may see this exception even without the password
@@ -165,6 +167,9 @@ def restore_snapshot(manager, snapshot_id, logger,
             logger.error('Snapshot execution failed.')
             list_executions(manager, logger)
             raise
+
+        if not completed:
+            raise RuntimeError('Snapshot restore did not succeed in time.')
 
         # wait a while to allow the restore-snapshot post-workflow commands to
         # run
