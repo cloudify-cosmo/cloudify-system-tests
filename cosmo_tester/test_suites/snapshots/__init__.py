@@ -161,6 +161,7 @@ def restore_snapshot(manager, snapshot_id, logger,
                     if change_manager_password:
                         change_rest_client_password(manager,
                                                     CHANGED_ADMIN_PASSWORD)
+                        change_manager_password = False
                     sleep(2)
                     attempt += 1
         except ExecutionFailed:
