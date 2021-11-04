@@ -534,14 +534,16 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 dest_config_path = self._get_config_path(config_name)
                 self._installed_configs.append(config_name)
                 commands = [
-                    'sudo mv /tmp/cloudify.conf {0}'.format(dest_config_path),
+                    'sudo mv /tmp/cloudify.conf {0} > '
+                    '/tmp/bs_logs/0_mv 2>&1'.format(dest_config_path),
                     'cfy_manager install -c {0} > '
                     '/tmp/bs_logs/3_install 2>&1'.format(dest_config_path)
                 ]
             else:
                 self._installed_configs.append(config_name)
                 commands = [
-                    'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml',
+                    'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml > '
+                    '/tmp/bs_logs/0_mv 2>&1',
                     'cfy_manager install > /tmp/bs_logs/3_install 2>&1'
                 ]
 
