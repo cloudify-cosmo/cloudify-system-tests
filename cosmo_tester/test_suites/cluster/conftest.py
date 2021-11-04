@@ -27,11 +27,9 @@ def three_session_vms(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True,
                   number_of_instances=3)
-    try:
-        hosts.create()
-        yield hosts.instances
-    finally:
-        hosts.destroy()
+    hosts.create()
+    yield hosts.instances
+    hosts.destroy()
 
 
 @pytest.fixture(scope='session')
@@ -40,11 +38,9 @@ def three_ipv6_session_vms(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True,
                   number_of_instances=3, ipv6_net=True)
-    try:
-        hosts.create()
-        yield hosts.instances
-    finally:
-        hosts.destroy()
+    hosts.create()
+    yield hosts.instances
+    hosts.destroy()
 
 
 @pytest.fixture(scope='session')
@@ -53,11 +49,9 @@ def four_session_vms(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True,
                   number_of_instances=4)
-    try:
-        hosts.create()
-        yield hosts.instances
-    finally:
-        hosts.destroy()
+    hosts.create()
+    yield hosts.instances
+    hosts.destroy()
 
 
 @pytest.fixture(scope='session')
@@ -66,11 +60,9 @@ def six_session_vms(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True,
                   number_of_instances=6)
-    try:
-        hosts.create()
-        yield hosts.instances
-    finally:
-        hosts.destroy()
+    hosts.create()
+    yield hosts.instances
+    hosts.destroy()
 
 
 @pytest.fixture(scope='session')
@@ -79,11 +71,9 @@ def nine_session_vms(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True,
                   number_of_instances=9)
-    try:
-        hosts.create()
-        yield hosts.instances
-    finally:
-        hosts.destroy()
+    hosts.create()
+    yield hosts.instances
+    hosts.destroy()
 
 
 @pytest.fixture(scope='function')

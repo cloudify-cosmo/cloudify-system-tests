@@ -40,8 +40,7 @@ def managers_and_vms(ssh_key, module_tmpdir, test_config, logger,
     except Exception:
         passed = False
         raise
-    finally:
-        hosts.destroy(passed=passed)
+    hosts.destroy(passed=passed)
 
 
 def prepare_managers(managers, logger):
@@ -80,12 +79,10 @@ def examples(managers_and_vms, ssh_key, tmpdir, logger, test_config):
         )
         examples[-1].inputs['network'] = 'network_{}'.format(idx)
 
-    try:
-        yield examples
-    finally:
-        for example in examples:
-            if example.installed:
-                example.uninstall()
+    yield examples
+    for example in examples:
+        if example.installed:
+            example.uninstall()
 
 
 def test_multiple_networks(managers_and_vms,
@@ -177,8 +174,7 @@ def proxy_hosts(request, ssh_key, module_tmpdir, test_config, logger):
     except Exception:
         passed = False
         raise
-    finally:
-        hosts.destroy(passed=passed)
+    hosts.destroy(passed=passed)
 
 
 PROXY_SERVICE_TEMPLATE = """

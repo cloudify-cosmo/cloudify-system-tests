@@ -248,8 +248,7 @@ Restart-Computer'''.format(username=username, fw_cmd=add_firewall_cmd,  # noqa
     except Exception:
         passed = False
         raise
-    finally:
-        ldap_hosts.destroy(passed=passed)
+    ldap_hosts.destroy(passed=passed)
 
 
 @retry(stop_max_attempt_number=60, wait_fixed=3000)

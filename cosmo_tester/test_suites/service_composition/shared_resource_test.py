@@ -34,8 +34,7 @@ def managers(request, ssh_key, module_tmpdir, test_config, logger):
     except Exception:
         passed = False
         raise
-    finally:
-        hosts.destroy(passed=passed)
+    hosts.destroy(passed=passed)
 
 
 def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,

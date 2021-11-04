@@ -48,10 +48,8 @@ def base_manager(request, ssh_key, module_tmpdir, test_config, logger):
     hosts.instances[0] = VM(request.param, test_config)
 
     hosts.create()
-    try:
-        yield hosts.instances[0]
-    finally:
-        hosts.destroy()
+    yield hosts.instances[0]
+    hosts.destroy()
 
 
 def test_cfy_manager_configure(image_based_manager, logger, test_config):
