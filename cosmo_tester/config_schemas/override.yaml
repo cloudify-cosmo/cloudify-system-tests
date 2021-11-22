@@ -1,0 +1,5 @@
+namespace: override
+cloudify_manager_install:
+  description: Path to cloudify-manager-install checked out repo with desired changes. If set, this will be used to replace the cfy_manager directory before running bootstraps.
+  default: null
+  nullable: true
