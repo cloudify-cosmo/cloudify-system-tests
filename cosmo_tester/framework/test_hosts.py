@@ -494,6 +494,47 @@ print('{{}} {{}}'.format(distro, codename).lower())
         self.client.license.upload(license)
 
     @only_manager
+    def _apply_override(self, override_name):
+        override_path = self._test_config['override'][override_name]
+        if not override_path:
+            self._logger.info('No override set for %s', override_name)
+            return
+
+        override_subdirs = ['cfy_manager']
+        remote_paths = [
+            '/opt/cloudify/cfy_manager/lib/python3.6/site-packages/'
+        ]
+
+        local_tar_path = self._tmpdir_base / 'override_{}.tar.gz'.format(
+            override_name,
+        )
+        remote_tar_path = '/tmp/override_{}.tar.gz'.format(override_name)
+        subprocess.check_call(
+            [
+                'tar', '-czf', local_tar_path, *override_subdirs
+            ],
+            cwd=override_path,
+        )
+        self.put_remote_file(remote_tar_path, local_tar_path)
+
+        for remote_path in remote_paths:
+            self._logger.info('Removing existing files for %s', override_name)
+            for subdir in override_subdirs:
+                subdir_path = remote_path + subdir
+                self.run_command('rm -r {}'.format(subdir_path),
+                                 use_sudo=True)
+            self._logger.info('Extracting new files from %s to %s for %s',
+                              remote_tar_path, remote_path, override_name)
+            self.run_command(
+                'bash -c "cd {remote_path} '
+                '&& tar -xzf {archive_path}"'.format(
+                    remote_path=remote_path,
+                    archive_path=remote_tar_path,
+                ),
+                use_sudo=True,
+            )
+
+    @only_manager
     def _get_config_path(self, config_name=None):
         if config_name:
             return '/etc/cloudify/{0}_config.yaml'.format(config_name)
@@ -510,6 +551,9 @@ print('{{}} {{}}'.format(distro, codename).lower())
         if include_sanity:
             self.install_config['sanity']['skip_sanity'] = False
         self.wait_for_ssh()
+
+        self._apply_override('cloudify_manager_install')
+
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
             upload_license and self._test_config['premium'])
