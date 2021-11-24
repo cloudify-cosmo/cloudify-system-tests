@@ -25,20 +25,23 @@ def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
     # Make sure the node we're about to remove isn't the leader
     db3.run_command(
         # || true in case this node is already the leader
-        'cfy_manager dbs set-master -a {} || true'.format(
+        'cfy_manager dbs set-master -a {} '
+        '-c /etc/cloudify/db_config.yaml || true'.format(
             db1.private_ip_address,
         )
     )
     db3.teardown()
 
-    db1.run_command('cfy_manager dbs remove -a {}'.format(
-        db3.private_ip_address,
-    ))
+    db1.run_command('cfy_manager dbs remove -a {} '
+                    '-c /etc/cloudify/db_config.yaml'.format(
+                        db3.private_ip_address))
 
-    mgr1.run_command('cfy_manager dbs remove -a {}'.format(
-        db3.private_ip_address))
-    mgr2.run_command('cfy_manager dbs remove -a {}'.format(
-        db3.private_ip_address))
+    mgr1.run_command('cfy_manager dbs remove -a {} '
+                     '-c /etc/cloudify/manager_config.yaml'.format(
+                         db3.private_ip_address))
+    mgr2.run_command('cfy_manager dbs remove -a {} '
+                     '-c /etc/cloudify/manager_config.yaml'.format(
+                         db3.private_ip_address))
 
     _check_db_count(mgr1, mgr2, db3, all_present=False)
 
@@ -68,10 +71,12 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
 
     logger.info('Adding extra DB')
     db3.bootstrap(blocking=True, restservice_expected=False)
-    mgr1.run_command('cfy_manager dbs add -a {}'.format(
-        db3.private_ip_address))
-    mgr2.run_command('cfy_manager dbs add -a {}'.format(
-        db3.private_ip_address))
+    mgr1.run_command('cfy_manager dbs add -a {} '
+                     '-c /etc/cloudify/manager_config.yaml'.format(
+                         db3.private_ip_address))
+    mgr2.run_command('cfy_manager dbs add -a {} '
+                     '-c /etc/cloudify/manager_config.yaml'.format(
+                         db3.private_ip_address))
 
     _check_db_count(mgr1, mgr2)
 
@@ -86,15 +91,16 @@ def test_db_set_master(dbs, logger):
     db1, db2, db3 = dbs
 
     for attempt in range(3):
-        _wait_for_healthy_db([db1], logger)
+        _wait_for_healthy_db([db1], logger, config='db_config.yaml')
 
-        before_change = _get_db_listing([db1])[0]
+        before_change = _get_db_listing([db1], config='db_config.yaml')[0]
 
         next_master = _get_non_leader(before_change)
 
         try:
             db1.run_command(
-                'cfy_manager dbs set-master -a {}'.format(next_master)
+                'cfy_manager dbs set-master -a {} '
+                '-c /etc/cloudify/db_config.yaml'.format(next_master)
             )
             break
         except Exception as err:
@@ -110,7 +116,7 @@ def test_db_set_master(dbs, logger):
                     '{err}'.format(err=err)
                 )
 
-    after_change = _get_db_listing([db1])[0]
+    after_change = _get_db_listing([db1], config='db_config.yaml')[0]
 
     assert after_change != before_change
     _check_cluster(after_change)
@@ -123,12 +129,13 @@ def test_db_reinit(dbs, logger):
     # Ideally we'd test this by damaging a node so that it needed a reinit,
     # but we don't currently have a reliable way to inflict that damage
 
-    listing = _get_db_listing([db1])[0]
+    listing = _get_db_listing([db1], config='db_config.yaml')[0]
     reinit_target = _get_non_leader(listing)
 
-    db1.run_command('cfy_manager dbs reinit -a {}'.format(reinit_target))
+    db1.run_command('cfy_manager dbs reinit -a {}'
+                    '-c /etc/cloudify/db_config.yaml'.format(reinit_target))
 
-    listing = _get_db_listing([db1])[0]
+    listing = _get_db_listing([db1], config='db_config.yaml')[0]
     _check_cluster(listing)
 
 
@@ -136,10 +143,11 @@ def test_db_reinit(dbs, logger):
 def test_fail_to_remove_db_leader(dbs, logger):
     db1, db2, db3 = dbs
 
-    listing = _get_db_listing([db1])[0]
+    listing = _get_db_listing([db1], config='db_config.yaml')[0]
 
     result = db1.run_command(
-        'cfy_manager dbs remove -a {} || echo Failed.'.format(
+        'cfy_manager dbs remove -a {} '
+        '-c /etc/cloudify/db_config.yaml || echo Failed'.format(
             _get_leader(listing),
         )
     )
@@ -151,10 +159,11 @@ def test_fail_to_remove_db_leader(dbs, logger):
 def test_fail_to_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
-    listing = _get_db_listing([db1])[0]
+    listing = _get_db_listing([db1], config='db_config.yaml')[0]
 
     result = db1.run_command(
-        'cfy_manager dbs reinit -a {} || echo Failed.'.format(
+        'cfy_manager dbs reinit -a {} '
+        '-c /etc/cloudify/db_config.yaml || echo Failed'.format(
             _get_leader(listing),
         )
     )
@@ -213,7 +222,7 @@ def _structure_db_listing(listing):
 # After db changes the dbs can be out of sync, usually this will be resolved
 # within 30 seconds, but we will allow a minute in case of slow test platform
 @retrying.retry(stop_max_attempt_number=20, wait_fixed=3000)
-def _get_db_listing(nodes):
+def _get_db_listing(nodes, config='manager_config.yaml'):
     # Expected listing output:
     # 2019-10-23 10:43:53,790 - [MAIN] - INFO - DB cluster is healthy.
     # +------------+--------------+-------+---------------+--------+
@@ -224,7 +233,9 @@ def _get_db_listing(nodes):
     # +------------+--------------+-------+---------------+--------+
     results = []
     for node in nodes:
-        raw = node.run_command('cfy_manager dbs list').stdout.splitlines()
+        raw = node.run_command(
+            'cfy_manager dbs list -c /etc/cloudify/{conf}'.format(conf=config)
+        ).stdout.splitlines()
 
         nodes_start_idx = None
         nodes_end_idx = None
@@ -253,9 +264,9 @@ def _get_db_listing(nodes):
 # (though this will actually allow up to 21 minutes if the underlying
 # _get_db_listing hits its max retries every time)
 @retrying.retry(stop_max_attempt_number=20, wait_fixed=3000)
-def _wait_for_healthy_db(node, logger):
+def _wait_for_healthy_db(node, logger, config='manager_config.yaml'):
     try:
-        _check_cluster(_get_db_listing(node)[0])
+        _check_cluster(_get_db_listing(node, config)[0])
     except Exception as err:
         logger.warning(
             'DB not yet healthy: {err}'.format(err=err)
