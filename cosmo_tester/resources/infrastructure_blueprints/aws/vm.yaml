@@ -24,6 +24,9 @@ inputs:
   use_net:
     default: "1"
 
+  volume_attachment_device:
+    default: /dev/sdh
+
 dsl_definitions:
   client_config: &client_config
     aws_access_key_id: { get_secret: aws_access_key_id }
@@ -147,3 +150,23 @@ node_templates:
               Values:
                 - { get_input: image_id }
       client_config: *client_config
+
+  xfs_volume:
+    type: cloudify.nodes.aws.ec2.EBSVolume
+    properties:
+      device_name: { get_input: volume_attachment_device }
+      resource_config:
+        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
+        Size: 8
+        kwargs:
+          TagSpecifications:
+            - ResourceType: volume
+              Tags:
+                - Key: First
+                  Value: First Volume
+                - Key: Second
+                  Value: Second Volume
+      client_config: *client_config
+    relationships:
+      - type: cloudify.relationships.aws.ebs.attachment.connected_to
+        target: test_host
