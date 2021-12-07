@@ -868,6 +868,28 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self._test_config['test_os_usernames'][username_key]
             )
 
+    def prepare_xfsdump_volume(self):
+        self._logger.info('Preparing XFS volume for XFS-dump')
+        with self.ssh() as fabric_ssh:
+            # Identify the still not partitioned volume
+            result = fabric_ssh.run(
+                "lsblk -o NAME,TYPE -ds | awk '$2 == \"disk\" {print $1}'")
+            self._logger.info('>>>> Disk name = `%s`', result.stdout())
+
+            fabric_ssh.run(
+                "export XFSVOL=$(lsblk -o NAME,TYPE -ds "
+                "| awk '$2 == \"disk\" {print $1}')")
+
+#             result = fabric_ssh.run(
+#                 """echo "n
+# p
+# 1
+#
+#
+# w" | sudo fdisk /dev/$XFSVOL
+# sudo mkfs -t xfs /dev/${XFSVOL}p1 """)
+
+
 
 class Hosts(object):
     def __init__(self,
@@ -994,6 +1016,7 @@ class Hosts(object):
                         blocking=False)
 
             for instance in self.instances:
+                instance.prepare_xfsdump_volume()
                 if instance.is_manager and not instance.bootstrappable:
                     self._logger.info('Waiting for instance %s to bootstrap',
                                       instance.image_name)
