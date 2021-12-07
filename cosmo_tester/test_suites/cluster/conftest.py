@@ -216,12 +216,16 @@ def three_nodes_ipv6_cluster(three_ipv6_session_vms, test_config, logger):
 @pytest.fixture(scope='function')
 def three_vms(three_session_vms, test_config, logger):
     for vm in three_session_vms:
-        _ensure_installer_not_installed(vm)
+        # _ensure_installer_not_installed(vm)
+        if vm.xfsdump_volume_id:
+            vm.xfs_dump()
     yield _get_hosts(three_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
     for vm in three_session_vms:
-        _remove_cluster(vm, logger)
-        vm.teardown()
+        # _remove_cluster(vm, logger)
+        # vm.teardown()
+        if vm.xfs_restore_exists():
+            vm.xfs_restore()
 
 
 @pytest.fixture(scope='function')

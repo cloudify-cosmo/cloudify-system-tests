@@ -160,6 +160,11 @@ def test_list(brokers, logger):
 
 @pytest.mark.one_vm
 def test_auth_fail(broker, logger):
+    if broker.xfs_restore_exists():
+        logger.warning('Found XFS restore session!')
+    else:
+        logger.warning('Newp! Newppp!!')
+
     broker.run_command(
         "sed -i 's/password: .*/password: wrongpassword/' "
         "/etc/cloudify/config.yaml", use_sudo=True,

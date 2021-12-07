@@ -3,6 +3,7 @@ tosca_definitions_version: cloudify_dsl_1_3
 imports:
   - https://cloudify.co/spec/cloudify/5.1.0/types.yaml
   - plugin:cloudify-aws-plugin
+  - plugin:cloudify-fabric-plugin
 
 inputs:
   test_infrastructure_name: {}
@@ -157,16 +158,36 @@ node_templates:
       device_name: { get_input: volume_attachment_device }
       resource_config:
         AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
-        Size: 8
+        Size: 6
         kwargs:
           TagSpecifications:
             - ResourceType: volume
               Tags:
-                - Key: First
-                  Value: First Volume
-                - Key: Second
-                  Value: Second Volume
+                - Key: Volume
+                  Value: XFS dump volume for sys.tests
       client_config: *client_config
     relationships:
       - type: cloudify.relationships.aws.ebs.attachment.connected_to
         target: test_host
+
+  xfs_controller:
+    type: cloudify.nodes.ApplicationServer
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        implementation: fabric.fabric_plugin.tasks.run_script
+        inputs:
+          script_path: scripts/jboss/create.sh
+          fabric_env: &fabric_env
+            host_string: { get_attribute: [ test_host, public_ip_address ] }
+            user: { get_capability: [ { get_input: infra_deployment_id }, user ] }
+            key: { get_secret: [ { get_input: infra_deployment_id }, key_content
+            ] }
+#
+#        create:
+#
+#      xfs_ops:
+#        dump:
+#        restore:
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: xfs_volume
