@@ -1,3 +1,5 @@
+from . import check_manager_using_correct_idp
+
 import time
 
 ROOT_DN = 'cn=root,dc=cloudify,dc=test'
@@ -32,6 +34,10 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
     logger.info('Uploading cert to manager 1')
     mgr1.put_remote_file_content('/tmp/ldapca.pem', ldap_ca_cert)
 
+    check_manager_using_correct_idp(mgr1, logger, 'local')
+    check_manager_using_correct_idp(mgr2, logger, 'local')
+    check_manager_using_correct_idp(mgr3, logger, 'local')
+
     logger.info('Configuring ldap')
     # Using a call to the CLI in the expectation that we migrate ldap conf to
     # cfy_manager at some point- it's the sort of config that should be in the
@@ -54,6 +60,10 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
     mgr1.wait_for_manager()
     mgr2.wait_for_manager()
     mgr3.wait_for_manager()
+
+    check_manager_using_correct_idp(mgr1, logger, 'ldap')
+    check_manager_using_correct_idp(mgr2, logger, 'ldap')
+    check_manager_using_correct_idp(mgr3, logger, 'ldap')
 
     logger.info('Configuring user group mappings')
     mgr1.client.user_groups.create(

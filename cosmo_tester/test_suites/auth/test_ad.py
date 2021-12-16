@@ -1,3 +1,5 @@
+from . import check_manager_using_correct_idp
+
 import time
 
 from retrying import retry
@@ -70,6 +72,8 @@ def test_ad_with_aio(windows_ldap_tester, logger):
     _add_users(ad_host, users, logger)
     _add_groups(ad_host, groups, logger)
 
+    check_manager_using_correct_idp(mgr, logger, 'local')
+
     logger.info('Configuring ldap')
     # Using a call to the CLI in the expectation that we migrate ldap conf to
     # cfy_manager at some point- it's the sort of config that should be in the
@@ -87,6 +91,8 @@ def test_ad_with_aio(windows_ldap_tester, logger):
     logger.info('Waiting for post-ldap-config restart')
     time.sleep(1)
     mgr.wait_for_manager()
+
+    check_manager_using_correct_idp(mgr, logger, 'ldap')
 
     logger.info('Configuring user group mappings')
     mgr.client.user_groups.create(
