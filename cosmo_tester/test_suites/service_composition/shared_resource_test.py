@@ -41,6 +41,9 @@ def managers(request, ssh_key, module_tmpdir, test_config, logger):
 def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
                                       tmpdir):
     tenant = 'test_external_shared_resource_idd'
+    target_deployment_id = 'infra'
+    source_deployment_id = 'app'
+
     local_mgr, external_mgr = managers
 
     ext_username = 'dave'
@@ -69,18 +72,20 @@ def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
     logger.info('Verifying inter-deployment dependency on both managers')
     with util.set_client_tenant(app.manager.client, tenant):
         local_idd = app.manager.client.inter_deployment_dependencies.list()[0]
-        assert local_idd['source_deployment_id'] == 'app'
+        assert local_idd['source_deployment_id'] == source_deployment_id
         assert local_idd['dependency_creator'].startswith('sharedresource.')
-        assert local_idd['external_target']['deployment'] == 'infra'
+        assert local_idd['external_target']['deployment'] == \
+            target_deployment_id
         assert local_idd['external_target']['client_config']['host'] == \
             external_mgr.private_ip_address
 
     with util.set_client_tenant(infra.manager.client, tenant):
         external_idd = \
             infra.manager.client.inter_deployment_dependencies.list()[0]
-        assert external_idd['target_deployment_id'] == 'infra'
+        assert external_idd['target_deployment_id'] == target_deployment_id
         assert external_idd['dependency_creator'].startswith('sharedresource.')
-        assert external_idd['external_source']['deployment'] == 'app'
+        assert external_idd['external_source']['deployment'] == \
+            source_deployment_id
         assert external_idd['external_source']['host'] == \
             [local_mgr.private_ip_address]
 
@@ -88,9 +93,17 @@ def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
                 'there is a dependent deployment')
     with pytest.raises(CloudifyClientError) as e:
         infra.uninstall()
-    error_msg = \
-        "Can't execute workflow `uninstall` on deployment infra - the " \
-        "following existing installations depend on it:\n  [1] Deployment " \
-        "`app on ['{0}']` uses a shared resource from the current " \
-        "deployment".format(local_mgr.private_ip_address)
-    assert error_msg in str(e.value)
+
+    expected_error_msg_components = [
+        "Can't execute",
+        "uninstall",  # The workflow
+        target_deployment_id,
+        source_deployment_id,
+        "existing",
+        "depend",
+        "EXTERNAL",
+        tenant,
+        local_mgr.private_ip_address,
+    ]
+    for component in expected_error_msg_components:
+        assert component in str(e.value)
