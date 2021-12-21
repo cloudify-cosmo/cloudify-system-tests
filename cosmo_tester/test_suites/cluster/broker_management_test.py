@@ -7,7 +7,7 @@ import retrying
 
 def get_broker_listing(broker, prefix='rabbit@'):
     brokers_list_output = broker.run_command(
-        'cfy_manager brokers list'
+        'cfy_manager brokers list -c /etc/cloudify/rabbit_config.yaml'
     ).stdout
     broker_lines = [line for line in brokers_list_output.splitlines()
                     if prefix in line]
@@ -55,9 +55,11 @@ def restore_hosts(brokers_list):
 
 
 def join_cluster(new_broker, cluster_member):
-    new_broker.run_command('cfy_manager brokers add -j {cluster_node}'.format(
-        cluster_node=cluster_member.hostname,
-    ))
+    new_broker.run_command(
+        'cfy_manager brokers add -j {cluster_node} -c '
+        '/etc/cloudify/rabbit_config.yaml'.format(
+            cluster_node=cluster_member.hostname)
+    )
 
 
 @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
@@ -145,7 +147,8 @@ def test_list(brokers, logger):
     logger.info('Checking cluster down')
     kill_node(brokers[1])
     result = brokers[0].run_command(
-        'cfy_manager brokers list 2>&1 || true'
+        'cfy_manager brokers list -c /etc/cloudify/rabbit_config.yaml '
+        '2>&1 || true'
     ).stdout.lower()
     # Make sure we make some indication of possible cluster failure in the
     # output
@@ -162,7 +165,8 @@ def test_auth_fail(broker, logger):
         "/etc/cloudify/config.yaml", use_sudo=True,
     )
     result = broker.run_command(
-        'cfy_manager brokers list 2>&1 || true'
+        'cfy_manager brokers list -c /etc/cloudify/rabbit_config.yaml '
+        '2>&1 || true'
     ).stdout.lower()
     # Make sure we indicate something about auth failure in the output
     assert 'login' in result
@@ -183,9 +187,8 @@ def test_add(brokers, logger):
     logger.info('Attempting to add node with stopped rabbit.')
     brokers[2].run_command('rabbitmqctl stop_app', use_sudo=True)
     result = brokers[0].run_command(
-        'cfy_manager brokers add -j {node} || true'.format(
-            node=brokers[2].hostname,
-        )
+        'cfy_manager brokers add -j {node} -c /etc/cloudify/rabbit_config.yaml'
+        ' || true'.format(node=brokers[2].hostname)
     ).stdout.lower()
     assert 'start' in result
     assert 'node' in result
@@ -194,17 +197,16 @@ def test_add(brokers, logger):
     logger.info('Correct failure attempting to add stopped rabbit.')
 
     logger.info('Adding node to cluster.')
-    brokers[0].run_command('cfy_manager brokers add -j {node}'.format(
-        node=brokers[1].hostname,
-    ))
+    brokers[0].run_command(
+        'cfy_manager brokers add -j {node} '
+        '-c /etc/cloudify/rabbit_config.yaml'.format(node=brokers[1].hostname))
     get_cluster_listing([brokers[0], brokers[1]])
     logger.info('Adding node successful.')
 
     logger.info('Attempting to add from clustered node.')
     result = brokers[0].run_command(
-        'cfy_manager brokers add -j {node} || true'.format(
-            node=brokers[2].hostname,
-        )
+        'cfy_manager brokers add -j {node} -c /etc/cloudify/rabbit_config.yaml'
+        ' || true'.format(node=brokers[2].hostname)
     ).stdout.lower()
     assert 'in' in result
     assert 'cluster' in result
@@ -216,9 +218,8 @@ def test_add(brokers, logger):
 
     logger.info('Attempting to add unresolvable node.')
     result = brokers[2].run_command(
-        'cfy_manager brokers add -j {node} || true'.format(
-            node=brokers[0].hostname,
-        )
+        'cfy_manager brokers add -j {node} -c /etc/cloudify/rabbit_config.yaml'
+        ' || true'.format(node=brokers[0].hostname)
     ).stdout.lower()
     assert 'resolvable' in result
     logger.info('Unresolvable join failed correctly.')
@@ -231,9 +232,8 @@ def test_add(brokers, logger):
     )
     brokers[2].run_command('cfy_manager install')
     result = brokers[2].run_command(
-        'cfy_manager brokers add -j {node} || true'.format(
-            node=brokers[1].hostname,
-        )
+        'cfy_manager brokers add -j {node} -c /etc/cloudify/rabbit_config.yaml'
+        ' || true'.format(node=brokers[1].hostname)
     ).stdout.lower()
     assert 'erlang' in result
     assert 'cookie' in result
@@ -242,7 +242,8 @@ def test_add(brokers, logger):
     logger.info('Attempting to join unreachable node.')
     kill_node(brokers[1])
     result = brokers[2].run_command(
-        'cfy_manager brokers add -j {node} || true'.format(
+        'cfy_manager brokers add -j {node} -c '
+        '/etc/cloudify/rabbit_config.yaml || true'.format(
             node=brokers[1].hostname,
         )
     ).stdout.lower()
@@ -261,7 +262,8 @@ def test_remove(brokers, logger):
 
     logger.info('Attempting to remove active node.')
     result = brokers[0].run_command(
-        'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
+        'cfy_manager brokers remove -r {node} 2>&1 -c '
+        '/etc/cloudify/rabbit_config.yaml|| true'.format(
             node=brokers[1].hostname,
         )
     ).stdout.lower()
@@ -273,7 +275,8 @@ def test_remove(brokers, logger):
     kill_node(brokers[1])
     get_cluster_listing(brokers, down=[brokers[1].hostname])
     brokers[0].run_command(
-        'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
+        'cfy_manager brokers remove -r {node} 2>&1 -c '
+        '/etc/cloudify/rabbit_config.yaml || true'.format(
             node=brokers[1].hostname,
         )
     )
@@ -282,7 +285,8 @@ def test_remove(brokers, logger):
 
     logger.info('Attempting to remove dead node... again.')
     result = brokers[0].run_command(
-        'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
+        'cfy_manager brokers remove -r {node} 2>&1 -c '
+        '/etc/cloudify/rabbit_config.yaml || true'.format(
             node=brokers[1].hostname,
         )
     ).stdout.lower()
@@ -295,7 +299,8 @@ def test_remove(brokers, logger):
     logger.info('Cluster failure recovery test.')
     kill_node(brokers[2])
     result = brokers[0].run_command(
-        'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
+        'cfy_manager brokers remove -r {node} 2>&1 -c '
+        '/etc/cloudify/rabbit_config.yaml || true'.format(
             node=brokers[2].hostname,
         )
     ).stdout.lower()
@@ -307,7 +312,8 @@ def test_remove(brokers, logger):
                            use_sudo=True)
     time.sleep(60)
     brokers[0].run_command(
-        'cfy_manager brokers remove -r {node}'.format(
+        'cfy_manager brokers remove -r {node} -c '
+        '/etc/cloudify/rabbit_config.yaml'.format(
             node=brokers[2].hostname,
         )
     )
@@ -326,7 +332,8 @@ def test_remove_broker_from_manager(brokers3_and_manager, logger):
 
     logger.info('Adding broker to manager.')
     manager.run_command(
-        'cfy cluster brokers add {name} {ip} -n "{net}"'.format(
+        'cfy cluster brokers add {name} {ip} -n "{net} -c '
+        '/etc/cloudify/rabbit_config.yaml"'.format(
             name=brokers[1].hostname,
             ip=str(brokers[1].private_ip_address),
             net=json.dumps({'default': str(brokers[1].private_ip_address)}),
@@ -338,7 +345,8 @@ def test_remove_broker_from_manager(brokers3_and_manager, logger):
     kill_node(brokers[1])
     get_cluster_listing(brokers, down=[brokers[1].hostname])
     brokers[0].run_command(
-        'cfy_manager brokers remove -r {node} 2>&1 || true'.format(
+        'cfy_manager brokers remove -r {node} 2>&1 -c '
+        '/etc/cloudify/rabbit_config.yaml || true'.format(
             node=brokers[1].hostname,
         )
     )
