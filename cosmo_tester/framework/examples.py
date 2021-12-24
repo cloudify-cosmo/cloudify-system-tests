@@ -214,7 +214,7 @@ class BaseExample(object):
         else:
             list_path = os.path.dirname(path)
             tmp_contents = self.example_host.run_command(
-                'sudo find {}'.format(list_path)).stdout
+                'sudo find {} -maxdepth 1'.format(list_path)).stdout
         assert path not in tmp_contents
 
     def assert_deployment_events_exist(self):
