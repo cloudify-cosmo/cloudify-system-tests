@@ -61,7 +61,6 @@ class VM(object):
         self.bootstrappable = bootstrappable
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
-        self.xfsdump_volume_id = None
         self._set_image_details()
         self._installed_configs = []
         if self.windows:
@@ -870,50 +869,20 @@ print('{{}} {{}}'.format(distro, codename).lower())
             )
 
     def prepare_xfsdump_volume(self):
-        self._logger.info('Preparing XFS dump volume')
-        with self.ssh() as fabric_ssh:
-            # Identify the still not partitioned volume
-            volume_id = fabric_ssh.run(
-                "lsblk -o NAME,TYPE -ds | awk '$2 == \"disk\" {print $1}'"
-            ).stdout.strip()
-            if not volume_id:
-                self._logger.warning('No XFS dump volume found. '
-                                     'roceeding without.')
-                return
-            # Partition the volume and format for XFS
-            fabric_ssh.run("""echo "n
-p
-1
-
-
-w" | sudo fdisk /dev/{}""".format(volume_id))
-            fabric_ssh.sudo("mkfs -t xfs /dev/{}p1 """.format(volume_id))
-            # Install XFS dump tool
-            fabric_ssh.sudo("yum install -y xfsdump")
-        self.xfsdump_volume_id = volume_id
+        pass
+        # call "cfy exec start execute_operation -p
+        # operation=xfs_backup.prepare_volume
+        # -d <get deployment id>"
 
     def xfs_dump(self):
-        if self.xfs_restore_exists():
-            return
-        self._logger.info('Creating an XFS dump for host {}. Might take up to '
-                          '5 minutes...'.format(self.server_id))
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.sudo('xfsdump -l0 -L test -M test -f /dev/{}p1 /'
-                            .format(self.xfsdump_volume_id))
-
-    def xfs_restore_exists(self):
-        with self.ssh() as fabric_ssh:
-            result = fabric_ssh.sudo(
-                "xfsrestore -I | grep 'session label:' | grep -q test "
-                "&& echo 'yup' ||  echo 'nope'").stdout.strip()
-            return result == "yup"
+        pass
+        # call "cfy exec start execute_operation -p operation=xfs_backup.dump
+        # -d <get deployment id>"
 
     def xfs_restore(self):
-        self._logger.info('Restoring from an XFS dump for host {}. Might take '
-                          'up to 1 minute...'.format(self.server_id))
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.sudo('xfsrestore -L test -f /dev/{}p1 /'.format(
-                self.xfsdump_volume_id))
+        pass
+        # call "cfy exec start execute_operation -p operation=xfs_backup.restore
+        # -d <get deployment id>"
 
 
 class Hosts(object):
