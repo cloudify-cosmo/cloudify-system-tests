@@ -42,11 +42,14 @@ def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
     mgr2.run_command('cfy_manager dbs remove -a {} '
                      '-c /etc/cloudify/manager_config.yaml'.format(
                          db3.private_ip_address))
+    mgr3.run_command('cfy_manager dbs remove -a {} '
+                     '-c /etc/cloudify/manager_config.yaml'.format(
+                         db3.private_ip_address))
 
-    _check_db_count(mgr1, mgr2, db3, all_present=False)
+    _check_db_count(mgr1, mgr2, mgr3, db3, all_present=False)
 
     mgr1.run_command('cfy maintenance deactivate')
-    _wait_for_maintenance_deactivation([mgr1, mgr2], logger)
+    _wait_for_maintenance_deactivation([mgr1, mgr2, mgr3], logger)
 
     check_managers(mgr1, mgr2, example)
 
@@ -67,7 +70,7 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     # DB management operations are only to be performed in maintenance mode
     mgr1.run_command('cfy maintenance activate')
 
-    _check_db_count(mgr1, mgr2, db3, all_present=False)
+    _check_db_count(mgr1, mgr2, mgr3, db3, all_present=False)
 
     logger.info('Adding extra DB')
     db3.bootstrap(blocking=True, restservice_expected=False)
@@ -77,8 +80,11 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     mgr2.run_command('cfy_manager dbs add -a {} '
                      '-c /etc/cloudify/manager_config.yaml'.format(
                          db3.private_ip_address))
+    mgr3.run_command('cfy_manager dbs remove -a {} '
+                     '-c /etc/cloudify/manager_config.yaml'.format(
+                         db3.private_ip_address))
 
-    _check_db_count(mgr1, mgr2)
+    _check_db_count(mgr1, mgr2, mgr3)
 
     mgr1.run_command('cfy maintenance deactivate')
     _wait_for_maintenance_deactivation([mgr1, mgr2], logger)
@@ -278,7 +284,7 @@ def _wait_for_healthy_db(node, logger, config='manager_config.yaml'):
 # check one while it's showing one state, then check the other. Retry in case
 # of this situation.
 @retrying.retry(stop_max_attempt_number=3, wait_fixed=3000)
-def _check_db_count(mgr1, mgr2, missing_db=None, all_present=True):
+def _check_db_count(mgr1, mgr2, mgr3, missing_db=None, all_present=True):
     mgr1_db_results, mgr2_db_results = _get_db_listing([mgr1, mgr2])
 
     assert mgr1_db_results == mgr2_db_results
