@@ -60,26 +60,6 @@ node_templates:
         target: ip
       - type: cloudify.relationships.depends_on
         target: image
-#    interfaces:
-#      xfs_backup:
-#        prepare_volume:
-#          implementation: fabric.fabric_plugin.tasks.run_script
-#          inputs:
-#            script_path: scripts/xfs_prepare_volume.sh
-#            fabric_env: &fabric_env
-#              host_string: { get_attribute: [ test_host, public_ip_address ] }
-#        #              user: { get_capability: [ { get_input: infra_deployment_id }, user ] }
-#        #              key: { get_secret: [ { get_input: infra_deployment_id }, key_content ] }
-#        dump:
-#          implementation: fabric.fabric_plugin.tasks.run_script
-#          inputs:
-#            script_path: scripts/xfs_dump.sh
-#            fabric_env: *fabric_env
-#        restore:
-#          implementation: fabric.fabric_plugin.tasks.run_script
-#          inputs:
-#            script_path: scripts/xfs_restore.sh
-#            fabric_env: *fabric_env
 
   nic:
     type: cloudify.nodes.aws.ec2.Interface

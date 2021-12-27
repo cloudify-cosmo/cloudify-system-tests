@@ -219,11 +219,14 @@ def three_vms(three_session_vms, test_config, logger):
         _ensure_installer_not_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
+
     for vm in three_session_vms:
-        _remove_cluster(vm, logger)
-        vm.teardown()
-        # if vm.xfs_restore_exists():
-        #     vm.xfs_restore()
+        vm.restore_xfs()
+    for vm in three_session_vms:
+        while not vm.xfsrestore_is_complete():
+            time.sleep(3)
+        vm.run_command('shutdown -r now', warn_only=True, use_sudo=True)
+        vm.wait_for_ssh()
 
 
 @pytest.fixture(scope='function')

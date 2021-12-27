@@ -871,7 +871,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     def prepare_and_dump_xfs(self):
         self._logger.info('Preparing XFS dump volume for host {}'
-                          .format(self.node_instance_id))
+                          .format(self.deployment_id))
         with self.ssh() as fabric_ssh:
             # Identify the raw volume
             volume_id = fabric_ssh.run(
@@ -889,11 +889,17 @@ print('{{}} {{}}'.format(distro, codename).lower())
             # Initiate XFS dump
             self._logger.info(
                 'Creating an XFS dump for host {}. Might take up to 5 '
-                'minutes...'.format(self.node_instance_id))
-            fabric_ssh.run("(sudo xfsdump -l0 -L systest -M systest -f "
-                           "/dev/{} / && touch /tmp/xfsdump_complete) "
-                           "|| touch /tmp/xfsdump_failed &"
-                           .format(volume_id))
+                'minutes...'.format(self.deployment_id))
+
+            xfsdump_file = self._tmpdir / 'xfsdump_{0}'.format(
+                self.ip_address,
+            )
+            xfsdump_file.write_text(
+                "(sudo xfsdump -l0 -L systest -M systest -f "
+                "/dev/{} / && touch /tmp/xfsdump_complete) "
+                "|| touch /tmp/xfsdump_failed &".format(volume_id))
+            self.put_remote_file('/tmp/xfsdump_script', xfsdump_file)
+            fabric_ssh.run('nohup bash /tmp/xfsdump_script &>/dev/null &')
             self.xfsdump_volume_id = volume_id
 
     def xfsdump_is_complete(self):
@@ -910,21 +916,67 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
             if result == 'done':
                 self._logger.info('XFS dump complete for host {}!'
-                                  .format(self.node_instance_id))
+                                  .format(self.deployment_id))
                 return True
             elif result == 'failed':
                 self._logger.error('XFS DUMP FAILED for host {}!'
-                                   .format(self.node_instance_id))
-                raise RuntimeError('XFS dump failed.')   # do we now?
+                                   .format(self.deployment_id))
+                raise RuntimeError('XFS dump failed.')
             else:
                 self._logger.info('Still dumping to XFS on host {}...'
-                                  .format(self.node_instance_id))
+                                  .format(self.deployment_id))
                 return False
 
-    def xfs_restore(self):
-        pass
-        # call "cfy exec start execute_operation -p operation=xfs_backup.restore
-        # -d <get deployment id>"
+    def restore_xfs(self):
+        with self.ssh() as fabric_ssh:
+            # check whether an XFS restore session exists
+            dump_exists = fabric_ssh.sudo(
+                "xfsrestore -I | grep 'session label:' | grep -q systest "
+                "&& echo 'yup' ||  echo 'nope'").stdout.strip()
+            if dump_exists == "nope":
+                self._logger.error('NO XFS DUMP for host {}!'
+                                   .format(self.deployment_id))
+                raise RuntimeError('XFS restore aborted.')
+            # restore from dump
+            self._logger.info(
+                'Restoring from an XFS dump for host {}. Might take '
+                'up to 1 minute...'.format(self.deployment_id))
+
+            xfsrestore_file = self._tmpdir / 'xfsrestore_{0}'.format(
+                self.ip_address,
+            )
+            xfsrestore_file.write_text(
+                "(sudo xfsrestore -L systest -f /dev/{} / "
+                "&& touch /tmp/xfsrestore_complete) "
+                "|| touch /tmp/xfsrestore_failed &".format(
+                 self.xfsdump_volume_id))
+            self.put_remote_file('/tmp/xfsrestore_script', xfsrestore_file)
+            fabric_ssh.run('nohup bash /tmp/xfsrestore_script &>/dev/null &')
+
+    def xfsrestore_is_complete(self):
+        with self.ssh() as fabric_ssh:
+            result = fabric_ssh.run(
+                'if [[ -f /tmp/xfsrestore_complete ]]; then'
+                '  echo done; '
+                'elif [[ -f /tmp/xfsrestore_failed ]]; then '
+                '  echo failed; '
+                'else '
+                '  echo not done; '
+                'fi'
+            ).stdout.strip()
+
+            if result == 'done':
+                self._logger.info('XFS restore complete for host {}!'
+                                  .format(self.deployment_id))
+                return True
+            elif result == 'failed':
+                self._logger.error('XFS RESTORE FAILED for host {}!'
+                                   .format(self.deployment_id))
+                raise RuntimeError('XFS restore failed.')
+            else:
+                self._logger.info('Still restoring from XFS on host {}...'
+                                  .format(self.deployment_id))
+                return False
 
 
 class Hosts(object):
@@ -1062,6 +1114,8 @@ class Hosts(object):
                     instance.finalize_preparation()
                 self._logger.info('Waiting for instance %s to dump XFS',
                                   instance.image_name)
+
+            for instance in self.instances:
                 while not instance.xfsdump_is_complete():
                     time.sleep(3)
         except Exception as err:
