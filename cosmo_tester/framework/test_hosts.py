@@ -61,6 +61,7 @@ class VM(object):
         self.bootstrappable = bootstrappable
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
+        self.xfsdump_volume_id = None
         self._set_image_details()
         self._installed_configs = []
         if self.windows:
@@ -868,16 +869,57 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self._test_config['test_os_usernames'][username_key]
             )
 
-    def prepare_xfsdump_volume(self):
-        pass
-        # call "cfy exec start execute_operation -p
-        # operation=xfs_backup.prepare_volume
-        # -d <get deployment id>"
+    def prepare_and_dump_xfs(self):
+        self._logger.info('Preparing XFS dump volume for host {}'
+                          .format(self.node_instance_id))
+        with self.ssh() as fabric_ssh:
+            # Identify the raw volume
+            volume_id = fabric_ssh.run(
+                "lsblk -o NAME,TYPE -ds | awk '$2 == \"disk\" {print $1}'"
+            ).stdout.strip()
+            if not volume_id:
+                self._logger.warning(
+                    'No raw volume for XFS dump volume found. '
+                    'Proceeding without.')
+                return
+            # Format the volume for XFS
+            fabric_ssh.sudo("mkfs -t xfs /dev/{}".format(volume_id))
+            # Install XFS dump tool
+            fabric_ssh.sudo("yum install -y xfsdump")
+            # Initiate XFS dump
+            self._logger.info(
+                'Creating an XFS dump for host {}. Might take up to 5 '
+                'minutes...'.format(self.node_instance_id))
+            fabric_ssh.run("(sudo xfsdump -l0 -L systest -M systest -f "
+                           "/dev/{} / && touch /tmp/xfsdump_complete) "
+                           "|| touch /tmp/xfsdump_failed &"
+                           .format(volume_id))
+            self.xfsdump_volume_id = volume_id
 
-    def xfs_dump(self):
-        pass
-        # call "cfy exec start execute_operation -p operation=xfs_backup.dump
-        # -d <get deployment id>"
+    def xfsdump_is_complete(self):
+        with self.ssh() as fabric_ssh:
+            result = fabric_ssh.run(
+                'if [[ -f /tmp/xfsdump_complete ]]; then'
+                '  echo done; '
+                'elif [[ -f /tmp/xfsdump_failed ]]; then '
+                '  echo failed; '
+                'else '
+                '  echo not done; '
+                'fi'
+            ).stdout.strip()
+
+            if result == 'done':
+                self._logger.info('XFS dump complete for host {}!'
+                                  .format(self.node_instance_id))
+                return True
+            elif result == 'failed':
+                self._logger.error('XFS DUMP FAILED for host {}!'
+                                   .format(self.node_instance_id))
+                raise RuntimeError('XFS dump failed.')   # do we now?
+            else:
+                self._logger.info('Still dumping to XFS on host {}...'
+                                  .format(self.node_instance_id))
+                return False
 
     def xfs_restore(self):
         pass
@@ -1010,7 +1052,7 @@ class Hosts(object):
                         blocking=False)
 
             for instance in self.instances:
-                instance.prepare_xfsdump_volume()
+                instance.prepare_and_dump_xfs()
                 if instance.is_manager and not instance.bootstrappable:
                     self._logger.info('Waiting for instance %s to bootstrap',
                                       instance.image_name)
@@ -1018,6 +1060,10 @@ class Hosts(object):
                         time.sleep(3)
                 if instance.should_finalize:
                     instance.finalize_preparation()
+                self._logger.info('Waiting for instance %s to dump XFS',
+                                  instance.image_name)
+                while not instance.xfsdump_is_complete():
+                    time.sleep(3)
         except Exception as err:
             self._logger.error(
                 "Encountered exception trying to create test resources: %s.\n"
