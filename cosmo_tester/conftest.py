@@ -89,15 +89,18 @@ def session_manager(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True)
     hosts.create()
+    hosts.dump_xfs()
     yield hosts.instances[0]
     hosts.destroy()
 
 
 @pytest.fixture(scope='function')
 def image_based_manager(session_manager):
+    reboot_if_required(session_manager)
     session_manager.bootstrap()
     yield session_manager
     session_manager.teardown()
+    restore_from_xfs(session_manager, logger)
 
 
 @pytest.fixture(scope='function')
@@ -119,6 +122,7 @@ def three_plus_one_session_vms(ssh_key, session_tmpdir, test_config,
     hosts.instances[-1] = VM('centos_7', test_config)
 
     hosts.create()
+    hosts.dump_xfs()
     yield hosts.instances
     hosts.destroy()
 
@@ -126,14 +130,13 @@ def three_plus_one_session_vms(ssh_key, session_tmpdir, test_config,
 @pytest.fixture(scope='function')
 def three_node_cluster_with_extra_node(test_config, session_logger,
                                        three_plus_one_session_vms):
+    reboot_if_required(three_plus_one_session_vms)
     yield _get_hosts(three_plus_one_session_vms,
                      test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    for vm in three_plus_one_session_vms:
-        if vm.is_manager:
-            vm.teardown()
+    restore_from_xfs(three_plus_one_session_vms, logger)
 
 
 @pytest.fixture(scope='session')
@@ -144,6 +147,7 @@ def three_plus_manager_session_vms(ssh_key, session_tmpdir, test_config,
                   number_of_instances=4)
 
     hosts.create()
+    hosts.dump_xfs()
     yield hosts.instances
     hosts.destroy()
 
@@ -153,11 +157,28 @@ def three_plus_manager_session_vms(ssh_key, session_tmpdir, test_config,
 @pytest.fixture(scope='function')
 def three_node_cluster_with_extra_manager(test_config, session_logger,
                                           three_plus_manager_session_vms):
+    reboot_if_required(three_plus_manager_session_vms)
     yield _get_hosts(three_plus_manager_session_vms,
                      test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    for vm in three_plus_manager_session_vms:
-        if vm.is_manager:
-            vm.teardown()
+    restore_from_xfs(three_plus_manager_session_vms, logger)
+
+
+def restore_from_xfs(nodes, logger):
+    for node in nodes:
+        node.restore_xfs()
+        logger.info('Waiting for instance %s to restore XFS',
+                    node.image_name)
+    for node in nodes:
+        while not node.async_command_is_complete('XFS restore'):
+            time.sleep(3)
+        node.reboot_required = True
+
+
+def reboot_if_required(nodes):
+    for node in nodes:
+        if node.reboot_required:
+            node.run_command('shutdown -r now', warn_only=True, use_sudo=True)
+            node.wait_for_ssh()

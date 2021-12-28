@@ -9,6 +9,7 @@ import pytest
 from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework import util
 from .cfy_cluster_manager_shared import REMOTE_CLUSTER_CONFIG_PATH
+from cosmo_tester.conftest import restore_from_xfs, reboot_if_required
 
 CONFIG_DIR = join(dirname(__file__), 'config')
 
@@ -93,160 +94,161 @@ def nine_session_vms(request, ssh_key, session_tmpdir, test_config,
 
 @pytest.fixture(scope='function')
 def brokers(three_session_vms, test_config, logger):
-    _reboot_if_required(three_session_vms)
+    reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      broker_count=3)
-    _restore_from_xfs(three_session_vms, logger)
+    restore_from_xfs(three_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def broker(session_manager, test_config, logger):
+    reboot_if_required(session_manager)
     _brokers = _get_hosts([session_manager], test_config, logger,
                           broker_count=1)
     yield _brokers[0]
-    session_manager.teardown()
+    restore_from_xfs(session_manager, logger)
 
 
 @pytest.fixture(scope='function')
 def dbs(three_session_vms, test_config, logger):
-    _reboot_if_required(three_session_vms)
+    reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      db_count=3)
-    _restore_from_xfs(three_session_vms, logger)
+    restore_from_xfs(three_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def brokers_and_manager(three_session_vms, test_config, logger):
-    _reboot_if_required(three_session_vms)
+    reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      broker_count=2, manager_count=1)
-    _restore_from_xfs(three_session_vms, logger)
+    restore_from_xfs(three_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def brokers3_and_manager(four_session_vms, test_config, logger):
-    _reboot_if_required(four_session_vms)
+    reboot_if_required(four_session_vms)
     yield _get_hosts(four_session_vms, test_config, logger,
                      broker_count=3, manager_count=1)
-    _restore_from_xfs(four_session_vms, logger)
+    restore_from_xfs(four_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def full_cluster_ips(nine_session_vms, test_config, logger):
-    _reboot_if_required(nine_session_vms)
+    reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3, manager_count=3,
                      pre_cluster_rabbit=True)
-    _restore_from_xfs(nine_session_vms, logger)
+    restore_from_xfs(nine_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def full_cluster_names(nine_session_vms, test_config, logger):
-    _reboot_if_required(nine_session_vms)
+    reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3, manager_count=3,
                      pre_cluster_rabbit=True, use_hostnames=True)
-    _restore_from_xfs(nine_session_vms, logger)
+    restore_from_xfs(nine_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def cluster_with_lb(six_session_vms, test_config, logger):
-    _reboot_if_required(six_session_vms)
+    reboot_if_required(six_session_vms)
     yield _get_hosts(six_session_vms, test_config, logger,
                      broker_count=1, db_count=1, manager_count=3,
                      use_load_balancer=True, pre_cluster_rabbit=True)
-    _restore_from_xfs(six_session_vms, logger)
+    restore_from_xfs(six_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def cluster_missing_one_db(nine_session_vms, test_config, logger):
-    _reboot_if_required(nine_session_vms)
+    reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3, manager_count=3,
                      skip_bootstrap_list=['db3'],
                      pre_cluster_rabbit=True)
-    _restore_from_xfs(nine_session_vms, logger)
+    restore_from_xfs(nine_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def cluster_with_single_db(six_session_vms, test_config, logger):
-    _reboot_if_required(six_session_vms)
+    reboot_if_required(six_session_vms)
     yield _get_hosts(six_session_vms, test_config, logger,
                      broker_count=3, db_count=1, manager_count=2,
                      pre_cluster_rabbit=True)
-    _restore_from_xfs(six_session_vms, logger)
+    restore_from_xfs(six_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def minimal_cluster(four_session_vms, test_config, logger):
-    _reboot_if_required(four_session_vms)
+    reboot_if_required(four_session_vms)
     yield _get_hosts(four_session_vms, test_config, logger,
                      broker_count=1, db_count=1, manager_count=2,
                      pre_cluster_rabbit=True)
-    _restore_from_xfs(four_session_vms, logger)
+    restore_from_xfs(four_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def three_nodes_cluster(three_session_vms, test_config, logger):
-    _reboot_if_required(three_session_vms)
+    reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      pre_cluster_rabbit=True, three_nodes_cluster=True)
-    _restore_from_xfs(three_session_vms, logger)
+    restore_from_xfs(three_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def three_nodes_ipv6_cluster(three_ipv6_session_vms, test_config, logger):
-    _reboot_if_required(three_ipv6_session_vms)
+    reboot_if_required(three_ipv6_session_vms)
     for vm in three_ipv6_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_ipv6_session_vms, test_config, logger,
                      pre_cluster_rabbit=True, three_nodes_cluster=True)
-    _restore_from_xfs(three_ipv6_session_vms, logger)
+    restore_from_xfs(three_ipv6_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def three_vms(three_session_vms, test_config, logger):
-    _reboot_if_required(three_session_vms)
+    reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
-    _restore_from_xfs(three_session_vms, logger)
+    restore_from_xfs(three_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def three_vms_ipv6(three_ipv6_session_vms, test_config, logger):
-    _reboot_if_required(three_ipv6_session_vms)
+    reboot_if_required(three_ipv6_session_vms)
     for vm in three_nodes_ipv6_cluster:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(three_ipv6_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
-    _restore_from_xfs(three_ipv6_session_vms, logger)
+    restore_from_xfs(three_ipv6_session_vms, logger)
 
 
 @pytest.fixture(scope='function')
 def nine_vms(nine_session_vms, test_config, logger):
-    _reboot_if_required(nine_session_vms)
+    reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
                      broker_count=3, db_count=3,
                      manager_count=3, bootstrap=False)
-    _restore_from_xfs(nine_session_vms, logger)
+    restore_from_xfs(nine_session_vms, logger)
 
 
 def _ensure_installer_not_installed(vm):
@@ -808,21 +810,3 @@ def _remove_cluster(node, logger):
 
     # yum clean all doesn't clean all, so let's be more forceful
     node.run_command('sudo rm -rf /var/cache/yum')
-
-
-def _restore_from_xfs(nodes, logger):
-    for node in nodes:
-        node.restore_xfs()
-        logger.info('Waiting for instance %s to restore XFS',
-                    node.image_name)
-    for node in nodes:
-        while not node.is_complete('XFS restore'):
-            time.sleep(3)
-        node.reboot_required = True
-
-
-def _reboot_if_required(nodes):
-    for node in nodes:
-        if node.reboot_required:
-            node.run_command('shutdown -r now', warn_only=True, use_sudo=True)
-            node.wait_for_ssh()

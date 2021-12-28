@@ -929,7 +929,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             self.put_remote_file('/tmp/xfs_restore_script', xfsrestore_file)
             fabric_ssh.run('nohup bash /tmp/xfs_restore_script &>/dev/null &')
 
-    def is_complete(self, process_name=None):
+    def async_command_is_complete(self, process_name):
         with self.ssh() as fabric_ssh:
             result = fabric_ssh.run(
                 'if [[ -f /tmp/{0}_complete ]]; then echo done; '
@@ -1216,7 +1216,7 @@ class Hosts(object):
             self._logger.info('Waiting for instance %s to dump XFS',
                               instance.image_name)
         for instance in self.instances:
-            while not instance.is_complete('XFS dump'):
+            while not instance.async_command_is_complete('XFS dump'):
                 time.sleep(3)
 
     def _upload_secrets_to_infrastructure_manager(self):
