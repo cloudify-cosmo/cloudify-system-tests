@@ -252,7 +252,8 @@ def _ensure_installer_not_installed(vm):
         'if rpm -qi cloudify-manager-install; then '
         # yum clean all doesn't clean all, so let's be more forceful
         'sudo rm -rf /var/cache/yum ; '
-        'sudo yum remove -y cloudify-manager-install {}; fi'.format(
+        'sudo yum remove -y cloudify-manager-install {}; '
+        'sudo rm -rf /opt/manager /var/log/cloudify; fi'.format(
             # We need to remove the other components as well or we end up with
             # failures when installing older clusters in the upgrade tests
             ' '.join([
