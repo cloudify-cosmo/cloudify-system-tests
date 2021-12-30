@@ -150,21 +150,3 @@ node_templates:
               Values:
                 - { get_input: image_id }
       client_config: *client_config
-
-  xfs_volume:
-    type: cloudify.nodes.aws.ec2.EBSVolume
-    properties:
-      device_name: { get_input: volume_attachment_device }
-      resource_config:
-        AvailabilityZone: { concat: [ { get_secret: ec2_region_name }, 'b' ]}
-        Size: 6
-        kwargs:
-          TagSpecifications:
-            - ResourceType: volume
-              Tags:
-                - Key: Volume
-                  Value: XFS dump volume for sys.tests
-      client_config: *client_config
-    relationships:
-      - type: cloudify.relationships.aws.ebs.attachment.connected_to
-        target: test_host

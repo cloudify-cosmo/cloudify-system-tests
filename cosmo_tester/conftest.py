@@ -6,7 +6,7 @@ from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import SSHKey
 from cosmo_tester.test_suites.cluster.conftest import (
-    _get_hosts, restore_from_xfs, reboot_if_required)
+    _get_hosts, rsync_restore, reboot_if_required)
 
 
 @pytest.fixture(scope='module')
@@ -90,7 +90,7 @@ def session_manager(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True)
     hosts.create()
-    hosts.dump_xfs()
+    hosts.rsync_backup()
     yield hosts.instances[0]
     hosts.destroy()
 
@@ -101,7 +101,7 @@ def image_based_manager(session_manager):
     session_manager.bootstrap()
     yield session_manager
     session_manager.teardown()
-    restore_from_xfs(session_manager, logger)
+    rsync_restore(session_manager, logger)
 
 
 @pytest.fixture(scope='function')
@@ -123,7 +123,7 @@ def three_plus_one_session_vms(ssh_key, session_tmpdir, test_config,
     hosts.instances[-1] = VM('centos_7', test_config)
 
     hosts.create()
-    hosts.dump_xfs()
+    hosts.rsync_backup()
     yield hosts.instances
     hosts.destroy()
 
@@ -137,7 +137,7 @@ def three_node_cluster_with_extra_node(test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    restore_from_xfs(three_plus_one_session_vms, logger)
+    rsync_restore(three_plus_one_session_vms, logger)
 
 
 @pytest.fixture(scope='session')
@@ -148,7 +148,7 @@ def three_plus_manager_session_vms(ssh_key, session_tmpdir, test_config,
                   number_of_instances=4)
 
     hosts.create()
-    hosts.dump_xfs()
+    hosts.rsync_backup()
     yield hosts.instances
     hosts.destroy()
 
@@ -164,5 +164,5 @@ def three_node_cluster_with_extra_manager(test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    restore_from_xfs(three_plus_manager_session_vms, logger)
+    rsync_restore(three_plus_manager_session_vms, logger)
 

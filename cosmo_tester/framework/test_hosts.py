@@ -33,10 +33,10 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 HEALTHY_STATE = 'OK'
-XFSDUMP_LOCATIONS = ['/etc/cloudify', '/etc/logrotate.d',
-                     '/opt',
-                     '/var/log', '/var/lib',
-                     '/usr/bin', '/usr/lib']
+RSYNC_LOCATIONS = ['--exclude={"sudo*","host*"} /etc',
+                   '/opt',
+                   '/var',
+                   '/usr']
 
 
 def only_manager(func):
@@ -65,7 +65,6 @@ class VM(object):
         self.bootstrappable = bootstrappable
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
-        self.xfsdump_volume_id = None
         self.reboot_required = False
         self._set_image_details()
         self._installed_configs = []
@@ -874,73 +873,39 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self._test_config['test_os_usernames'][username_key]
             )
 
-    def prepare_and_dump_xfs(self):
-        self._logger.info('Preparing XFS dump volume for host {}'
-                          .format(self.deployment_id))
+    def rsync_backup(self):
         with self.ssh() as fabric_ssh:
-            # Identify the raw volume
-            volume_id = fabric_ssh.run(
-                "lsblk -o NAME,TYPE -ds | awk '$2 == \"disk\" {print $1}'"
-            ).stdout.strip()
-            if not volume_id:
-                self._logger.warning(
-                    'No raw volume for XFS dump volume found. '
-                    'Proceeding without.')
-                return
-            # Format the volume for XFS
-            fabric_ssh.sudo("mkfs -t xfs /dev/{}".format(volume_id))
-            # Install XFS dump tool
-            fabric_ssh.sudo("yum install -y xfsdump")
-            # Initiate XFS dump
             self._logger.info(
-                'Creating an XFS dump for host {}. Might take up to 5 '
+                'Creating Rsync backup for host {}. Might take up to 5 '
                 'minutes...'.format(self.deployment_id))
+            fabric_ssh.sudo("mkdir /cfy_backup")
+            rsync_backup_file = self._tmpdir / 'rsync_backup_{0}'.format(
+                self.ip_address)
+            backup_commands = ''
+            for location in RSYNC_LOCATIONS:
+                backup_commands += \
+                    'sudo rsync -a {} /cfy_backup && '.format(location)
+            rsync_backup_file.write_text(
+                "(" + backup_commands + "touch /tmp/rsync_backup_complete) "
+                "|| touch /tmp/rsync_backup_failed &")
+            self.put_remote_file('/tmp/rsync_backup_script', rsync_backup_file)
+            fabric_ssh.run('nohup bash /tmp/rsync_backup_script &>/dev/null &')
 
-            xfsdump_file = self._tmpdir / 'xfs_dump_{0}'.format(
-                self.ip_address,
-            )
-            xfsdump_file.write_text(
-                "(sudo xfsdump -l0 -L systest -M systest -f "
-                "/dev/{0} / {1} "
-                "&& touch /tmp/xfs_dump_complete) "
-                "|| touch /tmp/xfs_dump_failed &".format(
-                    volume_id,
-                    ' '.join('-s ' + x[1:] for x in XFSDUMP_LOCATIONS)
-                ))
-            self.put_remote_file('/tmp/xfs_dump_script', xfsdump_file)
-            fabric_ssh.run('nohup bash /tmp/xfs_dump_script &>/dev/null &')
-            self.xfsdump_volume_id = volume_id
-
-    def restore_xfs(self):
+    def rsync_restore(self):
         with self.ssh() as fabric_ssh:
-            # check whether an XFS restore session exists
-            dump_exists = fabric_ssh.sudo(
-                "xfsrestore -I | grep 'session label:' | grep -q systest "
-                "&& echo 'yup' ||  echo 'nope'").stdout.strip()
-            if dump_exists == "nope":
-                self._logger.error('NO XFS DUMP for host {}!'
-                                   .format(self.deployment_id))
-                raise RuntimeError('XFS restore aborted.')
-            # restore from dump
             self._logger.info(
-                'Restoring from an XFS dump for host {}. Might take '
+                'Restoring from an Rsync backup for host {}. Might take '
                 'up to 1 minute...'.format(self.deployment_id))
-
-            xfsrestore_file = self._tmpdir / 'xfs_restore_{0}'.format(
-                self.ip_address,
-            )
-            xfsrestore_file.write_text(
-                "sudo find {1} -type f -newerct \"$(xfsrestore -I | grep time "
-                "| cut -f 4-5 | xargs)\" -delete && "
-                "(sudo xfsrestore -L systest -f /dev/{0} / {2} "
-                "&& touch /tmp/xfs_restore_complete) "
-                "|| touch /tmp/xfs_restore_failed &".format(
-                    self.xfsdump_volume_id,
-                    ' '.join(XFSDUMP_LOCATIONS),
-                    ' '.join('-s ' + x[1:] for x in XFSDUMP_LOCATIONS)
-                ))
-            self.put_remote_file('/tmp/xfs_restore_script', xfsrestore_file)
-            fabric_ssh.run('nohup bash /tmp/xfs_restore_script &>/dev/null &')
+            rsync_restore_file = self._tmpdir / 'rsync_restore_{0}'.format(
+                self.ip_addres)
+            rsync_restore_file.write_text(
+                "(sudo rsync -a /cfy_backup/* / --delete "
+                "&& touch /tmp/rsync_restore_complete) "
+                "|| touch /tmp/rsync_restore_failed &")
+            self.put_remote_file('/tmp/rsync_restore_script',
+                                 rsync_restore_file)
+            fabric_ssh.run('nohup bash /tmp/rsync_restore_script '
+                           '&>/dev/null &')
 
     def async_command_is_complete(self, process_name):
         with self.ssh() as fabric_ssh:
@@ -1223,13 +1188,13 @@ class Hosts(object):
             self._infra_client.tenants.delete(self.tenant)
             self.tenant = None
 
-    def dump_xfs(self):
+    def rsync_backup(self):
         for instance in self.instances:
-            instance.prepare_and_dump_xfs()
-            self._logger.info('Waiting for instance %s to dump XFS',
+            instance.rsync_backup()
+            self._logger.info('Waiting for instance %s to Rsync backup',
                               instance.image_name)
         for instance in self.instances:
-            while not instance.async_command_is_complete('XFS dump'):
+            while not instance.async_command_is_complete('Rsync backup'):
                 time.sleep(3)
 
     def _upload_secrets_to_infrastructure_manager(self):
