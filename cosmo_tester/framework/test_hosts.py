@@ -33,6 +33,7 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 HEALTHY_STATE = 'OK'
+XFSDUMP_LOCATIONS = ['/etc', '/opt', '/var']
 
 
 def only_manager(func):
@@ -897,8 +898,12 @@ print('{{}} {{}}'.format(distro, codename).lower())
             )
             xfsdump_file.write_text(
                 "(sudo xfsdump -l0 -L systest -M systest -f "
-                "/dev/{} / && touch /tmp/xfs_dump_complete) "
-                "|| touch /tmp/xfs_dump_failed &".format(volume_id))
+                "/dev/{0} / {1} "
+                "&& touch /tmp/xfs_dump_complete) "
+                "|| touch /tmp/xfs_dump_failed &".format(
+                    volume_id,
+                    ' '.join('-s ' + x[1:] for x in XFSDUMP_LOCATIONS)
+                ))
             self.put_remote_file('/tmp/xfs_dump_script', xfsdump_file)
             fabric_ssh.run('nohup bash /tmp/xfs_dump_script &>/dev/null &')
             self.xfsdump_volume_id = volume_id
@@ -922,10 +927,16 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self.ip_address,
             )
             xfsrestore_file.write_text(
-                "(sudo xfsrestore -L systest -f /dev/{} / "
+                "export dumptime=$(xfsrestore -I | grep time | awk '{"
+                "$1=$2=""; printf $0}' | xargs) && "
+                "sudo find {1} -type f -newerct $dumptime -delete && "
+                "(sudo xfsrestore -L systest -f /dev/{} / {2} "
                 "&& touch /tmp/xfs_restore_complete) "
                 "|| touch /tmp/xfs_restore_failed &".format(
-                 self.xfsdump_volume_id))
+                    self.xfsdump_volume_id,
+                    ' '.join(XFSDUMP_LOCATIONS),
+                    ' '.join('-s ' + x[1:] for x in XFSDUMP_LOCATIONS)
+                ))
             self.put_remote_file('/tmp/xfs_restore_script', xfsrestore_file)
             fabric_ssh.run('nohup bash /tmp/xfs_restore_script &>/dev/null &')
 
