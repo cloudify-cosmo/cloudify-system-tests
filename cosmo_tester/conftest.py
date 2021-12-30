@@ -5,7 +5,8 @@ from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import SSHKey
-from cosmo_tester.test_suites.cluster.conftest import _get_hosts
+from cosmo_tester.test_suites.cluster.conftest import (
+    _get_hosts, restore_from_xfs, reboot_if_required)
 
 
 @pytest.fixture(scope='module')
@@ -165,20 +166,3 @@ def three_node_cluster_with_extra_manager(test_config, session_logger,
                      extra_node=True)
     restore_from_xfs(three_plus_manager_session_vms, logger)
 
-
-def restore_from_xfs(nodes, logger):
-    for node in nodes:
-        node.restore_xfs()
-        logger.info('Waiting for instance %s to restore XFS',
-                    node.image_name)
-    for node in nodes:
-        while not node.async_command_is_complete('XFS restore'):
-            time.sleep(3)
-        node.reboot_required = True
-
-
-def reboot_if_required(nodes):
-    for node in nodes:
-        if node.reboot_required:
-            node.run_command('shutdown -r now', warn_only=True, use_sudo=True)
-            node.wait_for_ssh()

@@ -9,7 +9,6 @@ import pytest
 from cosmo_tester.framework.test_hosts import Hosts
 from cosmo_tester.framework import util
 from .cfy_cluster_manager_shared import REMOTE_CLUSTER_CONFIG_PATH
-from cosmo_tester.conftest import restore_from_xfs, reboot_if_required
 
 CONFIG_DIR = join(dirname(__file__), 'config')
 
@@ -810,3 +809,21 @@ def _remove_cluster(node, logger):
 
     # yum clean all doesn't clean all, so let's be more forceful
     node.run_command('sudo rm -rf /var/cache/yum')
+
+
+def restore_from_xfs(nodes, logger):
+    for node in nodes:
+        node.restore_xfs()
+        logger.info('Waiting for instance %s to restore XFS',
+                    node.image_name)
+    for node in nodes:
+        while not node.async_command_is_complete('XFS restore'):
+            time.sleep(3)
+        node.reboot_required = True
+
+
+def reboot_if_required(nodes):
+    for node in nodes:
+        if node.reboot_required:
+            node.run_command('shutdown -r now', warn_only=True, use_sudo=True)
+            node.wait_for_ssh()

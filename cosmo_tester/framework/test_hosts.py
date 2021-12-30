@@ -33,7 +33,10 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 HEALTHY_STATE = 'OK'
-XFSDUMP_LOCATIONS = ['/etc', '/opt', '/var']
+XFSDUMP_LOCATIONS = ['/etc/cloudify', '/etc/logrotate.d',
+                     '/opt',
+                     '/var/log', '/var/lib',
+                     '/usr/bin', '/usr/lib']
 
 
 def only_manager(func):
@@ -927,10 +930,9 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self.ip_address,
             )
             xfsrestore_file.write_text(
-                "export dumptime=$(xfsrestore -I | grep time | awk '{"
-                "$1=$2=""; printf $0}' | xargs) && "
-                "sudo find {1} -type f -newerct $dumptime -delete && "
-                "(sudo xfsrestore -L systest -f /dev/{} / {2} "
+                "sudo find {1} -type f -newerct \"$(xfsrestore -I | grep time "
+                "| cut -f 4-5 | xargs)\" -delete && "
+                "(sudo xfsrestore -L systest -f /dev/{0} / {2} "
                 "&& touch /tmp/xfs_restore_complete) "
                 "|| touch /tmp/xfs_restore_failed &".format(
                     self.xfsdump_volume_id,
