@@ -80,7 +80,7 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     mgr2.run_command('cfy_manager dbs add -a {} '
                      '-c /etc/cloudify/manager_config.yaml'.format(
                          db3.private_ip_address))
-    mgr3.run_command('cfy_manager dbs remove -a {} '
+    mgr3.run_command('cfy_manager dbs add -a {} '
                      '-c /etc/cloudify/manager_config.yaml'.format(
                          db3.private_ip_address))
 
