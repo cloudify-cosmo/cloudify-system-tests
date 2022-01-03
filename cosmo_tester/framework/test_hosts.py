@@ -473,6 +473,13 @@ print('{{}} {{}}'.format(distro, codename).lower())
             self.run_command('sudo rm -rf /etc/cloudify/ssl')
         if self.api_ca_path and os.path.exists(self.api_ca_path):
             os.unlink(self.api_ca_path)
+        # Avoid problems with directory perms, and keep log separation between
+        # tests when reusing VMs
+        timestamp = datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
+        self._logger.info('Moving old logs to /var/log/cloudify_%s', timestamp)
+        self.run_command(
+            'sudo mv /var/log/cloudify /var/log/cloudify_{}'.format(
+                timestamp))
 
     @only_manager
     def _create_config_file(self, upload_license=True):
