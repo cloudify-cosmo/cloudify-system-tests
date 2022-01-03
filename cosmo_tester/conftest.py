@@ -165,4 +165,3 @@ def three_node_cluster_with_extra_manager(test_config, session_logger,
                      three_nodes_cluster=True,
                      extra_node=True)
     rsync_restore(three_plus_manager_session_vms, logger)
-

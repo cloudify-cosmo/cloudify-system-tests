@@ -24,9 +24,6 @@ inputs:
   use_net:
     default: "1"
 
-  volume_attachment_device:
-    default: /dev/sdh
-
 dsl_definitions:
   client_config: &client_config
     aws_access_key_id: { get_secret: aws_access_key_id }

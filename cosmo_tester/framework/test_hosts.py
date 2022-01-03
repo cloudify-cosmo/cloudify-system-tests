@@ -33,7 +33,7 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 HEALTHY_STATE = 'OK'
-RSYNC_LOCATIONS = ['--exclude={"sudo*","host*"} /etc',
+RSYNC_LOCATIONS = ['/etc',
                    '/opt',
                    '/var',
                    '/usr']
@@ -884,7 +884,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             backup_commands = ''
             for location in RSYNC_LOCATIONS:
                 backup_commands += \
-                    'sudo rsync -a {} /cfy_backup && '.format(location)
+                    'sudo rsync -aAHX {} /cfy_backup && '.format(location)
             rsync_backup_file.write_text(
                 "(" + backup_commands + "touch /tmp/rsync_backup_complete) "
                 "|| touch /tmp/rsync_backup_failed &")
@@ -893,13 +893,16 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     def rsync_restore(self):
         with self.ssh() as fabric_ssh:
+            self._logger.info('Stopping manager on {}....'.format(
+                self.deployment_id))
+            fabric_ssh.run('cfy_manager stop')
             self._logger.info(
                 'Restoring from an Rsync backup for host {}. Might take '
                 'up to 1 minute...'.format(self.deployment_id))
             rsync_restore_file = self._tmpdir / 'rsync_restore_{0}'.format(
-                self.ip_addres)
+                self.ip_address)
             rsync_restore_file.write_text(
-                "(sudo rsync -a /cfy_backup/* / --delete "
+                "(sudo rsync -aAHX /cfy_backup/* / --delete "
                 "&& touch /tmp/rsync_restore_complete) "
                 "|| touch /tmp/rsync_restore_failed &")
             self.put_remote_file('/tmp/rsync_restore_script',
