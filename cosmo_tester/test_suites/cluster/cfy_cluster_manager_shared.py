@@ -49,8 +49,8 @@ def _update_nine_nodes_config_dict_vms(config_dict, existing_vms_list):
         })
 
 
-def _install_cluster(node, config_dict, test_config, ssh_key, logger,
-                     override=False):
+def _install_cluster(node, all_nodes, config_dict, test_config, ssh_key,
+                     logger, override=False):
     logger.info('Installing cluster')
     node.put_remote_file_content(REMOTE_CLUSTER_CONFIG_PATH,
                                  yaml.dump(config_dict))
@@ -72,6 +72,9 @@ def _install_cluster(node, config_dict, test_config, ssh_key, logger,
             cfg=REMOTE_CLUSTER_CONFIG_PATH,
             override='--override' if override else '')
     )
+
+    for n in all_nodes:
+        n.set_installed_configs()
 
     logger.info('Verifying the cluster status')
     _verify_cluster_status(node)
@@ -134,7 +137,7 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
         # repo doesn't have logrotate included
         node.run_command('sudo yum install -y logrotate')
 
-    _install_cluster(manager, config_dict, test_config, ssh_key,
+    _install_cluster(manager, nodes, config_dict, test_config, ssh_key,
                      logger)
 
     _upgrade_cluster(nodes_list, manager, test_config, logger)

@@ -42,8 +42,8 @@ def test_create_three_nodes_cluster(three_vms, test_config, ssh_key, logger):
     _update_three_nodes_config_dict_vms(three_nodes_config_dict,
                                         [node1, node2, node3])
 
-    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
-                     logger)
+    _install_cluster(node1, three_vms, three_nodes_config_dict, test_config,
+                     ssh_key, logger)
 
 
 @pytest.mark.nine_vms
@@ -54,8 +54,8 @@ def test_create_nine_nodes_cluster(nine_vms, test_config, ssh_key, logger):
                                               nodes_list[0].username)
     _update_nine_nodes_config_dict_vms(nine_nodes_config_dict, nodes_list)
 
-    _install_cluster(nodes_list[6], nine_nodes_config_dict, test_config,
-                     ssh_key, logger)
+    _install_cluster(nodes_list[6], nodes_list, nine_nodes_config_dict,
+                     test_config, ssh_key, logger)
 
 
 @pytest.mark.three_vms
@@ -84,8 +84,8 @@ def test_three_nodes_cluster_using_provided_certificates(
             'key_path': join(REMOTE_CERTS_PATH, 'node-{0}.key'.format(i))
         })
 
-    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
-                     logger)
+    _install_cluster(node1, three_vms, three_nodes_config_dict, test_config,
+                     ssh_key, logger)
 
     logger.info('Asserting certs were successfully copied')
     local_ca_path = local_certs_path / 'ca.pem'
@@ -173,8 +173,8 @@ def test_three_nodes_cluster_override(
         _update_three_nodes_config_dict_vms(three_nodes_config_dict,
                                             [node1, node2, node3])
 
-        _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
-                         logger, override=True)
+        _install_cluster(node1, three_vms, three_nodes_config_dict,
+                         test_config, ssh_key, logger, override=True)
 
 
 @pytest.mark.three_vms
@@ -191,8 +191,8 @@ def test_three_nodes_cluster_offline(
     _update_three_nodes_config_dict_vms(three_nodes_config_dict,
                                         [node1, node2, node3])
 
-    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
-                     logger)
+    _install_cluster(node1, three_vms, three_nodes_config_dict, test_config,
+                     ssh_key, logger)
 
 
 def _install_cluster_using_provided_config_files(
@@ -227,8 +227,8 @@ def _install_cluster_using_provided_config_files(
                 'rabbitmq_config_path': node.remote_rabbitmq_config_path
             })
 
-    _install_cluster(node1, three_nodes_config_dict, test_config, ssh_key,
-                     logger, override)
+    _install_cluster(node1, nodes_list, three_nodes_config_dict, test_config,
+                     ssh_key, logger, override)
 
 
 def _prepare_three_nodes_config_files(nodes_list,
