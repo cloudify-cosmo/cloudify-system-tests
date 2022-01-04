@@ -466,6 +466,25 @@ print('{{}} {{}}'.format(distro, codename).lower())
                     display_name, service['status'])
 
     @only_manager
+    def set_installed_configs(self):
+        conf_files = [
+            conf_file.strip() for conf_file in
+            self.run_command('ls /etc/cloudify/*_config.yaml').stdout.split()
+        ]
+        if conf_files:
+            self._installed_configs = conf_files
+        else:
+            self._installed_configs = '/etc/cloudify/config.yaml'
+
+    @only_manager
+    def stop_manager_services(self):
+        for config_name in self._installed_configs:
+            config_path = self._get_config_path(config_name)
+            self._logger.info('Stopping services using {}'.format(
+                config_path))
+            self.run_command('cfy_manager stop -c {}'.format(config_path))
+
+    @only_manager
     def teardown(self, kill_certs=True):
         self._logger.info('Tearing down using any installed configs')
         for config_name in self._installed_configs:
@@ -541,10 +560,11 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def _get_config_path(self, config_name=None):
+        if config_name.startswith('/'):
+            return config_name
         if config_name:
             return '/etc/cloudify/{0}_config.yaml'.format(config_name)
-        else:
-            return '/etc/cloudify/config.yaml'
+        return '/etc/cloudify/config.yaml'
 
     @only_manager
     def bootstrap(self, upload_license=False,
@@ -893,9 +913,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     def rsync_restore(self):
         with self.ssh() as fabric_ssh:
-            self._logger.info('Stopping manager on {}....'.format(
-                self.deployment_id))
-            fabric_ssh.run('cfy_manager stop')
+            self.stop_manager_services()
             self._logger.info(
                 'Restoring from an Rsync backup for host {}. Might take '
                 'up to 1 minute...'.format(self.deployment_id))
