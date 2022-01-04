@@ -140,6 +140,18 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
     _install_cluster(manager, nodes, config_dict, test_config, ssh_key,
                      logger)
 
+    if base_version.startswith('5.0') or base_version.startswith('5.1'):
+        # These base versions use systemd for service management
+        for node in nodes:
+            node.set_installed_configs()
+            # Yes, using the private var is horrible, but we can hopefully
+            # retire these versions soon and remove this hack...
+            for conf in node._installed_configs:
+                node.run_command(
+                    'echo -e \\\\nservice_management: systemd '
+                    '| sudo tee -a {}'.format(conf)
+                )
+
     _upgrade_cluster(nodes_list, manager, test_config, logger)
 
 
