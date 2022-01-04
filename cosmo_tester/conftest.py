@@ -5,7 +5,8 @@ from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import SSHKey
-from cosmo_tester.test_suites.cluster.conftest import _get_hosts
+from cosmo_tester.test_suites.cluster.conftest import (
+    _get_hosts, rsync_restore, reboot_if_required)
 
 
 @pytest.fixture(scope='module')
@@ -89,15 +90,18 @@ def session_manager(request, ssh_key, session_tmpdir, test_config,
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
                   session_logger, request, bootstrappable=True)
     hosts.create()
+    hosts.rsync_backup()
     yield hosts.instances[0]
     hosts.destroy()
 
 
 @pytest.fixture(scope='function')
 def image_based_manager(session_manager):
+    reboot_if_required(session_manager)
     session_manager.bootstrap()
     yield session_manager
     session_manager.teardown()
+    rsync_restore(session_manager, logger)
 
 
 @pytest.fixture(scope='function')
@@ -119,6 +123,7 @@ def three_plus_one_session_vms(ssh_key, session_tmpdir, test_config,
     hosts.instances[-1] = VM('centos_7', test_config)
 
     hosts.create()
+    hosts.rsync_backup()
     yield hosts.instances
     hosts.destroy()
 
@@ -126,14 +131,13 @@ def three_plus_one_session_vms(ssh_key, session_tmpdir, test_config,
 @pytest.fixture(scope='function')
 def three_node_cluster_with_extra_node(test_config, session_logger,
                                        three_plus_one_session_vms):
+    reboot_if_required(three_plus_one_session_vms)
     yield _get_hosts(three_plus_one_session_vms,
                      test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    for vm in three_plus_one_session_vms:
-        if vm.is_manager:
-            vm.teardown()
+    rsync_restore(three_plus_one_session_vms, logger)
 
 
 @pytest.fixture(scope='session')
@@ -144,6 +148,7 @@ def three_plus_manager_session_vms(ssh_key, session_tmpdir, test_config,
                   number_of_instances=4)
 
     hosts.create()
+    hosts.rsync_backup()
     yield hosts.instances
     hosts.destroy()
 
@@ -153,11 +158,10 @@ def three_plus_manager_session_vms(ssh_key, session_tmpdir, test_config,
 @pytest.fixture(scope='function')
 def three_node_cluster_with_extra_manager(test_config, session_logger,
                                           three_plus_manager_session_vms):
+    reboot_if_required(three_plus_manager_session_vms)
     yield _get_hosts(three_plus_manager_session_vms,
                      test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    for vm in three_plus_manager_session_vms:
-        if vm.is_manager:
-            vm.teardown()
+    rsync_restore(three_plus_manager_session_vms, logger)

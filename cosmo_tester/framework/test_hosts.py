@@ -33,6 +33,10 @@ from cosmo_tester.framework import util
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 
 HEALTHY_STATE = 'OK'
+RSYNC_LOCATIONS = ['/etc',
+                   '/opt',
+                   '/var',
+                   '/usr']
 
 
 def only_manager(func):
@@ -61,6 +65,7 @@ class VM(object):
         self.bootstrappable = bootstrappable
         self.image_type = image_type
         self.is_manager = self._is_manager_image_type()
+        self.reboot_required = False
         self._set_image_details()
         self._installed_configs = []
         if self.windows:
@@ -868,6 +873,64 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self._test_config['test_os_usernames'][username_key]
             )
 
+    def rsync_backup(self):
+        with self.ssh() as fabric_ssh:
+            self._logger.info(
+                'Creating Rsync backup for host {}. Might take up to 5 '
+                'minutes...'.format(self.deployment_id))
+            fabric_ssh.sudo("mkdir /cfy_backup")
+            rsync_backup_file = self._tmpdir / 'rsync_backup_{0}'.format(
+                self.ip_address)
+            backup_commands = ''
+            for location in RSYNC_LOCATIONS:
+                backup_commands += \
+                    'sudo rsync -aAHX {} /cfy_backup && '.format(location)
+            rsync_backup_file.write_text(
+                "(" + backup_commands + "touch /tmp/rsync_backup_complete) "
+                "|| touch /tmp/rsync_backup_failed &")
+            self.put_remote_file('/tmp/rsync_backup_script', rsync_backup_file)
+            fabric_ssh.run('nohup bash /tmp/rsync_backup_script &>/dev/null &')
+
+    def rsync_restore(self):
+        with self.ssh() as fabric_ssh:
+            self._logger.info('Stopping manager on {}....'.format(
+                self.deployment_id))
+            fabric_ssh.run('cfy_manager stop')
+            self._logger.info(
+                'Restoring from an Rsync backup for host {}. Might take '
+                'up to 1 minute...'.format(self.deployment_id))
+            rsync_restore_file = self._tmpdir / 'rsync_restore_{0}'.format(
+                self.ip_address)
+            rsync_restore_file.write_text(
+                "(sudo rsync -aAHX /cfy_backup/* / --delete "
+                "&& touch /tmp/rsync_restore_complete) "
+                "|| touch /tmp/rsync_restore_failed &")
+            self.put_remote_file('/tmp/rsync_restore_script',
+                                 rsync_restore_file)
+            fabric_ssh.run('nohup bash /tmp/rsync_restore_script '
+                           '&>/dev/null &')
+
+    def async_command_is_complete(self, process_name):
+        with self.ssh() as fabric_ssh:
+            result = fabric_ssh.run(
+                'if [[ -f /tmp/{0}_complete ]]; then echo done; '
+                'elif [[ -f /tmp/{0}_failed ]]; then echo failed; '
+                'else echo not done; '
+                'fi'.format(process_name.replace(' ', '_').lower())
+            ).stdout.strip()
+            if result == 'done':
+                self._logger.info('{0} complete for host {1}!'
+                                  .format(process_name, self.deployment_id))
+                return True
+            elif result == 'failed':
+                self._logger.error('{0} FAILED for host {1}!'
+                                   .format(process_name, self.deployment_id))
+                raise RuntimeError('{} failed.'.format(process_name))
+            else:
+                self._logger.info('Still performing {0} on host {1}...'
+                                  .format(process_name, self.deployment_id))
+                return False
+
 
 class Hosts(object):
     def __init__(self,
@@ -1127,6 +1190,15 @@ class Hosts(object):
                 CLOUDIFY_TENANT_HEADER] = 'default_tenant'
             self._infra_client.tenants.delete(self.tenant)
             self.tenant = None
+
+    def rsync_backup(self):
+        for instance in self.instances:
+            instance.rsync_backup()
+            self._logger.info('Waiting for instance %s to Rsync backup',
+                              instance.image_name)
+        for instance in self.instances:
+            while not instance.async_command_is_complete('Rsync backup'):
+                time.sleep(3)
 
     def _upload_secrets_to_infrastructure_manager(self):
         self._logger.info(
