@@ -103,11 +103,11 @@ def brokers(three_session_vms, test_config, logger):
 
 @pytest.fixture(scope='function')
 def broker(session_manager, test_config, logger):
-    reboot_if_required(session_manager)
+    reboot_if_required([session_manager])
     _brokers = _get_hosts([session_manager], test_config, logger,
                           broker_count=1)
     yield _brokers[0]
-    rsync_restore(session_manager, logger)
+    rsync_restore([session_manager], logger)
 
 
 @pytest.fixture(scope='function')
