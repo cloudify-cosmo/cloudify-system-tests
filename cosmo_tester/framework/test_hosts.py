@@ -894,6 +894,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             )
 
     def rsync_backup(self):
+        self.wait_for_ssh()
         with self.ssh() as fabric_ssh:
             self._logger.info(
                 'Creating Rsync backup for host {}. Might take up to 5 '
