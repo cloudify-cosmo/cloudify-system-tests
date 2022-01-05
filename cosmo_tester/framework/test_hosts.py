@@ -560,9 +560,9 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def _get_config_path(self, config_name=None):
-        if config_name.startswith('/'):
-            return config_name
         if config_name:
+            if config_name.startswith('/'):
+                return config_name
             return '/etc/cloudify/{0}_config.yaml'.format(config_name)
         return '/etc/cloudify/config.yaml'
 
