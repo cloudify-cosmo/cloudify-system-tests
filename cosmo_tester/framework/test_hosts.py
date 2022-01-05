@@ -913,7 +913,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     def rsync_restore(self):
         with self.ssh() as fabric_ssh:
-            self.stop_manager_services()
+            if self.is_manager:
+                self.stop_manager_services()
             self._logger.info(
                 'Restoring from an Rsync backup for host {}. Might take '
                 'up to 1 minute...'.format(self.deployment_id))
