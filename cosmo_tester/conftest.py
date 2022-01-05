@@ -137,7 +137,7 @@ def three_node_cluster_with_extra_node(test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    rsync_restore(three_plus_one_session_vms, logger)
+    rsync_restore(three_plus_one_session_vms, session_logger)
 
 
 @pytest.fixture(scope='session')
@@ -164,4 +164,4 @@ def three_node_cluster_with_extra_manager(test_config, session_logger,
                      pre_cluster_rabbit=True,
                      three_nodes_cluster=True,
                      extra_node=True)
-    rsync_restore(three_plus_manager_session_vms, logger)
+    rsync_restore(three_plus_manager_session_vms, session_logger)
