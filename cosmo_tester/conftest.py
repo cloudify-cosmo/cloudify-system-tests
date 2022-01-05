@@ -96,12 +96,12 @@ def session_manager(request, ssh_key, session_tmpdir, test_config,
 
 
 @pytest.fixture(scope='function')
-def image_based_manager(session_manager):
-    reboot_if_required(session_manager)
+def image_based_manager(session_manager, session_logger):
+    reboot_if_required([session_manager])
     session_manager.bootstrap()
     yield session_manager
     session_manager.teardown()
-    rsync_restore(session_manager, logger)
+    rsync_restore([session_manager], session_logger)
 
 
 @pytest.fixture(scope='function')
