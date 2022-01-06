@@ -916,6 +916,10 @@ print('{{}} {{}}'.format(distro, codename).lower())
         with self.ssh() as fabric_ssh:
             if self.is_manager:
                 self.stop_manager_services()
+                self._logger.info('Cleaning profile/CA dir from home dir')
+                self.run_command('rm -rf ~/.cloudify*')
+                self._logger.info('Cleaning root cloudify profile')
+                self.run_command('sudo rm -rf /root/.cloudify')
             self._logger.info(
                 'Restoring from an Rsync backup for host {}. Might take '
                 'up to 1 minute...'.format(self.deployment_id))
