@@ -847,6 +847,7 @@ def rsync_restore(nodes, logger):
 def reboot_if_required(nodes):
     for node in nodes:
         if node.reboot_required:
+            node.wait_for_ssh()
             node.run_command('rm -rf /tmp/*', warn_only=True, use_sudo=True)
             node.run_command('shutdown -r now', warn_only=True, use_sudo=True)
             node.wait_for_ssh()
