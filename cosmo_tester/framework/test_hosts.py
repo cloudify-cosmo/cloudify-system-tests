@@ -781,6 +781,12 @@ print('{{}} {{}}'.format(distro, codename).lower())
         )
 
     @only_manager
+    def clean_local_rest_ca(self):
+        if os.path.exists(self.api_ca_path):
+            self._logger.info('Removing local copy of manager CA.')
+            os.unlink(self.api_ca_path)
+
+    @only_manager
     def enable_nics(self):
         """
         Extra network interfaces need to be manually enabled on the manager
@@ -920,6 +926,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self.run_command('rm -rf ~/.cloudify*')
                 self._logger.info('Cleaning root cloudify profile')
                 self.run_command('sudo rm -rf /root/.cloudify')
+                self.clean_local_rest_ca()
             self._logger.info(
                 'Restoring from an Rsync backup for host {}. Might take '
                 'up to 1 minute...'.format(self.deployment_id))
