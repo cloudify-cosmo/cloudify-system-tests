@@ -236,7 +236,7 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             try:
                 self.run_command('echo Still up...')
                 time.sleep(3)
-            except (SSHException, socket.timeout):
+            except (SSHException, socket.timeout, EOFError):
                 # Errors like 'Connection reset by peer' can occur during the
                 # shutdown, but we should wait a little longer to give other
                 # services time to stop
