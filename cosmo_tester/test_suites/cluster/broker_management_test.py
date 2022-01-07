@@ -162,8 +162,8 @@ def test_list(brokers, logger):
 @pytest.mark.one_vm
 def test_auth_fail(broker, logger):
     broker.run_command(
-        "sed -i 's/password: .*/password: wrongpassword/' "
-        "/etc/cloudify/config.yaml", use_sudo=True,
+        "sed -ie 's/^rabbitmq:/rabbitmq:\\n  password: wrong/' "
+        "/etc/cloudify/rabbit_config.yaml", use_sudo=True,
     )
     result = broker.run_command(
         'cfy_manager brokers list -c /etc/cloudify/rabbit_config.yaml '
