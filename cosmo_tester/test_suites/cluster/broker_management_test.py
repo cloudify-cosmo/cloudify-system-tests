@@ -75,7 +75,8 @@ def get_cluster_listing(cluster_brokers, down=()):
 
 
 def kill_node(broker):
-    broker.run_command('cfy_manager stop', use_sudo=True)
+    broker.set_installed_configs()
+    broker.stop_manager_services()
 
 
 def prepare_cluster_for_removal_tests(brokers):
