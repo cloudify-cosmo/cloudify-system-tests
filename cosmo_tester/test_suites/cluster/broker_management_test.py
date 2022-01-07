@@ -334,8 +334,7 @@ def test_remove_broker_from_manager(brokers3_and_manager, logger):
 
     logger.info('Adding broker to manager.')
     manager.run_command(
-        'cfy cluster brokers add {name} {ip} -n "{net} -c '
-        '/etc/cloudify/rabbit_config.yaml"'.format(
+        "cfy cluster brokers add {name} {ip} -n '{net}'".format(
             name=brokers[1].hostname,
             ip=str(brokers[1].private_ip_address),
             net=json.dumps({'default': str(brokers[1].private_ip_address)}),
