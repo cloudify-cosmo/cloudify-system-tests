@@ -229,9 +229,10 @@ def test_add(brokers, logger):
     brokers[2].run_command('cfy_manager remove --force')
     brokers[2].run_command(
         "sudo sed -i 's/erlang_cookie:.*/erlang_cookie: different/' "
-        "/etc/cloudify/config.yaml"
+        "/etc/cloudify/rabbit_config.yaml"
     )
-    brokers[2].run_command('cfy_manager install')
+    brokers[2].run_command('cfy_manager install '
+                           '-c /etc/cloudify/rabbit_config.yaml')
     result = brokers[2].run_command(
         'cfy_manager brokers add -j {node} -c /etc/cloudify/rabbit_config.yaml'
         ' || true'.format(node=brokers[1].hostname)
