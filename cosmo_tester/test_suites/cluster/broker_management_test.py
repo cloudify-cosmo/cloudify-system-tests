@@ -75,7 +75,8 @@ def get_cluster_listing(cluster_brokers, down=()):
 
 
 def kill_node(broker):
-    broker.run_command('cfy_manager stop', use_sudo=True)
+    broker.set_installed_configs()
+    broker.stop_manager_services()
 
 
 def prepare_cluster_for_removal_tests(brokers):
@@ -161,8 +162,8 @@ def test_list(brokers, logger):
 @pytest.mark.one_vm
 def test_auth_fail(broker, logger):
     broker.run_command(
-        "sed -i 's/password: .*/password: wrongpassword/' "
-        "/etc/cloudify/config.yaml", use_sudo=True,
+        "sed -ie 's/^rabbitmq:/rabbitmq:\\n  password: wrong/' "
+        "/etc/cloudify/rabbit_config.yaml", use_sudo=True,
     )
     result = broker.run_command(
         'cfy_manager brokers list -c /etc/cloudify/rabbit_config.yaml '
@@ -228,9 +229,10 @@ def test_add(brokers, logger):
     brokers[2].run_command('cfy_manager remove --force')
     brokers[2].run_command(
         "sudo sed -i 's/erlang_cookie:.*/erlang_cookie: different/' "
-        "/etc/cloudify/config.yaml"
+        "/etc/cloudify/rabbit_config.yaml"
     )
-    brokers[2].run_command('cfy_manager install')
+    brokers[2].run_command('cfy_manager install '
+                           '-c /etc/cloudify/rabbit_config.yaml')
     result = brokers[2].run_command(
         'cfy_manager brokers add -j {node} -c /etc/cloudify/rabbit_config.yaml'
         ' || true'.format(node=brokers[1].hostname)
@@ -332,8 +334,7 @@ def test_remove_broker_from_manager(brokers3_and_manager, logger):
 
     logger.info('Adding broker to manager.')
     manager.run_command(
-        'cfy cluster brokers add {name} {ip} -n "{net} -c '
-        '/etc/cloudify/rabbit_config.yaml"'.format(
+        "cfy cluster brokers add {name} {ip} -n '{net}'".format(
             name=brokers[1].hostname,
             ip=str(brokers[1].private_ip_address),
             net=json.dumps({'default': str(brokers[1].private_ip_address)}),
