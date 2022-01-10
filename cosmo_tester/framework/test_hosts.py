@@ -782,7 +782,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def clean_local_rest_ca(self):
-        if os.path.exists(self.api_ca_path):
+        if self.api_ca_path and os.path.exists(self.api_ca_path):
             self._logger.info('Removing local copy of manager CA.')
             os.unlink(self.api_ca_path)
 
