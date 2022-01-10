@@ -487,7 +487,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
     @only_manager
     def teardown(self, kill_certs=True):
         self._logger.info('Tearing down using any installed configs')
-        for config_name in self._installed_configs:
+        for config_name in set(self._installed_configs):
             config_path = self._get_config_path(config_name)
             self._logger.info('Tearing down using {}'.format(config_path))
             self.run_command('cfy_manager remove -c {}'.format(config_path))
