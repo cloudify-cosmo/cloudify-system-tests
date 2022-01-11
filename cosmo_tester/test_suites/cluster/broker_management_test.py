@@ -75,7 +75,6 @@ def get_cluster_listing(cluster_brokers, down=()):
 
 
 def kill_node(broker):
-    broker.set_installed_configs()
     broker.stop_manager_services()
 
 

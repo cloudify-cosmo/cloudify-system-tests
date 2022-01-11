@@ -67,7 +67,6 @@ class VM(object):
         self.is_manager = self._is_manager_image_type()
         self.reboot_required = False
         self._set_image_details()
-        self._installed_configs = []
         if self.windows:
             self.prepare_for_windows()
 
@@ -466,19 +465,29 @@ print('{{}} {{}}'.format(distro, codename).lower())
                     display_name, service['status'])
 
     @only_manager
-    def set_installed_configs(self):
+    def get_installed_configs(self):
         conf_files = [
             conf_file.strip() for conf_file in
             self.run_command('ls /etc/cloudify/*_config.yaml').stdout.split()
         ]
-        if conf_files:
-            self._installed_configs = conf_files
-        else:
-            self._installed_configs = '/etc/cloudify/config.yaml'
+        return conf_files or '/etc/cloudify/config.yaml'
+
+    @only_manager
+    def is_configured(self):
+        services = self.run_command(
+            'if [[ -d {confed_dir} ]]; then ls {confed_dir}; fi'.format(
+                confed_dir='/etc/cloudify/.configured',
+            )
+        ).stdout.strip()
+        return any(service in services for service in
+                   ['database', 'manager', 'queue'])
 
     @only_manager
     def stop_manager_services(self):
-        for config_name in self._installed_configs:
+        if not self.is_configured():
+            self._logger.info('No services configured')
+            return
+        for config_name in self.get_installed_configs():
             config_path = self._get_config_path(config_name)
             self._logger.info('Stopping services using {}'.format(
                 config_path))
@@ -487,11 +496,14 @@ print('{{}} {{}}'.format(distro, codename).lower())
     @only_manager
     def teardown(self, kill_certs=True):
         self._logger.info('Tearing down using any installed configs')
-        for config_name in set(self._installed_configs):
-            config_path = self._get_config_path(config_name)
-            self._logger.info('Tearing down using {}'.format(config_path))
-            self.run_command('cfy_manager remove -c {}'.format(config_path))
-        self._installed_configs = []
+        if self.is_configured():
+            for config_name in self.get_installed_configs():
+                config_path = self._get_config_path(config_name)
+                self._logger.info('Tearing down using {}'.format(config_path))
+                self.run_command(
+                    'cfy_manager remove -c {}'.format(config_path))
+        else:
+            self._logger.info('No services configured')
         if kill_certs:
             self._logger.info('Removing certs directory')
             self.run_command('sudo rm -rf /etc/cloudify/ssl')
@@ -601,7 +613,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
             if config_name:
                 dest_config_path = self._get_config_path(config_name)
-                self._installed_configs.append(config_name)
                 commands = [
                     'sudo mv /tmp/cloudify.conf {0} > '
                     '/tmp/bs_logs/0_mv 2>&1'.format(dest_config_path),
@@ -609,7 +620,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
                     '/tmp/bs_logs/3_install 2>&1'.format(dest_config_path)
                 ]
             else:
-                self._installed_configs.append(config_name)
                 commands = [
                     'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml > '
                     '/tmp/bs_logs/0_mv 2>&1',
