@@ -101,7 +101,6 @@ def image_based_manager(session_manager, session_logger, request):
     reboot_if_required([session_manager])
     session_manager.bootstrap()
     yield session_manager
-    session_manager.teardown()
     if len(request.session.items) > 1:
         rsync_restore([session_manager], session_logger)
 
