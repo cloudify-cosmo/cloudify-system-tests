@@ -1273,8 +1273,10 @@ class Hosts(object):
         else:
             raise RuntimeError(
                 'The manager must have a plugin called {}. '
-                'This should be uploaded with --visibility=global.'.format(
+                'This should be uploaded with --visibility=global,'
+                'and match version regex: {}'.format(
                     plugin_details['plugin_package_name'],
+                    plugin_details['plugin_version'],
                 )
             )
 
