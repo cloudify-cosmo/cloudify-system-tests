@@ -468,9 +468,10 @@ print('{{}} {{}}'.format(distro, codename).lower())
     def get_installed_configs(self):
         conf_files = [
             conf_file.strip() for conf_file in
-            self.run_command('ls /etc/cloudify/*_config.yaml').stdout.split()
+            self.run_command(
+                'ls /etc/cloudify/*_config.yaml || true').stdout.split()
         ]
-        return conf_files or '/etc/cloudify/config.yaml'
+        return conf_files or ['/etc/cloudify/config.yaml']
 
     @only_manager
     def is_configured(self):
