@@ -930,6 +930,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
             fabric_ssh.run('nohup bash /tmp/rsync_backup_script &>/dev/null &')
 
     def rsync_restore(self):
+        # Revert install config to avoid leaking state between tests
+        self.install_config = copy.deepcopy(self.basic_install_config)
         with self.ssh() as fabric_ssh:
             if self.is_manager:
                 self.stop_manager_services()
