@@ -138,7 +138,7 @@ def test_db_reinit(dbs, logger):
     listing = _get_db_listing([db1], config='db_config.yaml')[0]
     reinit_target = _get_non_leader(listing)
 
-    db1.run_command('cfy_manager dbs reinit -a {}'
+    db1.run_command('cfy_manager dbs reinit -a {} '
                     '-c /etc/cloudify/db_config.yaml'.format(reinit_target))
 
     listing = _get_db_listing([db1], config='db_config.yaml')[0]
