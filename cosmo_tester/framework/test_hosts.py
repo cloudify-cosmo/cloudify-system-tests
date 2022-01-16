@@ -931,7 +931,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     def rsync_restore(self):
         # Revert install config to avoid leaking state between tests
-        self.install_config = copy.deepcopy(self.basic_install_config)
+        if self.is_manager:
+            self.install_config = copy.deepcopy(self.basic_install_config)
         with self.ssh() as fabric_ssh:
             if self.is_manager:
                 self.stop_manager_services()
