@@ -190,7 +190,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             'Get-Content -Path {}'.format(path),
             powershell=True).std_out
 
-    @retrying.retry(stop_max_attempt_number=60, wait_fixed=3000)
+    # We're allowing about 5 minutes in case of /really/ slow VM start/restart
+    @retrying.retry(stop_max_attempt_number=100, wait_fixed=3000)
     def wait_for_ssh(self):
         if self.enable_ssh_wait:
             with self.ssh() as conn:
