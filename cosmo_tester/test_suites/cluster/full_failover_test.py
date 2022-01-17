@@ -32,8 +32,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
         if broker.private_ip_address == agent_broker_ip1:
             agent_broker = broker
             break
-    with agent_broker.ssh() as broker_ssh:
-        broker_ssh.run('sudo cfy_manager stop')
+    agent_broker.stop_manager_services()
 
     # the agent should now pick another broker
     validate_cluster_status_and_agents(mgr1, example.tenant, logger,
@@ -52,8 +51,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
     new_agent_broker_ip = agent_broker_ip2
 
     while not restarted_broker_connected:
-        with agent_broker.ssh() as broker_ssh:
-            broker_ssh.run('sudo cfy_manager start')
+        agent_broker.start_manager_services()
         restarted_broker_ips.append(agent_broker_ip)
         # stop another broker
         for broker in [broker1, broker2, broker3]:
@@ -61,8 +59,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
                 agent_broker = broker
                 break
         _wait_for_healthy_broker_cluster(mgr1.client)
-        with agent_broker.ssh() as broker_ssh:
-            broker_ssh.run('sudo cfy_manager stop')
+        agent_broker.stop_manager_services()
         agent_broker_ip = new_agent_broker_ip
         new_agent_broker_ip = (
            _verify_agent_broker_connection_and_get_broker_ip(
@@ -117,7 +114,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     assert validate_manager, 'Could not find manager for validation.'
 
     # stop the manager connected to the agent
-    agent_mgr.run_command('cfy_manager stop')
+    agent_mgr.stop_manager_services()
 
     lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
@@ -126,16 +123,15 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
         agent_validation_manager=validate_manager)
 
     # restart the manager connected to the agent
-    with agent_mgr.ssh() as manager_ssh:
-        manager_ssh.run('cfy_manager start')
+    agent_mgr.start_manager_services()
 
     time.sleep(5)
     validate_cluster_status_and_agents(
         lb, example.tenant, logger, agent_validation_manager=validate_manager)
 
     # stop two managers
-    mgr2.run_command('cfy_manager stop')
-    mgr3.run_command('cfy_manager stop')
+    mgr2.stop_manager_services()
+    mgr3.stop_manager_services()
 
     lb.wait_for_manager()
     time.sleep(5)
@@ -174,7 +170,7 @@ def test_workflow_resume_manager_failover(minimal_cluster,
         other_manager = ({mgr1, mgr2} - {executing_manager}).pop()
 
     # kill the first manager and  wait for execution to finish
-    executing_manager.run_command('cfy_manager stop')
+    executing_manager.stop_manager_services()
     manager_failover_time = time.time()
     assert manager_failover_time - execution_start_time < 60
     # It'll take at least 60 seconds because we told the sleep to be that long

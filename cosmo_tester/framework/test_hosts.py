@@ -485,6 +485,17 @@ print('{{}} {{}}'.format(distro, codename).lower())
                    ['database', 'manager', 'queue'])
 
     @only_manager
+    def start_manager_services(self):
+        if not self.is_configured():
+            self._logger.info('No services configured')
+            return
+        for config_name in self.get_installed_configs():
+            config_path = self._get_config_path(config_name)
+            self._logger.info('Starting services using {}'.format(
+                config_path))
+            self.run_command('cfy_manager start -c {}'.format(config_path))
+
+    @only_manager
     def stop_manager_services(self):
         if not self.is_configured():
             self._logger.info('No services configured')
