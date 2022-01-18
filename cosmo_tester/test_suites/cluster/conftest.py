@@ -424,18 +424,18 @@ def _get_hosts(instances, test_config, logger,
 
 def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                           pre_cluster_rabbit, high_security, use_hostnames,
-                          tempdir, test_config, logger,
+                          tempdir, test_config,
                           revert_install_config=False, credentials=None):
     for node_num, node in enumerate(brokers, start=1):
         _bootstrap_rabbit_node(node, node_num, brokers,
                                skip_bootstrap_list, pre_cluster_rabbit,
-                               tempdir, logger, use_hostnames, credentials)
+                               tempdir, use_hostnames, credentials)
         if revert_install_config:
             node.install_config = copy.deepcopy(node.basic_install_config)
 
     for node_num, node in enumerate(dbs, start=1):
         _bootstrap_db_node(node, node_num, dbs, skip_bootstrap_list,
-                           high_security, tempdir, logger,
+                           high_security, tempdir,
                            use_hostnames, credentials)
         if revert_install_config:
             node.install_config = copy.deepcopy(node.basic_install_config)
@@ -445,14 +445,14 @@ def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
         if node.friendly_name in skip_bootstrap_list:
             continue
         while not node.bootstrap_is_complete():
-            logger.info('Checking state of %s', node.friendly_name)
+            node.log_action('Checking bootstrap state')
             time.sleep(5)
 
     for node_num, node in enumerate(managers, start=1):
         _bootstrap_manager_node(node, node_num, dbs, brokers,
                                 skip_bootstrap_list,
                                 pre_cluster_rabbit, high_security,
-                                tempdir, logger, test_config,
+                                tempdir, test_config,
                                 use_hostnames, credentials)
         if revert_install_config:
             node.install_config = copy.deepcopy(node.basic_install_config)
@@ -522,13 +522,13 @@ def _base_prep(node, tempdir):
 
 
 def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
-                           pre_cluster_rabbit, tempdir, logger,
+                           pre_cluster_rabbit, tempdir,
                            use_hostnames, credentials=None):
     node.friendly_name = 'rabbit' + str(rabbit_num)
 
     _base_prep(node, tempdir)
 
-    logger.info('Preparing rabbit {}'.format(node.hostname))
+    node.log_action('Preparing rabbit')
 
     join_target = ''
     if pre_cluster_rabbit and rabbit_num != 1:
@@ -577,12 +577,12 @@ def _bootstrap_rabbit_node(node, rabbit_num, brokers, skip_bootstrap_list,
 
 
 def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
-                       tempdir, logger, use_hostnames, credentials=None):
+                       tempdir, use_hostnames, credentials=None):
     node.friendly_name = 'db' + str(db_num)
 
     _base_prep(node, tempdir)
 
-    logger.info('Preparing db {}'.format(node.hostname))
+    node.log_action('Preparing DB')
 
     node.pg_password = 'xsqkopcdsog\'je"d<sub;n>osz ,po#qe'
 
@@ -641,13 +641,12 @@ def _bootstrap_db_node(node, db_num, dbs, skip_bootstrap_list, high_security,
 
 def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                             pre_cluster_rabbit, high_security, tempdir,
-                            logger, test_config, use_hostnames,
-                            credentials=None):
+                            test_config, use_hostnames, credentials=None):
     node.friendly_name = 'manager' + str(mgr_num)
 
     _base_prep(node, tempdir)
 
-    logger.info('Preparing manager {}'.format(node.hostname))
+    node.log_action('Preparing manager')
 
     if pre_cluster_rabbit:
         rabbit_nodes = {
@@ -758,10 +757,10 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
     node.client = node.get_rest_client(proto='https')
 
 
-def _bootstrap_lb_node(node, managers, tempdir, logger):
+def _bootstrap_lb_node(node, managers, tempdir):
     node.friendly_name = 'haproxy'
     _base_prep(node, tempdir)
-    logger.info('Preparing load balancer {}'.format(node.hostname))
+    node.log_action('Preparing load balancer')
 
     # install haproxy and import certs
     install_sh = """yum install -y /opt/cloudify/sources/haproxy*
@@ -819,26 +818,25 @@ def _add_monitoring_config(node, manager=False):
             config[section_name] = section
 
 
-def _remove_cluster(node, logger):
-    logger.info('Attempting to clean up cluster using '
-                'cloudify_cluster_manager')
-    logger.info('Checking for cluster manager on {}'.format(node.hostname))
+def _remove_cluster(node):
+    node.log_action('Checking for cluster manager')
     if node.run_command('which cfy_cluster_manager', warn_only=True).ok:
-        logger.info('Found cluster manager on {}, tearing down '
-                    'cluster...'.format(node.hostname))
+        node.log_action('Tearing down cluster manager using '
+                        'cloudify cluster manager')
         node.run_command('sudo cfy_cluster_manager remove --config-path '
                          '{}'.format(REMOTE_CLUSTER_CONFIG_PATH))
 
     # yum clean all doesn't clean all, so let's be more forceful
+    node.log_action('Cleaning yum cache')
     node.run_command('sudo rm -rf /var/cache/yum')
 
 
-def rsync_restore(nodes, logger):
+def rsync_restore(nodes):
     for node in nodes:
         node.rsync_restore()
-        logger.info('Waiting for instance %s to restore Rsync',
-                    node.image_name)
+        node.log_action('Waiting for rsync restore')
     for node in nodes:
         while not node.async_command_is_complete('Rsync restore'):
             time.sleep(3)
+        node.log_action('Rsync restore complete')
         node.reboot_required = True

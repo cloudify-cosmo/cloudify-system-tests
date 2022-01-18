@@ -58,8 +58,7 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
                           skip_bootstrap_list=[], pre_cluster_rabbit=True,
                           high_security=True, use_hostnames=False,
                           tempdir=module_tmpdir, test_config=test_config,
-                          logger=logger, revert_install_config=True,
-                          credentials=credentials)
+                          revert_install_config=True, credentials=credentials)
     node1.download_rest_ca(force=True)
 
     logger.info('Asserting cluster status')
