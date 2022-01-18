@@ -849,5 +849,8 @@ def reboot_if_required(nodes):
         if node.reboot_required:
             node.wait_for_ssh()
             node.run_command('rm -rf /tmp/*', warn_only=True, use_sudo=True)
-            node.run_command('shutdown -r now', warn_only=True, use_sudo=True)
+            node.run_command(
+                'sudo systemctl stop sshd && sudo shutdown -r now',
+                warn_only=True,
+            )
             node.wait_for_ssh()
