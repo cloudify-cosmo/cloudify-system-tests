@@ -94,7 +94,7 @@ class VM(object):
         self.deployment_id = deployment_id
         self.server_id = server_id
         # This is overridden in some cluster tests
-        self.friendly_name = self.server_id
+        self.friendly_name = '{} ({})'.format(server_id, private_ip_address)
         self.server_index = server_index
         if self.is_manager:
             self.networks = networks
@@ -201,7 +201,8 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     def wait_for_ssh(self):
         if self.enable_ssh_wait:
             with self.ssh() as conn:
-                conn.run("echo SSH is up for {}".format(self.ip_address))
+                conn.run("true")
+                self.log_action('SSH check complete')
 
     @property
     def private_key_path(self):
