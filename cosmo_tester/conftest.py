@@ -4,9 +4,9 @@ from path import Path
 from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts, VM
-from cosmo_tester.framework.util import SSHKey
+from cosmo_tester.framework.util import SSHKey, reboot_if_required
 from cosmo_tester.test_suites.cluster.conftest import (
-    _get_hosts, rsync_restore, reboot_if_required)
+    _get_hosts, rsync_restore)
 
 
 @pytest.fixture(scope='module')

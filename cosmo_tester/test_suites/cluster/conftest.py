@@ -98,7 +98,7 @@ def nine_session_vms(request, ssh_key, session_tmpdir, test_config,
 
 @pytest.fixture(scope='function')
 def brokers(three_session_vms, test_config, logger, request):
-    reboot_if_required(three_session_vms)
+    util.reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
@@ -109,7 +109,7 @@ def brokers(three_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def broker(session_manager, test_config, logger, request):
-    reboot_if_required([session_manager])
+    util.reboot_if_required([session_manager])
     _brokers = _get_hosts([session_manager], test_config, logger,
                           broker_count=1)
     yield _brokers[0]
@@ -119,7 +119,7 @@ def broker(session_manager, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def dbs(three_session_vms, test_config, logger, request):
-    reboot_if_required(three_session_vms)
+    util.reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
@@ -130,7 +130,7 @@ def dbs(three_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def brokers_and_manager(three_session_vms, test_config, logger, request):
-    reboot_if_required(three_session_vms)
+    util.reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
@@ -141,7 +141,7 @@ def brokers_and_manager(three_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def brokers3_and_manager(four_session_vms, test_config, logger, request):
-    reboot_if_required(four_session_vms)
+    util.reboot_if_required(four_session_vms)
     yield _get_hosts(four_session_vms, test_config, logger,
                      broker_count=3, manager_count=1)
     if len(request.session.items) > 1:
@@ -150,7 +150,7 @@ def brokers3_and_manager(four_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def full_cluster_ips(nine_session_vms, test_config, logger, request):
-    reboot_if_required(nine_session_vms)
+    util.reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
@@ -162,7 +162,7 @@ def full_cluster_ips(nine_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def full_cluster_names(nine_session_vms, test_config, logger, request):
-    reboot_if_required(nine_session_vms)
+    util.reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
@@ -174,7 +174,7 @@ def full_cluster_names(nine_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def cluster_with_lb(six_session_vms, test_config, logger, request):
-    reboot_if_required(six_session_vms)
+    util.reboot_if_required(six_session_vms)
     yield _get_hosts(six_session_vms, test_config, logger,
                      broker_count=1, db_count=1, manager_count=3,
                      use_load_balancer=True, pre_cluster_rabbit=True)
@@ -184,7 +184,7 @@ def cluster_with_lb(six_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def cluster_missing_one_db(nine_session_vms, test_config, logger, request):
-    reboot_if_required(nine_session_vms)
+    util.reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
@@ -197,7 +197,7 @@ def cluster_missing_one_db(nine_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def cluster_with_single_db(six_session_vms, test_config, logger, request):
-    reboot_if_required(six_session_vms)
+    util.reboot_if_required(six_session_vms)
     yield _get_hosts(six_session_vms, test_config, logger,
                      broker_count=3, db_count=1, manager_count=2,
                      pre_cluster_rabbit=True)
@@ -207,7 +207,7 @@ def cluster_with_single_db(six_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def minimal_cluster(four_session_vms, test_config, logger, request):
-    reboot_if_required(four_session_vms)
+    util.reboot_if_required(four_session_vms)
     yield _get_hosts(four_session_vms, test_config, logger,
                      broker_count=1, db_count=1, manager_count=2,
                      pre_cluster_rabbit=True)
@@ -217,7 +217,7 @@ def minimal_cluster(four_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def three_nodes_cluster(three_session_vms, test_config, logger, request):
-    reboot_if_required(three_session_vms)
+    util.reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
@@ -229,7 +229,7 @@ def three_nodes_cluster(three_session_vms, test_config, logger, request):
 @pytest.fixture(scope='function')
 def three_nodes_ipv6_cluster(three_ipv6_session_vms, test_config, logger,
                              request):
-    reboot_if_required(three_ipv6_session_vms)
+    util.reboot_if_required(three_ipv6_session_vms)
     for vm in three_ipv6_session_vms:
         _ensure_installer_installed(vm)
     yield _get_hosts(three_ipv6_session_vms, test_config, logger,
@@ -240,7 +240,7 @@ def three_nodes_ipv6_cluster(three_ipv6_session_vms, test_config, logger,
 
 @pytest.fixture(scope='function')
 def three_vms(three_session_vms, test_config, logger, request):
-    reboot_if_required(three_session_vms)
+    util.reboot_if_required(three_session_vms)
     for vm in three_session_vms:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(three_session_vms, test_config, logger,
@@ -251,7 +251,7 @@ def three_vms(three_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def three_vms_ipv6(three_ipv6_session_vms, test_config, logger, request):
-    reboot_if_required(three_ipv6_session_vms)
+    util.reboot_if_required(three_ipv6_session_vms)
     for vm in three_nodes_ipv6_cluster:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(three_ipv6_session_vms, test_config, logger,
@@ -262,7 +262,7 @@ def three_vms_ipv6(three_ipv6_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def nine_vms(nine_session_vms, test_config, logger, request):
-    reboot_if_required(nine_session_vms)
+    util.reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(nine_session_vms, test_config, logger,
@@ -842,15 +842,3 @@ def rsync_restore(nodes, logger):
         while not node.async_command_is_complete('Rsync restore'):
             time.sleep(3)
         node.reboot_required = True
-
-
-def reboot_if_required(nodes):
-    for node in nodes:
-        if node.reboot_required:
-            node.wait_for_ssh()
-            node.run_command('rm -rf /tmp/*', warn_only=True, use_sudo=True)
-            node.run_command(
-                'sudo systemctl stop sshd && sudo shutdown -r now',
-                warn_only=True,
-            )
-            node.wait_for_ssh()
