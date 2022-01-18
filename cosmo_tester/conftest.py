@@ -4,9 +4,9 @@ from path import Path
 from cosmo_tester.framework.config import load_config
 from cosmo_tester.framework.logger import get_logger
 from cosmo_tester.framework.test_hosts import Hosts, VM
-from cosmo_tester.framework.util import SSHKey, reboot_if_required
-from cosmo_tester.test_suites.cluster.conftest import (
-    _get_hosts, rsync_restore)
+from cosmo_tester.framework.util import (
+    SSHKey, reboot_if_required, rsync_restore)
+from cosmo_tester.test_suites.cluster.conftest import _get_hosts
 
 
 @pytest.fixture(scope='module')
@@ -102,7 +102,7 @@ def image_based_manager(session_manager, session_logger, request):
     session_manager.bootstrap()
     yield session_manager
     if len(request.session.items) > 1:
-        rsync_restore([session_manager], session_logger)
+        rsync_restore([session_manager])
 
 
 @pytest.fixture(scope='function')
@@ -141,7 +141,7 @@ def three_node_cluster_with_extra_node(test_config, session_logger,
                      three_nodes_cluster=True,
                      extra_node=True)
     if len(request.session.items) > 1:
-        rsync_restore(three_plus_one_session_vms, session_logger)
+        rsync_restore(three_plus_one_session_vms)
 
 
 @pytest.fixture(scope='session')
@@ -171,4 +171,4 @@ def three_node_cluster_with_extra_manager(test_config, session_logger,
                      three_nodes_cluster=True,
                      extra_node=True)
     if len(request.session.items) > 1:
-        rsync_restore(three_plus_manager_session_vms, session_logger)
+        rsync_restore(three_plus_manager_session_vms)
