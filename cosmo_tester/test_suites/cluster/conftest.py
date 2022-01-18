@@ -104,7 +104,7 @@ def brokers(three_session_vms, test_config, logger, request):
     yield _get_hosts(three_session_vms, test_config, logger,
                      broker_count=3)
     if len(request.session.items) > 1:
-        rsync_restore(three_session_vms, logger)
+        util.rsync_restore(three_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -114,7 +114,7 @@ def broker(session_manager, test_config, logger, request):
                           broker_count=1)
     yield _brokers[0]
     if len(request.session.items) > 1:
-        rsync_restore([session_manager], logger)
+        util.rsync_restore([session_manager])
 
 
 @pytest.fixture(scope='function')
@@ -125,7 +125,7 @@ def dbs(three_session_vms, test_config, logger, request):
     yield _get_hosts(three_session_vms, test_config, logger,
                      db_count=3)
     if len(request.session.items) > 1:
-        rsync_restore(three_session_vms, logger)
+        util.rsync_restore(three_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -136,7 +136,7 @@ def brokers_and_manager(three_session_vms, test_config, logger, request):
     yield _get_hosts(three_session_vms, test_config, logger,
                      broker_count=2, manager_count=1)
     if len(request.session.items) > 1:
-        rsync_restore(three_session_vms, logger)
+        util.rsync_restore(three_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -145,7 +145,7 @@ def brokers3_and_manager(four_session_vms, test_config, logger, request):
     yield _get_hosts(four_session_vms, test_config, logger,
                      broker_count=3, manager_count=1)
     if len(request.session.items) > 1:
-        rsync_restore(four_session_vms, logger)
+        util.rsync_restore(four_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -157,7 +157,7 @@ def full_cluster_ips(nine_session_vms, test_config, logger, request):
                      broker_count=3, db_count=3, manager_count=3,
                      pre_cluster_rabbit=True)
     if len(request.session.items) > 1:
-        rsync_restore(nine_session_vms, logger)
+        util.rsync_restore(nine_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -169,7 +169,7 @@ def full_cluster_names(nine_session_vms, test_config, logger, request):
                      broker_count=3, db_count=3, manager_count=3,
                      pre_cluster_rabbit=True, use_hostnames=True)
     if len(request.session.items) > 1:
-        rsync_restore(nine_session_vms, logger)
+        util.rsync_restore(nine_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -179,7 +179,7 @@ def cluster_with_lb(six_session_vms, test_config, logger, request):
                      broker_count=1, db_count=1, manager_count=3,
                      use_load_balancer=True, pre_cluster_rabbit=True)
     if len(request.session.items) > 1:
-        rsync_restore(six_session_vms, logger)
+        util.rsync_restore(six_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -192,7 +192,7 @@ def cluster_missing_one_db(nine_session_vms, test_config, logger, request):
                      skip_bootstrap_list=['db3'],
                      pre_cluster_rabbit=True)
     if len(request.session.items) > 1:
-        rsync_restore(nine_session_vms, logger)
+        util.rsync_restore(nine_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -202,7 +202,7 @@ def cluster_with_single_db(six_session_vms, test_config, logger, request):
                      broker_count=3, db_count=1, manager_count=2,
                      pre_cluster_rabbit=True)
     if len(request.session.items) > 1:
-        rsync_restore(six_session_vms, logger)
+        util.rsync_restore(six_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -212,7 +212,7 @@ def minimal_cluster(four_session_vms, test_config, logger, request):
                      broker_count=1, db_count=1, manager_count=2,
                      pre_cluster_rabbit=True)
     if len(request.session.items) > 1:
-        rsync_restore(four_session_vms, logger)
+        util.rsync_restore(four_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -223,7 +223,7 @@ def three_nodes_cluster(three_session_vms, test_config, logger, request):
     yield _get_hosts(three_session_vms, test_config, logger,
                      pre_cluster_rabbit=True, three_nodes_cluster=True)
     if len(request.session.items) > 1:
-        rsync_restore(three_session_vms, logger)
+        util.rsync_restore(three_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -235,7 +235,7 @@ def three_nodes_ipv6_cluster(three_ipv6_session_vms, test_config, logger,
     yield _get_hosts(three_ipv6_session_vms, test_config, logger,
                      pre_cluster_rabbit=True, three_nodes_cluster=True)
     if len(request.session.items) > 1:
-        rsync_restore(three_ipv6_session_vms, logger)
+        util.rsync_restore(three_ipv6_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -246,7 +246,7 @@ def three_vms(three_session_vms, test_config, logger, request):
     yield _get_hosts(three_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
     if len(request.session.items) > 1:
-        rsync_restore(three_session_vms, logger)
+        util.rsync_restore(three_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -257,7 +257,7 @@ def three_vms_ipv6(three_ipv6_session_vms, test_config, logger, request):
     yield _get_hosts(three_ipv6_session_vms, test_config, logger,
                      three_nodes_cluster=True, bootstrap=False)
     if len(request.session.items) > 1:
-        rsync_restore(three_ipv6_session_vms, logger)
+        util.rsync_restore(three_ipv6_session_vms)
 
 
 @pytest.fixture(scope='function')
@@ -269,7 +269,7 @@ def nine_vms(nine_session_vms, test_config, logger, request):
                      broker_count=3, db_count=3,
                      manager_count=3, bootstrap=False)
     if len(request.session.items) > 1:
-        rsync_restore(nine_session_vms, logger)
+        util.rsync_restore(nine_session_vms)
 
 
 def _ensure_installer_not_installed(vm):
@@ -829,14 +829,3 @@ def _remove_cluster(node):
     # yum clean all doesn't clean all, so let's be more forceful
     node.log_action('Cleaning yum cache')
     node.run_command('sudo rm -rf /var/cache/yum')
-
-
-def rsync_restore(nodes):
-    for node in nodes:
-        node.rsync_restore()
-        node.log_action('Waiting for rsync restore')
-    for node in nodes:
-        while not node.async_command_is_complete('Rsync restore'):
-            time.sleep(3)
-        node.log_action('Rsync restore complete')
-        node.reboot_required = True

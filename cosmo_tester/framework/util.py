@@ -750,9 +750,24 @@ def reboot_if_required(nodes):
     for node in nodes:
         if node.reboot_required:
             node.wait_for_ssh()
+            node.log_action('Clearing temp and rebooting')
             node.run_command('rm -rf /tmp/*', warn_only=True, use_sudo=True)
             node.run_command(
                 'sudo systemctl stop sshd && sudo shutdown -r now',
                 warn_only=True,
             )
+    for node in nodes:
+        if node.reboot_required:
             node.wait_for_ssh()
+            node.log_action('Restart complete')
+
+
+def rsync_restore(nodes):
+    for node in nodes:
+        node.rsync_restore()
+        node.log_action('Waiting for rsync restore')
+    for node in nodes:
+        while not node.async_command_is_complete('Rsync restore'):
+            time.sleep(3)
+        node.log_action('Rsync restore complete')
+        node.reboot_required = True
