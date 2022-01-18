@@ -93,6 +93,8 @@ class VM(object):
         self.node_instance_id = node_instance_id
         self.deployment_id = deployment_id
         self.server_id = server_id
+        # This is overridden in some cluster tests
+        self.friendly_name = self.server_id
         self.server_index = server_index
         if self.is_manager:
             self.networks = networks
@@ -139,6 +141,10 @@ class VM(object):
         with open(script_path, 'w') as fh:
             fh.write(script_content)
         subprocess.check_call(['chmod', '+x', script_path])
+
+    def log_action(self, action):
+        """Log that we're doing something with this node."""
+        self._logger.info('%s on %s', action, self.friendly_name)
 
     def prepare_for_windows(self):
         """Prepare this VM to be created as a windows VM."""
