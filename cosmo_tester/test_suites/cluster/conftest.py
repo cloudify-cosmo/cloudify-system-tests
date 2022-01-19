@@ -414,7 +414,7 @@ def _get_hosts(instances, test_config, logger,
                               use_hostnames, tempdir, test_config, logger)
 
     if use_load_balancer:
-        _bootstrap_lb_node(lb, managers, tempdir, logger)
+        _bootstrap_lb_node(lb, managers, tempdir)
 
     logger.info('All nodes are created%s.',
                 ' and bootstrapped' if bootstrap else '')
