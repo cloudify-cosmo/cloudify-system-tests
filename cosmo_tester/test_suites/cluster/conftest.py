@@ -459,16 +459,15 @@ def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
 
 
 def _base_prep(node, tempdir):
-    with node.ssh() as fabric_ssh:
-        fabric_ssh.run(
-            'mkdir -p /tmp/bs_logs'
-        )
+    node.run_command(
+        'mkdir -p /tmp/bs_logs'
+    )
 
-        fabric_ssh.run(
-            'echo {name} > /tmp/bs_logs/0_node_name'.format(
-                name=node.friendly_name,
-            )
+    node.run_command(
+        'echo {name} > /tmp/bs_logs/0_node_name'.format(
+            name=node.friendly_name,
         )
+    )
 
     ca_base = os.path.join(tempdir, 'ca.')
     ca_cert = ca_base + 'cert'

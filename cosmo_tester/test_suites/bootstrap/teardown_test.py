@@ -69,19 +69,18 @@ def check_pre_bootstrap_state(manager):
 
 
 def _get_system_state(mgr):
-    with mgr.ssh() as fabric:
-        systemd = fabric.run('ls /usr/lib/systemd/system').stdout.split()
-        init_d = fabric.run('ls /etc/rc.d/init.d/').stdout.split()
-        sysconfig = fabric.run('ls /etc/sysconfig').stdout.split()
-        opt_dirs = fabric.run('ls /opt').stdout.split()
-        etc_dirs = fabric.run('ls /etc').stdout.split()
+    systemd = mgr.run_command('ls /usr/lib/systemd/system').stdout.split()
+    init_d = mgr.run_command('ls /etc/rc.d/init.d/').stdout.split()
+    sysconfig = mgr.run_command('ls /etc/sysconfig').stdout.split()
+    opt_dirs = mgr.run_command('ls /opt').stdout.split()
+    etc_dirs = mgr.run_command('ls /etc').stdout.split()
 
-        packages = fabric.run('rpm -qa').stdout.split()
-        # Prettify the packages output
-        packages = [package.rsplit('-', 2)[0] for package in packages]
+    packages = mgr.run_command('rpm -qa').stdout.split()
+    # Prettify the packages output
+    packages = [package.rsplit('-', 2)[0] for package in packages]
 
-        users = fabric.run('cut -d: -f1 /etc/passwd').stdout.split()
-        groups = fabric.run('cut -d: -f1 /etc/group').stdout.split()
+    users = mgr.run_command('cut -d: -f1 /etc/passwd').stdout.split()
+    groups = mgr.run_command('cut -d: -f1 /etc/group').stdout.split()
     return {
         'systemd service files (/usr/lib/systemd/system)': systemd,
         'init_d service files (/etc/rc.d/init.d/)': init_d,

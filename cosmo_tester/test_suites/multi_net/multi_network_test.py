@@ -145,18 +145,20 @@ def _add_new_network(manager, logger, restart=True):
     networks_json = (
         '{{ "{0}": "{1}" }}'
     ).format(POST_BOOTSTRAP_NET, new_network_ip)
-    with manager.ssh() as fabric_ssh:
-        fabric_ssh.sudo(
-            "{cfy_manager} add-networks --networks '{networks}' ".format(
-                cfy_manager="/usr/bin/cfy_manager",
-                networks=networks_json
-            )
-        )
-        if restart:
-            logger.info('Restarting services...')
-            fabric_ssh.sudo('supervisorctl restart cloudify-rabbitmq')
-            fabric_ssh.sudo('supervisorctl restart nginx')
-            fabric_ssh.sudo('supervisorctl restart cloudify-mgmtworker')
+    manager.run_command(
+        "{cfy_manager} add-networks --networks '{networks}' ".format(
+            cfy_manager="/usr/bin/cfy_manager",
+            networks=networks_json
+        ),
+        use_sudo=True,
+    )
+    if restart:
+        logger.info('Restarting services...')
+        manager.run_command('supervisorctl restart cloudify-rabbitmq',
+                            use_sudo=True)
+        manager.run_command('supervisorctl restart nginx', use_sudo=True)
+        manager.run_command('supervisorctl restart cloudify-mgmtworker',
+                            use_sudo=True)
 
 
 @pytest.fixture(scope='function')
@@ -210,21 +212,22 @@ def proxy_prepare_hosts(instances, logger):
 
     # setup the proxy - simple socat services that forward all TCP connections
     # to the manager
-    with proxy.ssh() as fabric:
-        fabric.sudo('yum install socat -y')
-        for port in [5671, 53333, 15671]:
-            service = 'proxy_{0}'.format(port)
-            filename = '/usr/lib/systemd/system/{0}.service'.format(service)
-            logger.info('Deploying proxy service file')
-            proxy.put_remote_file_content(
-                filename,
-                PROXY_SERVICE_TEMPLATE.format(
-                    ip=manager_ip, port=port),
-            )
-            logger.info('Enabling proxy service')
-            fabric.sudo('systemctl enable {0}'.format(service))
-            logger.info('Starting proxy service')
-            fabric.sudo('systemctl start {0}'.format(service))
+    proxy.run_command('yum install socat -y', use_sudo=True)
+    for port in [5671, 53333, 15671]:
+        service = 'proxy_{0}'.format(port)
+        filename = '/usr/lib/systemd/system/{0}.service'.format(service)
+        logger.info('Deploying proxy service file')
+        proxy.put_remote_file_content(
+            filename,
+            PROXY_SERVICE_TEMPLATE.format(
+                ip=manager_ip, port=port),
+        )
+        logger.info('Enabling proxy service')
+        proxy.run_command('systemctl enable {0}'.format(service),
+                          use_sudo=True)
+        logger.info('Starting proxy service')
+        proxy.run_command('systemctl start {0}'.format(service),
+                          use_sudo=True)
 
     logger.info('Bootstrapping manager...')
     manager.wait_for_ssh()
@@ -243,15 +246,14 @@ def test_agent_via_proxy(proxy_hosts,
     # localhost)
     manager_ip = manager.private_ip_address
     proxy_ip = proxy.private_ip_address
-    with manager.ssh() as fabric:
-        for port in [5671, 53333]:
-            fabric.sudo(
-                'iptables -I INPUT -p tcp -s 0.0.0.0/0 --dport {0} -j DROP'
-                .format(port))
-            for ip in [proxy_ip, manager_ip, '127.0.0.1']:
-                fabric.sudo(
-                    'iptables -I INPUT -p tcp -s {0} --dport {1} -j ACCEPT'
-                    .format(ip, port))
+    for port in [5671, 53333]:
+        manager.run_command(
+            'iptables -I INPUT -p tcp -s 0.0.0.0/0 --dport {0} -j DROP'
+            .format(port), use_sudo=True)
+        for ip in [proxy_ip, manager_ip, '127.0.0.1']:
+            manager.run_command(
+                'iptables -I INPUT -p tcp -s {0} --dport {1} -j ACCEPT'
+                .format(ip, port), use_sudo=True)
 
     example = get_example_deployment(
         manager, ssh_key, logger, 'agent_via_proxy', test_config, vm)

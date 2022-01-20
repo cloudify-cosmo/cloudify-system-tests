@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 import copy
 from datetime import datetime
 import functools
@@ -46,6 +45,39 @@ def only_manager(func):
             raise RuntimeError('This is not a manager')
         return func(self, *args, **kwargs)
     return wrapped
+
+
+def ensure_conn(func):
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        if self.windows:
+            # We don't maintain a conn for windows currently
+            return func(self, *args, **kwargs)
+        if self._conn is None:
+            _make_connection(self)
+        try:
+            self._conn.transport.send_ignore()
+        except Exception as err:
+            self._logger.warning('SSH connection failure: %s', err)
+            _make_connection(self)
+            self._conn.transport.send_ignore()
+        return func(self, *args, **kwargs)
+    return wrapped
+
+
+@retrying.retry(stop_max_attempt_number=5, wait_fixed=3000)
+def _make_connection(vm):
+    vm._conn = Connection(
+        host=vm.ip_address,
+        user=vm.username,
+        connect_kwargs={
+            'key_filename': [vm.private_key_path],
+        },
+        port=22,
+        connect_timeout=3,
+    )
+    vm._conn.open()
+    vm._conn.transport.set_keepalive(15)
 
 
 class VM(object):
@@ -114,6 +146,7 @@ class VM(object):
             }
             self.install_config = copy.deepcopy(self.basic_install_config)
         self._create_conn_script()
+        self._conn = None
 
     def _create_conn_script(self):
         script_path = self._tmpdir_base / '{prefix}_{index}'.format(
@@ -200,30 +233,12 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
     @retrying.retry(stop_max_attempt_number=100, wait_fixed=3000)
     def wait_for_ssh(self):
         if self.enable_ssh_wait:
-            with self.ssh() as conn:
-                conn.run("true")
-                self.log_action('SSH check complete')
+            self.run_command('true')
+            self.log_action('SSH check complete')
 
     @property
     def private_key_path(self):
         return self._ssh_key.private_key_path
-
-    @contextmanager
-    def ssh(self):
-        conn = Connection(
-            host=self.ip_address,
-            user=self.username,
-            connect_kwargs={
-                'key_filename': [self.private_key_path],
-            },
-            port=22,
-            connect_timeout=3,
-        )
-        try:
-            conn.open()
-            yield conn
-        finally:
-            conn.close()
 
     def __str__(self):
         if self.is_manager:
@@ -292,6 +307,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
     def ssh_key(self):
         return self._ssh_key
 
+    @ensure_conn
     def get_remote_file(self, remote_path, local_path):
         """ Dump the contents of the remote file into the local path """
         # Similar to the way fabric1 did it
@@ -309,12 +325,12 @@ print('{{}} {{}}'.format(distro, codename).lower())
         if not os.path.exists(local_dir):
             os.makedirs(local_dir)
 
-        with self.ssh() as fabric_ssh:
-            fabric_ssh.get(
-                remote_tmp,
-                local_path,
-            )
+        self._conn.get(
+            remote_tmp,
+            local_path,
+        )
 
+    @ensure_conn
     def put_remote_file(self, remote_path, local_path):
         """ Dump the contents of the local file into the remote path """
         if self.windows:
@@ -328,12 +344,11 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 'rm -rf {}'.format(remote_tmp),
                 use_sudo=True,
             )
-            with self.ssh() as fabric_ssh:
-                # Similar to the way fabric1 did it
-                fabric_ssh.put(
-                    local_path,
-                    remote_tmp,
-                )
+            # Similar to the way fabric1 did it
+            self._conn.put(
+                local_path,
+                remote_tmp,
+            )
             self.run_command(
                 'mkdir -p {}'.format(
                     os.path.dirname(remote_path),
@@ -382,6 +397,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 if os.path.exists(tmp_local_path):
                     os.unlink(tmp_local_path)
 
+    @ensure_conn
     def run_command(self, command, use_sudo=False, warn_only=False,
                     hide_stdout=False, powershell=False):
         if self.windows:
@@ -401,11 +417,10 @@ print('{{}} {{}}'.format(distro, codename).lower())
             return result
         else:
             hide = 'stdout' if hide_stdout else None
-            with self.ssh() as fabric_ssh:
-                if use_sudo:
-                    return fabric_ssh.sudo(command, warn=warn_only, hide=hide)
-                else:
-                    return fabric_ssh.run(command, warn=warn_only, hide=hide)
+            if use_sudo:
+                return self._conn.sudo(command, warn=warn_only, hide=hide)
+            else:
+                return self._conn.run(command, warn=warn_only, hide=hide)
 
     @only_manager
     def upload_init_script_plugin(self, tenant_name='default_tenant'):
@@ -446,17 +461,16 @@ print('{{}} {{}}'.format(distro, codename).lower())
         if not self.is_manager:
             return True
 
-        with self.ssh() as fabric_ssh:
-            # the manager-ip-setter script creates the `touched` file when it
-            # is done.
-            try:
-                # will fail on bootstrap based managers
-                fabric_ssh.run('supervisorctl -a | grep manager-ip-setter')
-            except Exception:
-                pass
-            else:
-                self._logger.info('Verify manager-ip-setter is done..')
-                fabric_ssh.run('cat /opt/cloudify/manager-ip-setter/touched')
+        # the manager-ip-setter script creates the `touched` file when it
+        # is done.
+        try:
+            # will fail on bootstrap based managers
+            self.run_command('supervisorctl -a | grep manager-ip-setter')
+        except Exception:
+            pass
+        else:
+            self._logger.info('Verify manager-ip-setter is done..')
+            self.run_command('cat /opt/cloudify/manager-ip-setter/touched')
 
         self._logger.info(
             'Verifying all services are running on manager %s...',
@@ -614,53 +628,53 @@ print('{{}} {{}}'.format(distro, codename).lower())
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
             upload_license and self._test_config['premium'])
-        with self.ssh() as fabric_ssh:
-            # If we leave this lying around on a compact cluster, we think we
-            # finished bootstrapping every component after the first as soon
-            # as we check it, because the first component did finish.
-            fabric_ssh.run('rm -f /tmp/bootstrap_complete')
 
-            fabric_ssh.run('mkdir -p /tmp/bs_logs')
+        # If we leave this lying around on a compact cluster, we think we
+        # finished bootstrapping every component after the first as soon
+        # as we check it, because the first component did finish.
+        self.run_command('rm -f /tmp/bootstrap_complete')
+
+        self.run_command('mkdir -p /tmp/bs_logs')
+        self.put_remote_file(
+            '/tmp/cloudify.conf',
+            install_config,
+        )
+        if upload_license:
             self.put_remote_file(
-                '/tmp/cloudify.conf',
-                install_config,
-            )
-            if upload_license:
-                self.put_remote_file(
-                    '/tmp/test_valid_paying_license.yaml',
-                    util.get_resource_path('test_valid_paying_license.yaml'),
-                )
-
-            if config_name:
-                dest_config_path = self._get_config_path(config_name)
-                commands = [
-                    'sudo mv /tmp/cloudify.conf {0} > '
-                    '/tmp/bs_logs/0_mv 2>&1'.format(dest_config_path),
-                    'cfy_manager install -c {0} > '
-                    '/tmp/bs_logs/3_install 2>&1'.format(dest_config_path)
-                ]
-            else:
-                commands = [
-                    'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml > '
-                    '/tmp/bs_logs/0_mv 2>&1',
-                    'cfy_manager install > /tmp/bs_logs/3_install 2>&1'
-                ]
-
-            commands.append('touch /tmp/bootstrap_complete')
-
-            install_command = ' && '.join(commands)
-            install_command = (
-                '( ' + install_command + ') '
-                '|| touch /tmp/bootstrap_failed &'
+                '/tmp/test_valid_paying_license.yaml',
+                util.get_resource_path('test_valid_paying_license.yaml'),
             )
 
-            install_file = self._tmpdir / 'install_{0}.yaml'.format(
-                self.ip_address,
-            )
-            install_file.write_text(install_command)
-            self.put_remote_file('/tmp/bootstrap_script', install_file)
+        if config_name:
+            dest_config_path = self._get_config_path(config_name)
+            commands = [
+                'sudo mv /tmp/cloudify.conf {0} > '
+                '/tmp/bs_logs/0_mv 2>&1'.format(dest_config_path),
+                'cfy_manager install -c {0} > '
+                '/tmp/bs_logs/3_install 2>&1'.format(dest_config_path)
+            ]
+        else:
+            commands = [
+                'sudo mv /tmp/cloudify.conf /etc/cloudify/config.yaml > '
+                '/tmp/bs_logs/0_mv 2>&1',
+                'cfy_manager install > /tmp/bs_logs/3_install 2>&1'
+            ]
 
-            fabric_ssh.run('nohup bash /tmp/bootstrap_script &>/dev/null &')
+        commands.append('touch /tmp/bootstrap_complete')
+
+        install_command = ' && '.join(commands)
+        install_command = (
+            '( ' + install_command + ') '
+            '|| touch /tmp/bootstrap_failed &'
+        )
+
+        install_file = self._tmpdir / 'install_{0}.yaml'.format(
+            self.ip_address,
+        )
+        install_file.write_text(install_command)
+        self.put_remote_file('/tmp/bootstrap_script', install_file)
+
+        self.run_command('nohup bash /tmp/bootstrap_script &>/dev/null &')
 
         if blocking:
             while True:
@@ -675,40 +689,39 @@ print('{{}} {{}}'.format(distro, codename).lower())
             # We don't have a bootstrappable 5.0.5, so we use pre-bootstrapped
             return True
 
-        with self.ssh() as fabric_ssh:
-            # Using a bash construct because fabric seems to change its mind
-            # about how non-zero exit codes should be handled frequently
-            result = fabric_ssh.run(
-                'if [[ -f /tmp/bootstrap_complete ]]; then'
-                '  echo done; '
-                'elif [[ -f /tmp/bootstrap_failed ]]; then '
-                '  echo failed; '
-                'else '
-                '  echo not done; '
-                'fi'
-            ).stdout.strip()
+        # Using a bash construct because fabric seems to change its mind
+        # about how non-zero exit codes should be handled frequently
+        result = self.run_command(
+            'if [[ -f /tmp/bootstrap_complete ]]; then'
+            '  echo done; '
+            'elif [[ -f /tmp/bootstrap_failed ]]; then '
+            '  echo failed; '
+            'else '
+            '  echo not done; '
+            'fi'
+        ).stdout.strip()
 
-            if result == 'done':
-                self._logger.info('Bootstrap complete.')
-                self.finalize_preparation()
-                return True
+        if result == 'done':
+            self._logger.info('Bootstrap complete.')
+            self.finalize_preparation()
+            return True
+        else:
+            # To aid in troubleshooting (e.g. where a VM runs commands too
+            # slowly)
+            self.run_command('date > /tmp/cfy_mgr_last_check_time')
+            if result == 'failed':
+                self._logger.error('BOOTSTRAP FAILED!')
+                # Get all the logs on failure
+                self.run_command(
+                    'cat /tmp/bs_logs/*'
+                )
+                raise RuntimeError('Bootstrap failed.')
             else:
-                # To aid in troubleshooting (e.g. where a VM runs commands too
-                # slowly)
-                fabric_ssh.run('date > /tmp/cfy_mgr_last_check_time')
-                if result == 'failed':
-                    self._logger.error('BOOTSTRAP FAILED!')
-                    # Get all the logs on failure
-                    fabric_ssh.run(
-                        'cat /tmp/bs_logs/*'
-                    )
-                    raise RuntimeError('Bootstrap failed.')
-                else:
-                    fabric_ssh.run(
-                        'tail -n5 /tmp/bs_logs/* || echo Waiting for logs'
-                    )
-                    self._logger.info('Bootstrap in progress...')
-                    return False
+                self.run_command(
+                    'tail -n5 /tmp/bs_logs/* || echo Waiting for logs'
+                )
+                self._logger.info('Bootstrap in progress...')
+                return False
 
     @only_manager
     @retrying.retry(stop_max_attempt_number=200, wait_fixed=1000)
@@ -730,15 +743,15 @@ print('{{}} {{}}'.format(distro, codename).lower())
     @retrying.retry(stop_max_attempt_number=60, wait_fixed=5000)
     def wait_for_manager(self):
         self._logger.info('Checking for starter service')
-        with self.ssh() as fabric_ssh:
-            # If we don't wait for this then tests get a bit racier
-            fabric_ssh.run(
-                "systemctl status cloudify-starter 2>&1"
-                "| grep -E '(status=0/SUCCESS)|(could not be found)'")
-            # ...and apparently we're misnaming it at the moment
-            fabric_ssh.run(
-                "systemctl status cfy-starter 2>&1"
-                "| grep -E '(status=0/SUCCESS)|(could not be found)'")
+
+        # If we don't wait for this then tests get a bit racier
+        self.run_command(
+            "systemctl status cloudify-starter 2>&1"
+            "| grep -E '(status=0/SUCCESS)|(could not be found)'")
+        # ...and apparently we're misnaming it at the moment
+        self.run_command(
+            "systemctl status cfy-starter 2>&1"
+            "| grep -E '(status=0/SUCCESS)|(could not be found)'")
 
         self._logger.info('Checking manager status')
         try:
@@ -931,69 +944,66 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     def rsync_backup(self):
         self.wait_for_ssh()
-        with self.ssh() as fabric_ssh:
-            self._logger.info(
-                'Creating Rsync backup for host {}. Might take up to 5 '
-                'minutes...'.format(self.deployment_id))
-            fabric_ssh.sudo("mkdir /cfy_backup")
-            rsync_backup_file = self._tmpdir / 'rsync_backup_{0}'.format(
-                self.ip_address)
-            backup_commands = ''
-            for location in RSYNC_LOCATIONS:
-                backup_commands += \
-                    'sudo rsync -aAHX {} /cfy_backup && '.format(location)
-            rsync_backup_file.write_text(
-                "(" + backup_commands + "touch /tmp/rsync_backup_complete) "
-                "|| touch /tmp/rsync_backup_failed &")
-            self.put_remote_file('/tmp/rsync_backup_script', rsync_backup_file)
-            fabric_ssh.run('nohup bash /tmp/rsync_backup_script &>/dev/null &')
+        self._logger.info(
+            'Creating Rsync backup for host {}. Might take up to 5 '
+            'minutes...'.format(self.deployment_id))
+        self.run_command("mkdir /cfy_backup", use_sudo=True)
+        rsync_backup_file = self._tmpdir / 'rsync_backup_{0}'.format(
+            self.ip_address)
+        backup_commands = ''
+        for location in RSYNC_LOCATIONS:
+            backup_commands += \
+                'sudo rsync -aAHX {} /cfy_backup && '.format(location)
+        rsync_backup_file.write_text(
+            "(" + backup_commands + "touch /tmp/rsync_backup_complete) "
+            "|| touch /tmp/rsync_backup_failed &")
+        self.put_remote_file('/tmp/rsync_backup_script', rsync_backup_file)
+        self.run_command('nohup bash /tmp/rsync_backup_script &>/dev/null &')
 
     def rsync_restore(self):
         # Revert install config to avoid leaking state between tests
         if self.is_manager:
             self.install_config = copy.deepcopy(self.basic_install_config)
-        with self.ssh() as fabric_ssh:
-            if self.is_manager:
-                self.stop_manager_services()
-                self._logger.info('Cleaning profile/CA dir from home dir')
-                self.run_command('rm -rf ~/.cloudify*')
-                self._logger.info('Cleaning root cloudify profile')
-                self.run_command('sudo rm -rf /root/.cloudify')
-                self.clean_local_rest_ca()
-            self._logger.info(
-                'Restoring from an Rsync backup for host {}. Might take '
-                'up to 1 minute...'.format(self.deployment_id))
-            rsync_restore_file = self._tmpdir / 'rsync_restore_{0}'.format(
-                self.ip_address)
-            rsync_restore_file.write_text(
-                "(sudo rsync -aAHX /cfy_backup/* / --delete "
-                "&& touch /tmp/rsync_restore_complete) "
-                "|| touch /tmp/rsync_restore_failed &")
-            self.put_remote_file('/tmp/rsync_restore_script',
-                                 rsync_restore_file)
-            fabric_ssh.run('nohup bash /tmp/rsync_restore_script '
-                           '&>/dev/null &')
+        if self.is_manager:
+            self.stop_manager_services()
+            self._logger.info('Cleaning profile/CA dir from home dir')
+            self.run_command('rm -rf ~/.cloudify*')
+            self._logger.info('Cleaning root cloudify profile')
+            self.run_command('sudo rm -rf /root/.cloudify')
+            self.clean_local_rest_ca()
+        self._logger.info(
+            'Restoring from an Rsync backup for host {}. Might take '
+            'up to 1 minute...'.format(self.deployment_id))
+        rsync_restore_file = self._tmpdir / 'rsync_restore_{0}'.format(
+            self.ip_address)
+        rsync_restore_file.write_text(
+            "(sudo rsync -aAHX /cfy_backup/* / --delete "
+            "&& touch /tmp/rsync_restore_complete) "
+            "|| touch /tmp/rsync_restore_failed &")
+        self.put_remote_file('/tmp/rsync_restore_script',
+                             rsync_restore_file)
+        self.run_command('nohup bash /tmp/rsync_restore_script '
+                         '&>/dev/null &')
 
     def async_command_is_complete(self, process_name):
-        with self.ssh() as fabric_ssh:
-            result = fabric_ssh.run(
-                'if [[ -f /tmp/{0}_complete ]]; then echo done; '
-                'elif [[ -f /tmp/{0}_failed ]]; then echo failed; '
-                'else echo not done; '
-                'fi'.format(process_name.replace(' ', '_').lower())
-            ).stdout.strip()
-            if result == 'done':
-                self._logger.info('{0} complete for host {1}!'
-                                  .format(process_name, self.deployment_id))
-                return True
-            elif result == 'failed':
-                self._logger.error('{0} FAILED for host {1}!'
-                                   .format(process_name, self.deployment_id))
-                raise RuntimeError('{} failed.'.format(process_name))
-            else:
-                self._logger.info('Still performing {0} on host {1}...'
-                                  .format(process_name, self.deployment_id))
-                return False
+        result = self.run_command(
+            'if [[ -f /tmp/{0}_complete ]]; then echo done; '
+            'elif [[ -f /tmp/{0}_failed ]]; then echo failed; '
+            'else echo not done; '
+            'fi'.format(process_name.replace(' ', '_').lower())
+        ).stdout.strip()
+        if result == 'done':
+            self._logger.info('{0} complete for host {1}!'
+                              .format(process_name, self.deployment_id))
+            return True
+        elif result == 'failed':
+            self._logger.error('{0} FAILED for host {1}!'
+                               .format(process_name, self.deployment_id))
+            raise RuntimeError('{} failed.'.format(process_name))
+        else:
+            self._logger.info('Still performing {0} on host {1}...'
+                              .format(process_name, self.deployment_id))
+            return False
 
 
 class Hosts(object):
