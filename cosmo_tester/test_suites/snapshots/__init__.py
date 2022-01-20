@@ -214,8 +214,8 @@ def test_user(username, password, manager, logger):
 
 
 def get_security_conf(manager):
-    with manager.ssh() as fabric_ssh:
-        output = fabric_ssh.sudo('cat /opt/manager/rest-security.conf').stdout
+    output = manager.run_command('cat /opt/manager/rest-security.conf',
+                                 use_sudo=True).stdout
     # No real error checking here; the old manager shouldn't be able to even
     # start the rest service if this file isn't json.
     return json.loads(output)
@@ -234,16 +234,17 @@ def change_salt(manager, new_salt, logger):
     security_conf['hash_salt'] = new_salt
 
     logger.info('Applying new salt...')
-    with manager.ssh() as fabric_ssh:
-        fabric_ssh.sudo(
-            "sed -i 's:{original}:{replacement}:' "
-            "/opt/manager/rest-security.conf".format(
-                original=original_salt,
-                replacement=new_salt,
-            )
-        )
+    manager.run_command(
+        "sed -i 's:{original}:{replacement}:' "
+        "/opt/manager/rest-security.conf".format(
+            original=original_salt,
+            replacement=new_salt,
+        ),
+        use_sudo=True,
+    )
 
-        fabric_ssh.sudo('supervisorctl restart cloudify-restservice')
+    manager.run_command('supervisorctl restart cloudify-restservice',
+                        use_sudo=True)
 
     logger.info('Fixing admin credentials...')
     fix_admin_account(manager, new_salt, logger)
@@ -263,33 +264,36 @@ def check_deployments(manager, expected_state, logger):
 
         _log('Checking deployments', logger, tenant)
         # Now make sure the envs were recreated
-        with manager.ssh() as fabric_ssh:
-            for deployment in deployments:
-                path = DEPLOYMENT_ENVIRONMENT_PATH.format(
-                    tenant=tenant,
+        for deployment in deployments:
+            path = DEPLOYMENT_ENVIRONMENT_PATH.format(
+                tenant=tenant,
+                name=deployment,
+            )
+            logger.info(
+                'Checking deployment env for {name} was recreated.'.format(
                     name=deployment,
                 )
-                logger.info(
-                    'Checking deployment env for {name} was recreated.'.format(
-                        name=deployment,
-                    )
-                )
-                # To aid troubleshooting when the following line fails
-                _log('Listing deployments path', logger, tenant)
-                fabric_ssh.sudo('ls -la {path}'.format(
+            )
+            # To aid troubleshooting when the following line fails
+            _log('Listing deployments path', logger, tenant)
+            manager.run_command(
+                'ls -la {path}'.format(
                     path=TENANT_DEPLOYMENTS_PATH.format(
                         tenant=tenant,
                     ),
-                ))
-                _log(
-                    'Checking deployment path for {name}'.format(
-                        name=deployment,
-                    ),
-                    logger,
-                    tenant,
-                )
-                fabric_ssh.sudo('test -d {path}'.format(path=path))
-                logger.info('Deployment environment was recreated.')
+                ),
+                use_sudo=True,
+            )
+            _log(
+                'Checking deployment path for {name}'.format(
+                    name=deployment,
+                ),
+                logger,
+                tenant,
+            )
+            manager.run_command('test -d {path}'.format(path=path),
+                                use_sudo=True)
+            logger.info('Deployment environment was recreated.')
         _log('Found correct deployments', logger, tenant)
 
 
@@ -309,9 +313,9 @@ def verify_services_status(manager, logger):
         extra_info = service.get('extra_info', {})
         systemd = extra_info.get('systemd', {})
         for instance in systemd.get('instances', []):
-            with manager.ssh() as fabric:
-                logs = fabric.sudo('journalctl -u {0} -n 20 --no-pager'
-                                   .format(instance['Id'])).stdout
+            logs = manager.run_command(
+                'journalctl -u {0} -n 20 --no-pager'.format(instance['Id']),
+                use_sudo=True).stdout
             logger.info('Journald logs of the failing service:')
             logger.info(logs)
             raise Exception('Service {0} is in status {1}'.

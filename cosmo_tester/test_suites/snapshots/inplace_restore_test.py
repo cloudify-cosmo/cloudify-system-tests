@@ -66,10 +66,9 @@ def test_inplace_restore(manager_and_vm,
     manager.run_command('cp /etc/cloudify/ssl/* /tmp/ssl_backup',
                         use_sudo=True)
     manager.teardown()
-    with manager.ssh() as fabric_ssh:
-        # The teardown doesn't properly clean up rabbitmq
-        fabric_ssh.sudo('pkill -f rabbitmq')
-        fabric_ssh.sudo('rm -rf /var/lib/rabbitmq')
+    # The teardown doesn't properly clean up rabbitmq
+    manager.run_command('pkill -f rabbitmq', use_sudo=True)
+    manager.run_command('rm -rf /var/lib/rabbitmq', use_sudo=True)
     manager.install_config['rabbitmq'] = {
         'ca_path': '/tmp/ssl_backup/cloudify_internal_ca_cert.pem',
         'cert_path': '/tmp/ssl_backup/rabbitmq-cert.pem',
