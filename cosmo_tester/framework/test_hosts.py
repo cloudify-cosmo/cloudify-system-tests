@@ -55,6 +55,9 @@ def ensure_conn(func):
             return func(self, *args, **kwargs)
         if self._conn is None:
             _make_connection(self)
+        # SFTP session gets cached and breaks after reboots or conn drops.
+        # Someone has a PR to fabric in-flight since Nov 2021.
+        self._conn._sftp = None
         try:
             self._conn.transport.send_ignore()
         except Exception as err:
