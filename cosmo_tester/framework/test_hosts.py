@@ -20,7 +20,7 @@ with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     from fabric import Connection
 from ipaddress import ip_address, ip_network
-from paramiko.ssh_exception import NoValidConnectionsError, SSHException
+from paramiko.ssh_exception import SSHException
 import requests
 import retrying
 import textwrap
