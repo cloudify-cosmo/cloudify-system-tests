@@ -53,17 +53,17 @@ def ensure_conn(func):
         if self.windows:
             # We don't maintain a conn for windows currently
             return func(self, *args, **kwargs)
-        if self._conn is None:
+        if self._conn is None or self._conn.transport is None:
             _make_connection(self)
         # SFTP session gets cached and breaks after reboots or conn drops.
         # Someone has a PR to fabric in-flight since Nov 2021.
         self._conn._sftp = None
         try:
-            self._conn.transport.send_ignore()
+            self._conn.transport.open_session().close()
         except Exception as err:
             self._logger.warning('SSH connection failure: %s', err)
             _make_connection(self)
-            self._conn.transport.send_ignore()
+            self._conn.transport.open_session().close()
         return func(self, *args, **kwargs)
     return wrapped
 
