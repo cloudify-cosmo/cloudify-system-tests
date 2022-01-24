@@ -259,17 +259,16 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         self.run_command('shutdown -h now', warn_only=True, use_sudo=True)
         while True:
             try:
-                self.run_command('echo Still up...')
+                self.log_action('Checking connection')
                 time.sleep(3)
             except (SSHException, socket.timeout, EOFError, TimeoutError):
                 # Errors like 'Connection reset by peer' can occur during the
                 # shutdown, but we should wait a little longer to give other
                 # services time to stop
                 time.sleep(3)
-                continue
-            except NoValidConnectionsError:
+            if not self._conn.is_connected:
                 # By this point everything should be down.
-                self._logger.info('Server stopped.')
+                self.log_action('Server stopped')
                 break
 
     def finalize_preparation(self):
