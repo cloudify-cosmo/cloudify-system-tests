@@ -32,7 +32,7 @@ chardet==4.0.0
     # via aiohttp
 charset-normalizer==2.0.7
     # via requests
-cloudify-common @ https://github.com/cloudify-cosmo/cloudify-common/archive/master.zip
+cloudify-common @ https://github.com/cloudify-cosmo/cloudify-common/archive/6.3.0-build.zip
     # via -r requirements.in
 cryptography==35.0.0
     # via
