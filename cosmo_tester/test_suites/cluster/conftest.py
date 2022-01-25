@@ -411,7 +411,7 @@ def _get_hosts(instances, test_config, logger,
     if bootstrap:
         run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                               pre_cluster_rabbit, high_security,
-                              use_hostnames, tempdir, test_config, logger)
+                              use_hostnames, tempdir, test_config)
 
     if use_load_balancer:
         _bootstrap_lb_node(lb, managers, tempdir)
