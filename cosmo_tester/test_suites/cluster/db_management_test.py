@@ -73,7 +73,8 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     _check_db_count(mgr1, mgr2, mgr3, db3, all_present=False)
 
     logger.info('Adding extra DB')
-    db3.bootstrap(blocking=True, restservice_expected=False)
+    db3.bootstrap(blocking=True, restservice_expected=False,
+                  config_name='db')
     mgr1.run_command('cfy_manager dbs add -a {} '
                      '-c /etc/cloudify/manager_config.yaml'.format(
                          db3.private_ip_address))
