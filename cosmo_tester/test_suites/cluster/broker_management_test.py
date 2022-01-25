@@ -225,7 +225,8 @@ def test_add(brokers, logger):
     logger.info('Unresolvable join failed correctly.')
 
     logger.info('Attempting to add with different erlang cookie.')
-    brokers[2].run_command('cfy_manager remove --force')
+    brokers[2].run_command(
+        'cfy_manager remove -c /etc/cloudify/rabbit_config.yaml')
     brokers[2].run_command(
         "sudo sed -i 's/erlang_cookie:.*/erlang_cookie: different/' "
         "/etc/cloudify/rabbit_config.yaml"
