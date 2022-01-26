@@ -4,16 +4,13 @@ from cloudify.cluster_status import ServiceStatus, NodeServiceStatus
 from cloudify_rest_client.exceptions import CloudifyClientError
 
 
-def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
-    logger.info('Stopping syncthing on one of the manager nodes')
-    mgr1.run_command('supervisorctl stop cloudify-syncthing', use_sudo=True)
-    _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger)
-
-
 # It can take time for prometheus state to update.
 # Thirty seconds should be much more than enough.
 @retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
-def _validate_cluster_status_reporter_syncthing(mgr1, mgr2, logger):
+def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
+    logger.info('Stopping syncthing on one of the manager nodes')
+    mgr1.run_command('supervisorctl stop cloudify-syncthing', use_sudo=True)
+
     logger.info('Checking status reporter with syncthing down...')
 
     # Syncthing is down, mgr1 in Fail state
