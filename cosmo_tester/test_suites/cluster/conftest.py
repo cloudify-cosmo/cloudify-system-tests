@@ -1,4 +1,3 @@
-import copy
 import os
 import time
 
@@ -424,21 +423,16 @@ def _get_hosts(instances, test_config, logger,
 
 def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                           pre_cluster_rabbit, high_security, use_hostnames,
-                          tempdir, test_config,
-                          revert_install_config=False, credentials=None):
+                          tempdir, test_config, credentials=None):
     for node_num, node in enumerate(brokers, start=1):
         _bootstrap_rabbit_node(node, node_num, brokers,
                                skip_bootstrap_list, pre_cluster_rabbit,
                                tempdir, use_hostnames, credentials)
-        if revert_install_config:
-            node.install_config = copy.deepcopy(node.basic_install_config)
 
     for node_num, node in enumerate(dbs, start=1):
         _bootstrap_db_node(node, node_num, dbs, skip_bootstrap_list,
                            high_security, tempdir,
                            use_hostnames, credentials)
-        if revert_install_config:
-            node.install_config = copy.deepcopy(node.basic_install_config)
 
     # Ensure all backend nodes are up before installing managers
     for node in brokers + dbs:
@@ -454,8 +448,6 @@ def run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                                 pre_cluster_rabbit, high_security,
                                 tempdir, test_config,
                                 use_hostnames, credentials)
-        if revert_install_config:
-            node.install_config = copy.deepcopy(node.basic_install_config)
 
 
 def _base_prep(node, tempdir):
