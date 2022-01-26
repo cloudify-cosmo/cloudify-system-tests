@@ -1,3 +1,4 @@
+from math import ceil
 import time
 
 import pytest
@@ -194,9 +195,11 @@ def _check_execution_completed(manager, example, logger):
     logger.info('Install workflow complete!')
 
 
-def _wait_for_healthy_broker_cluster(client, timeout=15):
-    for _ in range(timeout):
-        time.sleep(2)
+def _wait_for_healthy_broker_cluster(client, timeout=60):
+    delay = 2.0
+    retries = ceil(timeout / delay)
+    for _ in range(retries):
+        time.sleep(delay)
         cluster_status = client.cluster_status.get_status()
         if cluster_status['services']['broker']['status'] == \
                 ServiceStatus.HEALTHY:
