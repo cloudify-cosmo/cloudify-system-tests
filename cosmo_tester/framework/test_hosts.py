@@ -954,8 +954,10 @@ print('{{}} {{}}'.format(distro, codename).lower())
             self.ip_address)
         backup_commands = ''
         for location in RSYNC_LOCATIONS:
-            backup_commands += \
-                'sudo rsync -aAHX {} /cfy_backup && '.format(location)
+            backup_commands += (
+                'sudo rsync -aAHX {} /cfy_backup '
+                '> /tmp/rsync_backup.log 2>&1 && '.format(location)
+            )
         rsync_backup_file.write_text(
             "(" + backup_commands + "touch /tmp/rsync_backup_complete) "
             "|| touch /tmp/rsync_backup_failed &")
@@ -980,6 +982,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             self.ip_address)
         rsync_restore_file.write_text(
             "(sudo rsync -aAHX /cfy_backup/* / --delete "
+            "> /tmp/rsync_restore.log 2>&1 "
             "&& touch /tmp/rsync_restore_complete) "
             "|| touch /tmp/rsync_restore_failed &")
         self.put_remote_file('/tmp/rsync_restore_script',
@@ -988,11 +991,12 @@ print('{{}} {{}}'.format(distro, codename).lower())
                          '&>/dev/null &')
 
     def async_command_is_complete(self, process_name):
+        unfriendly_name = process_name.replace(' ', '_').lower()
         result = self.run_command(
             'if [[ -f /tmp/{0}_complete ]]; then echo done; '
             'elif [[ -f /tmp/{0}_failed ]]; then echo failed; '
             'else echo not done; '
-            'fi'.format(process_name.replace(' ', '_').lower())
+            'fi'.format(unfriendly_name)
         ).stdout.strip()
         if result == 'done':
             self._logger.info('{0} complete for host {1}!'
@@ -1001,6 +1005,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
         elif result == 'failed':
             self._logger.error('{0} FAILED for host {1}!'
                                .format(process_name, self.deployment_id))
+            self.run_command(f'cat /tmp/{unfriendly_name}.log',
+                             warn_only=True)
             raise RuntimeError('{} failed.'.format(process_name))
         else:
             self._logger.info('Still performing {0} on host {1}...'
