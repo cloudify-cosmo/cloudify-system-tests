@@ -1,14 +1,10 @@
 namespace: package_urls
-community:
-  description: Path relative to root of repo to local copy of repository containing package URLs for community. This should probably be the cloudify-version repo.
-  default: ../cloudify-versions
-  validate_existing_dir: true
-  nullable: true
-premium:
-  description: Path relative to root of repo to local copy of repository containing package URLs for premium. This should probably be the cloudify-premium repo, or 'null' if testing community.
-  default: ../cloudify-premium
-  validate_optional_dir: true
-  nullable: true
 manager_install_rpm_path:
   description: The manager-install RPM path to install.
   default: 'https://repository.cloudifysource.org/cloudify/{mangled_testing_version}-release/cloudify-manager-install-{testing_version}.el7.x86_64.rpm'
+windows_cli_path:
+  description: The path to the windows CLI for testing.
+  default: 'http://cloudify-release-eu.s3.amazonaws.com/cloudify/{mangled_testing_version}-release/cloudify-windows-cli_{testing_version}.exe'
+rhel_cli_path:
+  description: The path to the RHEL/centos CLI for testing.
+  default: 'http://cloudify-release-eu.s3.amazonaws.com/cloudify/{mangled_testing_version}-release/cloudify-cli-{testing_version}.el7.x86_64.rpm'

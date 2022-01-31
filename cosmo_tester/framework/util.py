@@ -11,7 +11,6 @@ import socket
 import subprocess
 import sys
 import time
-import yaml
 
 from cloudify_rest_client import CloudifyClient
 from cloudify_rest_client.exceptions import (
@@ -20,7 +19,6 @@ from cloudify_rest_client.exceptions import (
 )
 from cloudify.cluster_status import ServiceStatus
 
-import cosmo_tester
 from cosmo_tester import resources
 from cosmo_tester.framework.constants import CLOUDIFY_TENANT_HEADER
 from cosmo_tester.framework.exceptions import ProcessExecutionError
@@ -96,42 +94,14 @@ def test_cli_package_url(url):
 
 
 def get_cli_package_url(platform, test_config):
-    # Override URLs if they are provided in the config
-    config_cli_urls = test_config['cli_urls_override']
-
-    if config_cli_urls.get(platform):
-        url = config_cli_urls[platform]
-    else:
-        if test_config['premium']:
-            filename = 'cli-premium-packages.yaml'
-            packages_key = 'cli_premium_packages_urls'
-        else:
-            filename = 'cli-packages.yaml'
-            packages_key = 'cli_packages_urls'
-        url = yaml.safe_load(_get_package_url(filename, test_config))[
-            packages_key][platform]
+    url = substitute_testing_version(
+        test_config['package_urls'][f'{platform}_cli_path'],
+        test_config['testing_version'],
+    )
 
     test_cli_package_url(url)
 
     return url
-
-
-def _get_package_url(filename, test_config):
-    """Gets the package URL(s) from the local premium or versions repo.
-    See the package_urls section of the test config for details.
-    """
-    package_urls_key = 'premium' if test_config['premium'] else 'community'
-
-    package_url_file = os.path.abspath(
-        os.path.join(
-            os.path.dirname(cosmo_tester.__file__), '..',
-            test_config['package_urls'][package_urls_key],
-            'packages-urls', filename,
-        )
-    )
-
-    with open(package_url_file) as package_url_handle:
-        return package_url_handle.read()
 
 
 @retrying.retry(stop_max_attempt_number=20, wait_fixed=5000)
