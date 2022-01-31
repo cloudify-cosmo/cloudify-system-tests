@@ -22,12 +22,6 @@ You will need to know the address of this manager and its admin password.
 This manager will need to have network access to the platform you wish it to manage.
 This manager will need to have the necessary plugin for your platform uploaded and shared with visibility set to global.
 
-You will also need to have checked out the following repositories:
-For all tests: cloudify-versions
-For premium tests: cloudify-premium
-For UI tests: cloudify-blueprint-composer, cloudify-stage
-They are expected to exist in the same directory that the cloudify-system-tests directory exists, but this can be changed in the config.
-
 The test framework assumes that manager images will exist, as defined in the schema.
 To see expected image name structure, look in the config under manager_image_names.
 

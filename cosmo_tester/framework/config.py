@@ -199,35 +199,6 @@ class Config(NameSpace):
                             )
                             config_valid = False
 
-                    validate_dir = schema[key].get('validate_existing_dir')
-                    if validate_dir:
-                        if not os.path.isdir(key_value):
-                            self._logger.error(
-                                '{key} is set to "{value}". This key must '
-                                'refer to a directory which exists, but the '
-                                'specified path is not a directory.'.format(
-                                    key=display_key,
-                                    value=key_value,
-                                )
-                            )
-                            config_valid = False
-
-                    validate_optional_dir = schema[key].get(
-                        'validate_optional_dir')
-                    if validate_optional_dir:
-                        key_value = None if key_value is NotSet else key_value
-                        if key_value and not os.path.isdir(key_value):
-                            self._logger.error(
-                                '{key} is set to "{value}". If set, this key '
-                                'must refer to a directory which exists, but '
-                                'the specified path is not a directory.'
-                                .format(
-                                    key=display_key,
-                                    value=key_value,
-                                )
-                            )
-                            config_valid = False
-
                     if key_value is None and not schema[key].get('nullable'):
                         self._logger.error(
                             "{key} is not set, but is not nullable.".format(
