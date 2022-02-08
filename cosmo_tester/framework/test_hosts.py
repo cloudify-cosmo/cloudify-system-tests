@@ -952,14 +952,19 @@ print('{{}} {{}}'.format(distro, codename).lower())
         self.run_command("mkdir /cfy_backup", use_sudo=True)
         rsync_backup_file = self._tmpdir / 'rsync_backup_{0}'.format(
             self.ip_address)
-        backup_commands = ''
-        for location in RSYNC_LOCATIONS:
-            backup_commands += (
-                'sudo rsync -aAHX {} /cfy_backup '
-                '> /tmp/rsync_backup.log 2>&1 && '.format(location)
-            )
+        locations = ' '.join(RSYNC_LOCATIONS)
+        backup_commands = (
+            f'sudo rsync -aAHX {locations} /cfy_backup '
+            '> /tmp/rsync_backup.log 2>&1 '
+            '; res=$? '
+            # An exit code of 24 means files vanished during copy. This is
+            # something that will happen occasionally and we should not
+            # treat it as a failure.
+            '; [[ $res -eq 24 ]] && res=0 '
+            '; [[ $res -eq 0 ]] && touch /tmp/rsync_backup_complete'
+        )
         rsync_backup_file.write_text(
-            "(" + backup_commands + "touch /tmp/rsync_backup_complete) "
+            "(" + backup_commands + ") "
             "|| touch /tmp/rsync_backup_failed &")
         self.put_remote_file('/tmp/rsync_backup_script', rsync_backup_file)
         self.run_command('nohup bash /tmp/rsync_backup_script &>/dev/null &')
