@@ -566,7 +566,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
         self.client.license.upload(license)
 
     @only_manager
-    def _apply_override(self, override_name):
+    def apply_override(self, override_name):
         override_path = self._test_config['override'][override_name]
         if not override_path:
             self._logger.info('No override set for %s', override_name)
@@ -625,7 +625,11 @@ print('{{}} {{}}'.format(distro, codename).lower())
             self.install_config['sanity']['skip_sanity'] = False
         self.wait_for_ssh()
 
-        self._apply_override('cloudify_manager_install')
+        if self.image_type == 'master':
+            # Only apply the overrides to the version being tested.
+            # The others were already released, don't pretend changing them is
+            # reasonable.
+            self.apply_override('cloudify_manager_install')
 
         self.restservice_expected = restservice_expected
         install_config = self._create_config_file(
