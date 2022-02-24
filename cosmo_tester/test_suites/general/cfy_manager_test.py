@@ -145,6 +145,7 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
         ),
         use_sudo=True,
     )
+    base_manager.apply_override('cloudify_manager_install')
 
     logger.info('Upgrading manager')
     base_manager.run_command('cfy_manager upgrade -v')
