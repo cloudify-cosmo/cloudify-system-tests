@@ -43,7 +43,7 @@ centos_7_image:
   default: ami-04f5641b0d178a27a
 windows_2012_image:
   description: Image to use for Windows 2012 on this platform.
-  default: ami-0881437e28c7f4afe
+  default: ami-06c4a5c1fc6355783
 rhel_username_override:
   description: Override to use because redhat like using different usernames on different cloud platforms.
   default: ec2-user
