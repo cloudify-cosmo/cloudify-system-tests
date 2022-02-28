@@ -747,6 +747,6 @@ def rsync_restore(nodes):
 
 def generate_password():
     charset = ascii_uppercase + ascii_lowercase + digits
-    return ''.join([
+    return ''.join(
         random.choice(charset) for _ in range(30)
-    ])
+    )
