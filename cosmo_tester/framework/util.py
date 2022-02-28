@@ -1,9 +1,11 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from string import ascii_lowercase, ascii_uppercase, digits
 import errno
 import glob
 import logging
 import os
+import random
 import requests
 import retrying
 import shlex
@@ -741,3 +743,10 @@ def rsync_restore(nodes):
             time.sleep(3)
         node.log_action('Rsync restore complete')
         node.reboot_required = True
+
+
+def generate_password():
+    charset = ascii_uppercase + ascii_lowercase + digits
+    return ''.join(
+        random.choice(charset) for _ in range(30)
+    )

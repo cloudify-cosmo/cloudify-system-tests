@@ -104,6 +104,17 @@ class VM(object):
         self._set_image_details()
         if self.windows:
             self.prepare_for_windows()
+        if self.is_manager:
+            self.basic_install_config = {
+                'manager': {
+                    'security': {
+                        'admin_username': self._test_config[
+                            'test_manager']['username'],
+                        'admin_password': util.generate_password(),
+                    },
+                },
+                'sanity': {'skip_sanity': True},
+            }
 
     def assign(
             self,
@@ -132,21 +143,12 @@ class VM(object):
         self.friendly_name = '{} ({})'.format(server_id, private_ip_address)
         self.server_index = server_index
         if self.is_manager:
+            self.basic_install_config['manager']['public_ip'] = \
+                str(public_ip_address)
+            self.basic_install_config['manager']['private_ip'] = \
+                str(private_ip_address)
+            self.basic_install_config['manager']['hostname'] = str(server_id)
             self.networks = networks
-            self.basic_install_config = {
-                'manager': {
-                    'public_ip': str(public_ip_address),
-                    'private_ip': str(private_ip_address),
-                    'hostname': str(server_id),
-                    'security': {
-                        'admin_username': self._test_config[
-                            'test_manager']['username'],
-                        'admin_password': self._test_config[
-                            'test_manager']['password'],
-                    },
-                },
-                'sanity': {'skip_sanity': True},
-            }
             self.install_config = copy.deepcopy(self.basic_install_config)
         self._create_conn_script()
         self._conn = None
@@ -789,7 +791,10 @@ print('{{}} {{}}'.format(distro, codename).lower())
                         proto='auto', download_ca=True):
         test_mgr_conf = self._test_config['test_manager']
         username = username or test_mgr_conf['username']
-        password = password or test_mgr_conf['password']
+        password = (
+            password
+            or self.install_config['manager']['security']['admin_password']
+        )
         tenant = tenant or test_mgr_conf['tenant']
 
         if proto == 'auto':

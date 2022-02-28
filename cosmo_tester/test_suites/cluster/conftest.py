@@ -338,6 +338,8 @@ def _get_hosts(instances, test_config, logger,
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
 
+    cluster_password = util.generate_password()
+
     if len(instances) != number_of_instances:
         raise InsufficientVmsError('Required %s instances, but got %s',
                                    number_of_instances, instances)
@@ -370,6 +372,13 @@ def _get_hosts(instances, test_config, logger,
         node.run_command('sudo hostnamectl set-hostname {}'.format(
             name_mappings[idx]
         ))
+        for inst_config in node.basic_install_config, node.install_config:
+            inst_config.setdefault(
+                'manager', {}).setdefault(
+                'security', {})['admin_password'] = cluster_password
+            # Without this, comparing managers listed by cluster status will
+            # fail because they will have the actual VM hostnames
+            inst_config['manager']['hostname'] = node.hostname
 
     if use_hostnames:
         hosts_entries = ['\n# Added for hostname test']
@@ -664,13 +673,10 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
             }
         }
 
-    node.install_config['manager'] = {
-        'private_ip': str(node.private_ip_address),
-        'public_ip': str(node.private_ip_address),
-        'security': {
-            'admin_password': test_config['test_manager']['password'],
-        },
-    }
+    node.install_config['manager']['private_ip'] = \
+        str(node.private_ip_address)
+    node.install_config['manager']['public_ip'] = \
+        str(node.ip_address)
     node.install_config['rabbitmq'] = {
         'ca_path': '/tmp/ca.crt',
         'cluster_members': rabbit_nodes,
