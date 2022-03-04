@@ -372,13 +372,14 @@ def _get_hosts(instances, test_config, logger,
         node.run_command('sudo hostnamectl set-hostname {}'.format(
             name_mappings[idx]
         ))
-        for inst_config in node.basic_install_config, node.install_config:
-            inst_config.setdefault(
-                'manager', {}).setdefault(
-                'security', {})['admin_password'] = cluster_password
-            # Without this, comparing managers listed by cluster status will
-            # fail because they will have the actual VM hostnames
-            inst_config['manager']['hostname'] = node.hostname
+        if node.is_manager:
+            for inst_config in node.basic_install_config, node.install_config:
+                inst_config.setdefault(
+                    'manager', {}).setdefault(
+                    'security', {})['admin_password'] = cluster_password
+                # Without this, comparing managers listed by cluster status
+                # will fail because they will have the actual VM hostnames
+                inst_config['manager']['hostname'] = node.hostname
 
     if use_hostnames:
         hosts_entries = ['\n# Added for hostname test']
