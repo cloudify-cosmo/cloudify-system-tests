@@ -197,9 +197,9 @@ def update_credentials(manager, logger, admin_password):
     logger.info('Updating manager CLI credentials')
     # Skip validating the credentials because the manager will be mid restore
     # when we are setting this
-    manager.run_command('cfy profiles set --manager-password {} '
-                        '--skip-credentials-validation'.format(
-                        admin_password))
+    manager.run_command(
+        'cfy profiles set --manager-password {} '
+        '--skip-credentials-validation'.format(admin_password))
 
 
 def check_credentials(manager, logger):
