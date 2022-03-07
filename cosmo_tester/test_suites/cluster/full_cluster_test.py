@@ -64,13 +64,16 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
     check_managers(mgr1, mgr2, example)
 
 
+# TODO: This test puts a manager with password 'admin' on the internet, it
+# should be purged as soon as we can drop support for 5.0.5.
 @pytest.mark.nine_vms
 def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
     snapshot_id = 'snap_5.0.5_with_capabilities'
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips
     _upload_snapshot_from_resource(mgr1, logger, snapshot_id)
-    restore_snapshot(mgr1, snapshot_id, logger, change_manager_password=False)
+    restore_snapshot(mgr1, snapshot_id, logger,
+                     admin_password='admin')
     wait_for_restore(mgr1, logger)
     _verify_uninstall_idd_guards(mgr1, logger, 'capable', 'infra')
 

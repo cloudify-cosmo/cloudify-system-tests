@@ -83,14 +83,14 @@ def create_copy_and_restore_snapshot(old_manager, new_manager,
                                      logger,
                                      wait_for_post_restore_commands=True,
                                      cert_path=None,
-                                     change_manager_password=True):
+                                     admin_password=CHANGED_ADMIN_PASSWORD):
     create_snapshot(old_manager, SNAPSHOT_ID, logger)
     download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)
     upload_snapshot(new_manager, local_snapshot_path, SNAPSHOT_ID, logger)
     restore_snapshot(
         new_manager, SNAPSHOT_ID, logger,
         wait_for_post_restore_commands=wait_for_post_restore_commands,
-        cert_path=cert_path, change_manager_password=change_manager_password)
+        cert_path=cert_path, admin_password=admin_password)
     wait_for_restore(new_manager, logger)
 
 
@@ -126,7 +126,7 @@ def _retry_if_file_not_found(exception):
 def restore_snapshot(manager, snapshot_id, logger,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
-                     wait_timeout=20, change_manager_password=True,
+                     wait_timeout=20, admin_password=CHANGED_ADMIN_PASSWORD,
                      cert_path=None, blocking=True):
     list_snapshots(manager, logger)
 
@@ -143,6 +143,7 @@ def restore_snapshot(manager, snapshot_id, logger,
         # let's try to give less activity
         sleep(60)
         completed = False
+        password_reset = False
         try:
             # Retry while the password is still being reset
             attempt = 0
@@ -158,10 +159,10 @@ def restore_snapshot(manager, snapshot_id, logger,
                 except UserUnauthorizedError:
                     # We may see this exception even without the password
                     # being changed due to rest-security.conf updates
-                    if change_manager_password:
-                        change_rest_client_password(manager,
-                                                    CHANGED_ADMIN_PASSWORD)
-                        change_manager_password = False
+                    if not password_reset:
+                        change_rest_client_password(manager, admin_password)
+                        update_credentials(manager, logger, admin_password)
+                        password_reset = True
                     sleep(2)
                     attempt += 1
         except ExecutionFailed:
@@ -190,12 +191,15 @@ def prepare_credentials_tests(manager, logger):
     change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
-def update_credentials(manager, logger):
+def update_credentials(manager, logger, admin_password):
     logger.info('Changing to modified admin credentials')
-    change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
+    change_rest_client_password(manager, admin_password)
     logger.info('Updating manager CLI credentials')
-    manager.run_command('cfy profiles set --manager-password {}'.format(
-                        CHANGED_ADMIN_PASSWORD))
+    # Skip validating the credentials because the manager will be mid restore
+    # when we are setting this
+    manager.run_command('cfy profiles set --manager-password {} '
+                        '--skip-credentials-validation'.format(
+                        admin_password))
 
 
 def check_credentials(manager, logger):

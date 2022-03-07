@@ -92,7 +92,7 @@ def test_inplace_restore(manager_and_vm,
     upload_snapshot(manager, snapshot_path, snapshot_name, logger)
 
     restore_snapshot(manager, snapshot_name, logger,
-                     change_manager_password=False)
+                     admin_password=manager.mgr_password)
     manager.wait_for_manager()
 
     logger.info('Waiting 35 seconds for agents to reconnect. '
