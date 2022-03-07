@@ -122,7 +122,8 @@ def test_multiple_networks(managers_and_vms,
 
     create_copy_and_restore_snapshot(
         old_manager, new_manager, snapshot_id, local_snapshot_path, logger,
-        change_manager_password=False, wait_for_post_restore_commands=False)
+        admin_password=old_manager.mgr_password,
+        wait_for_post_restore_commands=False)
 
     upgrade_agents(new_manager, logger, test_config)
     stop_manager(old_manager, logger)

@@ -15,7 +15,6 @@ from cosmo_tester.test_suites.snapshots import (
     set_client_tenant,
     SNAPSHOT_ID,
     stop_manager,
-    update_credentials,
     upgrade_agents,
     verify_services_status,
 )
@@ -75,8 +74,6 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
         create_copy_and_restore_snapshot(
             old_mgr, new_manager, SNAPSHOT_ID, local_snapshot_path,
             logger, wait_for_post_restore_commands=False)
-
-        update_credentials(new_manager, logger)
 
         verify_services_status(new_manager, logger)
         check_credentials(new_manager, logger)

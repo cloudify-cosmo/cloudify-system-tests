@@ -426,6 +426,11 @@ print('{{}} {{}}'.format(distro, codename).lower())
             else:
                 return self._conn.run(command, warn=warn_only, hide=hide)
 
+    @property
+    @only_manager
+    def mgr_password(self):
+        return self.install_config['manager']['security']['admin_password']
+
     @only_manager
     def upload_init_script_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading init script plugin to %s', tenant_name)

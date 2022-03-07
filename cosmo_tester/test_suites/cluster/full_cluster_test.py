@@ -70,7 +70,8 @@ def test_cluster_5_0_5_snapshot_with_idd(full_cluster_ips, logger):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips
     _upload_snapshot_from_resource(mgr1, logger, snapshot_id)
-    restore_snapshot(mgr1, snapshot_id, logger, change_manager_password=False)
+    restore_snapshot(mgr1, snapshot_id, logger,
+                     admin_password='admin')
     wait_for_restore(mgr1, logger)
     _verify_uninstall_idd_guards(mgr1, logger, 'capable', 'infra')
 
