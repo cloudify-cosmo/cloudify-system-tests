@@ -11,7 +11,8 @@ def test_shared_resource(image_based_manager, ssh_key, logger, test_config):
     tenant = 'test_shared_resource'
     infra = _infra(image_based_manager, ssh_key, logger, tenant, test_config)
     app = _app(image_based_manager, ssh_key, logger, tenant, test_config,
-               blueprint_name='shared_resource')
+               blueprint_name='shared_resource',
+               client_password=image_based_manager.mgr_password)
 
     logger.info('Deploying the blueprint which contains a shared resource.')
     infra.upload_blueprint()
@@ -87,7 +88,7 @@ def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
         assert external_idd['external_source']['deployment'] == \
             source_deployment_id
         assert external_idd['external_source']['host'] == \
-            [local_mgr.private_ip_address]
+            [local_mgr.ip_address]
 
     logger.info('Verifying that uninstalling the resource is blocked because '
                 'there is a dependent deployment')
@@ -103,7 +104,7 @@ def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
         "depend",
         "EXTERNAL",
         tenant,
-        local_mgr.private_ip_address,
+        local_mgr.ip_address,
     ]
     for component in expected_error_msg_components:
         assert component in str(e.value)
