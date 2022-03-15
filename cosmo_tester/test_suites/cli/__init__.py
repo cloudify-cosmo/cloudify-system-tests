@@ -27,9 +27,10 @@ def _prepare(cli_host, example, paths, logger, include_secret=True):
 
     logger.info('Using manager')
     cli_host.run_command(
-        '{cfy} profiles use {ip} -u admin -p admin -t {tenant}{ssl}'.format(
+        '{cfy} profiles use {ip} -u admin -p {pw} -t {tenant}{ssl}'.format(
             cfy=paths['cfy'],
             ip=example.manager.private_ip_address,
+            pw=example.manager.mgr_password,
             tenant=example.tenant,
             ssl=' -ssl -c {}'.format(paths['cert']) if use_ssl else '',
         ),

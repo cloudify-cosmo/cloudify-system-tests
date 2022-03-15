@@ -39,9 +39,10 @@ def test_cfy_logs_linux_cluster(request, ssh_key, test_config, logger,
             for manager in managers:
                 log_hashes = _get_manager_log_hashes(manager, logger)
                 manager_ip = manager.private_ip_address
+                mgr_pub_ip = manager.ip_address
 
                 mgr_dump_paths = \
-                    [log_dump_paths['manager'][manager_ip]] + \
+                    [log_dump_paths['manager'][mgr_pub_ip]] + \
                     [log_dump_paths['db'][manager_ip]] + \
                     [log_dump_paths['broker'][manager_ip]]
                 for i, dump_filepath in enumerate(mgr_dump_paths):
