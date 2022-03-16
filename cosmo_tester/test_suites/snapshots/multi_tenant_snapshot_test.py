@@ -5,7 +5,6 @@ from cosmo_tester.framework.deployment_update import (
 )
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import (
-    change_salt_on_new_manager,
     check_credentials,
     check_deployments,
     confirm_manager_empty,
@@ -68,7 +67,6 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
         old_manager_state = get_manager_state(old_mgr, TENANTS, logger)
 
-        change_salt_on_new_manager(new_manager, logger)
         prepare_credentials_tests(old_mgr, logger)
 
         create_copy_and_restore_snapshot(
