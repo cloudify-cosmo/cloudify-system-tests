@@ -28,7 +28,6 @@ TENANT_DEPLOYMENTS_PATH = (
     '/opt/manager/resources/deployments/{tenant}'
 )
 DEPLOYMENT_ENVIRONMENT_PATH = TENANT_DEPLOYMENTS_PATH + '/{name}'
-CHANGED_ADMIN_PASSWORD = 'changedmin'
 
 
 def get_multi_tenant_versions_list():
@@ -82,15 +81,14 @@ def create_copy_and_restore_snapshot(old_manager, new_manager,
                                      snapshot_id, local_snapshot_path,
                                      logger,
                                      wait_for_post_restore_commands=True,
-                                     cert_path=None,
-                                     admin_password=CHANGED_ADMIN_PASSWORD):
+                                     cert_path=None):
     create_snapshot(old_manager, SNAPSHOT_ID, logger)
     download_snapshot(old_manager, local_snapshot_path, SNAPSHOT_ID, logger)
     upload_snapshot(new_manager, local_snapshot_path, SNAPSHOT_ID, logger)
     restore_snapshot(
         new_manager, SNAPSHOT_ID, logger,
         wait_for_post_restore_commands=wait_for_post_restore_commands,
-        cert_path=cert_path, admin_password=admin_password)
+        cert_path=cert_path, admin_password=old_manager.mgr_password)
     wait_for_restore(new_manager, logger)
 
 
@@ -123,11 +121,10 @@ def _retry_if_file_not_found(exception):
     stop_max_attempt_number=10,
     wait_fixed=1500,
 )
-def restore_snapshot(manager, snapshot_id, logger,
+def restore_snapshot(manager, snapshot_id, logger, admin_password,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
-                     wait_timeout=20, admin_password=CHANGED_ADMIN_PASSWORD,
-                     cert_path=None, blocking=True):
+                     wait_timeout=20, cert_path=None, blocking=True):
     list_snapshots(manager, logger)
 
     logger.info('Restoring snapshot on latest manager..')
@@ -186,9 +183,6 @@ def change_salt_on_new_manager(manager, logger):
 def prepare_credentials_tests(manager, logger):
     logger.info('Creating test user')
     create_user('testuser', 'testpass', manager)
-    logger.info('Updating admin password')
-    manager.client.users.set_password('admin', CHANGED_ADMIN_PASSWORD)
-    change_rest_client_password(manager, CHANGED_ADMIN_PASSWORD)
 
 
 def update_credentials(manager, logger, admin_password):
