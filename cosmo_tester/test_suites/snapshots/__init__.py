@@ -176,10 +176,6 @@ def restore_snapshot(manager, snapshot_id, logger, admin_password,
             sleep(wait_timeout)
 
 
-def change_salt_on_new_manager(manager, logger):
-    change_salt(manager, 'this_is_a_test_salt', logger)
-
-
 def prepare_credentials_tests(manager, logger):
     logger.info('Creating test user')
     create_user('testuser', 'testpass', manager)
@@ -209,50 +205,6 @@ def test_user(username, password, manager, logger):
     logger.info('Checking {user} can log in.'.format(user=username))
     client = manager.get_rest_client(username=username, password=password)
     client.manager.get_status()
-
-
-def get_security_conf(manager):
-    output = manager.run_command('cat /opt/manager/rest-security.conf',
-                                 use_sudo=True).stdout
-    # No real error checking here; the old manager shouldn't be able to even
-    # start the rest service if this file isn't json.
-    return json.loads(output)
-
-
-def change_salt(manager, new_salt, logger):
-    """Change the salt on the manager so that we don't incorrectly succeed
-    while testing non-admin users due to both copies of the master image
-    having the same hash salt value."""
-    logger.info('Preparting to update salt on {manager}'.format(
-        manager=manager.ip_address,
-    ))
-    security_conf = get_security_conf(manager)
-
-    original_salt = security_conf['hash_salt']
-    security_conf['hash_salt'] = new_salt
-
-    logger.info('Applying new salt...')
-    manager.run_command(
-        "sed -i 's:{original}:{replacement}:' "
-        "/opt/manager/rest-security.conf".format(
-            original=original_salt,
-            replacement=new_salt,
-        ),
-        use_sudo=True,
-    )
-
-    manager.run_command('supervisorctl restart cloudify-restservice',
-                        use_sudo=True)
-
-    logger.info('Fixing admin credentials...')
-    fix_admin_account(manager, new_salt, logger)
-
-    logger.info('Hash updated.')
-
-
-def fix_admin_account(manager, salt, logger):
-    manager.run_command('cfy_manager reset-admin-password admin')
-    test_user('admin', 'admin', manager, logger)
 
 
 def check_deployments(manager, expected_state, logger):
