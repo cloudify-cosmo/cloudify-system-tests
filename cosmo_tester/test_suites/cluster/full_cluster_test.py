@@ -37,7 +37,8 @@ def test_full_cluster_ips(full_cluster_ips, logger, ssh_key, test_config):
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
-                     cert_path=mgr2.api_ca_path)
+                     cert_path=mgr2.api_ca_path,
+                     admin_password=mgr1.mgr_password)
 
     check_managers(mgr1, mgr2, example)
 
@@ -59,7 +60,8 @@ def test_full_cluster_names(full_cluster_names, logger, ssh_key, test_config):
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
-                     cert_path=mgr2.api_ca_path)
+                     cert_path=mgr2.api_ca_path,
+                     admin_password=mgr1.mgr_password)
 
     check_managers(mgr1, mgr2, example)
 

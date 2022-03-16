@@ -27,6 +27,7 @@ def test_cluster_single_db(cluster_with_single_db, logger, ssh_key,
 
     logger.info('Restoring snapshot')
     restore_snapshot(mgr2, snapshot_id, logger, force=True,
-                     cert_path=mgr2.api_ca_path)
+                     cert_path=mgr2.api_ca_path,
+                     admin_password=mgr1.mgr_password)
 
     check_managers(mgr1, mgr2, example)
