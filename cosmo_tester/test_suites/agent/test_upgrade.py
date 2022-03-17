@@ -58,7 +58,6 @@ def test_old_agent_stopped_after_upgrade(ssh_key, module_tmpdir,
 
         create_copy_and_restore_snapshot(
             old_manager, new_manager, snapshot_id, local_snapshot_path, logger,
-            admin_password=old_manager.mgr_password,
             wait_for_post_restore_commands=True)
 
         for agent_os in AGENT_OSES:
