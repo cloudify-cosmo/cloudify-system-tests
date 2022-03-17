@@ -29,8 +29,7 @@ def test_migrate_agents_cluster_to_aio(
 
     create_copy_and_restore_snapshot(
         node1, aio_mgr, snapshot_id, snapshot_path, logger,
-        cert_path=aio_mgr.api_ca_path,
-        admin_password=node1.mgr_password)
+        cert_path=aio_mgr.api_ca_path)
 
     logger.info('Migrating to new agents, stopping old agents')
     aio_mgr.run_command(
@@ -65,8 +64,7 @@ def test_migrate_agents_aio_to_cluster(
 
     create_copy_and_restore_snapshot(
         aio_mgr, node1, snapshot_id, snapshot_path, logger,
-        cert_path=aio_mgr.api_ca_path,
-        admin_password=aio_mgr.mgr_password)
+        cert_path=aio_mgr.api_ca_path)
 
     for mgr in node1, node2, node3:
         # Restart restservice to use correct rest secret
