@@ -429,6 +429,9 @@ print('{{}} {{}}'.format(distro, codename).lower())
     @property
     @only_manager
     def mgr_password(self):
+        if self.image_type == '5.0.5':
+            # We don't have a bootstrappable 5.0.5, so return the bad default
+            return 'admin'
         return self.install_config['manager']['security']['admin_password']
 
     @only_manager
@@ -798,7 +801,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
         username = username or test_mgr_conf['username']
         password = (
             password
-            or self.install_config['manager']['security']['admin_password']
+            or self.mgr_password
         )
         tenant = tenant or test_mgr_conf['tenant']
 
