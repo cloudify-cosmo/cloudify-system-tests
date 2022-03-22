@@ -77,7 +77,3 @@ workflows:
   # Python script.
   rollout:
     mapping: scripts/rollout.py
-    # In 5.0.5, the default is true. This is going to change to false
-    # in an upcoming patch, and will be false for 5.1 onwards.
-    is_cascading: false
-
