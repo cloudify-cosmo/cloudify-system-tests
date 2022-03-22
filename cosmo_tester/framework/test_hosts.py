@@ -429,9 +429,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
     @property
     @only_manager
     def mgr_password(self):
-        if self.image_type == '5.0.5':
-            # We don't have a bootstrappable 5.0.5, so return the bad default
-            return 'admin'
         return self.install_config['manager']['security']['admin_password']
 
     @only_manager
@@ -628,9 +625,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
     def bootstrap(self, upload_license=False,
                   blocking=True, restservice_expected=True, config_name=None,
                   include_sanity=False):
-        if self.image_type == '5.0.5':
-            # We don't have a bootstrappable 5.0.5, so skip this
-            return
         if include_sanity:
             self.install_config['sanity']['skip_sanity'] = False
         self.wait_for_ssh()
@@ -701,10 +695,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
     @only_manager
     def bootstrap_is_complete(self):
-        if self.image_type == '5.0.5':
-            # We don't have a bootstrappable 5.0.5, so we use pre-bootstrapped
-            return True
-
         # Using a bash construct because fabric seems to change its mind
         # about how non-zero exit codes should be handled frequently
         result = self.run_command(
@@ -907,15 +897,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
             username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
 
-            if self.image_type == '5.0.5':
-                # We didn't make a bootstrappable image for 5.0.5, so we have
-                # this ugly hack until 5.0.5 stops being supported
-                image_template = 'cloudify-manager-premium-{testing_version}'
-                if distro == 'rhel':
-                    image_template += '-rhel'
-            else:
-                image_template = self._test_config[
-                    'manager_image_names'][distro]
+            image_template = self._test_config['manager_image_names'][distro]
 
             if self.image_type in ('master', 'installer'):
                 manager_version = self._test_config['testing_version']

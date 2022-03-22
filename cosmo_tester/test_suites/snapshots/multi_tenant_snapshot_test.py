@@ -42,7 +42,7 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
     for old_ver in old_versions:
         old_mgr = old_manager_mappings[old_ver]
-        if old_ver in ['5.0.5', '5.1.0']:
+        if old_ver == '5.1.0':
             old_mgr.wait_for_manager()
             # This is inconsistent in places, so let's cope with pre-fixed...
             old_mgr.run_command('mv /etc/cloudify/ssl/rabbitmq{_,-}cert.pem',
