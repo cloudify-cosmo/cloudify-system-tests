@@ -15,7 +15,7 @@ plugin_package_name:
   default: cloudify-aws-plugin
 plugin_version:
   description: The expected version of this plugin (can be a regular expression).
-  default: ^2\.8\.\d+$
+  default: ^3\.0\.\d+$
 linux_size:
   description: Size to use for linux on this platform.
   # This needs to be an instance that can accept 3 network interfaces

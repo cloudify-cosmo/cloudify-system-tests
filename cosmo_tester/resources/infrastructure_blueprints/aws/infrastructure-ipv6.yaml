@@ -44,7 +44,7 @@ node_templates:
         target: internet_gateway_1
     interfaces:
       cloudify.interfaces.lifecycle:
-        configure:
+        create:
           implementation: aws.cloudify_aws.ec2.resources.subnet.create
           inputs:
             modify_subnet_attribute_args:
