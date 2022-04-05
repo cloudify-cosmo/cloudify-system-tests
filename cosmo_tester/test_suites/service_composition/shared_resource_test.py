@@ -7,40 +7,32 @@ from . import (_infra, _app, _check_custom_execute_operation,
 from cloudify_rest_client.exceptions import CloudifyClientError
 
 
+# The on_demand and non-on-demand tests are in the same tests as each other
+# to cut down on test time.
+# It is expected that multi-tenancy will make this safe to do.
 def test_shared_resource(image_based_manager, ssh_key, logger, test_config):
     tenant = 'test_shared_resource'
-    infra = _infra(image_based_manager, ssh_key, logger, tenant, test_config)
     app = _app(image_based_manager, ssh_key, logger, tenant, test_config,
                blueprint_name='shared_resource',
                client_password=image_based_manager.mgr_password)
 
-    logger.info('Deploying the blueprint which contains a shared resource.')
-    infra.upload_blueprint()
-    infra.create_deployment()
-    infra.install()
-    logger.info('Deploying application blueprint, which uses the resource.')
-    app.upload_and_verify_install()
+    _prepare_infra(image_based_manager, ssh_key, logger, tenant, test_config)
+    app = _prepare_and_deploy_app(
+        image_based_manager, ssh_key, logger, tenant, test_config,
+        blueprint_name='shared_resource',
+        client_password=image_based_manager.mgr_password)
 
     with util.set_client_tenant(app.manager.client, tenant):
         _verify_deployments_and_nodes(app, 2)
         _check_custom_execute_operation(app, logger)
 
     od_tenant = 'test_on_demand_shared_resource'
-    od_infra = _infra(image_based_manager, ssh_key, logger, od_tenant,
-                      test_config)
-    od_app = _app(image_based_manager, ssh_key, logger, od_tenant,
-                  test_config, blueprint_name='shared_resource',
-                  client_password=image_based_manager.mgr_password)
-
-    logger.info('Deploying on-demand shared resource blueprint.')
-    od_infra.upload_blueprint()
-    od_infra.create_deployment()
-    with util.set_client_tenant(image_based_manager.client, od_tenant):
-        image_based_manager.client.deployments.update_labels(
-            'infra', [{'csys-obj-type': 'on-demand-resource'}])
-    logger.info('Deploying application blueprint which uses the '
-                'on-demand resource.')
-    od_app.upload_and_verify_install()
+    _prepare_infra(image_based_manager, ssh_key, logger, od_tenant,
+                   test_config, on_demand=True)
+    od_app = _prepare_and_deploy_app(
+        image_based_manager, ssh_key, logger, od_tenant,
+        test_config, blueprint_name='shared_resource',
+        client_password=image_based_manager.mgr_password)
 
     with util.set_client_tenant(od_app.manager.client, od_tenant):
         _verify_deployments_and_nodes(od_app, 2)
@@ -69,30 +61,73 @@ def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
 
     local_mgr, external_mgr = managers
 
-    ext_username = 'dave'
-    ext_password = 'swordfish'
-    external_mgr.client.users.create(ext_username, ext_password, 'sys_admin')
-
     # copy the app manager's CA cert to the infra manager
     ext_mgr_cert_path = '/etc/cloudify/ssl/ext_mgr_internal_ca_cert.pem'
     local_mgr.put_remote_file(ext_mgr_cert_path, external_mgr.api_ca_path)
 
-    infra = _infra(external_mgr, ssh_key, logger, tenant, test_config)
-    app = _app(local_mgr, ssh_key, logger, tenant, test_config,
-               blueprint_name='shared_resource',
-               client_ip=external_mgr.private_ip_address,
-               client_username=ext_username,
-               client_password=ext_password,
-               ca_cert_path=ext_mgr_cert_path)
+    infra = _prepare_infra(external_mgr, ssh_key, logger, tenant, test_config)
+    app = _prepare_and_deploy_app(
+        local_mgr, ssh_key, logger, tenant, test_config,
+        blueprint_name='shared_resource',
+        client_ip=external_mgr.private_ip_address,
+        client_password=external_mgr.mgr_password,
+        ca_cert_path=ext_mgr_cert_path)
 
-    logger.info('Deploying the shared resource on an external manager.')
+    _check_external_idd(app, infra, tenant, local_mgr, external_mgr,
+                        source_deployment_id, target_deployment_id, logger)
+
+    od_tenant = 'test_external_shared_resource_idd_on_demand'
+    od_infra = _prepare_infra(external_mgr, ssh_key, logger, od_tenant,
+                              test_config)
+    od_app = _prepare_and_deploy_app(
+        local_mgr, ssh_key, logger, od_tenant, test_config,
+        blueprint_name='shared_resource',
+        client_ip=external_mgr.private_ip_address,
+        client_password=external_mgr.mgr_password,
+        ca_cert_path=ext_mgr_cert_path)
+
+    _check_external_idd(od_app, od_infra, od_tenant, local_mgr, external_mgr,
+                        source_deployment_id, target_deployment_id, logger)
+
+
+def _prepare_infra(manager, ssh_key, logger, tenant, test_config,
+                   on_demand=False):
+    infra = _infra(manager, ssh_key, logger, tenant, test_config)
+
+    logger.info('Deploying the shared resource on a %s.', manager.ip_address)
     infra.upload_blueprint()
     infra.create_deployment()
-    infra.install()
-    logger.info('Deploying an application which uses the resource, '
-                'on the local manager.')
+
+    if on_demand:
+        logger.info('Making shared resource be on-demand')
+        with util.set_client_tenant(manager.client, tenant):
+            manager.client.deployments.update_labels(
+                'infra', [{'csys-obj-type': 'on-demand-resource'}])
+    else:
+        infra.install()
+
+    return infra
+
+
+def _prepare_and_deploy_app(manager, ssh_key, logger, tenant, test_config,
+                            blueprint_name, client_ip=None,
+                            client_username='admin', client_password=None,
+                            ca_cert_path=None):
+    app = _app(manager, ssh_key, logger, tenant, test_config,
+               blueprint_name=blueprint_name, client_ip=client_ip,
+               client_username=client_username,
+               client_password=client_password,
+               ca_cert_path=ca_cert_path)
+    logger.info('Deploying application on %s which uses shared resource.',
+                manager.ip_address)
     app.upload_and_verify_install()
 
+    return app
+
+
+def _check_external_idd(app, infra, tenant, local_mgr, external_mgr,
+                        source_deployment_id, target_deployment_id,
+                        logger):
     logger.info('Verifying inter-deployment dependency on both managers')
     with util.set_client_tenant(app.manager.client, tenant):
         local_idd = app.manager.client.inter_deployment_dependencies.list()[0]
