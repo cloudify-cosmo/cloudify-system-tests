@@ -17,12 +17,34 @@ def test_shared_resource(image_based_manager, ssh_key, logger, test_config):
     logger.info('Deploying the blueprint which contains a shared resource.')
     infra.upload_blueprint()
     infra.create_deployment()
+    infra.install()
     logger.info('Deploying application blueprint, which uses the resource.')
     app.upload_and_verify_install()
 
     with util.set_client_tenant(app.manager.client, tenant):
         _verify_deployments_and_nodes(app, 2)
         _check_custom_execute_operation(app, logger)
+
+    od_tenant = 'test_on_demand_shared_resource'
+    od_infra = _infra(image_based_manager, ssh_key, logger, od_tenant,
+                      test_config)
+    od_app = _app(image_based_manager, ssh_key, logger, od_tenant,
+                  test_config, blueprint_name='shared_resource',
+                  client_password=image_based_manager.mgr_password)
+
+    logger.info('Deploying on-demand shared resource blueprint.')
+    od_infra.upload_blueprint()
+    od_infra.create_deployment()
+    with util.set_client_tenant(image_based_manager.client, od_tenant):
+        image_based_manager.client.deployments.update_labels(
+            'infra', [{'csys-obj-type': 'on-demand-resource'}])
+    logger.info('Deploying application blueprint which uses the '
+                'on-demand resource.')
+    od_app.upload_and_verify_install()
+
+    with util.set_client_tenant(od_app.manager.client, od_tenant):
+        _verify_deployments_and_nodes(od_app, 2)
+        _check_custom_execute_operation(od_app, logger)
 
 
 @pytest.fixture(scope='function')
@@ -66,6 +88,7 @@ def test_external_shared_resource_idd(managers, ssh_key, logger, test_config,
     logger.info('Deploying the shared resource on an external manager.')
     infra.upload_blueprint()
     infra.create_deployment()
+    infra.install()
     logger.info('Deploying an application which uses the resource, '
                 'on the local manager.')
     app.upload_and_verify_install()

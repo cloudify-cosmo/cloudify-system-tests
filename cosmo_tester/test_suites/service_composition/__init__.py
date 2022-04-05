@@ -12,7 +12,7 @@ def _infra(image_based_manager, ssh_key, logger, tenant, test_config):
     )
     example.blueprint_id = 'infra'
     example.deployment_id = 'infra'
-    example.inputs = {}
+    example.inputs = {'agent_user': image_based_manager.username}
     return example
 
 
