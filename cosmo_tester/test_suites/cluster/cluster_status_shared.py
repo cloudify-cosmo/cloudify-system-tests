@@ -6,7 +6,7 @@ from cloudify_rest_client.exceptions import CloudifyClientError
 
 # It can take time for prometheus state to update.
 # Thirty seconds should be much more than enough.
-@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
 def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     logger.info('Stopping syncthing on one of the manager nodes')
     mgr1.run_command('supervisorctl stop cloudify-syncthing', use_sudo=True)
@@ -37,7 +37,7 @@ def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
 
 # It's always fun having a status checker that caches things, let's retry in
 # more places!
-@retrying.retry(stop_max_attempt_number=4, wait_fixed=5000)
+@retrying.retry(stop_max_attempt_number=12, wait_fixed=5000)
 def _verify_status_when_postgres_inactive(db1, db2, logger, client):
     logger.info('Stopping one of the db nodes')
     db1.run_command('supervisorctl stop patroni etcd', use_sudo=True)
@@ -77,7 +77,7 @@ def _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,
 
 # It can take time for prometheus state to update.
 # Thirty seconds should be much more than enough.
-@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
 def _validate_status_when_one_rabbit_inactive(broker, logger, client):
     logger.info('Checking status reporter with one rabbit down...')
     cluster_status = client.cluster_status.get_status()
@@ -92,7 +92,7 @@ def _validate_status_when_one_rabbit_inactive(broker, logger, client):
 
 # It can take time for prometheus state to update.
 # Thirty seconds should be much more than enough.
-@retrying.retry(stop_max_attempt_number=15, wait_fixed=2000)
+@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
 def _validate_status_when_all_rabbits_inactive(logger, client):
     logger.info('Checking status reporter with all rabbits down...')
     cluster_status = client.cluster_status.get_status()
@@ -110,7 +110,7 @@ def _assert_cluster_status(client):
         'status'] == ServiceStatus.HEALTHY
 
 
-@retrying.retry(stop_max_attempt_number=4, wait_fixed=10000)
+@retrying.retry(stop_max_attempt_number=6, wait_fixed=10000)
 def _assert_cluster_status_after_db_changes(status, logger, client):
     logger.info('Check cluster status after DB changes')
     cluster_status = client.cluster_status.get_status()
