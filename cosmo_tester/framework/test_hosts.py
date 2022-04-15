@@ -719,7 +719,20 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 self._logger.error('BOOTSTRAP FAILED!')
                 # Get all the logs on failure
                 self.run_command(
-                    'cat /tmp/bs_logs/*'
+                    'cat /tmp/bs_logs/* || echo "No bs logs"'
+                )
+                # We return both the bootstrap logs (stdout of the command)
+                # and the cfy_manager logs where possible as they may contain
+                # differing information- e.g. the bootstrap log may complain
+                # that it could not find the cfy_manager executable.
+                # The bootstrap log (stdout) also contains the admin password,
+                # which the cfy_manager.log does not.
+                self._logger.error('===============================')
+                self._logger.error('cfy_manager logs')
+                self._logger.error('===============================')
+                self.run_command(
+                    'cat /var/log/cloudify/manager/cfy_manager.log '
+                    '|| echo "No /var/log/cloudify/manager/cfy_manager.log"'
                 )
                 raise RuntimeError('Bootstrap failed.')
             else:
