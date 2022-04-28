@@ -105,7 +105,7 @@ def _validate_status_when_all_rabbits_inactive(logger, client):
 
 
 def _assert_cluster_status(client, logger):
-    start_time = time.time()
+    start_time = time.monotonic()
 
     # It can take time for prometheus state to update.
     retries = 30
@@ -114,7 +114,7 @@ def _assert_cluster_status(client, logger):
     for attempt in range(retries):
         time.sleep(delay)
         status = client.cluster_status.get_status()
-        time_taken = time.time() - start_time
+        time_taken = time.monotonic() - start_time
         if status['status'] == ServiceStatus.HEALTHY:
             logger.info('Took %d seconds to become healthy.', time_taken)
             return
