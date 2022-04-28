@@ -70,7 +70,7 @@ def test_full_cluster_status(full_cluster_ips, logger, module_tmpdir):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips
 
-    _assert_cluster_status(mgr1.client)
+    _assert_cluster_status(mgr1.client, logger)
     _verify_status_when_syncthing_inactive(mgr1, mgr2, logger)
     _verify_status_when_postgres_inactive(db1, db2, logger, mgr1.client)
     _verify_status_when_rabbit_inactive(broker1, broker2, broker3, logger,

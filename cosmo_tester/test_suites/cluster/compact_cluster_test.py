@@ -17,7 +17,7 @@ from .cluster_status_shared import (
 @pytest.mark.three_vms
 def test_three_nodes_cluster_status(three_nodes_cluster, logger):
     node1, node2, node3 = three_nodes_cluster
-    _assert_cluster_status(node1.client)
+    _assert_cluster_status(node1.client, logger)
     _verify_status_when_syncthing_inactive(node1, node2, logger)
     _verify_status_when_postgres_inactive(node1, node2, logger, node3.client)
     _verify_status_when_rabbit_inactive(node1, node2, node3, logger,
@@ -31,7 +31,7 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
     node1, node2, node3 = three_nodes_cluster
     nodes_list = [node1, node2, node3]
     logger.info('Asserting cluster status')
-    _assert_cluster_status(node1.client)
+    _assert_cluster_status(node1.client, logger)
 
     logger.info('Installing example deployment')
     example = get_example_deployment(node1, ssh_key, logger,
@@ -62,14 +62,14 @@ def test_three_nodes_cluster_teardown(three_nodes_cluster, ssh_key,
     node1.download_rest_ca(force=True)
 
     logger.info('Asserting cluster status')
-    _assert_cluster_status(node1.client)
+    _assert_cluster_status(node1.client, logger)
 
 
 @pytest.mark.three_vms_ipv6
 def test_three_nodes_cluster_ipv6(three_nodes_ipv6_cluster, logger,
                                   ssh_key, test_config):
     node1, node2, node3 = three_nodes_ipv6_cluster
-    _assert_cluster_status(node1.client)
+    _assert_cluster_status(node1.client, logger)
 
     logger.info('Installing example deployment on cluster')
     example = get_example_deployment(node1, ssh_key, logger,

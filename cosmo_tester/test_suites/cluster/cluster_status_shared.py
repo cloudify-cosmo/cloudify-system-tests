@@ -1,3 +1,5 @@
+import time
+
 import retrying
 
 from cloudify.cluster_status import ServiceStatus, NodeServiceStatus
@@ -32,7 +34,7 @@ def _verify_status_when_syncthing_inactive(mgr1, mgr2, logger):
     # Back to healthy cluster
     logger.info('Starting syncthing on the failed manager')
     mgr1.run_command('supervisorctl start cloudify-syncthing', use_sudo=True)
-    _assert_cluster_status(mgr1.client)
+    _assert_cluster_status(mgr1.client, logger)
 
 
 # It's always fun having a status checker that caches things, let's retry in
@@ -102,12 +104,29 @@ def _validate_status_when_all_rabbits_inactive(logger, client):
     assert manager_status['status'] == 'Fail'
 
 
-# It can take time for prometheus state to update.
-# Thirty seconds should be much more than enough.
-@retrying.retry(stop_max_attempt_number=30, wait_fixed=2000)
-def _assert_cluster_status(client):
-    assert client.cluster_status.get_status()[
-        'status'] == ServiceStatus.HEALTHY
+def _assert_cluster_status(client, logger):
+    start_time = time.monotonic()
+
+    # It can take time for prometheus state to update.
+    retries = 30
+    delay = 2
+
+    for attempt in range(retries):
+        time.sleep(delay)
+        status = client.cluster_status.get_status()
+        time_taken = time.monotonic() - start_time
+        if status['status'] == ServiceStatus.HEALTHY:
+            logger.info('Took %d seconds to become healthy.', time_taken)
+            return
+    logger.error('Did not become healthy in %d seconds.', time_taken)
+    raise AssertionError(
+        'Cluster status should have been {expected} but was {actual}.\n'
+        'Full cluster status was: {full}'.format(
+            expected=ServiceStatus.HEALTHY,
+            actual=status['status'],
+            full=status,
+        )
+    )
 
 
 @retrying.retry(stop_max_attempt_number=6, wait_fixed=10000)
