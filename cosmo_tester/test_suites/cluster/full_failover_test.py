@@ -163,7 +163,7 @@ def test_workflow_resume_manager_failover(minimal_cluster,
     other_manager = None
     for manager in [mgr1, mgr2]:
         try:
-            manager.run_command('grep {} /var/log/cloudify/mgmtworker/'
+            manager.run_command('sudo grep {} /var/log/cloudify/mgmtworker/'
                                 'mgmtworker.log'.format(exec_id))
         except Exception:
             continue
