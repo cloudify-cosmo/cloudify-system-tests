@@ -3,8 +3,6 @@ from cosmo_tester.test_suites.cli import (
     LINUX_OSES,
     _prepare,
     _test_cfy_install,
-    _test_cfy_logs,
-    _test_logs_context,
     _test_teardown,
     _test_upload_and_install,
     WINDOWS_OSES,
