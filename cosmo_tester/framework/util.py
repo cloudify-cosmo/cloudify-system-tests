@@ -63,10 +63,18 @@ def create_rest_client(
         password=None,
         tenant=None,
         **kwargs):
+
+    if kwargs.get('token'):
+        default_user = None
+        default_password = None
+    else:
+        default_user = 'admin'
+        default_password = 'admin'
+
     return CloudifyClient(
         host=manager_ip,
-        username=username or 'admin',
-        password=password or 'admin',
+        username=username or default_user,
+        password=password or default_password,
         tenant=tenant or 'default_tenant',
         **kwargs)
 
