@@ -21,7 +21,7 @@ def test_saml_auth(image_based_manager, logger):
     logger.info('Confirming OK endpoint works without authentication')
     assert requests.get(
         f'https://{image_based_manager.ip_address}/api/v3.1/ok',
-        verify=image_based_manager.api_ca_path).text.strip() == '"OK"'
+        verify=image_based_manager.api_ca_path).status_code == 200
 
     image_based_manager.client.user_groups.create('Everyone',
                                                   role='sys_admin')
