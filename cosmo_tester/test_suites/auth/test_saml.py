@@ -46,7 +46,7 @@ def test_saml_auth(image_based_manager, logger):
     clean_users = set(user['username']
                       for user in image_based_manager.client.users.list())
 
-    if clean_users != after_users:
+    if clean_users != before_users:
         problems.append(
             'Not all users were deleted correctly.\n'
             f'Before: {before_users}\n'
@@ -113,6 +113,8 @@ def _clean_users(manager, users, logger):
 
     for user in users:
         try:
+            if manager.client.users.get(user)['groups']:
+                manager.client.user_groups.remove_user(user, 'Everyone')
             manager.client.users.delete(user)
         except Exception as err:
             problems.append(f'Failed to delete user {user}: {err}')
