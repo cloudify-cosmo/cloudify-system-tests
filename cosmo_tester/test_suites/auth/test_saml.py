@@ -265,7 +265,7 @@ def _check_users(manager, users):
 def _test_login_with_bad_signature(manager):
     users = {
         style: {
-            'username': f'testusernoattrs@{style}.local',
+            'username': f'testuserbadsig@{style}.local',
         }
         for style in ['okta', 'azure']
     }
@@ -276,7 +276,7 @@ def _test_login_with_bad_signature(manager):
 def _test_login_before_valid(manager):
     users = {
         style: {
-            'username': f'testusernoattrs@{style}.local',
+            'username': f'testusernotyetvalid@{style}.local',
         }
         for style in ['okta', 'azure']
     }
@@ -287,7 +287,7 @@ def _test_login_before_valid(manager):
 def _test_login_after_expiry(manager):
     users = {
         style: {
-            'username': f'testusernoattrs@{style}.local',
+            'username': f'testuserexpired@{style}.local',
         }
         for style in ['okta', 'azure']
     }
