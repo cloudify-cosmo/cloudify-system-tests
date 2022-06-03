@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 OKTA_SAML_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -133,7 +133,7 @@ def _generate_attributes(username, first_name, last_name, email, groups,
 
 def make_response(username, first_name=None, last_name=None, email=None,
                   groups=None, expired=False, too_soon=False, style='okta'):
-    issue_time = datetime.now()
+    issue_time = datetime.now(tz=timezone.utc)
     if expired and too_soon:
         raise RuntimeError("A document can't be expired and not issued yet")
     if expired:

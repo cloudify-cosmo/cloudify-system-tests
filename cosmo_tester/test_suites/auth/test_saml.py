@@ -265,7 +265,7 @@ def _check_users(manager, users):
 def _test_login_with_bad_signature(manager):
     users = {
         style: {
-            'username': f'testusernoattrs@{style}.local',
+            'username': f'testuserbadsig@{style}.local',
         }
         for style in ['okta', 'azure']
     }
@@ -276,7 +276,7 @@ def _test_login_with_bad_signature(manager):
 def _test_login_before_valid(manager):
     users = {
         style: {
-            'username': f'testusernoattrs@{style}.local',
+            'username': f'testusernotyetvalid@{style}.local',
         }
         for style in ['okta', 'azure']
     }
@@ -287,7 +287,7 @@ def _test_login_before_valid(manager):
 def _test_login_after_expiry(manager):
     users = {
         style: {
-            'username': f'testusernoattrs@{style}.local',
+            'username': f'testuserexpired@{style}.local',
         }
         for style in ['okta', 'azure']
     }
@@ -333,6 +333,12 @@ def _check_bad_conditions(manager, users, check_type):
     except Exception as err:
         message = f'Incorrect response checking {check_type} okta auth: '
         problems.append(f'{message}{err}')
+
+    manager_users = [user['username'] for user in manager.client.users.list()]
+    for style, user in users.items():
+        if user['username'] in manager_users:
+            problems.append(
+                f'User account created for {check_type} {style} user.')
 
     return problems
 
