@@ -334,6 +334,12 @@ def _check_bad_conditions(manager, users, check_type):
         message = f'Incorrect response checking {check_type} okta auth: '
         problems.append(f'{message}{err}')
 
+    manager_users = [user['username'] for user in manager.client.users.list()]
+    for style, user in users.items():
+        if user['username'] in manager_users:
+            problems.append(
+                f'User account created for {check_type} {style} user.')
+
     return problems
 
 
