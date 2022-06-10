@@ -17,6 +17,9 @@ from cosmo_tester.test_suites.snapshots import (
     upgrade_agents,
     verify_services_status,
 )
+from cosmo_tester.framework.icon import (add_stage_blueprint_icon,
+                                         check_icon,
+                                         stage_blueprint_icon_supported)
 from cosmo_tester.framework.util import get_resource_path
 
 
@@ -65,6 +68,26 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
                                                          ssh_key, test_config,
                                                          win_vm, lin_vm)
 
+        icon_blueprints = {}
+        non_icon_blueprints = {}
+        if stage_blueprint_icon_supported(old_mgr):
+            for tenant, example in example_mappings.items():
+                blueprint = example.blueprint_id
+                if blueprint in icon_blueprints:
+                    icon_blueprints[blueprint].append(tenant)
+                elif blueprint in non_icon_blueprints:
+                    non_icon_blueprints[blueprint].append(tenant)
+                else:
+                    # Split the blueprints about evenly
+                    if len(icon_blueprints) > len(non_icon_blueprints):
+                        target = non_icon_blueprints
+                    else:
+                        add_stage_blueprint_icon(old_mgr, blueprint, logger)
+                        target = icon_blueprints
+                    target[blueprint] = [tenant]
+            logger.info('Blueprints with icons: %s', icon_blueprints)
+            logger.info('Blueprints without icons: %s', non_icon_blueprints)
+
         old_manager_state = get_manager_state(old_mgr, TENANTS, logger)
 
         prepare_credentials_tests(old_mgr, logger)
@@ -75,6 +98,14 @@ def test_restore_snapshot_and_agents_upgrade_multitenant(
 
         verify_services_status(new_manager, logger)
         check_credentials(new_manager, logger)
+
+        for blueprint, tenants in icon_blueprints.items():
+            for tenant in tenants:
+                check_icon(new_manager, tenant, blueprint, logger)
+        for blueprint, tenants in non_icon_blueprints.items():
+            for tenant in tenants:
+                check_icon(new_manager, tenant, blueprint, logger,
+                           exists=False)
 
         # Use the new manager for the test deployments
         for example in example_mappings.values():

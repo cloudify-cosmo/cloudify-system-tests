@@ -4,6 +4,9 @@ import pytest
 from cosmo_tester.framework.constants import SUPPORTED_FOR_RPM_UPGRADE
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.test_suites.snapshots import upgrade_agents
+from cosmo_tester.framework.icon import (add_stage_blueprint_icon,
+                                         check_icon,
+                                         stage_blueprint_icon_supported)
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import (get_manager_install_version,
                                          substitute_testing_version,
@@ -135,6 +138,9 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
     # and if it's unhealthy, so is the status returned from `cfy status`.
     validate_cluster_status_and_agents(base_manager, example.tenant, logger)
 
+    if stage_blueprint_icon_supported(base_manager):
+        add_stage_blueprint_icon(base_manager, example.blueprint_id, logger)
+
     logger.info('Installing new RPM')
     base_manager.run_command(
         'yum install -y {rpm}'.format(
@@ -149,6 +155,8 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
 
     logger.info('Upgrading manager')
     base_manager.run_command('cfy_manager upgrade -v')
+
+    check_icon(base_manager, example.tenant, example.blueprint_id, logger)
 
     expected_version = test_config['testing_version'].split('-')[0]
     assert get_manager_install_version(base_manager) == expected_version
