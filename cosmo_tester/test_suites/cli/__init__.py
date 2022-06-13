@@ -1,5 +1,9 @@
 import json
 import time
+from os.path import join
+
+import hashlib
+import retrying
 
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import get_cli_package_url
@@ -10,10 +14,11 @@ LINUX_OSES = [
     'rhel_7',
 ]
 
-
 WINDOWS_OSES = [
     'windows_2012',
 ]
+
+LOG_BUNDLES_PATH = "/opt/manager/resources/log_bundles/"
 
 
 def _prepare(cli_host, example, paths, logger, include_secret=True):
@@ -81,27 +86,48 @@ def _test_cfy_install(run, example, paths, logger):
     example.check_files()
 
 
-def _set_ssh_in_profile(run, example, paths):
-    run(
-        '{cfy} profiles set --ssh-user {ssh_user} --ssh-key {ssh_key}'.format(
-            cfy=paths['cfy'],
-            ssh_user=example.manager.username,
-            ssh_key=paths['ssh_key'],
-        ),
-        powershell=True,
-    )
+@retrying.retry(stop_max_attempt_number=15, wait_fixed=300)
+def _wait_for_log_bundle_creation(run, paths, bundle_id):
+    bundles = [b for b in json.loads(run(
+        '{cfy} log-bundles list --json'.format(cfy=paths['cfy']),
+        powershell=True
+    ).stdout.strip()) if b['status'] == 'created' and b['id'] == bundle_id]
+    assert len(bundles) == 1
 
 
-def _lock_log_files(managers):
-    for manager in managers:
-        manager.run_command('sudo find /var/log/cloudify -type f -exec '
-                            'sudo chattr +i {} \\;')
+def _test_cfy_log_bundles(
+        run, cli_host, cli_os, example, paths, tmpdir, logger):
+    cli_tmpdir = 'C:\\Windows\\Temp' if cli_os in WINDOWS_OSES else '/tmp'
+    bundle_id = 'log_bundle_{}'.format(cli_os)
 
+    run('{cfy} log-bundles create {bundle_id}'.format(
+        cfy=paths['cfy'], bundle_id=bundle_id), powershell=True)
+    _wait_for_log_bundle_creation(run, paths, bundle_id)
+    run('{cfy} log-bundles download {bundle_id} -o {cli_tmpdir}'.format(
+        cfy=paths['cfy'], bundle_id=bundle_id, cli_tmpdir=cli_tmpdir),
+        powershell=True)
 
-def _unlock_log_files(managers):
-    for manager in managers:
-        manager.run_command('sudo find /var/log/cloudify -type f -exec '
-                            'sudo chattr -i {} \\;')
+    mgr_logs_bundle_filepath = LOG_BUNDLES_PATH + bundle_id + '.zip'
+    cli_logs_bundle_filepath = join(cli_tmpdir, bundle_id + '.zip')
+    local_logs_bundle_filepath = str(tmpdir / bundle_id + '.zip')
+    mgr_log_bundle_hash = example.manager.run_command('sudo md5sum {}'.format(
+        mgr_logs_bundle_filepath)).stdout.strip().split()[0]
+
+    if cli_os in WINDOWS_OSES:
+        local_log_bundle_hash = cli_host.run_command(
+            'Get-FileHash {} -Algorithm MD5 | Select-Object Hash'.format(
+                cli_logs_bundle_filepath), powershell=True
+        ).std_out.decode('utf-8').strip().split('\n')[-1]
+    else:
+        cli_host.get_remote_file(cli_logs_bundle_filepath,
+                                 local_logs_bundle_filepath)
+        logger.info('Downloaded log bundle to %s', local_logs_bundle_filepath)
+        local_log_bundle_hash = hashlib.md5(
+            open(local_logs_bundle_filepath, 'rb').read()).hexdigest()
+
+    logger.info('Log bundle hashes: %s %s',
+                mgr_log_bundle_hash, local_log_bundle_hash)
+    assert mgr_log_bundle_hash.lower() == local_log_bundle_hash.lower()
 
 
 def _test_teardown(run, example, paths, logger):
@@ -302,7 +328,7 @@ cd {0}
             'blueprint': remote_blueprint_path,
             'inputs': remote_inputs_path,
             'ssh_key': remote_ssh_key_path,
-            'cfy': '&"C:\\Program Files\\Cloudify {} CLI\\Scripts\\'
+            'cfy': '& "C:\\Program Files\\Cloudify {} CLI\\Scripts\\'
                    'cfy.exe"'.format(cli_package_version),
             'cert': '"C:\\Users\\{username}\\manager.crt"'.format(
                 username=cli_host.username),
