@@ -38,6 +38,36 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
     example.uninstall()
 
 
+@pytest.mark.three_vms
+def test_replace_certificates_on_compact_cluster(
+        three_nodes_cluster, logger, ssh_key, test_config):
+    node1, node2, node3 = three_nodes_cluster
+
+    example = get_example_deployment(node1, ssh_key, logger,
+                                     'cluster_replace_certs', test_config)
+    example.inputs['server_ip'] = node1.ip_address
+    example.upload_and_verify_install()
+    validate_cluster_status_and_agents(node1, example.tenant, logger)
+
+    for host in node1, node2, node3:
+        key_path = join('~', '.cloudify-test-ca',
+                        host.private_ip_address + '.key')
+        node1.run_command('cfy_manager generate-test-cert'
+                          ' -s {0},{1}'.format(host.private_ip_address,
+                                               host.ip_address))
+        node1.run_command('chmod 444 {0}'.format(key_path), use_sudo=True)
+    replace_certs_config_path = '~/certificates_replacement_config.yaml'
+    _create_replace_certs_config_file(node1, replace_certs_config_path,
+                                      ssh_key.private_key_path)
+
+    node1.run_command('cfy certificates replace -i {0} -v'.format(
+        replace_certs_config_path))
+    node1.download_rest_ca(force=True)
+
+    validate_cluster_status_and_agents(node1, example.tenant, logger)
+    example.uninstall()
+
+
 def _create_replace_certs_config_file(manager,
                                       replace_certs_config_path,
                                       local_ssh_key_path):
