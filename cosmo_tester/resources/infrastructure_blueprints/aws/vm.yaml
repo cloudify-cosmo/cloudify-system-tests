@@ -133,6 +133,7 @@ node_templates:
   image:
     type: cloudify.nodes.aws.ec2.Image
     properties:
+      use_external_resource: true
       resource_config:
         kwargs:
           Filters:
