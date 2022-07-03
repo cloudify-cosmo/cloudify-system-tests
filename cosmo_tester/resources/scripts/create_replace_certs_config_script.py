@@ -43,9 +43,10 @@ def generate_replace_certs_config(replace_certs_config_path,
                 elif 'cert' in cert_name:
                     instance_dict[cert_name] = cert_path
                 elif 'key' in cert_name:
-                    instance_dict[cert_name] = key_path
-                elif replace_ca_key and 'ca_key' in cert_name:
-                    instance_dict[cert_name] = ca_key_path
+                    if replace_ca_key and 'ca' in cert_name:
+                        instance_dict[cert_name] = ca_key_path
+                    else:
+                        instance_dict[cert_name] = key_path
 
     with open(replace_certs_config_path, 'w') as certs_file:
         yaml.dump(replace_certs_config, certs_file)
