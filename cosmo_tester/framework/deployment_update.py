@@ -79,6 +79,10 @@ def apply_and_check_deployment_update(manager, example_deployment, logger):
     # This will look for the originally named files
     example_deployment.check_all_test_files_deleted()
 
+    logger.info('Checking new files were not recreated.')
+    example_deployment.check_all_test_files_deleted(
+        path='/tmp/test_announcement')
+
 
 @retry(stop_max_attempt_number=10, wait_fixed=5000)
 def wait_for_deployment_update(client, execution_id, logger):
