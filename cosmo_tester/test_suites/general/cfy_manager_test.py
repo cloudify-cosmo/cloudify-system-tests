@@ -122,6 +122,7 @@ def test_cfy_manager_configure(image_based_manager, logger, test_config):
         )
 
 
+@pytest.mark.upgrade
 def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
     # The private_ip and public_ip are 127.0.0.1 in the config.yaml of the
     # 5.1.0 manager, and the upgrade process doesn't cope with it (RD-868).

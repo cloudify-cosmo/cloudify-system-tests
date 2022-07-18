@@ -12,6 +12,7 @@ from cosmo_tester.test_suites.snapshots import (
 # PaaS).
 # It is not intended that a single external DB be used in production.
 @pytest.mark.six_vms
+@pytest.mark.component
 def test_cluster_single_db(cluster_with_single_db, logger, ssh_key,
                            test_config):
     broker1, broker2, broker3, db, mgr1, mgr2 = cluster_with_single_db
