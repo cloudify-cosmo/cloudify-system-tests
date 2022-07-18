@@ -1,5 +1,7 @@
 from os.path import join
 
+import pytest
+
 from cosmo_tester.framework.util import validate_agents
 from cosmo_tester.framework.util import get_resource_path
 from cosmo_tester.framework.examples import get_example_deployment
