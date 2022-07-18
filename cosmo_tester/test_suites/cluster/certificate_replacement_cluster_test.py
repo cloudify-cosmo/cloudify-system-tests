@@ -8,6 +8,7 @@ from cosmo_tester.framework.util import (get_resource_path,
 
 
 @pytest.mark.nine_vms
+@pytest.mark.cert_replace
 def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
                                          test_config, replace_ca_key=False):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
@@ -40,6 +41,7 @@ def test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
 
 
 @pytest.mark.three_vms
+@pytest.mark.cert_replace
 def test_replace_certificates_on_compact_cluster(
         three_nodes_cluster, logger, ssh_key, test_config,
         replace_ca_key=False):
@@ -72,6 +74,7 @@ def test_replace_certificates_on_compact_cluster(
 
 
 @pytest.mark.nine_vms
+@pytest.mark.cert_replace
 def test_replace_certificates_on_cluster_incl_ca_key(
         full_cluster_ips, logger, ssh_key, test_config):
     test_replace_certificates_on_cluster(full_cluster_ips, logger, ssh_key,
@@ -79,6 +82,7 @@ def test_replace_certificates_on_cluster_incl_ca_key(
 
 
 @pytest.mark.three_vms
+@pytest.mark.cert_replace
 def test_replace_certificates_compact_cluster_incl_ca_key(
         three_nodes_cluster, logger, ssh_key, test_config):
     test_replace_certificates_on_compact_cluster(
