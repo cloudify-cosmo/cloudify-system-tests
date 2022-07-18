@@ -87,6 +87,7 @@ def prepare_cluster_for_removal_tests(brokers):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_list(brokers, logger):
     backup_hosts(brokers)
 
@@ -159,6 +160,7 @@ def test_list(brokers, logger):
 
 
 @pytest.mark.one_vm
+@pytest.mark.component
 def test_auth_fail(broker, logger):
     broker.run_command(
         "sed -ie 's/^rabbitmq:/rabbitmq:\\n  password: wrong/' "
@@ -174,6 +176,7 @@ def test_auth_fail(broker, logger):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_add(brokers, logger):
     backup_hosts(brokers)
 
@@ -255,6 +258,7 @@ def test_add(brokers, logger):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_remove(brokers, logger):
     backup_hosts(brokers)
 
@@ -325,6 +329,7 @@ def test_remove(brokers, logger):
 
 
 @pytest.mark.four_vms
+@pytest.mark.component
 def test_remove_broker_from_manager(brokers3_and_manager, logger):
     logger.info('Preparing cluster.')
     brokers, manager = brokers3_and_manager[:3], brokers3_and_manager[3]
@@ -370,6 +375,7 @@ def test_remove_broker_from_manager(brokers3_and_manager, logger):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_broker_management(brokers_and_manager, logger):
     # All in one test for speed until such time as complexity of these
     # operations increases to the point that extra tests are needed.

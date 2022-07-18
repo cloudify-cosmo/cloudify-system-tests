@@ -5,6 +5,7 @@ from cosmo_tester.framework.constants import SUPPORTED_FOR_RPM_UPGRADE
 
 
 @pytest.mark.nine_vms
+@pytest.mark.upgrade
 @pytest.mark.parametrize('base_version', SUPPORTED_FOR_RPM_UPGRADE)
 def test_nine_nodes_cluster_upgrade(base_version, nine_vms, test_config,
                                     ssh_key, logger):

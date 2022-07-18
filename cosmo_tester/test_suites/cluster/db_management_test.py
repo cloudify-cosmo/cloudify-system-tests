@@ -7,6 +7,7 @@ from cosmo_tester.test_suites.cluster import check_managers
 
 
 @pytest.mark.nine_vms
+@pytest.mark.component
 def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         full_cluster_ips
@@ -55,6 +56,7 @@ def test_remove_db_node(full_cluster_ips, logger, ssh_key, test_config):
 
 
 @pytest.mark.nine_vms
+@pytest.mark.component
 def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
     broker1, broker2, broker3, db1, db2, db3, mgr1, mgr2, mgr3 = \
         cluster_missing_one_db
@@ -94,6 +96,7 @@ def test_add_db_node(cluster_missing_one_db, logger, ssh_key, test_config):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_db_set_master(dbs, logger):
     db1, db2, db3 = dbs
 
@@ -130,6 +133,7 @@ def test_db_set_master(dbs, logger):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_db_reinit(dbs, logger):
     db1, db2, db3 = dbs
 
@@ -147,6 +151,7 @@ def test_db_reinit(dbs, logger):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_fail_to_remove_db_leader(dbs, logger):
     db1, db2, db3 = dbs
 
@@ -163,6 +168,7 @@ def test_fail_to_remove_db_leader(dbs, logger):
 
 
 @pytest.mark.three_vms
+@pytest.mark.component
 def test_fail_to_reinit(dbs, logger):
     db1, db2, db3 = dbs
 

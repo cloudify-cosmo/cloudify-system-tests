@@ -5,6 +5,7 @@ from cosmo_tester.framework.util import get_resource_path
 from cosmo_tester.framework.examples import get_example_deployment
 
 
+@pytest.mark.cert_replace
 def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
                            replace_ca_key=False):
     example = get_example_deployment(
@@ -27,6 +28,7 @@ def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
     example.uninstall()
 
 
+@pytest.mark.cert_replace
 def test_aio_replace_certs_incl_ca_key(
         image_based_manager, ssh_key, logger, test_config):
     test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
