@@ -1,7 +1,10 @@
 namespace: manager_image_names
-centos:
-  description: Template of name of centos manager installer image (for bootstrap or cluster) to test. The testing version will be filled in based on testing_version (config parameter) or supported manager versions in tests.
+centos-7:
+  description: Template of name of CentOS 7 manager installer image (for bootstrap or cluster) to test. The testing version will be filled in based on testing_version (config parameter) or supported manager versions in tests.
   default: cfy-installer-premium-{testing_version}
-rhel:
-  description: Template of name of RHEL manager installer image (for bootstrap or cluster) to test. The testing version will be filled in based on testing_version (config parameter) or supported manager versions in tests.
+rhel-7:
+  description: Template of name of RHEL 7 manager installer image (for bootstrap or cluster) to test. The testing version will be filled in based on testing_version (config parameter) or supported manager versions in tests.
   default: cfy-installer-premium-{testing_version}-rhel
+rhel-8:
+  description: Template of name of RHEL 8 manager installer image (for bootstrap or cluster) to test. The testing version will be filled in based on testing_version (config parameter) or supported manager versions in tests.
+  default: cfy-installer-premium-{testing_version}-rhel-8
