@@ -21,6 +21,7 @@ with warnings.catch_warnings():
     from fabric import Connection
 from ipaddress import ip_address, ip_network
 from paramiko.ssh_exception import SSHException
+from packaging.version import parse as parse_version
 import requests
 import retrying
 import textwrap
@@ -904,11 +905,20 @@ print('{{}} {{}}'.format(distro, codename).lower())
         except Exception:
             return False
 
+    def _is_rhel8_supported(self):
+        if self.image_type == 'master':
+            return True
+        if parse_version(self.image_type) >= parse_version('6.4.0'):
+            return True
+        return False
+
     def _set_image_details(self):
         if self.is_manager:
             distro = self._test_config['test_manager']['distro']
+            if distro == 'rhel-8' and not self._is_rhel8_supported():
+                distro == 'rhel-7'
 
-            username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
+            username_key = distro.replace('-', '_')
 
             image_template = self._test_config['manager_image_names'][distro]
 
