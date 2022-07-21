@@ -918,7 +918,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             if distro == 'rhel-8' and not self._is_rhel8_supported():
                 distro == 'rhel-7'
 
-            username_key = 'centos_7' if distro == 'centos' else 'rhel_7'
+            username_key = distro.replace('-', '_')
 
             image_template = self._test_config['manager_image_names'][distro]
 
