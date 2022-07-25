@@ -882,6 +882,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
         self._logger.info('Adding extra NICs...')
 
+        self.run_command('yum install -y ifupdown', use_sudo=True)
+
         for i in range(0, len(self.networks)):
             network_file_path = self._tmpdir / 'network_cfg_{}'.format(i)
             ip_addr = self.networks['network_{}'.format(i + 1)]
