@@ -22,12 +22,15 @@ def generate_replace_certs_config(replace_certs_config_path,
                 cert_path = certs_dir + node['host_ip'] + '.crt'
                 key_path = certs_dir + node['host_ip'] + '.key'
                 for cert_name in node:
-                    if 'ca' in cert_name:
+                    if 'ca' in cert_name and 'key' not in cert_name:
                         node[cert_name] = ca_path
                     elif 'cert' in cert_name:
                         node[cert_name] = cert_path
                     elif 'key' in cert_name:
-                        node[cert_name] = key_path
+                        if replace_ca_key and 'ca_key' in cert_name:
+                            node[cert_name] = ca_key_path
+                        elif 'ca_key' not in cert_name:
+                            node[cert_name] = key_path
             for key in replace_certs_config[instance_name]:
                 if 'ca' in key and 'key' not in key:
                     replace_certs_config[instance_name][key] = ca_path
@@ -43,9 +46,9 @@ def generate_replace_certs_config(replace_certs_config_path,
                 elif 'cert' in cert_name:
                     instance_dict[cert_name] = cert_path
                 elif 'key' in cert_name:
-                    if replace_ca_key and 'ca' in cert_name:
+                    if replace_ca_key and 'ca_key' in cert_name:
                         instance_dict[cert_name] = ca_key_path
-                    else:
+                    elif 'ca_key' not in cert_name:
                         instance_dict[cert_name] = key_path
 
     with open(replace_certs_config_path, 'w') as certs_file:
@@ -77,6 +80,7 @@ def main():
         '--replace-ca-key',
         help='If set, the CA key will also be replaced',
         default=False,
+        action='store_true'
     )
 
     args = parser.parse_args()

@@ -59,8 +59,8 @@ def _create_replace_certs_config_file(manager,
     local_script_path = get_resource_path(
         'scripts/create_replace_certs_config_script.py')
     manager.put_remote_file(remote_script_path, local_script_path)
-    command = '/opt/cfy/bin/python {0} --output {1} --host-ip {2} ' \
-              '--replace-ca-key {3}'.format(
-                remote_script_path, replace_certs_config_path,
-                manager.private_ip_address, replace_ca_key)
+    command = '/opt/cfy/bin/python {0} --output {1} --host-ip {2}{3}'.format(
+        remote_script_path, replace_certs_config_path,
+        manager.private_ip_address,
+        ' --replace-ca-key' if replace_ca_key else '')
     manager.run_command(command)
