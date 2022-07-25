@@ -4,6 +4,7 @@ from .cfy_cluster_manager_shared import _cluster_upgrade_test
 from cosmo_tester.framework.constants import SUPPORTED_FOR_RPM_UPGRADE
 
 
+@pytest.mark.full_cluster
 @pytest.mark.nine_vms
 @pytest.mark.upgrade
 @pytest.mark.parametrize('base_version', SUPPORTED_FOR_RPM_UPGRADE)

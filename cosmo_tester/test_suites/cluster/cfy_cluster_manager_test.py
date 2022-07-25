@@ -46,6 +46,7 @@ def test_create_three_nodes_cluster(three_vms, test_config, ssh_key, logger):
                      ssh_key, logger)
 
 
+@pytest.mark.full_cluster
 @pytest.mark.nine_vms
 def test_create_nine_nodes_cluster(nine_vms, test_config, ssh_key, logger):
     """Tests that a nine nodes cluster is successfully created."""

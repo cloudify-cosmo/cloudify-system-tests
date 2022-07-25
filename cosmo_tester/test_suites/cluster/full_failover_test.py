@@ -13,6 +13,7 @@ from cosmo_tester.framework.util import (set_client_tenant,
                                          validate_cluster_status_and_agents)
 
 
+@pytest.mark.full_cluster
 @pytest.mark.six_vms
 def test_queue_node_failover(cluster_with_single_db, logger,
                              module_tmpdir, ssh_key, test_config):
@@ -76,6 +77,7 @@ def test_queue_node_failover(cluster_with_single_db, logger,
     example.uninstall()
 
 
+@pytest.mark.full_cluster
 @pytest.mark.six_vms
 def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                                ssh_key, test_config):
@@ -143,6 +145,7 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
     example.uninstall()
 
 
+@pytest.mark.full_cluster
 @pytest.mark.four_vms
 def test_workflow_resume_manager_failover(minimal_cluster,
                                           logger, ssh_key, test_config):
