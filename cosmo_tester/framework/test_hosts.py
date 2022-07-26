@@ -918,7 +918,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
         if self.is_manager:
             distro = self._test_config['test_manager']['distro']
             if distro == 'rhel-8' and not self._is_rhel8_supported():
-                distro == 'rhel-7'
+                distro = 'rhel-7'
 
             username_key = distro.replace('-', '_')
 

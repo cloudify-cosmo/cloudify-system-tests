@@ -247,7 +247,7 @@ def test_agent_via_proxy(proxy_hosts,
     manager_ip = manager.private_ip_address
     proxy_ip = proxy.private_ip_address
 
-    self.run_command('yum install -y iptables', use_sudo=True)
+    manager.run_command('yum install -y iptables', use_sudo=True)
 
     for port in [5671, 53333]:
         manager.run_command(
