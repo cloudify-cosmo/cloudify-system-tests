@@ -107,6 +107,7 @@ def get_cli_package_url(platform, test_config):
     url = substitute_testing_version(
         test_config['package_urls'][f'{platform}_cli_path'],
         test_config['testing_version'],
+        test_config['test_manager']['distro']
     )
 
     test_cli_package_url(url)
@@ -719,10 +720,11 @@ def wait_for_blueprint_upload(client, blueprint_id):
                            .format(blueprint_id))
 
 
-def substitute_testing_version(original_string, testing_version):
+def substitute_testing_version(original_string, testing_version, distro=''):
     return original_string.format(
         testing_version=testing_version,
-        mangled_testing_version=testing_version.replace('-', '/')
+        mangled_testing_version=testing_version.replace('-', '/'),
+        rh_version=distro.split('-')[-1]
     )
 
 
