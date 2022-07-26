@@ -882,8 +882,6 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
         self._logger.info('Adding extra NICs...')
 
-        self.run_command('yum install -y ifupdown', use_sudo=True)
-
         for i in range(0, len(self.networks)):
             network_file_path = self._tmpdir / 'network_cfg_{}'.format(i)
             ip_addr = self.networks['network_{}'.format(i + 1)]
@@ -895,7 +893,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
                 '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
                 network_file_path,
             )
-            self.run_command('ifup eth{0}'.format(i), use_sudo=True)
+            self.run_command('ip link set eth{0} up'.format(i), use_sudo=True)
 
     def _is_manager_image_type(self):
         if self.image_type == 'master':

@@ -81,6 +81,7 @@ def _set_rpm_path(cluster_config_dict, test_config, base_version):
     cluster_config_dict['manager_rpm_path'] = util.substitute_testing_version(
         test_config['package_urls']['manager_install_rpm_path'],
         base_version,
+        test_config['test_manager']['distro'],
     )
 
 
@@ -93,7 +94,8 @@ def _upgrade_cluster(nodes_list, manager, test_config, logger):
             cfg=REMOTE_CLUSTER_CONFIG_PATH,
             rpm=util.substitute_testing_version(
                 rpm_url,
-                test_config['testing_version']),
+                test_config['testing_version'],
+                test_config['test_manager']['distro']),
         )
     )
 
@@ -164,6 +166,7 @@ def _get_config_dict(node_count, test_config, vm_user):
         'manager_rpm_path': util.substitute_testing_version(
             test_config['package_urls']['manager_install_rpm_path'],
             test_config['testing_version'],
+            test_config['test_manager']['distro'],
         ),
     }
 

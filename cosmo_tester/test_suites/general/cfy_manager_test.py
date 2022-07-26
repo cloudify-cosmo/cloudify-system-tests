@@ -148,6 +148,7 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
             rpm=substitute_testing_version(
                 test_config['package_urls']['manager_install_rpm_path'],
                 test_config['testing_version'],
+                test_config['test_manager']['distro'],
             ),
         ),
         use_sudo=True,
