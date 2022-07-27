@@ -211,13 +211,13 @@ def _wait_for_healthy_broker_cluster(client, timeout=60):
 
 
 def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
-    agent_netstat_result = agent_node.run_command(
-        'netstat -na | grep {port}'.format(port=BROKER_PORT_SSL),
+    agent_ss_result = agent_node.run_command(
+        'ss -na | grep {port}'.format(port=BROKER_PORT_SSL),
     ).stdout.split('\n')
 
     connection_established = False
-    for line in agent_netstat_result:
-        if 'ESTABLISHED' in line:
+    for line in agent_ss_result:
+        if 'ESTAB' in line:
             connection_established = True
-            return line.split(':')[-2].split(' ')[-1]
+            return line.split(':')[-2].split(' ')[-1].split(']')
     assert connection_established   # error if no connection on rabbit port
