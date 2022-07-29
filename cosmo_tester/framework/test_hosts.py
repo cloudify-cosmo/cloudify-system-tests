@@ -883,6 +883,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
         self._logger.info('Adding extra NICs...')
 
         for i in range(0, len(self.networks)):
+            dev = f'eth{i}'
             network_file_path = self._tmpdir / 'network_cfg_{}'.format(i)
             ip_addr = self.networks['network_{}'.format(i + 1)]
             config_content = template.format(i, ip_addr)
@@ -890,10 +891,14 @@ print('{{}} {{}}'.format(distro, codename).lower())
             with open(network_file_path, 'w') as conf_handle:
                 conf_handle.write(config_content)
             self.put_remote_file(
-                '/etc/sysconfig/network-scripts/ifcfg-eth{0}'.format(i),
+                f'/etc/sysconfig/network-scripts/ifcfg-{dev}',
                 network_file_path,
             )
-            self.run_command('ip link set eth{0} up'.format(i), use_sudo=True)
+            # ifup isn't on RH8, ip link set on RH7 doesn't set IPs
+            if self._test_config['test_manager']['distro'] == 'rhel-8':
+                self.run_command(f'ip link set {dev} up', use_sudo=True)
+            else:
+                self.run_command(f'ifup {dev}', use_sudo=True)
 
     def _is_manager_image_type(self):
         if self.image_type == 'master':
