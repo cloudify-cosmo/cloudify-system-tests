@@ -219,5 +219,5 @@ def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
     for line in agent_ss_result:
         if 'ESTAB' in line:
             connection_established = True
-            return line.split(':')[-2].split(' ')[-1].split(']')
+            return line.split(':')[-2].split(' ')[-1].split(']')[0]
     assert connection_established   # error if no connection on rabbit port
