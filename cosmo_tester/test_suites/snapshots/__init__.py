@@ -124,7 +124,7 @@ def _retry_if_file_not_found(exception):
 def restore_snapshot(manager, snapshot_id, logger, admin_password,
                      restore_certificates=False, force=False,
                      wait_for_post_restore_commands=True,
-                     wait_timeout=60, cert_path=None, blocking=True):
+                     wait_timeout=20, cert_path=None, blocking=True):
     list_snapshots(manager, logger)
 
     logger.info('Restoring snapshot on latest manager..')
@@ -144,7 +144,7 @@ def restore_snapshot(manager, snapshot_id, logger, admin_password,
         try:
             # Retry while the password is still being reset
             attempt = 0
-            while attempt < 30:
+            while attempt < 60:
                 try:
                     wait_for_execution(
                         manager.client,
