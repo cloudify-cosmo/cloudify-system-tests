@@ -144,7 +144,7 @@ def restore_snapshot(manager, snapshot_id, logger, admin_password,
         try:
             # Retry while the password is still being reset
             attempt = 0
-            while attempt < 30:
+            while attempt < 60:
                 try:
                     wait_for_execution(
                         manager.client,
