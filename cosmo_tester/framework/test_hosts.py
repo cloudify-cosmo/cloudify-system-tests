@@ -1651,5 +1651,6 @@ class Hosts(object):
                     'Poisoning ARP to disable IPv4 communication {0}->{1}.'
                     .format(node_instance['runtime_properties']['ip'], ip))
 
-                instance.run_command('sudo arp -s {0} de:ad:be:ef:ca:fe'
-                                     .format(ip))
+                instance.run_command(
+                    f'ip neigh add {ip} lladdr de:ad:be:ef:ca:fe dev eth0',
+                    use_sudo=True)
