@@ -211,12 +211,16 @@ def _wait_for_healthy_broker_cluster(client, timeout=60):
 
 
 def _verify_agent_broker_connection_and_get_broker_ip(agent_node):
-    agent_ss_result = agent_node.run_command(
-        'ss -na | grep {port}'.format(port=BROKER_PORT_SSL),
-    ).stdout.split('\n')
-
+    if agent_node._test_config['test_manager']['distro'] == 'rhel-8':
+        agent_probe_result = agent_node.run_command(
+            'ss -na | grep {port}'.format(port=BROKER_PORT_SSL),
+        ).stdout.split('\n')
+    else:
+        agent_probe_result = agent_node.run_command(
+            'netstat -na | grep {port}'.format(port=BROKER_PORT_SSL),
+        ).stdout.split('\n')
     connection_established = False
-    for line in agent_ss_result:
+    for line in agent_probe_result:
         if 'ESTAB' in line:
             connection_established = True
             return line.split(':')[-2].split(' ')[-1].split(']')[0]
