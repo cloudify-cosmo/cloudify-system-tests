@@ -118,7 +118,7 @@ def _retry_if_file_not_found(exception):
 # Retry if the snapshot was not found to work around syncthing delays
 @retrying.retry(
     retry_on_exception=_retry_if_file_not_found,
-    stop_max_attempt_number=10,
+    stop_max_attempt_number=15,
     wait_fixed=1500,
 )
 def restore_snapshot(manager, snapshot_id, logger, admin_password,
