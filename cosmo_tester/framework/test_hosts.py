@@ -1159,7 +1159,8 @@ class Hosts(object):
             for index, instance in enumerate(self.instances):
                 self._start_deploy_test_vm(instance.image_name, index,
                                            test_identifier,
-                                           instance.is_manager)
+                                           instance.is_manager,
+                                           instance.image_type)
             self._finish_deploy_test_vms()
 
             for instance in self.instances:
@@ -1444,7 +1445,7 @@ class Hosts(object):
             self._populate_aws_platform_properties()
 
     def _start_deploy_test_vm(self, image_id, index, test_identifier,
-                              is_manager):
+                              is_manager, image_type):
         self._logger.info(
             'Preparing to deploy instance %d of image %s',
             index,
@@ -1475,6 +1476,7 @@ class Hosts(object):
             )
             vm_inputs['image'] = image_id
         elif self._test_config['target_platform'] == 'aws':
+            aws_conf = self._test_config['aws']
             vm_inputs.update(self._platform_resource_ids)
             if self.multi_net:
                 use_net = self.vm_net_mappings.get(index, 1)
@@ -1488,10 +1490,11 @@ class Hosts(object):
                     "Name": "tag:Name",
                     "Values": [image_id]
                 }
-                vm_inputs['image_owner'] = self._test_config['aws'][
-                    'named_image_owners']
+                vm_inputs['image_owner'] = aws_conf['manager_image_owner']
             else:
                 vm_inputs['image_id'] = image_id
+                if image_type in aws_conf['use_owners_for']:
+                    vm_inputs['image_owner'] = aws_conf['ami_image_owner']
 
         blueprint_id = 'test_vm'
         if self.multi_net:
