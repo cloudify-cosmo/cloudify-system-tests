@@ -31,7 +31,7 @@ ubuntu_16_04_image:
   default: ami-0a9aac550bc5711d3
 rhel_8_image:
   description: Image to use for RHEL 8 on this platform.
-  default: ami-0f0f1c02e5e4d9d9f
+  default: ami-0972eeda2b4a6cb6f
 rhel_7_image:
   description: Image to use for RHEL 7 on this platform.
   default: ami-020e14de09d1866b4
@@ -43,12 +43,20 @@ centos_7_image:
   default: ami-04f5641b0d178a27a
 windows_2012_image:
   description: Image to use for Windows 2012 on this platform.
-  default: ami-03755dea27d322c64
+  default: ami-0198bd02204a03bfd
 rhel_username_override:
   description: Override to use because redhat like using different usernames on different cloud platforms.
   default: ec2-user
-named_image_owners:
-  description: Comma separated list of allowed owners for images not referred to by AMI ID.
+use_owners_for:
+  description: List of image types to use image owner list with (managers always will).
+  default:
+    - rhel_8
+    - windows_2012
+ami_image_owner:
+  description: Account ID of non-manager images.
+  default: "263721492972"
+manager_image_owner:
+  description: Account ID of manager images.
   default: "919239153674"
 region:
   description: Which region to use for tests. If this is changed, all AMI IDs will need changing.
