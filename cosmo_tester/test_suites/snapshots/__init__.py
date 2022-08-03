@@ -5,7 +5,10 @@ from time import sleep
 import retrying
 
 from cloudify.snapshots import STATES
-from cloudify_rest_client.exceptions import UserUnauthorizedError
+from cloudify_rest_client.exceptions import (
+    CloudifyClientError,
+    UserUnauthorizedError,
+)
 
 from cosmo_tester.framework.constants import SUPPORTED_RELEASES
 from cosmo_tester.framework.util import (
@@ -160,6 +163,11 @@ def restore_snapshot(manager, snapshot_id, logger, admin_password,
                         change_rest_client_password(manager, admin_password)
                         update_credentials(manager, logger, admin_password)
                         password_reset = True
+                    sleep(2)
+                    attempt += 1
+                except CloudifyClientError:
+                    # This will appear sometimes when restservice is
+                    # restarting but nginx is up.
                     sleep(2)
                     attempt += 1
         except ExecutionFailed:
