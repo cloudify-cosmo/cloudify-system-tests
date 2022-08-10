@@ -9,7 +9,8 @@ from cosmo_tester.test_suites.snapshots import (
 from cosmo_tester.test_suites.agent import validate_agent
 
 AGENT_OSES = [
-    'centos_7',
+    # 'centos_7',  Python2-based agent temporarily disabled
+    'centos_8',  # ... will use a different OS flavour
     'windows_2012',
 ]
 

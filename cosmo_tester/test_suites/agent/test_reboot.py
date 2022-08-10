@@ -7,7 +7,7 @@ from cosmo_tester.test_suites.agent import validate_agent
 AGENT_OSES = [
     'ubuntu_16_04',
     'centos_8',
-    'centos_7',
+    # 'centos_7',  Python2-based agent temporarily disabled
     'rhel_7',
     'rhel_8',
     'windows_2012',
