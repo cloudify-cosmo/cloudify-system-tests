@@ -75,6 +75,16 @@ def _get_system_state(mgr):
     opt_dirs = mgr.run_command('ls /opt').stdout.split()
     etc_dirs = mgr.run_command('ls /etc').stdout.split()
 
+    profile_check_command = (
+        'test -x ~{user}/.cloudify/profiles/manager-local '
+        '&& echo "Profile exists" '
+        '|| echo "Profile missing"'
+    )
+    cfy_user_profile_state = mgr.run_command(
+        profile_check_command.format(user=mgr.username)).stdout.strip()
+    cfy_root_profile_state = mgr.run_command(
+        profile_check_command.format(user='root')).stdout.strip()
+
     packages = mgr.run_command('rpm -qa').stdout.split()
     # Prettify the packages output
     packages = [package.rsplit('-', 2)[0] for package in packages]
@@ -90,4 +100,6 @@ def _get_system_state(mgr):
         'yum packages': packages,
         'os users': users,
         'os groups': groups,
+        'cfy user profile state': cfy_user_profile_state,
+        'cfy root profile state': cfy_root_profile_state,
     }
