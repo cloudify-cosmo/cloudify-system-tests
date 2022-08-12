@@ -80,9 +80,9 @@ def _get_system_state(mgr):
         '&& echo "Profile exists" '
         '|| echo "Profile missing"'
     )
-    user_profile = mgr.run_command(
+    cfy_user_profile_state = mgr.run_command(
         profile_check_command.format(user=mgr.username)).stdout.strip()
-    root_profile = mgr.run_command(
+    cfy_root_profile_state = mgr.run_command(
         profile_check_command.format(user='root')).stdout.strip()
 
     packages = mgr.run_command('rpm -qa').stdout.split()
@@ -100,6 +100,6 @@ def _get_system_state(mgr):
         'yum packages': packages,
         'os users': users,
         'os groups': groups,
-        'user profile': user_profile,
-        'root profile': root_profile,
+        'cfy user profile state': cfy_user_profile_state,
+        'cfy root profile state': cfy_root_profile_state,
     }
