@@ -29,7 +29,7 @@ def managers_and_vms(ssh_key, module_tmpdir, test_config, logger,
     )
 
     for inst in [2, 3, 4]:
-        hosts.instances[inst] = VM('centos_7', test_config)
+        hosts.instances[inst] = VM('rhel_8', test_config)
 
     passed = True
 
