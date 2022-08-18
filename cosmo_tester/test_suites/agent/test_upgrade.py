@@ -9,7 +9,7 @@ from cosmo_tester.test_suites.snapshots import (
 from cosmo_tester.test_suites.agent import validate_agent
 
 AGENT_OSES = [
-    'centos_7',
+    'rhel_8',
     'windows_2012',
 ]
 

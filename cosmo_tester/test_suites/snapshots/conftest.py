@@ -16,7 +16,7 @@ def hosts(request, ssh_key, module_tmpdir, test_config, logger):
 
     new_mgr = hosts.instances[0] = VM('master', test_config)
     win_vm = hosts.instances[1] = VM('windows_2012', test_config)
-    lin_vm = hosts.instances[2] = VM('centos_7', test_config)
+    lin_vm = hosts.instances[2] = VM('rhel_8', test_config)
 
     old_mgr_mappings = {}
     for idx, old_mgr in enumerate(old_managers):
