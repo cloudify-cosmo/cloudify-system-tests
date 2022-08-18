@@ -7,8 +7,6 @@ from cosmo_tester.test_suites.agent import validate_agent
 AGENT_OSES = [
     'ubuntu_16_04',
     'centos_8',
-    'centos_7',
-    'rhel_7',
     'rhel_8',
     'windows_2012',
 ]
