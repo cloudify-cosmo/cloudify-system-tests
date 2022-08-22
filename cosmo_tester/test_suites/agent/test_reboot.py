@@ -5,7 +5,6 @@ from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.test_suites.agent import validate_agent
 
 AGENT_OSES = [
-    'ubuntu_16_04',
     'centos_8',
     'rhel_8',
     'windows_2012',
