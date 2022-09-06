@@ -61,7 +61,13 @@ def test_agent_retry(ssh_key, module_tmpdir, test_config, logger, request):
             manager.run_command('iptables -D INPUT 1', use_sudo=True)
 
             # Give agent some time for the retry
-            time.sleep(30)
+            timeout, delay = 120, 15
+            while timeout > 0:
+                try:
+                    manager.client.executions.get(execution_id)
+                except Exception:
+                    time.sleep(delay)
+                    timeout -= delay
 
             # Validate the execution
             execution = manager.client.executions.get(execution_id)
