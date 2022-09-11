@@ -6,17 +6,17 @@
 # And then edit the resulting file to ensure these lines are still present.
 # Otherwise it'll not bother to upgrade dependencies of dependencies.
 #
-aiohttp==3.7.4.post0
+aiohttp==3.8.1
     # via cloudify-common
-async-timeout==3.0.1
+async-timeout==4.0.2
     # via aiohttp
-attrs==21.4.0
+attrs==22.1.0
     # via
     #   aiohttp
     #   pytest
 bcrypt==3.2.0
     # via paramiko
-bottle==0.12.19
+bottle==0.12.23
     # via cloudify-common
 certifi==2021.10.8
     # via requests
