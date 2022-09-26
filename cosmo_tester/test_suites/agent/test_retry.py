@@ -47,37 +47,38 @@ def test_agent_retry(ssh_key, module_tmpdir, test_config, logger, request):
             if 'windows' in agent_os:
                 example.use_windows(vm.username, vm.password)
 
+            logger.info('Starting install for %s', agent_os)
             with set_client_tenant(manager.client, tenant_name):
                 execution_id = manager.client.executions.start(
                     example.deployment_id, 'install').id
             time.sleep(3)  # wait for the mgmtworker to get the execution
 
-            # Disable communication with agent for a few moments
+            logger.info('Unplugging network cable and waiting a minute...')
             manager.run_command(
                 f'iptables -I INPUT 1 -p tcp -s {vm.ip_address} -j DROP',
                 use_sudo=True
             )
-
             time.sleep(60)
 
-            # Re-enable the communication with agent
+            logger.info('Plugging network cable back in.')
             manager.run_command('iptables -D INPUT 1', use_sudo=True)
 
             # Give agent some time for the retry
+            logger.info('Waiting for %s to finish install', agent_os)
             timeout, delay = 120, 15
             while timeout > 0:
-                try:
-                    with set_client_tenant(manager.client, tenant_name):
-                        manager.client.executions.get(execution_id)
-                except Exception:
+                with set_client_tenant(manager.client, tenant_name):
+                    exc = manager.client.executions.get(execution_id)
+
+                logger.info('Execution state: %s' % exc.status)
+                if exc.status == 'terminated':
+                    break
+                else:
                     time.sleep(delay)
                     timeout -= delay
+            assert exc.status == 'terminated'
 
-            # Validate the execution
-            with set_client_tenant(manager.client, tenant_name):
-                execution = manager.client.executions.get(execution_id)
-            assert execution.status == 'terminated'
-
+            logger.info('Uninstalling %s', agent_os)
             example.uninstall()
     except Exception:
         passed = False
