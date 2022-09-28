@@ -38,3 +38,24 @@ node_types:
       cloudify.interfaces.lifecycle:
         create:
           implementation: test_plugin.test_plugin.wait.wait
+
+  cloudify.test.nodes.FileTriggersFile:
+    derived_from: cloudify.nodes.Root
+    properties:
+      path:
+        description: >
+            Where the trigger file should be created.
+            This will have a _wait suffix added to it.
+            After that, an external process must create a file with
+            the same base name and a _trigger suffix.
+            Then, the 'done' runtime property on the instance will
+            be set to true.
+        default: /tmp/test_plugin_trigger_base
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: test_plugin.test_plugin.triggered_file.create
+          inputs: {}
+        delete:
+          implementation: test_plugin.test_plugin.triggered_file.delete
+          inputs: {}
