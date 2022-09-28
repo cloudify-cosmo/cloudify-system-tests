@@ -200,6 +200,9 @@ class BaseExample(object):
         if path is None:
             path = self.inputs['path']
 
+        assert not self.file_exists(path)
+
+    def file_exists(self, path):
         # This gets us the full paths, which then allows us to see if the test
         # file prefix is in there.
         # Technically this could collide if the string /tmp/test_file is in
@@ -207,15 +210,15 @@ class BaseExample(object):
         # we'll tackle that problem when we cause it.
         # Running with sudo to avoid exit status of 1 due to root owned files
         if self.windows:
-            list_path = path.rsplit('\\', 1)[0]
-            assert path
+            # Windows won't list it with the full path; set path to file name
+            list_path, path = path.rsplit('\\', 1)
             tmp_contents = str(self.example_host.run_command(
                 'dir {}'.format(list_path)).std_out)
         else:
             list_path = os.path.dirname(path)
             tmp_contents = self.example_host.run_command(
                 'sudo find {} -maxdepth 1'.format(list_path)).stdout
-        assert path not in tmp_contents
+        return path in tmp_contents
 
     def assert_deployment_events_exist(self):
         self.logger.info('Verifying deployment events..')
