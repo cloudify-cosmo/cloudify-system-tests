@@ -18,7 +18,7 @@ bcrypt==3.2.0
     # via paramiko
 bottle==0.12.23
     # via cloudify-common
-certifi==2021.10.8
+certifi==2022.9.24
     # via requests
 cffi==1.14.6
     # via
@@ -48,13 +48,10 @@ fasteners==0.17.3
     # via cloudify-common
 filelock==3.4.1
     # via virtualenv
-idna==3.3
+idna==3.4
     # via
-    #   idna-ssl
     #   requests
     #   yarl
-idna-ssl==1.1.0
-    # via aiohttp
 importlib-metadata==4.8.3
     # via
     #   pluggy
@@ -66,13 +63,13 @@ iniconfig==1.1.1
     # via pytest
 invoke==1.6.0
     # via fabric
-jinja2==2.11.3
+jinja2==3.1.2
     # via
     #   cloudify-common
     #   cloudify-system-tests (setup.py)
-markupsafe==2.0.1
+markupsafe==2.1.1
     # via jinja2
-multidict==5.2.0
+multidict==6.0.2
     # via
     #   aiohttp
     #   yarl
@@ -90,7 +87,7 @@ path.py==12.5.0
     # via cloudify-system-tests (setup.py)
 pathlib2==2.3.6
     # via fabric
-pika==1.1.0
+pika==1.3.0
     # via cloudify-common
 platformdirs==2.4.0
     # via virtualenv
@@ -106,7 +103,7 @@ pycparser==2.21
     # via cffi
 pynacl==1.5.0
     # via paramiko
-pyparsing==3.0.7
+pyparsing==3.0.9
     # via packaging
 pytest==7.0.0
     # via
@@ -117,7 +114,7 @@ pytest-forked==1.4.0
     # via pytest-xdist
 pytest-xdist==2.5.0
     # via cloudify-system-tests (setup.py)
-pytz==2021.3
+pytz==2022.2.1
     # via cloudify-common
 pywinrm==0.4.2
     # via cloudify-system-tests (setup.py)
@@ -125,7 +122,7 @@ pyyaml==6.0
     # via
     #   cloudify-common
     #   cloudify-system-tests (setup.py)
-requests==2.27.1
+requests==2.28.1
     # via
     #   cloudify-common
     #   cloudify-system-tests (setup.py)
@@ -149,7 +146,7 @@ six==1.16.0
     #   virtualenv
 tomli==1.2.3
     # via pytest
-typing-extensions==4.0.1
+typing-extensions==4.3.0
     # via
     #   aiohttp
     #   importlib-metadata
@@ -158,7 +155,7 @@ urllib3==1.26.8
     # via requests
 virtualenv==20.13.1
     # via wagon
-wagon[venv]==0.11.0
+wagon[venv]==0.11.2
     # via
     #   cloudify-common
     #   cloudify-system-tests (setup.py)
@@ -166,9 +163,9 @@ wheel==0.37.1
     # via wagon
 xmltodict==0.12.0
     # via pywinrm
-yarl==1.7.2
+yarl==1.8.1
     # via aiohttp
-zipp==3.6.0
+zipp==3.8.1
     # via
     #   importlib-metadata
     #   importlib-resources
