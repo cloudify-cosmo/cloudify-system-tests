@@ -23,7 +23,7 @@ pipeline {
       steps {
         sh script: "mkdir -p ${env.WORKSPACE}/flake8 && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/flake8", label: "copying repo to seperate workspace"
 
-        container('py36'){
+        container('py310'){
           dir("${env.WORKSPACE}/flake8") {
             sh script:'''
               pip install --user flake8

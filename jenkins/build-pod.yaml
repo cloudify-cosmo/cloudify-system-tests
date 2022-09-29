@@ -2,8 +2,8 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-    - name: py36
-      image: python:3.6
+    - name: py310
+      image: python:3.10
       resources:
         requests:
           cpu: 1
