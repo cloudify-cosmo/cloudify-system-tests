@@ -1117,6 +1117,9 @@ class Hosts(object):
             protocol='https' if infra_mgr_config['ca_cert'] else 'http',
         )
 
+        self._infra_mgr_version = int(
+            self._infra_client.manager.get_version()['version'].split('.')[0])
+
         if flavor:
             self.server_flavor = flavor
         else:
@@ -1370,7 +1373,8 @@ class Hosts(object):
                 )
             ),
             "infrastructure",
-            async_upload=True
+            async_upload=True,
+            legacy=self._infra_mgr_version < 7,
         )
         util.wait_for_blueprint_upload(self._infra_client, "infrastructure")
 
@@ -1391,7 +1395,8 @@ class Hosts(object):
                     )
                 ),
                 blueprint_id,
-                async_upload=True
+                async_upload=True,
+                legacy=self._infra_mgr_version < 7,
             )
             util.wait_for_blueprint_upload(self._infra_client, blueprint_id)
             self.blueprints.append('test_vm{}'.format(suffix))
