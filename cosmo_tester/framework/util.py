@@ -103,11 +103,11 @@ def test_cli_package_url(url):
         )
 
 
-def get_cli_package_url(platform, test_config):
+def get_cli_package_url(platform, test_config, host):
     url = substitute_testing_version(
         test_config['package_urls'][f'{platform}_cli_path'],
         test_config['testing_version'],
-        test_config['test_manager']['distro']
+        host.image_type.replace('_', '-'),
     )
 
     test_cli_package_url(url)

@@ -193,7 +193,7 @@ def _cleanup_profile(run, example, paths, logger, include_secret=True):
 
 def _install_linux_cli(cli_host, logger, test_config):
     logger.info('Downloading CLI package')
-    cli_package_url = get_cli_package_url('rhel', test_config)
+    cli_package_url = get_cli_package_url('rhel', test_config, cli_host)
     logger.info('Using CLI package: {url}'.format(
         url=cli_package_url,
     ))
@@ -272,7 +272,7 @@ def _prepare_windows_cli_test_components(cli_host, manager_host, cli_os,
                                                cli_installer_exe_name)
 
     logger.info('Downloading CLI package')
-    cli_package_url = get_cli_package_url(url_key, test_config)
+    cli_package_url = get_cli_package_url(url_key, test_config, cli_host)
     cli_package_version = cli_package_url.split('.exe')[-2].split('_')[-1]
     logger.info('Using CLI package: {url}'.format(
         url=cli_package_url,
