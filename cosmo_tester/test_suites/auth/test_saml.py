@@ -1,5 +1,6 @@
 from cosmo_tester.framework.util import create_rest_client
 from cosmo_tester.test_suites.auth.saml_responses import make_response
+from cosmo_tester.test_suites.auth import delete_a_user
 
 import requests
 
@@ -104,6 +105,14 @@ signed_data.getroottree().write('{TMP_SIGNED}')
 
 def _clean_users(manager, users, logger):
     problems = []
+
+    idp_active_user = users.pop()
+    groups = (
+        ['Everyone']
+        if manager.client.users.get(idp_active_user)['groups']
+        else []
+    )
+    delete_a_user(idp_active_user, groups, manager.client, logger)
 
     _deactivate_saml_auth(manager, logger)
 
