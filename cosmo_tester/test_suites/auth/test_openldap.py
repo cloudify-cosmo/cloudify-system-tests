@@ -1,4 +1,4 @@
-from . import check_manager_using_correct_idp
+from . import check_manager_using_correct_idp, delete_a_user
 
 import time
 
@@ -98,6 +98,8 @@ def test_slapd_ldaps_with_cluster(three_node_cluster_with_extra_node, logger):
             mgr_details = mgr.client.users.list(username=user)[0]
             groups = mgr_details['group_system_roles'].get('sys_admin', [])
             assert sorted(groups) == sorted(details['expected_groups'])
+
+    delete_a_user('user', ['Cloudifiers'], mgr1.client, logger)
 
 
 def _install_openldap(host, logger):
