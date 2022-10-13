@@ -1,4 +1,4 @@
-from . import check_manager_using_correct_idp
+from . import check_manager_using_correct_idp, delete_a_user
 
 import time
 
@@ -122,6 +122,10 @@ def test_ad_with_aio(windows_ldap_tester, logger):
         mgr_details = mgr.client.users.list(username=user)[0]
         groups = mgr_details['group_system_roles'].get('sys_admin', [])
         assert sorted(groups) == sorted(details['expected_groups'])
+
+    logger.info('Checking we can delete a user')
+    client = mgr.get_rest_client()
+    delete_a_user('DefNestUser', ['Defers'], mgr.client, logger)
 
 
 def _add_ous(ad_host, logger):
