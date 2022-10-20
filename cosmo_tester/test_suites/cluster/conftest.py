@@ -761,7 +761,7 @@ def _bootstrap_lb_node(node, managers, tempdir):
     node.log_action('Preparing load balancer')
 
     # install haproxy and import certs
-    install_sh = """yum install -y /opt/cloudify/sources/haproxy*
+    install_sh = """yum install -y haproxy
     cat {cert} {key} > /tmp/cert.pem\n       mv /tmp/cert.pem /etc/haproxy
     chown haproxy. /etc/haproxy/cert.pem\n   chmod 400 /etc/haproxy/cert.pem
     cp {ca} /etc/haproxy\n                   chown haproxy. /etc/haproxy/ca.crt
