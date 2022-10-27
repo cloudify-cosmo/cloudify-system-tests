@@ -442,9 +442,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
     @only_manager
     def upload_test_plugin(self, tenant_name='default_tenant'):
         self._logger.info('Uploading test plugin to %s', tenant_name)
-        self._upload_plugin(
-            'plugin/test_plugin-1.0.0-py27-none-any.zip',
-            tenant_name)
+        self._upload_plugin('plugin/test_plugin-1.0.0.zip', tenant_name)
 
     def _upload_plugin(self, plugin_path, tenant_name):
         with util.set_client_tenant(self.client, tenant_name):
