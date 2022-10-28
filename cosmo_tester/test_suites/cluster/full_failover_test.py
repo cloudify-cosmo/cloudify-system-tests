@@ -78,25 +78,26 @@ def test_queue_node_failover(cluster_with_single_db, logger,
 
 
 @pytest.mark.full_cluster
-@pytest.mark.six_vms
-def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
+@pytest.mark.nine_vms
+def test_manager_node_failover(full_cluster_names, logger, module_tmpdir,
                                ssh_key, test_config):
-    broker, db, mgr1, mgr2, mgr3, lb = cluster_with_lb
+    _, _, _, _, _, _, mgr1, mgr2, mgr3 = full_cluster_names
 
-    lb.wait_for_manager()
+    mgr1.wait_for_manager()
+    mgr2.wait_for_manager()
+    mgr3.wait_for_manager()
 
     example = get_example_deployment(mgr1, ssh_key, logger,
                                      'manager_failover', test_config)
     example.inputs['server_ip'] = mgr1.ip_address
     example.upload_and_verify_install()
-    validate_cluster_status_and_agents(lb, example.tenant, logger,
-                                       agent_validation_manager=mgr1)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger)
 
     # get agent's manager node
-    agent_host = lb.client.agents.list(_all_tenants=True)[0]['id']
+    agent_host = mgr1.client.agents.list(_all_tenants=True)[0]['id']
 
-    with set_client_tenant(lb.client, example.tenant):
-        node_instances = lb.client.node_instances.list().items
+    with set_client_tenant(mgr1.client, example.tenant):
+        node_instances = mgr1.client.node_instances.list().items
     agent_manager_ip = None
     for instance in node_instances:
         if instance.id == agent_host:
@@ -104,43 +105,35 @@ def test_manager_node_failover(cluster_with_lb, logger, module_tmpdir,
                 'file_server_url'].split('/')[2].split(':')[0]
             break
     agent_mgr = None
-    for manager in [mgr1, mgr2, mgr3]:
+    validate_mgr = None
+    for manager in [mgr1, mgr2]:
         if manager.private_ip_address == agent_manager_ip:
             agent_mgr = manager
+            validate_mgr = mgr2 if manager == mgr1 else mgr1
             break
-
-    validate_manager = None
-    for manager in [mgr1, mgr2, mgr3]:
-        if manager != agent_mgr:
-            validate_manager = manager
-            break
-    assert validate_manager, 'Could not find manager for validation.'
 
     # stop the manager connected to the agent
     agent_mgr.stop_manager_services()
 
-    lb.wait_for_manager()
     time.sleep(5)  # wait 5 secs for status reporter to poll
     validate_cluster_status_and_agents(
-        lb, example.tenant, logger, expected_managers_status='Degraded',
-        agent_validation_manager=validate_manager)
+        validate_mgr, example.tenant, logger,
+        expected_managers_status='Degraded')
 
     # restart the manager connected to the agent
     agent_mgr.start_manager_services()
 
     time.sleep(5)
     validate_cluster_status_and_agents(
-        lb, example.tenant, logger, agent_validation_manager=validate_manager)
+        validate_mgr, example.tenant, logger)
 
     # stop two managers
     mgr2.stop_manager_services()
     mgr3.stop_manager_services()
 
-    lb.wait_for_manager()
     time.sleep(5)
-    validate_cluster_status_and_agents(lb, example.tenant, logger,
-                                       expected_managers_status='Degraded',
-                                       agent_validation_manager=mgr1)
+    validate_cluster_status_and_agents(mgr1, example.tenant, logger,
+                                       expected_managers_status='Degraded')
 
     example.uninstall()
 

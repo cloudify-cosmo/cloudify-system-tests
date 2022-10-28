@@ -666,12 +666,9 @@ def validate_cluster_status_and_agents(manager,
                                        tenant,
                                        logger,
                                        expected_brokers_status='OK',
-                                       expected_managers_status='OK',
-                                       agent_validation_manager=None):
-    if not agent_validation_manager:
-        agent_validation_manager = manager
+                                       expected_managers_status='OK'):
     logger.info('Validating agents')
-    validate_agents(agent_validation_manager, tenant)
+    validate_agents(manager, tenant)
     logger.info('Validating cluster status')
     validate_cluster_status(manager,
                             expected_brokers_status,
