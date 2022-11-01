@@ -1,7 +1,6 @@
 import os
 import time
 
-from jinja2 import Environment, FileSystemLoader
 from os.path import join, dirname
 import pytest
 
@@ -172,16 +171,6 @@ def full_cluster_names(nine_session_vms, test_config, logger, request):
 
 
 @pytest.fixture(scope='function')
-def cluster_with_lb(six_session_vms, test_config, logger, request):
-    util.reboot_if_required(six_session_vms)
-    yield _get_hosts(six_session_vms, test_config, logger,
-                     broker_count=1, db_count=1, manager_count=3,
-                     use_load_balancer=True, pre_cluster_rabbit=True)
-    if len(request.session.items) > 1:
-        util.rsync_restore(six_session_vms)
-
-
-@pytest.fixture(scope='function')
 def cluster_missing_one_db(nine_session_vms, test_config, logger, request):
     util.reboot_if_required(nine_session_vms)
     for vm in nine_session_vms:
@@ -322,7 +311,7 @@ def _ensure_installer_installed(vm):
 
 def _get_hosts(instances, test_config, logger,
                broker_count=0, manager_count=0, db_count=0,
-               use_load_balancer=False, skip_bootstrap_list=None,
+               skip_bootstrap_list=None,
                # Pre-cluster rabbit determines whether to cluster rabbit
                # during the bootstrap.
                # High security will pre-set all certs (not just required ones)
@@ -333,8 +322,7 @@ def _get_hosts(instances, test_config, logger,
     number_of_cluster_instances = (
         3 if three_nodes_cluster else broker_count + db_count + manager_count)
     has_extra_node = (1 if extra_node else 0)
-    number_of_instances = number_of_cluster_instances + \
-        (1 if use_load_balancer else 0) + has_extra_node
+    number_of_instances = number_of_cluster_instances + has_extra_node
     if skip_bootstrap_list is None:
         skip_bootstrap_list = []
 
@@ -357,8 +345,6 @@ def _get_hosts(instances, test_config, logger,
         name_mappings.extend([
             'manager-{}'.format(i) for i in range(manager_count)
         ])
-    if use_load_balancer:
-        name_mappings.append('lb')
     if has_extra_node:
         name_mappings.append('extra_node')
 
@@ -414,16 +400,11 @@ def _get_hosts(instances, test_config, logger,
         dbs = instances[broker_count:broker_count + db_count]
         managers = instances[broker_count + db_count:
                              broker_count + db_count + manager_count]
-    if use_load_balancer:
-        lb = instances[-1 - has_extra_node]
 
     if bootstrap:
         run_cluster_bootstrap(dbs, brokers, managers, skip_bootstrap_list,
                               pre_cluster_rabbit, high_security,
                               use_hostnames, tempdir, test_config)
-
-    if use_load_balancer:
-        _bootstrap_lb_node(lb, managers, tempdir)
 
     logger.info('All nodes are created%s.',
                 ' and bootstrapped' if bootstrap else '')
@@ -497,6 +478,38 @@ def _base_prep(node, tempdir):
         ca_key,
     )
 
+    db_client_cert = cert_base.format(node_friendly_name='cloudify',
+                                      extension='crt')
+    db_client_key = cert_base.format(node_friendly_name='cloudify',
+                                     extension='key')
+
+    # In case we're using postgres client auth we need a CN of cloudify
+    util.generate_ssl_certificate(
+        [],
+        'cloudify',
+        tempdir,
+        db_client_cert,
+        db_client_key,
+        ca_cert,
+        ca_key,
+    )
+
+    db_su_cert = cert_base.format(node_friendly_name='postgres',
+                                  extension='crt')
+    db_su_key = cert_base.format(node_friendly_name='postgres',
+                                 extension='key')
+
+    # In case we're using postgres client auth we need a CN of cloudify
+    util.generate_ssl_certificate(
+        [],
+        'postgres',
+        tempdir,
+        db_su_cert,
+        db_su_key,
+        ca_cert,
+        ca_key,
+    )
+
     remote_cert = '/tmp/' + node.friendly_name + '.crt'
     remote_key = '/tmp/' + node.friendly_name + '.key'
     remote_ca = '/tmp/ca.crt'
@@ -508,6 +521,22 @@ def _base_prep(node, tempdir):
     node.put_remote_file(
         local_path=node_key,
         remote_path=remote_key,
+    )
+    node.put_remote_file(
+        local_path=db_client_cert,
+        remote_path='/tmp/db_client.crt',
+    )
+    node.put_remote_file(
+        local_path=db_client_key,
+        remote_path='/tmp/db_client.key',
+    )
+    node.put_remote_file(
+        local_path=db_su_cert,
+        remote_path='/tmp/db_su.crt',
+    )
+    node.put_remote_file(
+        local_path=db_su_key,
+        remote_path='/tmp/db_su.key',
     )
     node.put_remote_file(
         local_path=ca_cert,
@@ -729,9 +758,13 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                 'ssl_client_verification'] = True
             node.install_config['postgresql_client']['ssl_enabled'] = True
             node.install_config['ssl_inputs'][
-                'postgresql_client_cert_path'] = node.remote_cert
+                'postgresql_client_cert_path'] = '/tmp/db_client.crt'
             node.install_config['ssl_inputs'][
-                'postgresql_client_key_path'] = node.remote_key
+                'postgresql_client_key_path'] = '/tmp/db_client.key'
+            node.install_config['ssl_inputs'][
+                'postgresql_superuser_client_cert_path'] = '/tmp/db_su.crt'
+            node.install_config['ssl_inputs'][
+                'postgresql_superuser_client_key_path'] = '/tmp/db_su.key'
     else:
         # If we're installing no db nodes we must put the db on the
         # manager (this only makes sense for testing external rabbit)
@@ -753,39 +786,6 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
 
     # Correctly configure the rest client for the node
     node.client = node.get_rest_client(proto='https')
-
-
-def _bootstrap_lb_node(node, managers, tempdir):
-    node.friendly_name = 'haproxy'
-    _base_prep(node, tempdir)
-    node.log_action('Preparing load balancer')
-
-    # install haproxy and import certs
-    install_sh = """yum install -y /opt/cloudify/sources/haproxy*
-    cat {cert} {key} > /tmp/cert.pem\n       mv /tmp/cert.pem /etc/haproxy
-    chown haproxy. /etc/haproxy/cert.pem\n   chmod 400 /etc/haproxy/cert.pem
-    cp {ca} /etc/haproxy\n                   chown haproxy. /etc/haproxy/ca.crt
-    restorecon /etc/haproxy/*""".format(
-        cert=node.remote_cert, key=node.remote_key, ca=node.remote_ca)
-    node.run_command('echo "{}" > /tmp/haproxy_install.sh'.format(install_sh))
-    node.run_command('chmod 700 /tmp/haproxy_install.sh')
-    node.run_command('sudo /tmp/haproxy_install.sh')
-
-    # configure haproxy
-    template = Environment(
-        loader=FileSystemLoader(CONFIG_DIR)).get_template('haproxy.cfg')
-    config = template.render(managers=managers)
-    config_path = '/etc/haproxy/haproxy.cfg'
-    node.put_remote_file_content(config_path, config)
-    node.run_command('sudo chown root. {}'.format(config_path))
-    node.run_command('sudo chmod 644 {}'.format(config_path))
-    node.run_command('sudo restorecon {}'.format(config_path))
-
-    node.run_command('sudo systemctl enable haproxy')
-    node.run_command('sudo systemctl restart haproxy')
-
-    node.is_manager = True
-    node.client = node.get_rest_client(proto='https', download_ca=False)
 
 
 def _add_monitoring_config(node, manager=False):
