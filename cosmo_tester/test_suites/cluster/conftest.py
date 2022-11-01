@@ -478,6 +478,38 @@ def _base_prep(node, tempdir):
         ca_key,
     )
 
+    db_client_cert = cert_base.format(node_friendly_name='cloudify',
+                                      extension='crt')
+    db_client_key = cert_base.format(node_friendly_name='cloudify',
+                                     extension='key')
+
+    # In case we're using postgres client auth we need a CN of cloudify
+    util.generate_ssl_certificate(
+        [],
+        'cloudify',
+        tempdir,
+        db_client_cert,
+        db_client_key,
+        ca_cert,
+        ca_key,
+    )
+
+    db_su_cert = cert_base.format(node_friendly_name='postgres',
+                                  extension='crt')
+    db_su_key = cert_base.format(node_friendly_name='postgres',
+                                 extension='key')
+
+    # In case we're using postgres client auth we need a CN of cloudify
+    util.generate_ssl_certificate(
+        [],
+        'postgres',
+        tempdir,
+        db_su_cert,
+        db_su_key,
+        ca_cert,
+        ca_key,
+    )
+
     remote_cert = '/tmp/' + node.friendly_name + '.crt'
     remote_key = '/tmp/' + node.friendly_name + '.key'
     remote_ca = '/tmp/ca.crt'
@@ -489,6 +521,22 @@ def _base_prep(node, tempdir):
     node.put_remote_file(
         local_path=node_key,
         remote_path=remote_key,
+    )
+    node.put_remote_file(
+        local_path=db_client_cert,
+        remote_path='/tmp/db_client.crt',
+    )
+    node.put_remote_file(
+        local_path=db_client_key,
+        remote_path='/tmp/db_client.key',
+    )
+    node.put_remote_file(
+        local_path=db_su_cert,
+        remote_path='/tmp/db_su.crt',
+    )
+    node.put_remote_file(
+        local_path=db_su_key,
+        remote_path='/tmp/db_su.key',
     )
     node.put_remote_file(
         local_path=ca_cert,
@@ -710,9 +758,13 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
                 'ssl_client_verification'] = True
             node.install_config['postgresql_client']['ssl_enabled'] = True
             node.install_config['ssl_inputs'][
-                'postgresql_client_cert_path'] = node.remote_cert
+                'postgresql_client_cert_path'] = '/tmp/db_client.crt'
             node.install_config['ssl_inputs'][
-                'postgresql_client_key_path'] = node.remote_key
+                'postgresql_client_key_path'] = '/tmp/db_client.key'
+            node.install_config['ssl_inputs'][
+                'postgresql_superuser_client_cert_path'] = '/tmp/db_su.crt'
+            node.install_config['ssl_inputs'][
+                'postgresql_superuser_client_key_path'] = '/tmp/db_su.key'
     else:
         # If we're installing no db nodes we must put the db on the
         # manager (this only makes sense for testing external rabbit)
