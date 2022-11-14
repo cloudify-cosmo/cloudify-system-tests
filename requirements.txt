@@ -39,8 +39,6 @@ cryptography==38.0.1
     # via
     #   paramiko
     #   requests-ntlm
-decorator==5.1.1
-    # via networkx
 distlib==0.3.6
     # via virtualenv
 distro==1.7.0
@@ -85,7 +83,7 @@ multidict==5.2.0
     # via
     #   aiohttp
     #   yarl
-networkx==1.11
+networkx==2.8.8
     # via cloudify-common
 ntlm-auth==1.5.0
     # via requests-ntlm
