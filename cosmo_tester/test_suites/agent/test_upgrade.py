@@ -6,12 +6,7 @@ from cosmo_tester.test_suites.snapshots import (
     create_copy_and_restore_snapshot,
 )
 
-from cosmo_tester.test_suites.agent import validate_agent
-
-AGENT_OSES = [
-    'rhel_8',
-    'windows_2012',
-]
+from cosmo_tester.test_suites.agent import validate_agent, AGENT_OSES
 
 
 def test_old_agent_stopped_after_upgrade(ssh_key, module_tmpdir,
