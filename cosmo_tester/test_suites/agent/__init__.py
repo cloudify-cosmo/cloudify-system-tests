@@ -3,7 +3,6 @@ from cosmo_tester.framework.test_hosts import Hosts, VM
 
 # Agent OSes to test
 AGENT_OSES = [
-    'centos_8',
     'rhel_8',
     'windows_2012',
 ]
