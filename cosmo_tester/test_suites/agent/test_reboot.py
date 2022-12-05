@@ -2,13 +2,7 @@ import time
 
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.test_hosts import Hosts, VM
-from cosmo_tester.test_suites.agent import validate_agent
-
-AGENT_OSES = [
-    'centos_8',
-    'rhel_8',
-    'windows_2012',
-]
+from cosmo_tester.test_suites.agent import validate_agent, AGENT_OSES
 
 
 def test_agent_reboot(ssh_key, module_tmpdir, test_config, logger, request):
