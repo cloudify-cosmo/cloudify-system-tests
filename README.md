@@ -47,7 +47,7 @@ You do not need to generate the test config every time you run tests.
 
 You can now run a test:
 ```bash
-pytest --pdb -s cosmo_tester/test_suites/image_based_tests/simple_deployment_test.py::test_simple_deployment
+pytest --pdb -s cosmo_tester/test_suites/general/simple_deployment_test.py::test_simple_deployment
 ```
 --pdb is recommended for manual test runs as this will pause test execution on failure and may allow you to gain valuable insight into the cause of the failure.
 -s is recommended in order to ensure all test output is shown.
