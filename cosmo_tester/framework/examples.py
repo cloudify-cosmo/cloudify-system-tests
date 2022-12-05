@@ -85,10 +85,14 @@ class BaseExample(object):
         if self.create_secret:
             self.set_agent_key_secret()
 
+        mgr_version = int(
+            self.manager.client.manager.get_version()['version'].split('.')[0])
+
         with set_client_tenant(self.manager.client, self.tenant):
             try:
                 self.manager.client.blueprints.upload(
-                    self.blueprint_file, self.blueprint_id)
+                    self.blueprint_file, self.blueprint_id,
+                    legacy=mgr_version < 7)
             except CloudifyClientError as err:
                 if self.manager._test_config['premium']:
                     raise
