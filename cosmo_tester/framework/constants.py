@@ -10,12 +10,14 @@ SUPPORTED_RELEASES = [
     '6.1.0',
     '6.2.0',
     '6.3.0',
+    '6.3.2'
     '6.4.0',
+    '6.4.1'
     'master',
 ]
 
 SUPPORTED_FOR_RPM_UPGRADE = [
     version + '-ga'
     for version in SUPPORTED_RELEASES
-    if version not in ('master', '5.1.0')
+    if not (version == 'master' or version.startswith('5.'))
 ]
