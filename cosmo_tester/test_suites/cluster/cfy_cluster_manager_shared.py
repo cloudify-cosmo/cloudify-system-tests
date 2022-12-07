@@ -150,6 +150,7 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
                     '| sudo tee -a {}'.format(conf)
                 )
 
+    import pdb; pdb.set_trace()
     _upgrade_cluster(nodes_list, manager, test_config, logger)
 
 
