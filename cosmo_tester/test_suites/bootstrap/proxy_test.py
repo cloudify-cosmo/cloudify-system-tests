@@ -11,8 +11,8 @@ def test_proxy(bootstrap_test_manager, logger, tmpdir, test_config):
     """
     manager = bootstrap_test_manager
     proxy_env = {
-        'HTTP_PROXY': f'http://{manager.private_ip_address}',
-        'HTTPS_PROXY': f'https://{manager.private_ip_address}',
+        'HTTP_PROXY': 'http://notarealaddress.local',
+        'HTTPS_PROXY': 'https://notarealaddress.local',
         'NO_PROXY': f'{manager.private_ip_address},127.0.0.1,localhost',
     }
     manager.install_config.setdefault('stage', {}).update(
