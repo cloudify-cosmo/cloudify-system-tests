@@ -52,6 +52,12 @@ pytest --pdb -s cosmo_tester/test_suites/general/simple_deployment_test.py::test
 --pdb is recommended for manual test runs as this will pause test execution on failure and may allow you to gain valuable insight into the cause of the failure.
 -s is recommended in order to ensure all test output is shown.
 
+#### Tests which use an external DB
+Some of our tests (currently only `cosmo_tester/test_suites/cluster/external_component_cluster_test.py::test_upgrade_external_db`) use an external database.
+The FQDN and password of the database should be provided as environment variables `EXTDB_FQDN=...` and `EXTDB_PSWD=...` when running the test manually.
+Developers may refer to the `pipelines-k8s/system-tests` pipeline in our `cloudify-build-system` repo for the values of our test-db on RDS.
+
+
 ## Using the config in tests
 There are two supported ways of accessing the config within tests.
 
