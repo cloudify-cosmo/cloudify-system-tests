@@ -40,7 +40,7 @@ centos_8_image:
   default: ami-04f68775f1311a781
 centos_7_image:
   description: Image to use for Centos 7 on this platform.
-  default: ami-04f5641b0d178a27a
+  default: ami-00d464afa64e1fc69
 windows_2012_image:
   description: Image to use for Windows 2012 on this platform.
   default: ami-0198bd02204a03bfd
