@@ -26,6 +26,7 @@ pipeline {
         container('python'){
           dir("${env.WORKSPACE}/flake8") {
             sh script:'''
+              pip install --upgrade pip setuptools --user
               pip install --user flake8
               python -m flake8
               ''', label: 'Install and run flake8'
@@ -37,6 +38,7 @@ pipeline {
       steps {
         container('python'){
             sh script:'''
+            pip install --upgrade pip setuptools --user
             pip install -r ${WORKSPACE}/${PROJECT}/requirements.txt --user
             python --collect-only ${WORKSPACE}/${PROJECT}/cosmo_tester
             ''', label: 'Collect all tests'
