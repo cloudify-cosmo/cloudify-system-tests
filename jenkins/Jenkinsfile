@@ -38,9 +38,10 @@ pipeline {
       steps {
         container('python'){
             sh script:'''
-            pip install --upgrade pip setuptools --user
-            pip install -r ${WORKSPACE}/${PROJECT}/requirements.txt --user
-            pytest --collect-only ${WORKSPACE}/${PROJECT}/cosmo_tester
+            python -mvenv collect
+            collect/bin/pip install --upgrade pip setuptools
+            collect/bin/pip install -r ${WORKSPACE}/${PROJECT}/requirements.txt
+            collect/bin/pytest --collect-only ${WORKSPACE}/${PROJECT}/cosmo_tester
             ''', label: 'Collect all tests'
         }
       }
