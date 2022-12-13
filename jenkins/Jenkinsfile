@@ -23,13 +23,26 @@ pipeline {
       steps {
         sh script: "mkdir -p ${env.WORKSPACE}/flake8 && cp -rf ${env.WORKSPACE}/${env.PROJECT}/. ${env.WORKSPACE}/flake8", label: "copying repo to seperate workspace"
 
-        container('py36'){
+        container('python'){
           dir("${env.WORKSPACE}/flake8") {
             sh script:'''
+              pip install --upgrade pip setuptools --user
               pip install --user flake8
               python -m flake8
-              ''', label: 'install and run flake8'
+              ''', label: 'Install and run flake8'
           }
+        }
+      }
+    }
+    stage('collect tests') {
+      steps {
+        container('python'){
+            sh script:'''
+            python -mvenv collect
+            collect/bin/pip install --upgrade pip setuptools
+            collect/bin/pip install -r ${WORKSPACE}/${PROJECT}/requirements.txt
+            collect/bin/pytest --collect-only ${WORKSPACE}/${PROJECT}/cosmo_tester
+            ''', label: 'Collect all tests'
         }
       }
     }
