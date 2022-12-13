@@ -28,8 +28,18 @@ pipeline {
             sh script:'''
               pip install --user flake8
               python -m flake8
-              ''', label: 'install and run flake8'
+              ''', label: 'Install and run flake8'
           }
+        }
+      }
+    }
+    stage('collect tests') {
+      steps {
+        container('py36'){
+            sh script:'''
+            pip install -r ${env.WORKSPACE}/${env.PROJECT}/requirements.txt
+            python --collect-only ${env.WORKSPACE}/${env.PROJECT}/cosmo_tester
+            ''', label: 'Collect all tests'
         }
       }
     }
