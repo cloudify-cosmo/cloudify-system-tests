@@ -37,8 +37,8 @@ pipeline {
       steps {
         container('py36'){
             sh script:'''
-            pip install -r ${env.WORKSPACE}/${env.PROJECT}/requirements.txt
-            python --collect-only ${env.WORKSPACE}/${env.PROJECT}/cosmo_tester
+            pip install -r ${WORKSPACE}/${PROJECT}/requirements.txt --user
+            python --collect-only ${WORKSPACE}/${PROJECT}/cosmo_tester
             ''', label: 'Collect all tests'
         }
       }
