@@ -40,7 +40,7 @@ pipeline {
             sh script:'''
             pip install --upgrade pip setuptools --user
             pip install -r ${WORKSPACE}/${PROJECT}/requirements.txt --user
-            python --collect-only ${WORKSPACE}/${PROJECT}/cosmo_tester
+            pytest --collect-only ${WORKSPACE}/${PROJECT}/cosmo_tester
             ''', label: 'Collect all tests'
         }
       }
