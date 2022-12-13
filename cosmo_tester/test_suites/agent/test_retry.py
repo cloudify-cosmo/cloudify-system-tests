@@ -3,7 +3,7 @@ import time
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.test_hosts import Hosts, VM
 from cosmo_tester.framework.util import set_client_tenant, get_resource_path
-from cosmo_tester.test_suites.agents import AGENT_OSES
+from cosmo_tester.test_suites.agent import AGENT_OSES
 
 
 def test_agent_retry(ssh_key, module_tmpdir, test_config, logger, request):
