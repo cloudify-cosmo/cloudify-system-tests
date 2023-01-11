@@ -152,7 +152,6 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
                 )
     _install_deployment_with_agent(manager, test_config, ssh_key, logger)
 
-    import pdb; pdb.set_trace()
     _upgrade_cluster(nodes_list, manager, test_config, logger)
     upgrade_agents(manager, logger, test_config)
 
