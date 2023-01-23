@@ -580,7 +580,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
         override_subdirs = ['cfy_manager']
         remote_paths = [
-            '/opt/cloudify/cfy_manager/lib/python3.10/site-packages/'
+            '/opt/cloudify/cfy_manager/lib/python3.11/site-packages/'
         ]
 
         local_tar_path = self._tmpdir_base / 'override_{}.tar.gz'.format(

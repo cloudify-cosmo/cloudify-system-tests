@@ -5,6 +5,7 @@ from cosmo_tester.framework.test_hosts import Hosts, VM
 AGENT_OSES = [
     'rhel_8',
     'windows_2012',
+    'ubuntu_16_04',
 ]
 
 
