@@ -301,8 +301,12 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             '/tmp/get_distro',
             '''#! {python}
 import platform
-
-distro, _, codename = platform.dist()
+using_distro = False
+try:
+    import distro
+    distro, codename = distro.name(), distro.codename()
+except ImportError:
+    distro, _, codename = platform.dist()
 print('{{}} {{}}'.format(distro, codename).lower())
 '''.format(python=self._get_python_path()))
         self.run_command('chmod +x /tmp/get_distro')
@@ -580,7 +584,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
 
         override_subdirs = ['cfy_manager']
         remote_paths = [
-            '/opt/cloudify/cfy_manager/lib/python3.11/site-packages/'
+            '/opt/cloudify/cfy_manager/lib/python3.10/site-packages/'
         ]
 
         local_tar_path = self._tmpdir_base / 'override_{}.tar.gz'.format(

@@ -11,6 +11,15 @@ ubuntu_14_04:
 ubuntu_16_04:
   description: Username for Ubuntu 16.04 test VMs.
   default: ubuntu
+ubuntu_18_04:
+  description: Username for Ubuntu 16.04 test VMs.
+  default: ubuntu
+ubuntu_20_04:
+  description: Username for Ubuntu 16.04 test VMs.
+  default: ubuntu
+ubuntu_22_04:
+  description: Username for Ubuntu 16.04 test VMs.
+  default: ubuntu
 centos_8:
   description: Username for Centos 8 test VMs.
   default: centos
