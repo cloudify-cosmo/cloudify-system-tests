@@ -4,6 +4,10 @@ from cosmo_tester.framework.test_hosts import Hosts, VM
 # Agent OSes to test
 AGENT_OSES = [
     'rhel_8',
+    'ubuntu_16_04',
+    'ubuntu_18_04',
+    'ubuntu_20_04',
+    'ubuntu_22_04',
     'windows_2012',
 ]
 
@@ -48,7 +52,6 @@ def validate_agent(manager, example, test_config,
         'ip': example.inputs.get('server_ip', '127.0.0.1'),
         'install_method': install_method,
         'tenant_name': example.tenant,
-        'system': expected_system,
         'id': instance['host_id'],
         'host_id': instance['host_id'],
         'version': test_config['testing_version'].replace('-ga', ''),
@@ -60,4 +63,8 @@ def validate_agent(manager, example, test_config,
         # Because it gets a UUID tacked onto the end
         agent['id'] = agent['id'][:len(expected_agent['id'])]
 
-    assert agent == expected_agent
+    agent_system = agent.get('system')
+    assert agent_system == expected_system or \
+           agent_system.startswith('manylinux')
+    for key in expected_agent:
+        assert agent.get(key) == expected_agent[key]

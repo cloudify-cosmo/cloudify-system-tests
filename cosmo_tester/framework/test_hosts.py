@@ -301,8 +301,12 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
             '/tmp/get_distro',
             '''#! {python}
 import platform
-
-distro, _, codename = platform.dist()
+using_distro = False
+try:
+    import distro
+    distro, codename = distro.name(), distro.codename()
+except ImportError:
+    distro, _, codename = platform.dist()
 print('{{}} {{}}'.format(distro, codename).lower())
 '''.format(python=self._get_python_path()))
         self.run_command('chmod +x /tmp/get_distro')

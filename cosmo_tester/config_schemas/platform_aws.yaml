@@ -29,6 +29,15 @@ ubuntu_14_04_image:
 ubuntu_16_04_image:
   description: Image to use for Ubuntu 16.04 on this platform.
   default: ami-0a9aac550bc5711d3
+ubuntu_18_04_image:
+  description: Image to use for Ubuntu 18.04 on this platform.
+  default: ami-02f0341ac93c96375
+ubuntu_20_04_image:
+  description: Image to use for Ubuntu 20.04 on this platform.
+  default: ami-0c68b55d1c875067e
+ubuntu_22_04_image:
+  description: Image to use for Ubuntu 22.04 on this platform.
+  default: ami-0333305f9719618c7
 rhel_8_image:
   description: Image to use for RHEL 8 on this platform.
   default: ami-0972eeda2b4a6cb6f
