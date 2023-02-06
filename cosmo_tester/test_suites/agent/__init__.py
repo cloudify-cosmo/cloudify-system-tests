@@ -65,6 +65,6 @@ def validate_agent(manager, example, test_config,
 
     agent_system = agent.get('system')
     assert agent_system == expected_system or \
-           agent_system.startswith('manylinux')
+           agent_system.startswith('linux')
     for key in expected_agent:
         assert agent.get(key) == expected_agent[key]
