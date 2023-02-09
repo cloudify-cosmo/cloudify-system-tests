@@ -158,7 +158,8 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
     logger.info('Upgrading manager')
     base_manager.run_command('cfy_manager upgrade -v')
 
-    check_icon(base_manager, example.tenant, example.blueprint_id, logger)
+    if stage_blueprint_icon_supported(base_manager):
+        check_icon(base_manager, example.tenant, example.blueprint_id, logger)
 
     expected_version = test_config['testing_version'].split('-')[0]
     assert get_manager_install_version(base_manager) == expected_version
