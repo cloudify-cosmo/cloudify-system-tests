@@ -7,4 +7,4 @@ target_platform:
   valid_values: [openstack, aws]
 testing_version:
   description: Which manager version we're testing. Note that this is expected to be in the form <version number>-<identifier>. Bad things may happen without the hyphen.
-  default: 6.4.1-ga
+  default: 6.4.2-ga
