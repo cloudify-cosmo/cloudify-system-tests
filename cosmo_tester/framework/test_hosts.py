@@ -278,6 +278,10 @@ $user.SetInfo()""".format(fw_cmd=add_firewall_cmd,
         """Complete preparations for using a new instance."""
         self._logger.info('Finalizing server preparations.')
         self.wait_for_ssh()
+        if not self.windows:
+            self._logger.info('Ensuring umask is restrictive')
+            self.put_remote_file_content('/etc/profile.d/umask.sh',
+                                         'umask 027\n')
         if self.restservice_expected:
             # When creating the rest client here we can't check for SSL yet,
             # because the manager probably isn't up yet. Therefore, we'll just
