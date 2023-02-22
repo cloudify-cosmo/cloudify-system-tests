@@ -12,7 +12,7 @@ except ImportError:
     print('You need to pip install boto3==1.12.13')
     sys.exit(1)
 
-TEST_GENERATED = '*testpytest*'
+TEST_GENERATED = '*pytest*'
 NOT_TERMINATED = [
     'pending', 'running', 'shutting-down', 'stopping', 'stopped'
 ]
@@ -438,10 +438,10 @@ def collect_resources_from_unknown_test(client, owner):
     for i, _ in enumerate(vpcs):
         vpcs[i]['Tags'].append( { 'Key' : 'Name', 'Value' : 'unknowntest'+str(i) + "_" \
                                  +  str(datetime.now().strftime('%Y%m%d%H%M%S'))} )
-
     resources_by_test = {}
     for i, vpc in enumerate(vpcs):
         vpc_id = vpc['VpcId']
+
         instances = get_instances(client, vpc_id)
         interfaces = get_interfaces(client, vpc_id)
         subnets = get_subnets(client, vpc_id)
@@ -454,10 +454,6 @@ def collect_resources_from_unknown_test(client, owner):
                                 internet_gateways,
                                 security_groups,
                                 vpc, resources_by_test)
-    
-    elastic_ips = get_elastic_ips(client, owner)
-    group_non_vpc_entities_by_previous_tests(elastic_ips, 'elastic ips',
-                                             resources_by_test)
 
     output_resources_by_test(resources_by_test)
     return resources_by_test
@@ -543,5 +539,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    main(older_than=args.older, newer_than=args.newer, owner=args.owner,
-         delete=args.delete)
+    main(older_than=args.older, newer_than=args.newer, owner=args.owner, delete=args.delete, unknown=args.unknown)
