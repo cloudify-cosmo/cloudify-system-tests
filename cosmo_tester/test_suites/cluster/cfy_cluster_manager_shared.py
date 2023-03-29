@@ -6,6 +6,7 @@ from retrying import retry
 import yaml
 
 from cosmo_tester.framework import util
+from cosmo_tester.test_suites.snapshots import upgrade_agents
 
 
 CLUSTER_MANAGER_RESOURCES_PATH = pkg_resources.resource_filename(
@@ -149,8 +150,52 @@ def _cluster_upgrade_test(test_config, base_version, nodes,
                     'echo -e \\\\nservice_management: systemd '
                     '| sudo tee -a {}'.format(conf)
                 )
+    _install_deployment_with_agent(manager, test_config, ssh_key, logger)
 
     _upgrade_cluster(nodes_list, manager, test_config, logger)
+    upgrade_agents(manager, logger, test_config)
+
+
+def _install_deployment_with_agent(manager, test_config, ssh_key, logger):
+    dep_name = 'example'
+
+    # copy test plugin + example blueprint
+    manager.run_command('yum install -y unzip', use_sudo=True)
+    manager.put_remote_file(
+        '/tmp/test_plugin.zip',
+        util.get_resource_path('plugin/test_plugin-1.0.0.zip'),
+    )
+    manager.run_command('mkdir -p /tmp/example_bp')
+    manager.put_remote_file(
+        f'/tmp/{dep_name}_bp/{dep_name}.yaml',
+        util.get_resource_path('blueprints/compute/example.yaml'),
+    )
+    manager.run_command('unzip /tmp/test_plugin.zip -d /tmp/test_plugin')
+
+    # upload test plugin + blueprint
+    manager.run_command(
+        'cfy plugins upload /tmp/test_plugin/*.wgn '
+        '-y /tmp/test_plugin/plugin.yaml'
+    )
+    manager.run_command(
+        f'cfy blueprints upload /tmp/{dep_name}_bp/{dep_name}.yaml'
+        f' -b {dep_name}'
+    )
+
+    # create and install deployment
+    inputs = {
+        'server_ip': manager.ip_address,
+        'path': f'/home/{manager.username}/test_file',
+        'content': 'Test',
+        'agent_user': manager.username
+    }
+    with open(ssh_key.private_key_path) as key_handle:
+        ssh_key_string = key_handle.read()
+    manager.run_command(f'cfy secrets create agent_key -s "{ssh_key_string}"')
+    manager.run_command(
+        f'cfy deployments create {dep_name} -b {dep_name} -i "{inputs}"')
+    manager.run_command(
+        f'cfy execution start install -d {dep_name}')
 
 
 def _get_config_dict(node_count, test_config, vm_user):
