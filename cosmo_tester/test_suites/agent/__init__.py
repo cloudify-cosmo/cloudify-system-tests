@@ -1,3 +1,5 @@
+from cloudify.models_states import AgentState
+
 from cosmo_tester.framework.test_hosts import Hosts, VM
 
 
@@ -25,8 +27,13 @@ def get_test_prerequisites(ssh_key, module_tmpdir, test_config, logger,
 def validate_agent(manager, example, test_config,
                    broken_system=False, install_method='remote',
                    upgrade=False):
-    agents = list(manager.client.agents.list(tenant_name=example.tenant,
-                                             _all_tenants=True))
+    agents = list(
+        manager.client.agents.list(
+            tenant_name=example.tenant,
+            state=AgentState.STARTED,
+            _all_tenants=True,
+        )
+    )
     instances = list(
         manager.client.node_instances.list(
             tenant_name=example.tenant, node_id='vm',
