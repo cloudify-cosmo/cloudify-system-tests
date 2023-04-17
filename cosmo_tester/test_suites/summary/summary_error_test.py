@@ -57,7 +57,7 @@ def test_bad_field_selected(prepared_manager, summary_type):
             '{endpoint}.'.format(endpoint=summary_type)
         )
     except CloudifyClientError as err:
-        components = ['notafield', 'not', 'summary', 'Valid']
+        components = ['notafield', 'summary', 'Invalid']
         components.extend(SUPPORTED_FIELDS[summary_type])
         if not all(component in str(err) for component in components):
             raise AssertionError(
@@ -96,7 +96,7 @@ def test_bad_subfield_selected(prepared_manager, summary_type):
             '{endpoint}.'.format(endpoint=summary_type)
         )
     except CloudifyClientError as err:
-        components = ['notafield', 'not', 'summary', 'Valid']
+        components = ['notafield', 'summary', 'Invalid']
         components.extend(SUPPORTED_FIELDS[summary_type])
         if not all(component in str(err) for component in components):
             raise AssertionError(
