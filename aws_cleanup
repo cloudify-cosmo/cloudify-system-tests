@@ -12,6 +12,7 @@ except ImportError:
     print('You need to pip install boto3==1.12.13')
     sys.exit(1)
 
+TEST_GENERATED = '*pytest*'
 NOT_TERMINATED = [
     'pending', 'running', 'shutting-down', 'stopping', 'stopped'
 ]
@@ -164,6 +165,16 @@ def get_vpcs(client, owner):
         ],
     )['Vpcs']
 
+def get_all_vpcs(client):
+    vpcs = []
+    for vpc in client.describe_vpcs(
+        Filters = [
+            {'Name' : 'tag:CreatedBy' , 'Values' : [TEST_GENERATED]}
+        ]
+    )['Vpcs']:
+        if not 'Name' in [ k['Key'] for k in vpc['Tags'] ]:
+            vpcs.append(vpc)
+    return vpcs
 
 def get_subnets(client, vpc):
     return client.describe_subnets(
@@ -422,19 +433,15 @@ def delete_resources(client, resources_by_test):
             # investigate by hand if the script can't handle it.
             client.delete_vpc(VpcId=vpc)
 
-
-def main(older_than, newer_than, owner, delete):
-    conf = load_config()
-    client = get_ec2_client(conf)
-
-    if not owner:
-        owner = conf['aws']['owner_tag']
-
+def collect_resources_from_unknown_test(client, owner):
+    vpcs = get_all_vpcs(client)
+    for i, _ in enumerate(vpcs):
+        vpcs[i]['Tags'].append( { 'Key' : 'Name', 'Value' : 'unknowntest'+str(i) + "_" \
+                                 +  str(datetime.now().strftime('%Y%m%d%H%M%S'))} )
     resources_by_test = {}
-
-    vpcs = get_vpcs(client, owner)
-    for vpc in vpcs:
+    for i, vpc in enumerate(vpcs):
         vpc_id = vpc['VpcId']
+
         instances = get_instances(client, vpc_id)
         interfaces = get_interfaces(client, vpc_id)
         subnets = get_subnets(client, vpc_id)
@@ -448,18 +455,49 @@ def main(older_than, newer_than, owner, delete):
                                 security_groups,
                                 vpc, resources_by_test)
 
+    output_resources_by_test(resources_by_test)
+    return resources_by_test
+
+def main(older_than, newer_than, owner, delete, unknown):
+    conf = load_config()
+    client = get_ec2_client(conf)
+
+    if not owner:
+        owner = conf['aws']['owner_tag']
+
+    resources_by_test = {}
+
+    vpcs = get_vpcs(client, owner)
+    
+    for vpc in vpcs:
+        vpc_id = vpc['VpcId']
+        instances = get_instances(client, vpc_id)
+        interfaces = get_interfaces(client, vpc_id)
+        subnets = get_subnets(client, vpc_id)
+        route_tables = get_route_tables(client, vpc_id)
+        security_groups = get_security_groups(client, vpc_id)
+        internet_gateways = get_internet_gateways(client, vpc_id)
+        
+        group_by_previous_tests(instances, interfaces,
+                                subnets, route_tables,
+                                internet_gateways,
+                                security_groups,
+                                vpc, resources_by_test)
+
     elastic_ips = get_elastic_ips(client, owner)
     group_non_vpc_entities_by_previous_tests(elastic_ips, 'elastic ips',
                                              resources_by_test)
 
     filter_test_groups(resources_by_test, older_than, newer_than)
-
     output_resources_by_test(resources_by_test)
-
+    
     if delete:
         print('Deleting')
         delete_resources(client, resources_by_test)
-
+        if unknown: 
+            print('Deleting resources from unkown tests')
+            unknown_resources = collect_resources_from_unknown_test(client, owner)
+            delete_resources(client, unknown_resources)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -492,8 +530,13 @@ if __name__ == '__main__':
         action='store_true',
         default=False,
     )
+    parser.add_argument(
+        '-u', '--unknown',
+        help='Delete discovered resources from unkown tests.',
+        action='store_true',
+        default=False,
+    )
 
     args = parser.parse_args()
 
-    main(older_than=args.older, newer_than=args.newer, owner=args.owner,
-         delete=args.delete)
+    main(older_than=args.older, newer_than=args.newer, owner=args.owner, delete=args.delete, unknown=args.unknown)
