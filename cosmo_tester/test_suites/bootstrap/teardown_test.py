@@ -48,7 +48,7 @@ def _test_teardown(function_scoped_manager, ssh_key, logger, test_config):
 
     # The agents dir should be empty, so let's remove it.
     function_scoped_manager.run_command(
-        'rmdir /opt/cloudify-agent-{}'.format(
+        'rmdir /opt/cloudify-agent/agent-{}'.format(
             test_config['testing_version'].replace('-ga', '')
         ),
         use_sudo=True,
