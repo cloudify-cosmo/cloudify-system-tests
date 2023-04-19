@@ -1,3 +1,5 @@
+import json
+
 from cosmo_tester.framework.examples import get_example_deployment
 from cosmo_tester.framework.util import substitute_testing_version
 
@@ -42,17 +44,14 @@ def _test_teardown(function_scoped_manager, ssh_key, logger, test_config):
     # When the example deployment installs the agent this group will exist.
     # It shouldn't be deleted afterwards in case files on the system are in
     # that group.
+    # We also don't remove the agents dir for possible subsequent installs
     expected_diffs['os groups'] = {'cfyagent'}
+    expected_diffs['folders in /opt'] = {'cloudify-agent'}
+
+    assert json.loads(function_scoped_manager.run_command(
+        'cfy agents list -a --json').stdout) == []
 
     function_scoped_manager.teardown(kill_certs=False)
-
-    # The agents dir should be empty, so let's remove it.
-    function_scoped_manager.run_command(
-        'rmdir /opt/cloudify-agent/agent-{}'.format(
-            test_config['testing_version'].replace('-ga', '')
-        ),
-        use_sudo=True,
-    )
 
     current_state = _get_system_state(function_scoped_manager)
     diffs = {}
