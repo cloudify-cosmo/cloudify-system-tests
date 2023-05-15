@@ -716,12 +716,9 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
 
     if high_security:
         node.install_config['ssl_inputs'] = {
-            'external_cert_path': node.remote_cert,
-            'external_key_path': node.remote_key,
             'internal_cert_path': node.remote_cert,
             'internal_key_path': node.remote_key,
             'ca_cert_path': node.remote_ca,
-            'external_ca_cert_path': node.remote_ca,
         }
         node.install_config['manager']['security'][
             'ssl_enabled'] = True

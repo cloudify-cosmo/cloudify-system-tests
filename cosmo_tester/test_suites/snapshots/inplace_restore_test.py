@@ -80,13 +80,9 @@ def test_inplace_restore(manager_and_vm,
         'key_path': '/tmp/ssl_backup/monitoring_key.pem',
     }
     manager.install_config['ssl_inputs'] = {
-        'external_cert_path': '/tmp/ssl_backup/cloudify_external_cert.pem',
-        'external_key_path': '/tmp/ssl_backup/cloudify_external_key.pem',
         'internal_cert_path': '/tmp/ssl_backup/cloudify_internal_cert.pem',
         'internal_key_path': '/tmp/ssl_backup/cloudify_internal_key.pem',
         'ca_cert_path': '/tmp/ssl_backup/cloudify_internal_ca_cert.pem',
-        'external_ca_cert_path':
-            '/tmp/ssl_backup/cloudify_internal_ca_cert.pem',
     }
     manager.bootstrap()
     upload_snapshot(manager, snapshot_path, snapshot_name, logger)
