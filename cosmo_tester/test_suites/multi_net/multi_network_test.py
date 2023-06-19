@@ -213,7 +213,7 @@ def proxy_prepare_hosts(instances, logger):
     # setup the proxy - simple socat services that forward all TCP connections
     # to the manager
     proxy.run_command('yum install socat -y', use_sudo=True)
-    for port in [5671, 53333, 15671]:
+    for port in [443, 5671, 53333, 15671]:
         service = 'proxy_{0}'.format(port)
         filename = '/usr/lib/systemd/system/{0}.service'.format(service)
         logger.info('Deploying proxy service file')
