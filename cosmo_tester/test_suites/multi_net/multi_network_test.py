@@ -213,7 +213,7 @@ def proxy_prepare_hosts(instances, logger):
     # setup the proxy - simple socat services that forward all TCP connections
     # to the manager
     proxy.run_command('yum install socat -y', use_sudo=True)
-    for port in [443, 5671, 53333, 15671]:
+    for port in [443, 5671, 15671]:
         service = 'proxy_{0}'.format(port)
         filename = '/usr/lib/systemd/system/{0}.service'.format(service)
         logger.info('Deploying proxy service file')
@@ -242,18 +242,16 @@ def test_agent_via_proxy(proxy_hosts,
 
     # to make sure that the agents go through the proxy, and not connect to
     # the manager directly, we block all communication on the manager's
-    # rabbitmq and internal REST endpoint, except from the proxy (and from
-    # localhost)
+    # rabbitmq endpoint, except from the proxy (and from localhost)
     manager_ip = manager.private_ip_address
     proxy_ip = proxy.private_ip_address
-    for port in [5671, 53333]:
+    manager.run_command(
+        'iptables -I INPUT -p tcp -s 0.0.0.0/0 --dport 5671 -j DROP',
+        use_sudo=True)
+    for ip in [proxy_ip, manager_ip, '127.0.0.1']:
         manager.run_command(
-            'iptables -I INPUT -p tcp -s 0.0.0.0/0 --dport {0} -j DROP'
-            .format(port), use_sudo=True)
-        for ip in [proxy_ip, manager_ip, '127.0.0.1']:
-            manager.run_command(
-                'iptables -I INPUT -p tcp -s {0} --dport {1} -j ACCEPT'
-                .format(ip, port), use_sudo=True)
+            f'iptables -I INPUT -p tcp -s {ip} --dport 5671 -j ACCEPT',
+            use_sudo=True)
 
     example = get_example_deployment(
         manager, ssh_key, logger, 'agent_via_proxy', test_config, vm)
