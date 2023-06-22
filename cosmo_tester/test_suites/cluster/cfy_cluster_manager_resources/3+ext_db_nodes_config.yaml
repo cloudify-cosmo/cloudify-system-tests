@@ -1,0 +1,75 @@
+ssh_key_path: '' # Filled by the test
+ssh_user: '' # Filled by the test
+cloudify_license_path: '' # Filled by the test
+manager_rpm_path: '' # Filled by the test
+
+ldap:
+  server: ''
+  domain: ''
+  is_active_directory: ''
+  ca_cert: ''
+  username: ''
+  password: ''
+  dn_extra: ''
+
+ca_cert_path: ''
+
+load_balancer_ip: ''
+
+existing_vms:
+    node-1:
+      private_ip: ''
+      public_ip: ''
+      hostname: ''
+      cert_path: ''
+      key_path: ''
+      config_path:
+        manager_config_path: ''
+        postgresql_config_path: ''
+        rabbitmq_config_path: ''
+
+    node-2:
+      private_ip: ''
+      public_ip: ''
+      hostname: ''
+      cert_path: ''
+      key_path: ''
+      config_path:
+        manager_config_path: ''
+        postgresql_config_path: ''
+        rabbitmq_config_path: ''
+
+    node-3:
+      private_ip: ''
+      public_ip: ''
+      hostname: ''
+      cert_path: ''
+      key_path: ''
+      config_path:
+        manager_config_path: ''
+        postgresql_config_path: ''
+        rabbitmq_config_path: ''
+
+external_db_configuration:
+  host: ''
+  ca_path: ''
+  server_db_name: postgres
+  server_username: postgres
+  server_password: ''
+  cloudify_db_name: cloudify_db
+  cloudify_username: cloudify
+  cloudify_password: cloudify
+
+credentials:
+  manager:
+    admin_username: 'admin'
+    admin_password: 'admin'
+
+  rabbitmq:
+    username: ''
+    password: ''
+    erlang_cookie: ''
+
+  prometheus:
+    username: ''
+    password: ''
