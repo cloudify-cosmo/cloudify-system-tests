@@ -30,7 +30,7 @@ def _update_three_nodes_config_dict_vms(config_dict, existing_vms_list):
     for i, node in enumerate(existing_vms_list, start=1):
         config_dict['existing_vms']['node-{0}'.format(i)].update({
             'private_ip': str(node.private_ip_address),
-            'public_ip': str(node.ip_address)
+            'public_ip': f'{node.ip_address}.example.com'
         })
 
 
@@ -46,7 +46,7 @@ def _update_nine_nodes_config_dict_vms(config_dict, existing_vms_list):
 
         config_dict['existing_vms'][node_name].update({
             'private_ip': str(node.private_ip_address),
-            'public_ip': str(node.ip_address)
+            'public_ip': f'{node.ip_address}.example.com'
         })
 
 
