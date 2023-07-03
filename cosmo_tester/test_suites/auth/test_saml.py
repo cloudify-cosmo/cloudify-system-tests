@@ -61,7 +61,7 @@ def test_saml_auth(image_based_manager, logger):
 
 def _activate_saml_auth(manager, logger):
     logger.info('Putting SAML cert in location and restarting rest service')
-    manager.run_command(f'sudo cp {INTERNAL_CERT} {SAML_CERT}')
+    manager.run_command(f'sudo cp -a {INTERNAL_CERT} {SAML_CERT}')
     manager.run_command('sudo supervisorctl restart cloudify-restservice')
     logger.info('Waiting for manager service to finish restarting.')
     manager.wait_for_manager()
