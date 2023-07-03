@@ -45,12 +45,12 @@ def add_to_hosts(target_broker, new_entry_brokers):
 
 def backup_hosts(brokers_list):
     for broker in brokers_list:
-        broker.run_command('sudo cp /etc/hosts /etc/hosts.bak')
+        broker.run_command('sudo cp -a /etc/hosts /etc/hosts.bak')
 
 
 def restore_hosts(brokers_list):
     for broker in brokers_list:
-        broker.run_command('sudo cp /etc/hosts.bak /etc/hosts')
+        broker.run_command('sudo cp -a /etc/hosts.bak /etc/hosts')
         broker.run_command('sudo rm /etc/hosts.bak')
 
 
