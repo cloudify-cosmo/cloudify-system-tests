@@ -28,7 +28,7 @@ ubuntu_14_04_image:
   default: ami-005af4c3162f495fa
 ubuntu_16_04_image:
   description: Image to use for Ubuntu 16.04 on this platform.
-  default: ami-0a9aac550bc5711d3
+  default: ami-0f29c8402f8cce65c
 ubuntu_18_04_image:
   description: Image to use for Ubuntu 18.04 on this platform.
   default: ami-02f0341ac93c96375
