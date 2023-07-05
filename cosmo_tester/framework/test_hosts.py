@@ -856,7 +856,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
         )
         # close the current restclient session to force making a new connection
         # using the new certificate, on first use after this call
-        self.client._client._session.close()
+        if self.client:
+            self.client._client._session.close()
 
     @only_manager
     def clean_local_rest_ca(self):
