@@ -244,6 +244,13 @@ replace: olcTLSCACertificateFile
 olcTLSCACertificateFile: /etc/ssl/certs/ldapcacert.crt''',
     )
     host.run_command(
+        'chgrp ldap'
+        ' /etc/openldap/certs/ldap-key.pem'
+        ' /etc/openldap/certs/ldap-cert.pem'
+        ' /etc/ssl/certs/ldapcacert.crt',
+        use_sudo=True,
+    )
+    host.run_command(
         'ldapmodify -Y EXTERNAL -H ldapi:/// -f /tmp/certs.ldif',
         use_sudo=True,
     )
