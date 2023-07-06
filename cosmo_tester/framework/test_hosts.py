@@ -926,7 +926,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
     def _is_rhel8_supported(self):
         if self.image_type == 'master':
             return True
-        if parse_version(self.image_type) >= parse_version('6.4.0'):
+        if parse_version(self.image_type.split('-')[0]) \
+                >= parse_version('6.4.0'):
             return True
         return False
 
