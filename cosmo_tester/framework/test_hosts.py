@@ -991,6 +991,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             'Creating Rsync backup for host {}. Might take up to 5 '
             'minutes...'.format(self.deployment_id))
         self.run_command("mkdir /cfy_backup", use_sudo=True)
+        self.run_command("chmod o+r /cfy_backup", use_sudo=True)
         rsync_backup_file = self._tmpdir / 'rsync_backup_{0}'.format(
             self.ip_address)
         locations = ' '.join(RSYNC_LOCATIONS)
