@@ -1618,6 +1618,11 @@ class Hosts(object):
         runtime_props = node_instance['runtime_properties']
 
         public_ip_address = runtime_props['public_ip_address']
+        if self._test_config['target_platform'] == 'aws':
+            zone = runtime_props['resource']['Placement']['AvailabilityZone']
+            public_ip_address = f"ec2-{public_ip_address.replace('.', '-')}."\
+                                f"{zone[:-1]}.compute.amazonaws.com"
+
         private_ip_address = runtime_props['ipv6_address'] if self.ipv6_net \
             else runtime_props['ip']
 
