@@ -167,7 +167,14 @@ def test_cfy_manager_upgrade(base_manager, ssh_key, logger, test_config):
     upgrade_agents(base_manager, logger, test_config)
 
     validate_cluster_status_and_agents(base_manager, example.tenant, logger)
-    example.uninstall()
+    # We'd like to ignore a failure of file.delete due to a possible old
+    # version of the test plugin
+    if base_manager.image_type.startswith('5') or \
+            base_manager.image_type.startswith('6'):
+        example.uninstall(parameters={'ignore_failure': True},
+                          check_files_are_deleted=False)
+    else:
+        example.uninstall()
 
 
 def _edit_security_config(manager):

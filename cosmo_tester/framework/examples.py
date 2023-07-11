@@ -144,9 +144,10 @@ class BaseExample(object):
         self.execute('install')
         self.installed = True
 
-    def uninstall(self, check_files_are_deleted=True, delete_dep=True):
+    def uninstall(self, check_files_are_deleted=True, delete_dep=True,
+                  parameters=None):
         self.logger.info('Cleaning up example.')
-        self.execute('uninstall')
+        self.execute('uninstall', parameters=parameters)
         self.installed = False
         if check_files_are_deleted:
             self.check_all_test_files_deleted()
