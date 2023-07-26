@@ -92,7 +92,7 @@ def _update_3_nodes_ext_db_config_dict_vms(
     for i, node in enumerate(existing_vms_list, start=1):
         config_dict['existing_vms']['node-{0}'.format(i)].update({
             'private_ip': str(node.private_ip_address),
-            'public_ip': f'{node.private_ip_address}.example.com'
+            'public_ip': f'{node.private_ip_address}'
         })
         # Just put some FQDN, because when public_ip is an IP address,
         # the external certificate cannot be provided.
