@@ -854,6 +854,10 @@ print('{{}} {{}}'.format(distro, codename).lower())
             '/etc/cloudify/ssl/cloudify_internal_ca_cert.pem',
             self.api_ca_path,
         )
+        # close the current restclient session to force making a new connection
+        # using the new certificate, on first use after this call
+        if self.client:
+            self.client._client._session.close()
 
     @only_manager
     def clean_local_rest_ca(self):
@@ -922,7 +926,8 @@ print('{{}} {{}}'.format(distro, codename).lower())
     def _is_rhel8_supported(self):
         if self.image_type == 'master':
             return True
-        if parse_version(self.image_type) >= parse_version('6.4.0'):
+        if parse_version(self.image_type.split('-')[0]) \
+                >= parse_version('6.4.0'):
             return True
         return False
 
@@ -986,6 +991,7 @@ print('{{}} {{}}'.format(distro, codename).lower())
             'Creating Rsync backup for host {}. Might take up to 5 '
             'minutes...'.format(self.deployment_id))
         self.run_command("mkdir /cfy_backup", use_sudo=True)
+        self.run_command("chmod o+r /cfy_backup", use_sudo=True)
         rsync_backup_file = self._tmpdir / 'rsync_backup_{0}'.format(
             self.ip_address)
         locations = ' '.join(RSYNC_LOCATIONS)
@@ -1134,7 +1140,7 @@ class Hosts(object):
         else:
             self.server_flavor = self._test_config.platform['linux_size']
 
-    def create(self):
+    def create(self, use_fqdn=False):
         """Creates the infrastructure for a Cloudify manager."""
         self._logger.info('Creating image based cloudify instances: '
                           '[number_of_instances=%d]', len(self.instances))
@@ -1173,7 +1179,7 @@ class Hosts(object):
                                            test_identifier,
                                            instance.is_manager,
                                            instance.image_type)
-            self._finish_deploy_test_vms()
+            self._finish_deploy_test_vms(use_fqdn=use_fqdn)
 
             for instance in self.instances:
                 if instance.is_manager and not instance.bootstrappable:
@@ -1565,7 +1571,7 @@ class Hosts(object):
 
         self._platform_resource_ids = resource_ids
 
-    def _finish_deploy_test_vms(self):
+    def _finish_deploy_test_vms(self, use_fqdn=False):
         node_instances = {}
         for vm_id, details in self._test_vm_installs.items():
             execution, index = details
@@ -1580,6 +1586,7 @@ class Hosts(object):
             self._update_instance(
                 index,
                 node_instance,
+                use_fqdn=use_fqdn,
             )
 
             node_instances[index] = node_instance
@@ -1607,11 +1614,16 @@ class Hosts(object):
             util.delete_deployment(self._infra_client, vm_id,
                                    self._logger)
 
-    def _update_instance(self, server_index, node_instance):
+    def _update_instance(self, server_index, node_instance, use_fqdn=False):
         instance = self.instances[server_index]
         runtime_props = node_instance['runtime_properties']
 
         public_ip_address = runtime_props['public_ip_address']
+        if use_fqdn and self._test_config['target_platform'] == 'aws':
+            zone = runtime_props['resource']['Placement']['AvailabilityZone']
+            public_ip_address = f"ec2-{public_ip_address.replace('.', '-')}."\
+                                f"{zone[:-1]}.compute.amazonaws.com"
+
         private_ip_address = runtime_props['ipv6_address'] if self.ipv6_net \
             else runtime_props['ip']
 

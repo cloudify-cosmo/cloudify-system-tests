@@ -213,7 +213,7 @@ def prepare_old_manager_resources(manager, logger, ssh_key, test_config,
             'cloudify-windows-agent.exe'
         )
         manager.run_command('curl -Lo {} {}'.format(tmp_path, agent_url))
-        manager.run_command('sudo cp {} {}'.format(
+        manager.run_command('sudo cp -a {} {}'.format(
             tmp_path, agent_destination))
 
     for tenant in INSTALL_TENANTS:

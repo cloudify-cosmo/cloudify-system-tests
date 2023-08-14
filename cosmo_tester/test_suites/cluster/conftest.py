@@ -35,6 +35,21 @@ def three_session_vms(request, ssh_key, session_tmpdir, test_config,
 
 
 @pytest.fixture(scope='session')
+def three_session_vms_fqdns(request, ssh_key, session_tmpdir, test_config,
+                            session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=3)
+    try:
+        hosts.create(use_fqdn=True)
+        if len(request.session.items) > 1:
+            hosts.rsync_backup()
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
+@pytest.fixture(scope='session')
 def three_ipv6_session_vms(request, ssh_key, session_tmpdir, test_config,
                            session_logger):
     hosts = Hosts(ssh_key, session_tmpdir, test_config,
@@ -87,6 +102,21 @@ def nine_session_vms(request, ssh_key, session_tmpdir, test_config,
                   number_of_instances=9)
     try:
         hosts.create()
+        if len(request.session.items) > 1:
+            hosts.rsync_backup()
+        yield hosts.instances
+    finally:
+        hosts.destroy()
+
+
+@pytest.fixture(scope='session')
+def nine_session_vms_fqdns(request, ssh_key, session_tmpdir, test_config,
+                           session_logger):
+    hosts = Hosts(ssh_key, session_tmpdir, test_config,
+                  session_logger, request, bootstrappable=True,
+                  number_of_instances=9)
+    try:
+        hosts.create(use_fqdn=True)
         if len(request.session.items) > 1:
             hosts.rsync_backup()
         yield hosts.instances
@@ -238,6 +268,17 @@ def three_vms(three_session_vms, test_config, logger, request):
 
 
 @pytest.fixture(scope='function')
+def three_vms_fqdns(three_session_vms_fqdns, test_config, logger, request):
+    util.reboot_if_required(three_session_vms_fqdns)
+    for vm in three_session_vms_fqdns:
+        _ensure_installer_not_installed(vm)
+    yield _get_hosts(three_session_vms_fqdns, test_config, logger,
+                     three_nodes_cluster=True, bootstrap=False)
+    if len(request.session.items) > 1:
+        util.rsync_restore(three_session_vms_fqdns)
+
+
+@pytest.fixture(scope='function')
 def three_vms_ipv6(three_ipv6_session_vms, test_config, logger, request):
     util.reboot_if_required(three_ipv6_session_vms)
     for vm in three_nodes_ipv6_cluster:
@@ -258,6 +299,18 @@ def nine_vms(nine_session_vms, test_config, logger, request):
                      manager_count=3, bootstrap=False)
     if len(request.session.items) > 1:
         util.rsync_restore(nine_session_vms)
+
+
+@pytest.fixture(scope='function')
+def nine_vms_fqdns(nine_session_vms_fqdns, test_config, logger, request):
+    util.reboot_if_required(nine_session_vms)
+    for vm in nine_session_vms_fqdns:
+        _ensure_installer_not_installed(vm)
+    yield _get_hosts(nine_session_vms_fqdns, test_config, logger,
+                     broker_count=3, db_count=3,
+                     manager_count=3, bootstrap=False)
+    if len(request.session.items) > 1:
+        util.rsync_restore(nine_session_vms_fqdns)
 
 
 def _ensure_installer_not_installed(vm):
@@ -716,12 +769,9 @@ def _bootstrap_manager_node(node, mgr_num, dbs, brokers, skip_bootstrap_list,
 
     if high_security:
         node.install_config['ssl_inputs'] = {
-            'external_cert_path': node.remote_cert,
-            'external_key_path': node.remote_key,
             'internal_cert_path': node.remote_cert,
             'internal_key_path': node.remote_key,
             'ca_cert_path': node.remote_ca,
-            'external_ca_cert_path': node.remote_ca,
         }
         node.install_config['manager']['security'][
             'ssl_enabled'] = True

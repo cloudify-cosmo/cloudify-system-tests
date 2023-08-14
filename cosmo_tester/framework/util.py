@@ -598,6 +598,8 @@ def delete_deployment(client, deployment_id, logger):
     for _ in range(40):
         found = False
         deployments = client.deployments.list()
+        if not deployments:
+            break
         for deployment in deployments:
             if deployment['id'] == deployment_id:
                 found = True
