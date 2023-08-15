@@ -1,4 +1,5 @@
 namespace: cfy_cluster_manager
 rpm_path:
   description: The cfy_cluster_manager RPM path to install.
-  default: 'https://repository.cloudifysource.org/cloudify/cloudify-cluster-manager/1.1.4/ga-release/cloudify-cluster-manager-1.1.4-ga.el7.x86_64.rpm'
+  default: 'https://repository.cloudifysource.org/cloudify/cloudify-cluster-manager/1.1.6/ga-release/cloudify-cluster-manager-1.1.6-ga.el7.x86_64.rpm'
+

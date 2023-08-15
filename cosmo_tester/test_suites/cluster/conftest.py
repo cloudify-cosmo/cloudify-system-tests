@@ -303,7 +303,7 @@ def nine_vms(nine_session_vms, test_config, logger, request):
 
 @pytest.fixture(scope='function')
 def nine_vms_fqdns(nine_session_vms_fqdns, test_config, logger, request):
-    util.reboot_if_required(nine_session_vms)
+    util.reboot_if_required(nine_session_vms_fqdns)
     for vm in nine_session_vms_fqdns:
         _ensure_installer_not_installed(vm)
     yield _get_hosts(nine_session_vms_fqdns, test_config, logger,
