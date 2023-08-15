@@ -877,4 +877,3 @@ def _remove_cluster(node):
     # yum clean all doesn't clean all, so let's be more forceful
     node.log_action('Cleaning yum cache')
     node.run_command('sudo rm -rf /var/cache/yum')
-
