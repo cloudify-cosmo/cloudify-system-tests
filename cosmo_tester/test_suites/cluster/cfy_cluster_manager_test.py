@@ -35,22 +35,24 @@ def local_config_files(tmp_path):
 
 
 @pytest.mark.three_vms
-def test_create_three_nodes_cluster(three_vms, test_config, ssh_key, logger):
+def test_create_three_nodes_cluster(three_vms_fqdns, test_config, ssh_key,
+                                    logger):
     """Tests that a three nodes cluster is successfully created."""
-    node1, node2, node3 = three_vms
+    node1, node2, node3 = three_vms_fqdns
     three_nodes_config_dict = _get_config_dict(3, test_config, node1.username)
     _update_three_nodes_config_dict_vms(three_nodes_config_dict,
                                         [node1, node2, node3])
 
-    _install_cluster(node1, three_vms, three_nodes_config_dict, test_config,
-                     ssh_key, logger)
+    _install_cluster(node1, three_vms_fqdns, three_nodes_config_dict,
+                     test_config, ssh_key, logger)
 
 
 @pytest.mark.full_cluster
 @pytest.mark.nine_vms
-def test_create_nine_nodes_cluster(nine_vms, test_config, ssh_key, logger):
+def test_create_nine_nodes_cluster(nine_vms_fqdns, test_config, ssh_key,
+                                   logger):
     """Tests that a nine nodes cluster is successfully created."""
-    nodes_list = [node for node in nine_vms]
+    nodes_list = [node for node in nine_vms_fqdns]
     nine_nodes_config_dict = _get_config_dict(9, test_config,
                                               nodes_list[0].username)
     _update_nine_nodes_config_dict_vms(nine_nodes_config_dict, nodes_list)

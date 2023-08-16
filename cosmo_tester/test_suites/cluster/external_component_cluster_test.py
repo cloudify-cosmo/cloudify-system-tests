@@ -45,11 +45,11 @@ def test_cluster_single_db(cluster_with_single_db, logger, ssh_key,
 @pytest.mark.upgrade
 @pytest.mark.parametrize('base_version', ['6.3.2-ga', '6.4.1-ga'])
 def test_upgrade_external_db(
-        base_version, three_vms, logger, ssh_key, test_config):
+        base_version, three_vms_fqdns, logger, ssh_key, test_config):
     ext_db_fqdn = os.environ["EXTDB_FQDN"]
     ext_db_password = os.environ["EXTDB_PSWD"]
 
-    nodes_list = [node for node in three_vms]
+    nodes_list = [node for node in three_vms_fqdns]
     mgr = nodes_list[0]
 
     _cleanup_external_db(ext_db_fqdn, ext_db_password, mgr)
@@ -63,7 +63,7 @@ def test_upgrade_external_db(
     _set_rpm_path(config_dict, test_config, base_version)
     _update_3_nodes_ext_db_config_dict_vms(
         config_dict, nodes_list, ext_db_fqdn, ext_db_password)
-    _install_cluster(mgr, three_vms, config_dict, test_config,
+    _install_cluster(mgr, three_vms_fqdns, config_dict, test_config,
                      ssh_key, logger)
     _upgrade_cluster(nodes_list, mgr, test_config, logger)
 
