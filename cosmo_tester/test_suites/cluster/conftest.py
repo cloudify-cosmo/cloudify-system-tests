@@ -257,18 +257,7 @@ def three_nodes_ipv6_cluster(three_ipv6_session_vms, test_config, logger,
 
 
 @pytest.fixture(scope='function')
-def three_vms(three_session_vms, test_config, logger, request):
-    util.reboot_if_required(three_session_vms)
-    for vm in three_session_vms:
-        _ensure_installer_not_installed(vm)
-    yield _get_hosts(three_session_vms, test_config, logger,
-                     three_nodes_cluster=True, bootstrap=False)
-    if len(request.session.items) > 1:
-        util.rsync_restore(three_session_vms)
-
-
-@pytest.fixture(scope='function')
-def three_vms_fqdns(three_session_vms_fqdns, test_config, logger, request):
+def three_vms(three_session_vms_fqdns, test_config, logger, request):
     util.reboot_if_required(three_session_vms_fqdns)
     for vm in three_session_vms_fqdns:
         _ensure_installer_not_installed(vm)
@@ -290,19 +279,7 @@ def three_vms_ipv6(three_ipv6_session_vms, test_config, logger, request):
 
 
 @pytest.fixture(scope='function')
-def nine_vms(nine_session_vms, test_config, logger, request):
-    util.reboot_if_required(nine_session_vms)
-    for vm in nine_session_vms:
-        _ensure_installer_not_installed(vm)
-    yield _get_hosts(nine_session_vms, test_config, logger,
-                     broker_count=3, db_count=3,
-                     manager_count=3, bootstrap=False)
-    if len(request.session.items) > 1:
-        util.rsync_restore(nine_session_vms)
-
-
-@pytest.fixture(scope='function')
-def nine_vms_fqdns(nine_session_vms_fqdns, test_config, logger, request):
+def nine_vms(nine_session_vms_fqdns, test_config, logger, request):
     util.reboot_if_required(nine_session_vms_fqdns)
     for vm in nine_session_vms_fqdns:
         _ensure_installer_not_installed(vm)
