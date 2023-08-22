@@ -19,12 +19,14 @@ rabbitmq:
   cluster_members: {{ rabbitmq_cluster }}
 
   ca_path: {{ ca_path }}
+  ca_key_path: {{ ca_key_path }}
 
 postgresql_server:
   cluster:
     nodes: {{ postgresql_cluster }}
 
   ca_path: {{ ca_path }}
+  ca_key_path: {{ ca_key_path }}
   ssl_enabled: true
   postgres_password: strongpostgresqlpassword
 
@@ -41,9 +43,12 @@ validations:
 ssl_inputs:
   internal_cert_path: {{ node.cert_path }}
   internal_key_path: {{ node.key_path }}
-  postgresql_client_cert_path: {{ node.cert_path }}
-  postgresql_client_key_path: {{ node.key_path }}
+  postgresql_client_cert_path: {{ db_client_cert_path }}
+  postgresql_client_key_path: {{ db_client_key_path }}
+  postgresql_superuser_client_cert_path: {{ db_client_su_cert_path }}
+  postgresql_superuser_client_key_path: {{ db_client_su_key_path }}
   ca_cert_path: {{ ca_path }}
+  ca_key_path: {{ ca_key_path }}
 
 prometheus:
   credentials:
@@ -53,6 +58,7 @@ prometheus:
   cert_path: {{ node.cert_path }}
   key_path: {{ node.key_path }}
   ca_path: {{ ca_path }}
+  ca_key_path: {{ ca_key_path }}
 
 services_to_install:
   - manager_service
