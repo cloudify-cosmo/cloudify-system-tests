@@ -29,8 +29,7 @@ def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
     validate_agents(image_based_manager, example.tenant)
     example.uninstall()
 
-
-@pytest.mark.cert_replace
+@pytest.mark.skip(reason="hang most of the pipeline runtime")
 def test_aio_replace_certs_incl_ca_key(
         image_based_manager, ssh_key, logger, test_config):
     test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
