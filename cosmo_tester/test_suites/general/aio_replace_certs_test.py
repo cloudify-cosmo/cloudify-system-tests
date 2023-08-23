@@ -30,11 +30,11 @@ def test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
     example.uninstall()
 
 
-# @pytest.mark.cert_replace
-# def test_aio_replace_certs_incl_ca_key(
-#         image_based_manager, ssh_key, logger, test_config):
-#     test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
-#                            replace_ca_key=True)
+@pytest.mark.cert_replace.skip
+def test_aio_replace_certs_incl_ca_key(
+        image_based_manager, ssh_key, logger, test_config):
+    test_aio_replace_certs(image_based_manager, ssh_key, logger, test_config,
+                           replace_ca_key=True)
 
 
 def _create_new_certs(manager):
