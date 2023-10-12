@@ -140,7 +140,7 @@ urllib3==1.26.13
     # via requests
 virtualenv==20.17.0
     # via wagon
-wagon[venv]==1.0.0
+wagon[venv]==1.0.1
     # via
     #   cloudify-common
     #   cloudify-system-tests (setup.py)
