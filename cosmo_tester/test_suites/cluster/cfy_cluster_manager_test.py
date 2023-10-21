@@ -281,6 +281,11 @@ def _prepare_manager_config_files(template, nodes_list, rabbitmq_cluster,
         rendered_date = template.render(
             node=node,
             ca_path=join(REMOTE_CERTS_PATH, 'ca.pem'),
+            ca_key_path=join(REMOTE_CERTS_PATH, 'ca.key'),
+            db_client_cert_path=join(REMOTE_CERTS_PATH, 'cloudify.crt'),
+            db_client_key_path=join(REMOTE_CERTS_PATH, 'cloudify.key'),
+            db_client_su_cert_path=join(REMOTE_CERTS_PATH, 'postgres.crt'),
+            db_client_su_key_path=join(REMOTE_CERTS_PATH, 'postgres.key'),
             license_path=REMOTE_LICENSE_PATH,
             rabbitmq_cluster=rabbitmq_cluster,
             postgresql_cluster=postgresql_cluster
@@ -341,6 +346,11 @@ def _create_certificates(local_certs_path, nodes_list, tmpdir,
     ca_cert = ca_base + 'pem'
     ca_key = ca_base + 'key'
     generate_ca_cert(ca_cert, ca_key)
+    generate_ca_cert(str(local_certs_path / 'cloudify.crt'),
+                     str(local_certs_path / 'cloudify.key'))
+    generate_ca_cert(str(local_certs_path / 'postgres.crt'),
+                     str(local_certs_path / 'postgres.key'))
+
     for i, node in enumerate(nodes_list, start=1):
         node_cert = str(local_certs_path / 'node-{0}.crt'.format(i))
         node_key = str(local_certs_path / 'node-{0}.key'.format(i))
@@ -362,3 +372,11 @@ def _create_certificates(local_certs_path, nodes_list, tmpdir,
             node.put_remote_file(remote_key, node_key)
             node.put_remote_file(join(REMOTE_CERTS_PATH, 'ca.pem'), ca_cert)
             node.put_remote_file(join(REMOTE_CERTS_PATH, 'ca.key'), ca_key)
+            node.put_remote_file(join(REMOTE_CERTS_PATH, 'cloudify.crt'),
+                                 str(local_certs_path / 'cloudify.crt'))
+            node.put_remote_file(join(REMOTE_CERTS_PATH, 'cloudify.key'),
+                                 str(local_certs_path / 'cloudify.key'))
+            node.put_remote_file(join(REMOTE_CERTS_PATH, 'postgres.crt'),
+                                 str(local_certs_path / 'postgres.crt'))
+            node.put_remote_file(join(REMOTE_CERTS_PATH, 'postgres.key'),
+                                 str(local_certs_path / 'postgres.key'))
