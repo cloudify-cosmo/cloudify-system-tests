@@ -5,12 +5,11 @@ from cosmo_tester.framework.test_hosts import Hosts, VM
 
 # Agent OSes to test
 AGENT_OSES = [
+    'centos_7',
+    'rhel_7',
     'rhel_8',
-    'ubuntu_16_04',
-    'ubuntu_18_04',
-    'ubuntu_20_04',
-    'ubuntu_22_04',
-    'windows_2012',
+    # since we are not building neither Ubuntu nor Windows AMIs, let us stick
+    # to testing centos and rhel
 ]
 
 
