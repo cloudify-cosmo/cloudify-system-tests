@@ -117,6 +117,9 @@ class VM(object):
                 'sanity': {'skip_sanity': True},
             }
 
+    def __repr__(self):
+        return f"<test_hosts.VM {self.image_name} ({self.image_type})>"
+
     def assign(
             self,
             public_ip_address,
