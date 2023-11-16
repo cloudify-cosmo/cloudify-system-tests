@@ -1,4 +1,4 @@
-tosca_definitions_version: cloudify_dsl_1_5
+tosca_definitions_version: cloudify_dsl_1_3
 
 description: >
   Create a file in an arbitrary location on a pre-existing VM using a plugin.
