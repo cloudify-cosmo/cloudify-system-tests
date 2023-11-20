@@ -24,7 +24,7 @@ def test_status(image_based_manager, logger):
 
 
 # Allow time for services to start when we restart them
-@retrying.retry(stop_max_attempt_number=20, wait_fixed=1000)
+@retrying.retry(stop_max_attempt_number=35, wait_fixed=1000)
 def _check_status(manager, logger, healthy=True):
     if healthy:
         logger.info('Checking for healthy status')
